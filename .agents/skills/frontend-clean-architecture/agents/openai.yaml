@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Clean Architecture"
+  short_description: "Clean frontend architecture: Web (shadcn/ui + Tailwind) & Mobile (React Native Paper + NativeWind)"
+  default_prompt: "Use $frontend-clean-architecture to improve this frontend structure using the project's existing framework, conventions, and constraints. For Web, prefer existing shadcn/ui components and project-owned layout primitives. For Mobile (React Native / Expo), use React Native Paper components styled with NativeWind (Tailwind CSS utility classes) and wrapped into project shared primitives before falling back to raw markup."

@@ -1,0 +1,282 @@
+@import "tailwindcss";
+
+/* ── Reset ───────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* ── Typography ──────────────────────────────────────────── */
+body {
+  font-family: var(--font-geist-sans, Arial, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--cipm-surface-page);
+}
+
+/* ── CIPM shell: AntD menu brand tuning ─────────────────── */
+.cipm-sidebar-menu.ant-menu-dark {
+  background: transparent !important;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item {
+  height: 36px !important;
+  line-height: 36px !important;
+  margin: 2px 6px !important;
+  border-radius: var(--cipm-radius-menu-item, 6px) !important;
+  padding-inline: 12px !important;
+  width: calc(100% - 12px) !important;
+  transition: all 0.2s ease;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-group-title {
+  color: #94A3B8;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  padding: 10px 12px 3px !important;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item,
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item .ant-menu-title-content {
+  color: #FFFFFF !important;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item .anticon {
+  color: #E2E8F0 !important;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #FFFFFF !important;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item:hover .anticon,
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item:hover .ant-menu-title-content {
+  color: #FFFFFF !important;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected {
+  background: var(--cipm-sidebar-active) !important;
+  border-left: 3px solid var(--cipm-brand) !important;
+  color: #FFFFFF !important;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected .ant-menu-title-content {
+  color: #FFFFFF !important;
+  font-weight: 600;
+}
+
+.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected .anticon {
+  color: var(--cipm-brand) !important;
+  font-weight: 600;
+}
+
+/* ── Collapsed Sidebar Menu (1 hàng dọc icon căn giữa) ─── */
+.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark,
+.cipm-sidebar-menu.ant-menu-inline-collapsed {
+  width: 100% !important;
+  padding: 8px 0 !important;
+}
+
+.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item {
+  width: 44px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  margin: 6px auto !important;
+  padding: 0 !important;
+  padding-inline: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  border-left: none !important;
+}
+
+.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item .anticon,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item .anticon {
+  font-size: 18px !important;
+  margin: 0 !important;
+  min-width: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-selected {
+  background: var(--cipm-sidebar-active) !important;
+  box-shadow: inset 0 0 0 1.5px var(--cipm-brand) !important;
+  border-left: none !important;
+}
+
+.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item-group-title,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-group-title {
+  display: none !important;
+}
+
+.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-title-content,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-title-content {
+  display: none !important;
+}
+
+/* ── Scrollbar (optional, tinh tế hơn) ──────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cipm-scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cipm-scrollbar-thumb-hover);
+}
+
+/* ── Ant Design Modal: Dark Overlay & Centering ─────────── */
+.ant-modal-mask {
+  background-color: rgba(0, 0, 0, 0.65) !important;
+  z-index: 1300 !important;
+  backdrop-filter: blur(2px);
+}
+
+.ant-modal-wrap,
+.cipm-centered-modal-wrap {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 24px !important;
+  z-index: 1300 !important;
+}
+
+.ant-modal-wrap[style*="display: none"],
+.ant-modal-wrap[style*="display:none"],
+.ant-modal-wrap.ant-modal-wrap-hidden,
+.cipm-centered-modal-wrap[style*="display: none"],
+.cipm-centered-modal-wrap[style*="display:none"],
+.cipm-centered-modal-wrap.ant-modal-wrap-hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.ant-modal-wrap .ant-modal,
+.cipm-centered-modal-wrap .ant-modal {
+  margin: 0 auto !important;
+  padding-bottom: 0 !important;
+  top: 0 !important;
+  max-width: calc(100vw - 48px) !important;
+  transform: none !important;
+}
+
+/* ── Smooth Tab Pane Fade Transition ─────────────────────── */
+.ant-tabs-tabpane-active {
+  animation: cipm-tab-fade 0.18s ease-out forwards;
+}
+
+@keyframes cipm-tab-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── CIPM App Loading & Progress Bar Keyframes ───────────── */
+@keyframes cipm-progress-slide {
+  0% {
+    left: -40%;
+    width: 40%;
+  }
+  50% {
+    left: 25%;
+    width: 60%;
+  }
+  100% {
+    left: 100%;
+    width: 40%;
+  }
+}
+
+.animate-progress-slide {
+  animation: cipm-progress-slide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes cipm-loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-loading-bar {
+  animation: cipm-loading-bar 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ── Bulletproof Topbar Layout (Chống vỡ dọc khi loading) ── */
+header.ant-layout-header {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: 60px !important;
+  max-height: 60px !important;
+}
+
+/* ── CIPM Toast Notification Slide-in from Right ───────── */
+@keyframes cipm-toast-slide-in-right {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes cipm-toast-slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+.animate-toast-slide-in {
+  animation: cipm-toast-slide-in-right 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-slide-out {
+  animation: cipm-toast-slide-out-right 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
