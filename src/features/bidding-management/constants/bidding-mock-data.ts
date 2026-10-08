@@ -4,15 +4,30 @@ import { BID_STEPS } from "./bidding-steps.ts";
 const ENGINEER = "Lê Hoàng Minh";
 const DIRECTOR = "Huỳnh Thái Hải";
 
+const STEP_DOC_CONFIG: Record<number, { name: string; size: string }> = {
+  1: { name: "Ke_hoach_LCNT", size: "1.45 MB" },
+  2: { name: "Quyet_dinh_phe_duyet_KHLCNT", size: "2.10 MB" },
+  3: { name: "Ho_so_moi_thau", size: "3.85 MB" },
+  4: { name: "Thong_bao_moi_thau_dang_tai", size: "850 KB" },
+  5: { name: "Bien_ban_dong_thau_nhan_HSDT", size: "1.15 MB" },
+  6: { name: "Bien_ban_mo_thau", size: "1.62 MB" },
+  7: { name: "Bao_cao_danh_gia_HSDT", size: "4.20 MB" },
+  8: { name: "Quyet_dinh_phe_duyet_KQ_LCNT", size: "2.45 MB" },
+  9: { name: "Hop_dong_thi_cong_ky_ket", size: "5.30 MB" },
+};
+
 function buildRecords(dates: string[], prefix: string): BidStepRecord[] {
   return dates.map((completedAt, index) => {
     const step = index + 1;
+    const docConfig = STEP_DOC_CONFIG[step] || { name: `Tai_lieu_buoc_${step}`, size: "1.50 MB" };
     return {
       step,
       completedAt,
       documentNo: `${String(step).padStart(2, "0")}/${prefix}`,
       by: ENGINEER,
-      approvedBy: BID_STEPS[index].requiresApproval ? DIRECTOR : undefined,
+      approvedBy: BID_STEPS[index]?.requiresApproval ? DIRECTOR : undefined,
+      fileName: `${docConfig.name}_${prefix}.pdf`,
+      fileSize: docConfig.size,
     };
   });
 }
@@ -53,6 +68,8 @@ export const BIDDING_MOCK_DATA: BiddingDataset = {
       submission: {
         step: 8, submittedBy: ENGINEER, submittedAt: "2026-09-16", documentNo: "215/TTr-BQL",
         winner: "Công ty CP Xây dựng Kiên Giang", winningPrice: 35.08,
+        fileName: "To_trinh_215_TTr_BQL_KQ_LCNT.pdf",
+        fileSize: "2.85 MB",
       },
     },
     {
@@ -60,7 +77,11 @@ export const BIDDING_MOCK_DATA: BiddingDataset = {
       type: "Mua sắm thiết bị", method: "Mua sắm trực tiếp", estimatedPrice: 2.4,
       records: buildRecords(["2026-09-08"], "GT004"),
       currentStepStartedAt: "2026-09-08",
-      submission: { step: 2, submittedBy: ENGINEER, submittedAt: "2026-09-15", documentNo: "208/TTr-BQL" },
+      submission: {
+        step: 2, submittedBy: ENGINEER, submittedAt: "2026-09-15", documentNo: "208/TTr-BQL",
+        fileName: "To_trinh_208_TTr_BQL_KHLCNT.pdf",
+        fileSize: "1.90 MB",
+      },
     },
     {
       id: "PKG-005", code: "DA-006-GT-001", name: "Thi công hệ thống thoát nước khu Đông Hồ", projectId: "PRJ-006",

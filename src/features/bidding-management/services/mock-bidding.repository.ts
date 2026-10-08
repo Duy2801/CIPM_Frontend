@@ -33,6 +33,11 @@ export function createMockBiddingRepository(): BiddingRepository {
         4: "2026-04-01", 5: "2026-04-20", 6: "2026-05-05",
         7: "2026-05-25", 8: "2026-06-10", 9: "2026-06-25",
       };
+      const docNames: Record<number, string> = {
+        1: "Ke_hoach_LCNT", 2: "Quyet_dinh_phe_duyet_KHLCNT", 3: "Ho_so_moi_thau",
+        4: "Thong_bao_moi_thau", 5: "Bien_ban_dong_thau", 6: "Bien_ban_mo_thau",
+        7: "Bao_cao_danh_gia_HSDT", 8: "Quyet_dinh_phe_duyet_KQ_LCNT", 9: "Hop_dong_thi_cong",
+      };
       for (let s = 1; s < currentStep; s++) {
         records.push({
           step: s,
@@ -40,6 +45,8 @@ export function createMockBiddingRepository(): BiddingRepository {
           documentNo: `${String(s).padStart(2, "0")}/QĐ-BQL`,
           by: "Tổ Giám sát – Kỹ thuật",
           approvedBy: s === 2 || s === 8 ? "Huỳnh Thái Hải" : undefined,
+          fileName: `${docNames[s] || `Tai_lieu_buoc_${s}`}_DA-${projectNo}.pdf`,
+          fileSize: "1.85 MB",
         });
       }
 
@@ -67,13 +74,18 @@ export function createMockBiddingRepository(): BiddingRepository {
       if (error) throw new Error(error);
 
       const step = getCurrentBidStep(pkg) as number;
+      const docNames: Record<number, string> = {
+        1: "Ke_hoach_LCNT", 2: "Quyet_dinh_phe_duyet_KHLCNT", 3: "Ho_so_moi_thau",
+        4: "Thong_bao_moi_thau", 5: "Bien_ban_dong_thau", 6: "Bien_ban_mo_thau",
+        7: "Bao_cao_danh_gia_HSDT", 8: "Quyet_dinh_phe_duyet_KQ_LCNT", 9: "Hop_dong_thi_cong",
+      };
       pkg.records.push({
         step,
         completedAt: input.completedAt,
         documentNo: input.documentNo,
         by: actor,
-        fileName: input.fileName,
-        fileSize: input.fileSize,
+        fileName: input.fileName || `${docNames[step] || `Ho_so_buoc_${step}`}_${pkg.code.replace(/[\/\\?%*:|"<>]/g, "_")}.pdf`,
+        fileSize: input.fileSize || "1.85 MB",
       });
       if (step === 4) pkg.bidDeadline = input.bidDeadline;
       pkg.currentStepStartedAt = input.completedAt;
@@ -93,8 +105,8 @@ export function createMockBiddingRepository(): BiddingRepository {
         documentNo: input.documentNo,
         winner: input.winner,
         winningPrice: input.winningPrice,
-        fileName: input.fileName,
-        fileSize: input.fileSize,
+        fileName: input.fileName || `To_trinh_${input.documentNo.replace(/[\/\\?%*:|"<>]/g, "_")}.pdf`,
+        fileSize: input.fileSize || "2.10 MB",
       };
       pkg.rejection = undefined;
       return clone(pkg);
@@ -112,8 +124,8 @@ export function createMockBiddingRepository(): BiddingRepository {
         documentNo: submission.documentNo,
         by: submission.submittedBy,
         approvedBy: actor,
-        fileName: submission.fileName,
-        fileSize: submission.fileSize,
+        fileName: submission.fileName || `Quyet_dinh_phe_duyet_${submission.documentNo.replace(/[\/\\?%*:|"<>]/g, "_")}.pdf`,
+        fileSize: submission.fileSize || "2.40 MB",
       });
       if (submission.winner) {
         pkg.winner = submission.winner;

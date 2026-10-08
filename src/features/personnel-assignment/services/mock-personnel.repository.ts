@@ -1,4 +1,5 @@
 import { addDays, todayIso } from "../../../utils/date.ts";
+import { normalizeStageGroup } from "../constants/personnel-labels.ts";
 import { PERSONNEL_MOCK_DATA } from "../constants/personnel-mock-data.ts";
 import type { Assignment, PersonnelDataset, ProjectDocumentSubmission, Staff } from "../types/personnel.types";
 import { validateAssignment } from "../utils/personnel-rules.ts";
@@ -19,6 +20,56 @@ function loadDataset(): PersonnelDataset {
         Array.isArray(parsed.projects) &&
         Array.isArray(parsed.assignments)
       ) {
+        // Khử trùng lặp assignments:
+        // 1. Khử trùng lặp theo ID
+        // 2. Với PHASE_LEAD: Mỗi dự án + giai đoạn (chuẩn hóa I..VII) chỉ có tối đa 1 phân công PHASE_LEAD
+        // 3. Với TASK_MEMBER: Mỗi dự án + bước + người thực hiện chỉ có 1 phân công
+        const seenIds = new Set<string>();
+        const seenPhaseLeads = new Map<string, string>(); // key: `${projectId}_${normalizedStage}` -> assignment.id
+        const seenTaskMembers = new Set<string>(); // key: `${projectId}_${stepCode}_${assigneeId}`
+        const parentIdRemap = new Map<string, string>(); // duplicatePhaseId -> keptPhaseId
+        const deduplicatedAssignments: Assignment[] = [];
+
+        for (const item of parsed.assignments) {
+          if (!item.id || seenIds.has(item.id)) {
+            continue;
+          }
+
+          if (item.assignmentLevel === "PHASE_LEAD" || (!item.assignmentLevel && !item.stepCode && item.stage)) {
+            const normStage = normalizeStageGroup(item.stage, item.stepCode);
+            const phaseKey = `${item.projectId}_${normStage}`;
+            const existingPhaseId = seenPhaseLeads.get(phaseKey);
+            if (existingPhaseId) {
+              // Giai đoạn này đã có trong dự án -> Bỏ bản sao trùng và remap bước con trỏ vào existingPhaseId
+              parentIdRemap.set(item.id, existingPhaseId);
+              continue;
+            }
+            seenPhaseLeads.set(phaseKey, item.id);
+            seenIds.add(item.id);
+            deduplicatedAssignments.push(item);
+          } else if (item.assignmentLevel === "TASK_MEMBER" && item.stepCode && item.assigneeId) {
+            const taskKey = `${item.projectId}_${item.stepCode}_${item.assigneeId}`;
+            if (seenTaskMembers.has(taskKey)) {
+              continue;
+            }
+            seenTaskMembers.add(taskKey);
+            seenIds.add(item.id);
+            deduplicatedAssignments.push(item);
+          } else {
+            seenIds.add(item.id);
+            deduplicatedAssignments.push(item);
+          }
+        }
+
+        // Remap parentAssignmentId cho các bước con nếu giai đoạn cha trùng lặp bị loại bỏ
+        deduplicatedAssignments.forEach((item) => {
+          if (item.parentAssignmentId && parentIdRemap.has(item.parentAssignmentId)) {
+            item.parentAssignmentId = parentIdRemap.get(item.parentAssignmentId);
+          }
+        });
+
+        parsed.assignments = deduplicatedAssignments;
+
         // Đảm bảo bước con AS-DEMO-TASK-001 ở trạng thái PENDING_APPROVAL kèm hồ sơ nộp để kiểm thử luồng duyệt của Lead tổ
         const task001 = parsed.assignments.find((a) => a.id === "AS-DEMO-TASK-001" || a.stepCode === "VI.1");
         if (task001 && (!task001.submissions || task001.submissions.length === 0 || task001.status === "TODO")) {
@@ -246,6 +297,38 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     async createAssignment(input, actor) {
       const error = validateAssignment(input, dataset.staff, todayIso());
       if (error) throw new Error(error);
+
+      // Ngăn chặn tạo trùng lặp giai đoạn cấp PHASE_LEAD cho cùng một dự án
+      if (input.assignmentLevel === "PHASE_LEAD") {
+        const normStage = normalizeStageGroup(input.stage);
+        const existingPhase = dataset.assignments.find(
+          (a) =>
+            a.projectId === input.projectId &&
+            (a.assignmentLevel === "PHASE_LEAD" || (!a.assignmentLevel && !a.stepCode && Boolean(a.stage))) &&
+            normalizeStageGroup(a.stage, a.stepCode) === normStage
+        );
+        if (existingPhase) {
+          const assigneeName = dataset.staff.find((s) => s.id === existingPhase.assigneeId)?.name || "Tổ trưởng";
+          throw new Error(
+            `Giai đoạn này đã được phân công trong dự án (cho ${assigneeName}). Vui lòng chỉnh sửa phân công đã có thay vì giao trùng lặp.`
+          );
+        }
+      }
+
+      // Ngăn chặn tạo trùng lặp bước con cấp TASK_MEMBER cho cùng cán bộ
+      if (input.assignmentLevel === "TASK_MEMBER" && input.stepCode && input.assigneeId) {
+        const existingTask = dataset.assignments.find(
+          (a) =>
+            a.projectId === input.projectId &&
+            a.assignmentLevel === "TASK_MEMBER" &&
+            a.stepCode === input.stepCode &&
+            a.assigneeId === input.assigneeId
+        );
+        if (existingTask) {
+          throw new Error(`Bước ${input.stepCode} đã được phân công cho cán bộ này trong dự án.`);
+        }
+      }
+
       if (input.assignmentLevel === "TASK_MEMBER") {
         const parent = dataset.assignments.find((item) => item.id === input.parentAssignmentId);
         if (!parent || parent.status === "DONE" || parent.assignmentLevel !== "PHASE_LEAD" || parent.projectId !== input.projectId || parent.stage !== input.stage || parent.teamId !== input.teamId) {

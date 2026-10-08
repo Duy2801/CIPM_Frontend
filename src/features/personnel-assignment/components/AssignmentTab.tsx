@@ -971,7 +971,7 @@ export default function AssignmentTab({
   };
 
   const visibleStageAssignments = useMemo(() => {
-    return assignments.filter((item) => {
+    const rawList = assignments.filter((item) => {
       // Danh sách CNDA chỉ hiển thị giai đoạn; các bước con nằm trong chi tiết giai đoạn.
       if (viewScope === "PROJECT_LEAD" && item.assignmentLevel !== "PHASE_LEAD") return false;
       if (viewScope === "TEAM_LEAD" && item.assignmentLevel === "TASK_MEMBER" && item.parentAssignmentId) return false;
@@ -1014,6 +1014,27 @@ export default function AssignmentTab({
       }
       return true;
     });
+
+    // Khử trùng lặp đảm bảo giao diện luôn hiển thị duy nhất 1 hàng cho mỗi nhiệm vụ/giai đoạn
+    const seenIds = new Set<string>();
+    const seenPhaseKeys = new Set<string>();
+    const result: Assignment[] = [];
+
+    for (const item of rawList) {
+      if (seenIds.has(item.id)) continue;
+      seenIds.add(item.id);
+
+      // Nếu là PHASE_LEAD trong cùng dự án: mỗi giai đoạn chỉ hiển thị 1 hàng
+      if (item.assignmentLevel === "PHASE_LEAD" || (!item.assignmentLevel && !item.stepCode && item.stage)) {
+        const phaseKey = `${item.projectId}_${normalizeStageGroup(item.stage, item.stepCode)}`;
+        if (seenPhaseKeys.has(phaseKey)) continue;
+        seenPhaseKeys.add(phaseKey);
+      }
+
+      result.push(item);
+    }
+
+    return result;
   }, [
     assignments,
     activeProjectId,

@@ -211,7 +211,25 @@ export default function AssignmentModal({
     filterMemberTeamId,
   ]);
 
-  // Tập hợp các giai đoạn (chuẩn hóa I, II, ..., VII) được CNDA giao
+  // Tập hợp các giai đoạn đã được CNDA giao trong dự án này (toàn dự án)
+  const projectAssignedPhaseKeys = useMemo(() => {
+    const set = new Set<string>();
+    if (!modalProjectId) return set;
+    data.assignments.forEach((a) => {
+      if (a.projectId === modalProjectId) {
+        const isPhaseLevel =
+          a.assignmentLevel === "PHASE_LEAD" ||
+          a.assignedByRole === "PROJECT_LEAD" ||
+          (!a.assignmentLevel && !a.stepCode && Boolean(a.stage));
+        if (isPhaseLevel && a.stage) {
+          set.add(normalizeStageGroup(a.stage, a.stepCode));
+        }
+      }
+    });
+    return set;
+  }, [data.assignments, modalProjectId]);
+
+  // Tập hợp các giai đoạn (chuẩn hóa I, II, ..., VII) được CNDA giao cho tổ hiện tại
   const assignedStageKeys = useMemo(() => {
     const set = new Set<string>();
     phaseAssignmentsForTeam.forEach((a) => {
@@ -223,12 +241,21 @@ export default function AssignmentModal({
   }, [phaseAssignmentsForTeam]);
 
   // Danh sách các giai đoạn được phép hiển thị trong dropdown:
-  // - Khi CNDA giao giai đoạn cho Tổ trưởng (PHASE_LEAD): CNDA có thể chọn bất kỳ giai đoạn nào
+  // - Khi CNDA giao giai đoạn cho Tổ trưởng (PHASE_LEAD):
+  //   Nếu đang edit: hiển thị tất cả
+  //   Nếu tạo mới: lọc bỏ các giai đoạn ĐÃ được giao cho dự án này để tránh trùng lặp!
   // - Khi Tổ trưởng phân công cho thành viên (TASK_MEMBER): BẮT BUỘC CHỈ hiển thị đúng các giai đoạn mà được Lead dự án giao cho mình
   //   KHÔNG CÓ hiện dư giai đoạn nào khác!
   const availableStageGroups = useMemo(() => {
     if (assignmentLevel === "PHASE_LEAD") {
-      return PROCEDURE_STAGE_GROUPS;
+      if (editing) {
+        return PROCEDURE_STAGE_GROUPS;
+      }
+      // Chỉ cho phép chọn những giai đoạn chưa được phân công trong dự án này
+      const unassignedStages = PROCEDURE_STAGE_GROUPS.filter(
+        (g) => !projectAssignedPhaseKeys.has(g.value)
+      );
+      return unassignedStages.length > 0 ? unassignedStages : PROCEDURE_STAGE_GROUPS;
     }
 
     if (isTeamLeader || !isProjectLeader) {
@@ -250,6 +277,7 @@ export default function AssignmentModal({
     isTeamLeader,
     isProjectLeader,
     assignedStageKeys,
+    projectAssignedPhaseKeys,
     editing,
     filterMemberTeamId,
   ]);
@@ -745,17 +773,31 @@ export default function AssignmentModal({
                   `Chỉ đạo và thực hiện [${stageObj?.label || val}] ${stageObj?.fullName || ""}`.trim(),
                 );
               }}
-              options={PROCEDURE_STAGE_GROUPS.map((s) => ({
-                value: s.value,
-                label: (
-                  <div className="flex items-center gap-2 py-0.5">
-                    <Tag color={s.color} className="m-0 text-xs px-1.5 py-0.2 font-medium shrink-0">
-                      {s.label}
-                    </Tag>
-                    <span className="text-xs text-slate-700">{s.fullName}</span>
-                  </div>
-                ),
-              }))}
+              options={PROCEDURE_STAGE_GROUPS.map((s) => {
+                const isAlreadyAssigned =
+                  !editing && projectAssignedPhaseKeys.has(s.value);
+                return {
+                  value: s.value,
+                  disabled: isAlreadyAssigned,
+                  label: (
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <div className="flex items-center gap-2">
+                        <Tag color={s.color} className="m-0 text-xs px-1.5 py-0.2 font-medium shrink-0">
+                          {s.label}
+                        </Tag>
+                        <span className={`text-xs ${isAlreadyAssigned ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                          {s.fullName}
+                        </span>
+                      </div>
+                      {isAlreadyAssigned && (
+                        <Tag color="default" className="m-0 text-[10px] px-1 text-slate-400 shrink-0">
+                          Đã phân công
+                        </Tag>
+                      )}
+                    </div>
+                  ),
+                };
+              })}
             />
           </Form.Item>
         ) : (

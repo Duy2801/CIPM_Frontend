@@ -14,6 +14,8 @@ interface StepTrackProps {
   /** Chỉ hiện số thứ tự, tên bước nằm trong tooltip (dùng khi quy trình dài) */
   compact?: boolean;
   ariaLabel: string;
+  /** Cho phép click vào từng bước để xem chi tiết */
+  onStepClick?: (stepNumber: number) => void;
 }
 
 /** Thanh tiến độ nhiều bước dạng rút gọn, dùng cho quy trình tất toán, đấu thầu, GPMB */
@@ -25,6 +27,7 @@ export default function StepTrack({
   currentTone = "normal",
   compact,
   ariaLabel,
+  onStepClick,
 }: StepTrackProps) {
   return (
     <ol
@@ -52,9 +55,13 @@ export default function StepTrack({
 
         return (
           <Tooltip key={step.number} title={`Bước ${step.number}: ${step.label} (${stateText})`}>
-            <li aria-current={isCurrent ? "step" : undefined} className="min-w-0 cursor-default">
-              <span className={`block h-2 rounded-full ${barClass}`} />
-              <span className={`mt-1 block truncate text-center text-[11px] leading-4 ${textClass}`}>
+            <li
+              aria-current={isCurrent ? "step" : undefined}
+              className={`min-w-0 ${onStepClick ? "cursor-pointer group hover:opacity-85" : "cursor-default"}`}
+              onClick={onStepClick ? () => onStepClick(step.number) : undefined}
+            >
+              <span className={`block h-2 rounded-full transition-transform ${onStepClick ? "group-hover:scale-y-125" : ""} ${barClass}`} />
+              <span className={`mt-1 block truncate text-center text-[11px] leading-4 ${onStepClick ? "group-hover:font-bold" : ""} ${textClass}`}>
                 {compact ? step.number : `${step.number}. ${step.label}`}
               </span>
             </li>
