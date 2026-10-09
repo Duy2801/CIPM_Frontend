@@ -16,6 +16,7 @@ import {
   FilterOutlined,
   FolderOutlined,
   InfoCircleOutlined,
+  KeyOutlined,
   PaperClipOutlined,
   PlayCircleOutlined,
   PlusOutlined,
@@ -32,6 +33,7 @@ import {
 import { App, Radio } from "antd";
 import { MASTER_PROCEDURE_STEPS } from "@/features/construction-procedures/constants/procedure-steps-master";
 import GrantActingDirectorModal from "./GrantActingDirectorModal";
+import ProjectPermissionsModal from "./ProjectPermissionsModal";
 import ProjectTeamModal from "./ProjectTeamModal";
 import UrgeMemberModal from "./UrgeMemberModal";
 import {
@@ -238,6 +240,8 @@ export default function AssignmentTab({
   const [grantModalOpen, setGrantModalOpen] = useState(false);
   const [grantProject, setGrantProject] = useState<PersonnelProject | undefined>();
   const [teamModalProject, setTeamModalProject] = useState<PersonnelProject | undefined>();
+  const [projectPermissionsModalOpen, setProjectPermissionsModalOpen] = useState(false);
+  const [projectPermissionsTargetProjectId, setProjectPermissionsTargetProjectId] = useState<string | undefined>();
 
   // Modal Đôn đốc thành viên
   const [urgeModalOpen, setUrgeModalOpen] = useState(false);
@@ -545,11 +549,6 @@ export default function AssignmentTab({
             <div className="text-xs text-slate-500 mt-0.5 leading-snug" title={`${person.title} · ${team?.name}`}>
               {person.title} · {team?.name}
             </div>
-            {p.assignedAt && (
-              <div className="text-[11px] font-medium text-emerald-700 mt-1 flex items-center gap-1">
-                <span>Phân công: {formatDateVi(p.assignedAt)}</span>
-              </div>
-            )}
           </div>
         );
       },
@@ -666,7 +665,10 @@ export default function AssignmentTab({
                       scale="compact"
                       icon={<UserDeleteOutlined />}
                       className="!w-[126px] !inline-flex !items-center !justify-center !border-rose-300 !text-rose-700 hover:!bg-rose-50"
-                      onClick={() => confirmRevokeRole(p)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        confirmRevokeRole(p);
+                      }}
                     >
                       Thu hồi CNDA
                     </Button>
@@ -2073,10 +2075,13 @@ export default function AssignmentTab({
               <Button
                 intent="primary"
                 scale="sm"
-                icon={<SafetyCertificateOutlined />}
-                onClick={() => onAssignLeadership?.()}
+                icon={<KeyOutlined />}
+                onClick={() => {
+                  setProjectPermissionsTargetProjectId(undefined);
+                  setProjectPermissionsModalOpen(true);
+                }}
               >
-                Phân công lãnh đạo DA
+                Cấp quyền dự án
               </Button>
             }
             toolbar={
@@ -2662,6 +2667,22 @@ export default function AssignmentTab({
           }}
           onSubmit={controller.grantActingDirector}
           onOpenAssignLeaders={onAssignLeadership}
+        />
+      )}
+
+      {/* Modal Cấp quyền & Ủy quyền điều hành dự án */}
+      {projectPermissionsModalOpen && (
+        <ProjectPermissionsModal
+          open={projectPermissionsModalOpen}
+          initialProjectId={projectPermissionsTargetProjectId}
+          data={data}
+          currentUser={controller.currentUser}
+          canManageRole={canManageRole}
+          onClose={() => {
+            setProjectPermissionsModalOpen(false);
+            setProjectPermissionsTargetProjectId(undefined);
+          }}
+          onUpdateProjectPermissions={controller.updateProjectPermissions}
         />
       )}
 
