@@ -22,7 +22,7 @@ export default function DashboardOverview() {
   } = useDashboardData();
 
   return (
-    <Flex vertical gap={16} className="w-full max-w-[1440px] mx-auto select-none">
+    <Flex vertical gap={16} className="w-full max-w-[2560px] mx-auto select-none">
       <Spin spinning={loading} description="Đang làm mới dữ liệu Dashboard...">
         <Flex vertical gap={18} className="w-full">
           {/* 1. Hàng 4 Thẻ KPI trên cùng */}

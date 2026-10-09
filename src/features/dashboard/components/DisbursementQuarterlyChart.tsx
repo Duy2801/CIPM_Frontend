@@ -72,7 +72,7 @@ export default function DisbursementQuarterlyChart({
                 <Flex key={q.quarter} vertical align="center" justify="end" className="h-full">
                   <Flex align="end" justify="center" gap={4} className="w-full h-full pb-0.5">
                     {/* Plan Bar */}
-                    <div className="flex flex-col items-center flex-1 max-w-[34px] h-full justify-end">
+                    <div className="flex flex-col items-center flex-1 max-w-[34px] sm:max-w-[42px] 2xl:max-w-[50px] h-full justify-end">
                       <span className="text-[10px] font-mono text-slate-500 font-semibold mb-1 whitespace-nowrap">
                         {q.plan} tỷ
                       </span>
@@ -83,7 +83,7 @@ export default function DisbursementQuarterlyChart({
                     </div>
 
                     {/* Actual Bar */}
-                    <div className="flex flex-col items-center flex-1 max-w-[34px] h-full justify-end">
+                    <div className="flex flex-col items-center flex-1 max-w-[34px] sm:max-w-[42px] 2xl:max-w-[50px] h-full justify-end">
                       <span className="text-[10px] font-mono font-semibold mb-1 whitespace-nowrap text-[#007A78]">
                         {q.actual > 0 ? `${q.actual} tỷ` : "Dự kiến"}
                       </span>

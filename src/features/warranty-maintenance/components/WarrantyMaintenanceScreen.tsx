@@ -88,7 +88,7 @@ export default function WarrantyMaintenanceScreen() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
       {controller.feedback && modal.mode === "closed" && (
         <FeedbackBar type={controller.feedback.type} text={controller.feedback.text} onClose={controller.clearFeedback} />
       )}

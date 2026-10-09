@@ -364,7 +364,7 @@ export default function ProjectsWorksScreen() {
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto flex flex-col gap-2.5 select-none">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-2.5 select-none">
       {/* 3. Bộ lọc trạng thái & Thanh công cụ */}
       <ProjectsFilterToolbar
         activeTab={activeTab}

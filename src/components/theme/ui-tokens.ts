@@ -44,7 +44,7 @@ export const themeClassNames = {
     body: "min-h-full",
     shell: "min-h-screen !bg-[var(--cipm-surface-shell)]",
     content: "min-h-screen transition-[margin] duration-200",
-    main: "min-h-[calc(100vh-60px)] bg-[var(--cipm-surface-shell)]/70 p-6 text-[var(--cipm-text-muted)]",
+    main: "min-h-[calc(100vh-60px)] bg-[var(--cipm-surface-shell)]/70 p-3.5 sm:p-5 lg:p-6 2xl:p-8 text-[var(--cipm-text-muted)] w-full overflow-x-hidden",
   },
   topbar: {
     header:

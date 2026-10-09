@@ -112,7 +112,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-1">
+    <div className="w-full max-w-[2560px] mx-auto py-1">
       <Row gutter={[20, 20]} align="stretch">
         {/* Cột trái: Tóm tắt thông tin & Thẻ phân quyền */}
         <Col xs={24} lg={8} className="flex flex-col gap-3.5">

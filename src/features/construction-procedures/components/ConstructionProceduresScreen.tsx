@@ -410,7 +410,7 @@ export default function ConstructionProceduresScreen() {
 
   // Nhảy tới bước khi bấm trên Alert Banner
   return (
-    <section className="mx-auto max-w-[1600px] space-y-3">
+    <section className="w-full max-w-[2560px] mx-auto space-y-3">
       {/* 2. Banner Cảnh Báo Đỏ & Vàng Khẩn Cấp (Quy tắc 8 & 9) */}
       {/* 3. Toolbar: Bộ lọc, Chuyển đổi Dự án, Chọn Quy trình, Tìm kiếm & Chế độ xem */}
       <ProcedureFilterToolbar

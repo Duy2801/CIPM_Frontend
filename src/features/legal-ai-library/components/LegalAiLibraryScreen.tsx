@@ -355,7 +355,7 @@ export default function LegalAiLibraryScreen() {
   ];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
       {/* Thanh trạng thái hệ thống & tác vụ nhanh thay thế tiêu đề cồng kềnh */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white px-4 py-2.5 rounded-lg border border-slate-200/90 shadow-2xs">
         <div className="flex flex-wrap items-center gap-2.5 text-xs">

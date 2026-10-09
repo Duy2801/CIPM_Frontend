@@ -54,7 +54,7 @@ export default function SiteClearanceResettlementScreen() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
       {controller.feedback && !stepTarget && (
         <FeedbackBar
           type={controller.feedback.type}

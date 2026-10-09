@@ -98,7 +98,7 @@ export default function ProjectsTable({
       className="w-full border border-slate-200/80 shadow-xs overflow-hidden select-none flex-1 flex flex-col justify-between [&>.ant-card-body]:flex-1 [&>.ant-card-body]:flex [&>.ant-card-body]:flex-col [&>.ant-card-body]:justify-between [&>.ant-card-body]:h-full"
     >
       <div className="order-last w-full overflow-x-auto flex-1 flex flex-col">
-        <table className="w-full table-fixed text-left border-collapse flex-1 h-full">
+        <table className="w-full min-w-[960px] table-fixed text-left border-collapse flex-1 h-full">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-600 uppercase tracking-wider h-[40px]">
               <th className="w-[24%] px-3.5 py-2">DỰ ÁN</th>

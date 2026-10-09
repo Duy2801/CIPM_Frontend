@@ -292,7 +292,7 @@ export default function PersonnelAssignmentScreen() {
   ];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
+    <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
 
       <section id="personnel-tabs" className="scroll-mt-4">
         <div className="mb-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-2xs">
