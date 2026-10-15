@@ -56,6 +56,7 @@ export interface BidPackage {
   currentStepStartedAt: string;
   submission?: BidSubmission;
   rejection?: BidRejection;
+  createdAt?: number;
 }
 
 export interface BiddingDataset {

@@ -89,8 +89,8 @@ export function getFirstAllowedRoute(permissions: Permission[]): string {
   return permission?.route ?? DEFAULT_AUTHORIZED_ROUTE;
 }
 
-/** 5 hành vi chuẩn của hệ thống: xem, nhập/sửa, duyệt, cấu hình/quản trị, xuất báo cáo */
-export type ModuleAction = "view" | "input" | "approve" | "configure" | "export";
+/** Các hành vi của hệ thống: xem, nhập/sửa, duyệt, cấu hình/quản trị, xuất báo cáo, tài khoản */
+export type ModuleAction = "view" | "input" | "approve" | "configure" | "export" | "accounts" | (string & {});
 
 /**
  * Kiểm tra xem người dùng có quyền thực hiện hành vi cụ thể trên phân hệ hay không.
@@ -102,5 +102,118 @@ export function canDo(
   action: ModuleAction,
 ): boolean {
   return permissions.includes(`${moduleKey}:${action}` as Permission);
+}
+
+export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v1";
+
+import type { AuthUser } from "@/types/auth";
+import {
+  DEFAULT_ROLE_PERMISSIONS_MAP,
+  MATRIX_PERMISSIONS,
+} from "@/features/personnel-assignment/constants/role-matrix-data";
+
+/**
+ * Chuyển đổi danh sách ID quyền trong ma trận (ví dụ "m6.input_survey", "m4.create_disbursement", "m5.manage_accounts")
+ * sang mã quyền chuẩn Permission và lưu giữ cả ID ma trận để đối chiếu chính xác từng checkbox.
+ */
+export function convertMatrixPermIdsToPermissionCodes(permIds: string[]): Permission[] {
+  const result = new Set<Permission>();
+  permIds.forEach((id) => {
+    // Luôn đưa chính ID ma trận vào permission set (ví dụ "m5.manage_accounts", "m2.create_edit")
+    result.add(id as Permission);
+
+    if (id.includes(":")) {
+      result.add(id as Permission);
+    }
+    const match = MATRIX_PERMISSIONS.find((p) => p.id === id);
+    if (match && match.code) {
+      result.add(match.code as Permission);
+    }
+  });
+  return Array.from(result);
+}
+
+/**
+ * Lấy danh sách quyền hiệu lực (Effective Permissions) của một RoleCode từ Ma trận phân quyền.
+ * Ma trận phân quyền (trong localStorage hoặc mặc định hệ thống) là nguồn chân lý duy nhất (Single Source of Truth).
+ */
+export function getRoleEffectivePermissions(roleCode?: string): Permission[] {
+  if (!roleCode) return [];
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY_PERMISSIONS);
+      if (stored) {
+        const matrixMap = JSON.parse(stored);
+        if (
+          matrixMap &&
+          Object.prototype.hasOwnProperty.call(matrixMap, roleCode) &&
+          Array.isArray(matrixMap[roleCode])
+        ) {
+          return convertMatrixPermIdsToPermissionCodes(matrixMap[roleCode]);
+        }
+      }
+    } catch (e) {
+      console.error("Lỗi đọc ma trận phân quyền từ localStorage:", e);
+    }
+  }
+
+  // Fallback to DEFAULT_ROLE_PERMISSIONS_MAP
+  const defaultIds = DEFAULT_ROLE_PERMISSIONS_MAP[roleCode];
+  if (defaultIds && Array.isArray(defaultIds)) {
+    return convertMatrixPermIdsToPermissionCodes(defaultIds);
+  }
+
+  return [];
+}
+
+/**
+ * Lấy danh sách quyền hiệu lực của người dùng hiện tại dựa trên Ma trận phân quyền.
+ */
+export function getUserEffectivePermissions(user: AuthUser | null): Permission[] {
+  if (!user) return [];
+  const roleCode = user.role || (user as any).roleCode;
+  if (roleCode) {
+    return getRoleEffectivePermissions(roleCode);
+  }
+  return user.permissions ?? [];
+}
+
+/**
+ * Kiểm tra xem người dùng có quyền cụ thể hay không (dựa trên Ma trận phân quyền).
+ */
+export function hasEffectivePermission(
+  user: AuthUser | null,
+  permission: Permission,
+): boolean {
+  const effective = getUserEffectivePermissions(user);
+  return effective.includes(permission);
+}
+
+/**
+ * Kiểm tra xem người dùng có quyền thực hiện hành vi cụ thể trên phân hệ hay không
+ * dựa trên Ma trận phân quyền đã cấu hình.
+ * Ví dụ: canUserDo(user, "m6_site_clearance", "input") -> true/false
+ */
+export function canUserDo(
+  user: AuthUser | null,
+  moduleKey: string,
+  action: ModuleAction,
+): boolean {
+  if (!user) return false;
+  const permissions = getUserEffectivePermissions(user);
+  return canDo(permissions, moduleKey, action);
+}
+
+/**
+ * Kiểm tra xem người dùng có được cấp quyền ma trận cụ thể theo ID (ví dụ: "m5.manage_accounts") hay không.
+ */
+export function hasMatrixPermission(
+  user: AuthUser | null,
+  matrixPermId: string,
+): boolean {
+  if (!user) return false;
+  const permissions = getUserEffectivePermissions(user);
+  return permissions.includes(matrixPermId as Permission);
 }
 

@@ -568,6 +568,7 @@ export default function LegalAiLibraryScreen() {
             summary: doc.summary,
           };
           setLegalItems((prev) => [newItem, ...prev]);
+          setSearch("");
         }}
       />
 

@@ -4,6 +4,7 @@ import type React from "react";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   canDo,
+  getUserEffectivePermissions,
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
@@ -25,8 +26,6 @@ interface PermissionGuardProps {
   action?: ModuleAction;
 }
 
-const EMPTY_PERMISSIONS: Permission[] = [];
-
 export function PermissionGuard({
   children,
   fallback = null,
@@ -37,7 +36,7 @@ export function PermissionGuard({
   action,
 }: PermissionGuardProps) {
   const user = useAuthStore((state) => state.user);
-  const userPermissions = user?.permissions ?? EMPTY_PERMISSIONS;
+  const userPermissions = getUserEffectivePermissions(user);
 
   // Nếu truyền cặp module + action, kiểm tra canDo trực tiếp
   if (module && action) {

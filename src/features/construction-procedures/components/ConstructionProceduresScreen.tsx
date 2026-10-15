@@ -42,6 +42,7 @@ import SkipStepModal from "./SkipStepModal";
 import StepConfigModal from "./StepConfigModal";
 import { useAuth } from "@/features/auth";
 import { useProjectStore } from "@/stores/project.store";
+import { canUserDo, getUserEffectivePermissions, hasMatrixPermission } from "@/access-control";
 
 const PROCEDURE_PROJECTS_STORAGE_KEY = "cipm_procedure_projects_data_v5";
 const PROCEDURE_MAPPINGS_STORAGE_KEY = "cipm_project_procedures_map_v5";
@@ -165,8 +166,8 @@ export default function ConstructionProceduresScreen() {
     }
   }, [selectedProjectId, currentProject]);
 
-  // Phân quyền theo nghiệp vụ chuyên biệt
-  const permissions = user?.permissions ?? [];
+  // Phân quyền theo nghiệp vụ chuyên biệt dựa trên Ma trận phân quyền
+  const permissions = getUserEffectivePermissions(user);
   const userName = (user?.displayName || user?.name || "").trim().toLowerCase();
   const operatorName = user?.displayName || user?.name || "Cán bộ quản lý";
   const operatorRole = user?.roleName || "Cán bộ Ban QLDA";
@@ -182,15 +183,17 @@ export default function ConstructionProceduresScreen() {
         currentProject.supervisorName?.toLowerCase() === userName)
   );
 
+  const canApproveProcedure =
+    canUserDo(user, "m3_construction_procedures", "approve") ||
+    hasMatrixPermission(user, "m3.approve_step");
+
   const canUpdateProcedure =
-    (isProjectAssignee || isDirector || isLeadOfUserDept) &&
-    (permissions.includes("m3_construction_procedures:input") ||
-      permissions.includes("m3_construction_procedures:approve"));
+    canUserDo(user, "m3_construction_procedures", "input") ||
+    hasMatrixPermission(user, "m3.update_step");
 
   const canConfigureProcedure =
-    !isDirector &&
-    (permissions.includes("m3_construction_procedures:configure") ||
-      permissions.includes("m3_construction_procedures:approve"));
+    canUserDo(user, "m3_construction_procedures", "configure") ||
+    hasMatrixPermission(user, "m3.config_template");
 
   // Quản lý quy trình được áp dụng cho từng dự án
   const [projectProcedures, setProjectProcedures] = useState<Record<string, string>>(() => {
@@ -520,7 +523,7 @@ export default function ConstructionProceduresScreen() {
 
     const newSteps = currentProject.steps.map((s) => {
       if (s.id === stepId) {
-        if (isStepLead || isDirector) {
+        if (isStepLead || canApproveProcedure) {
           return {
             ...s,
             status: "COMPLETED" as const,
@@ -550,7 +553,7 @@ export default function ConstructionProceduresScreen() {
       return s;
     });
 
-    const isMemberSubmit = !isStepLead && !isDirector;
+    const isMemberSubmit = !isStepLead && !canApproveProcedure;
     const newLog: ProcedureHistoryLog = {
       id: `LOG-${Date.now()}`,
       stepId: step.id,
@@ -1328,7 +1331,7 @@ export default function ConstructionProceduresScreen() {
             onOpenAddDeptProcedure={() => setIsAddDeptModalOpen(true)}
             isLeadOfDept={isLeadOfUserDept}
             userDepartment={userDept}
-            isDirector={isDirector}
+            isDirector={canApproveProcedure}
             isDeptCompletedByLead={isDeptCompletedByLead}
             onAssignMember={handleAssignMember}
             onApproveStep={handleApproveStep}

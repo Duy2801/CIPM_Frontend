@@ -82,6 +82,7 @@ export function createMockGpmbRepository(): GpmbRepository {
         specialStatus: input.specialStatus || "NORMAL",
         records,
         currentStepStartedAt: todayIso(),
+        createdAt: Date.now(),
       };
 
       dataset.households = [newHousehold, ...dataset.households];

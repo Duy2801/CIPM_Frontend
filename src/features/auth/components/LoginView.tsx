@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
-import { UserOutlined } from "@ant-design/icons";
 import { Card, Title } from "@/components/ui";
 import LoginForm from "./LoginForm";
 import { useAuth } from "../hooks/useAuth";

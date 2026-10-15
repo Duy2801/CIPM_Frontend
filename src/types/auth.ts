@@ -8,7 +8,7 @@ export type Role =
   | "ADMINISTRATIVE_OFFICER"
   | (string & {});
 
-export type Permission = `${string}:${string}`;
+export type Permission = `${string}:${string}` | (string & {});
 
 export interface AuthUser {
   id: string;

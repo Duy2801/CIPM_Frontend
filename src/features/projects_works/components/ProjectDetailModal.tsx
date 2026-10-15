@@ -13,7 +13,7 @@ import type {
   ProjectItem,
   ProjectStage,
 } from "../types/project.types";
-import { isBoardOfDirectors } from "../utils/project-permissions";
+import { canUserDo } from "@/access-control";
 import ProjectViewTab from "./detail/ProjectViewTab";
 import ProjectProgressTab from "./detail/ProjectProgressTab";
 import ProjectEditTab from "./detail/ProjectEditTab";
@@ -61,7 +61,8 @@ export default function ProjectDetailModal({
   // Đồng bộ tab khi modal được mở lại
   useEffect(() => {
     if (project && open) {
-      const targetTab = initialMode === "edit" && !isBoardOfDirectors(user) ? "view" : (initialMode || "view");
+      const canEdit = canUserDo(user, "m2_projects", "input");
+      const targetTab = initialMode === "edit" && !canEdit ? "view" : (initialMode || "view");
       setActiveTab(targetTab);
     }
   }, [project, open, initialMode, user]);
@@ -158,7 +159,7 @@ export default function ProjectDetailModal({
           />
         )}
 
-        {activeTab === "edit" && isBoardOfDirectors(user) && (
+        {activeTab === "edit" && canUserDo(user, "m2_projects", "input") && (
           <ProjectEditTab
             project={project}
             onBackToView={() => setActiveTab("view")}

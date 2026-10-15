@@ -80,7 +80,13 @@ export default function BiddingManagementScreen() {
           projects={controller.data.projects}
           errorText={modalError}
           onClose={() => setCreating(false)}
-          onCreate={controller.createPackage}
+          onCreate={async (input) => {
+            const res = await controller.createPackage(input);
+            if (res) {
+              setFilter("ALL");
+            }
+            return res;
+          }}
         />
       )}
 

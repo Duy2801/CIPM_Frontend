@@ -8,6 +8,14 @@ export type LegalDocumentCategory =
 
 export type LegalDocumentStatus = "EFFECTIVE" | "EXPIRED" | "PARTIAL";
 
+export interface AttachedDocumentFile {
+  id: string;
+  name: string;
+  size: string;
+  type: "PDF" | "DOCX";
+  url?: string;
+}
+
 export interface LegalDocument {
   id: string;
   code: string; // Số hiệu (vd: 31/2024/QH15)
@@ -23,6 +31,7 @@ export interface LegalDocument {
   fileSize: string;
   downloads: number;
   tags: string[];
+  files?: AttachedDocumentFile[];
 }
 
 export type ReportType =

@@ -7,6 +7,7 @@ import {
   canAccessPath,
   getFirstAllowedRoute,
   getRoutePermission,
+  getUserEffectivePermissions,
 } from "@/access-control";
 import { AppLoadingScreen, Button, Card, Flex, Text, Title } from "@/components/ui";
 import { useAuthStore } from "@/stores/auth.store";
@@ -29,7 +30,7 @@ export function AccessControlGate({ children }: AccessControlGateProps) {
     return <AppLoadingScreen message="Đang tải dữ liệu hệ thống..." />;
   }
 
-  const permissions = user?.permissions ?? EMPTY_PERMISSIONS;
+  const permissions = getUserEffectivePermissions(user);
   const hasAccess = canAccessPath(permissions, pathname);
 
   if (hasAccess) return <>{children}</>;

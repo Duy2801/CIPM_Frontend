@@ -28,6 +28,7 @@ import {
   isDirectorUser,
   isLeadOfDepartment,
 } from "../constants/procedure-department-templates";
+import { canUserDo } from "@/access-control";
 
 interface ProcedureStepCardProps {
   step: ProcedureStep;
@@ -88,6 +89,10 @@ export default function ProcedureStepCard({
       (assignedName === userName ||
         (step.assignedToId && step.assignedToId === user?.id))
   );
+
+  const canOperateStep = canUserDo(user, "m3_construction_procedures", "input") || isAssigned;
+  const canApproveStep = canUserDo(user, "m3_construction_procedures", "approve") || isLeadOfThisStep;
+  const canAssignStep = canUserDo(user, "m3_construction_procedures", "configure") || canApproveStep;
 
   // Danh sách nhân sự cùng phòng ban của bước này
   const departmentStaff = getDepartmentStaff(step.department);
@@ -208,8 +213,8 @@ export default function ProcedureStepCard({
             <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
               {renderStatusBadge()}
 
-              {/* HÀNH ĐỘNG DÀNH CHO LEAD: Duyệt / Từ chối khi thành viên đã nộp */}
-              {isLeadOfThisStep && step.submissionStatus === "SUBMITTED" && (
+              {/* HÀNH ĐỘNG DÀNH CHO NGƯỜI CÓ QUYỀN DUYỆT (Approve/Lead): Duyệt / Từ chối khi thành viên đã nộp */}
+              {canApproveStep && step.submissionStatus === "SUBMITTED" && (
                 <div className="flex items-center gap-1.5">
                   <Button
                     intent="primary"
@@ -232,8 +237,8 @@ export default function ProcedureStepCard({
                 </div>
               )}
 
-              {/* HÀNH ĐỘNG DÀNH CHO THÀNH VIÊN ĐƯỢC GIAO: Bắt đầu hoặc Xác nhận hoàn thành */}
-              {isAssigned && !isCompleted && !isDisabled && sequence.canOperate && (
+              {/* HÀNH ĐỘNG DÀNH CHO NGƯỜI CÓ QUYỀN NHẬP/SỬA: Bắt đầu hoặc Xác nhận hoàn thành */}
+              {canOperateStep && !isCompleted && !isDisabled && sequence.canOperate && (
                 <div className="flex items-center gap-1.5">
                   {isNotStarted && (
                     <Button
@@ -246,7 +251,7 @@ export default function ProcedureStepCard({
                       Bắt đầu
                     </Button>
                   )}
-                  {step.submissionStatus === "SUBMITTED" && !isLeadOfThisStep && (
+                  {step.submissionStatus === "SUBMITTED" && !canApproveStep && (
                     <Tag
                       className="!bg-amber-50 !text-amber-800 !border-amber-200 text-[11px] font-semibold flex items-center gap-1 h-7 px-2 shadow-2xs"
                       icon={<ClockCircleFilled className="text-amber-600" />}
@@ -274,8 +279,8 @@ export default function ProcedureStepCard({
                 </div>
               )}
 
-              {/* Thành viên khác trong tổ: chỉ xem */}
-              {!isAssigned && !isLeadOfThisStep && !isDirector && (
+              {/* Thành viên khác không có quyền thao tác: chỉ xem */}
+              {!isAssigned && !isLeadOfThisStep && !canOperateStep && !canApproveStep && (
                 <Tag intent="default" className="text-[10px] text-slate-500 py-0.5">
                   Chỉ xem
                 </Tag>
@@ -293,14 +298,14 @@ export default function ProcedureStepCard({
           {/* Hàng 3: Người thực hiện + Biên độ + Hồ sơ */}
           <div className="flex flex-wrap items-center justify-between gap-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              {/* Người thực hiện: Lead có thể gán nhanh, người khác chỉ xem */}
+              {/* Người thực hiện: Người có quyền phân công có thể gán nhanh, người khác chỉ xem */}
               <div
                 className="flex items-center gap-1.5 text-slate-600"
-                onClick={(e) => isLeadOfThisStep && e.stopPropagation()}
+                onClick={(e) => canAssignStep && e.stopPropagation()}
               >
                 <UserOutlined className="text-slate-400 text-[11px]" />
                 <span className="text-slate-500">Người thực hiện:</span>
-                {isLeadOfThisStep && !isCompleted ? (
+                {canAssignStep && !isCompleted ? (
                   <Select
                     className="w-40 h-6 text-xs [&_.ant-select-selector]:!py-0"
                     placeholder="— Giao việc —"

@@ -48,6 +48,11 @@ export default function IncidentTab({
       .filter((item) => matchesIncidentFilter(item, filter, today))
       .filter((item) => !query || [item.code, item.description, item.location].some((value) => value.toLowerCase().includes(query)))
       .sort((a, b) => {
+        // Sự cố mới ghi nhận luôn ưu tiên hiển thị lên đầu danh sách
+        const aCreated = a.id.startsWith("INC-1") ? Number(a.id.replace("INC-", "")) : 0;
+        const bCreated = b.id.startsWith("INC-1") ? Number(b.id.replace("INC-", "")) : 0;
+        if (aCreated !== bCreated) return bCreated - aCreated;
+
         const overdue = Number(isIncidentOverdue(b, today)) - Number(isIncidentOverdue(a, today));
         return overdue || STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.requiredFixDate.localeCompare(b.requiredFixDate);
       });

@@ -64,8 +64,10 @@ export const sidebarMenuItems: MenuItem[] = [
   },
 ];
 
+import { getUserEffectivePermissions } from "@/access-control";
+
 export function getSidebarMenuItemsForUser(user: AuthUser | null): MenuItem[] {
-  const permissions = user?.permissions ?? [];
+  const permissions = getUserEffectivePermissions(user);
 
   return sidebarMenuItems.filter((item) => {
     if (!item || !("key" in item) || typeof item.key !== "string") {

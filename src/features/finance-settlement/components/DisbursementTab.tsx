@@ -65,6 +65,11 @@ export default function DisbursementTab({
         );
       })
       .sort((a, b) => {
+        // Hồ sơ giải ngân mới tạo luôn ưu tiên hiển thị lên đầu danh sách
+        const aCreated = a.id.startsWith("DIS-1") ? Number(a.id.replace("DIS-", "")) : 0;
+        const bCreated = b.id.startsWith("DIS-1") ? Number(b.id.replace("DIS-", "")) : 0;
+        if (aCreated !== bCreated) return bCreated - aCreated;
+
         // Hồ sơ đến lượt người đang đăng nhập luôn nằm trên cùng
         const aMine = a.status === actionStatus ? 0 : 1;
         const bMine = b.status === actionStatus ? 0 : 1;

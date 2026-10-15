@@ -341,33 +341,40 @@ export default function RolePermissionMatrixModal({
                           {/* Checkbox các Roles: Nền trắng sạch sẽ, chỉ dùng đỏ thương hiệu */}
                           {visibleRoles.map((role) => {
                             const isChecked = hasPermission(role.code, perm.id);
-                            const isDirector = role.code === "ADMIN";
 
                             return (
                               <td
                                 key={`${role.code}-${perm.id}`}
+                                role="checkbox"
+                                aria-checked={isChecked}
+                                aria-label={`${role.shortName || role.name}: ${perm.name}`}
+                                tabIndex={canManage ? 0 : -1}
                                 onClick={() => {
-                                  if (!isDirector && canManage) {
+                                  if (canManage) {
+                                    togglePermission(role.code, perm.id);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (canManage && (e.key === " " || e.key === "Enter")) {
+                                    e.preventDefault();
                                     togglePermission(role.code, perm.id);
                                   }
                                 }}
                                 className={`px-2 py-2 text-center border-r border-slate-200 select-none transition-colors ${
-                                  isDirector
-                                    ? "bg-slate-50/50 cursor-not-allowed"
-                                    : "hover:bg-slate-50 cursor-pointer"
+                                  canManage
+                                    ? "hover:bg-red-50/50 active:bg-red-100/60 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
+                                    : "cursor-default"
                                 }`}
                               >
                                 <div className="flex items-center justify-center">
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    disabled={isDirector || !canManage}
-                                    onChange={() => togglePermission(role.code, perm.id)}
-                                    className={`h-4 w-4 rounded transition-all ${
-                                      isDirector
-                                        ? "accent-slate-400 opacity-60 cursor-not-allowed"
-                                        : "accent-[#DC2626] cursor-pointer"
-                                    }`}
+                                    disabled={!canManage}
+                                    readOnly
+                                    tabIndex={-1}
+                                    aria-hidden="true"
+                                    className="h-4.5 w-4.5 rounded transition-all accent-[#DC2626] pointer-events-none cursor-pointer"
                                   />
                                 </div>
                               </td>
@@ -417,7 +424,10 @@ export default function RolePermissionMatrixModal({
               intent="primary"
               icon={<SaveOutlined />}
               className="h-8.5 text-xs font-semibold bg-[#DC2626] hover:bg-red-700 text-white rounded-lg shadow-xs"
-              onClick={saveMatrix}
+              onClick={() => {
+                saveMatrix();
+                onClose();
+              }}
             >
               Lưu cấu hình
             </Button>

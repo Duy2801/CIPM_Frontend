@@ -1,5 +1,5 @@
 import type { AuthUser, Role } from "@/types/auth";
-import { canDo } from "../access-control.ts";
+import { canDo, getUserEffectivePermissions } from "../access-control.ts";
 
 export interface ResolvedRoleFields {
   roleCode: string;
@@ -17,10 +17,10 @@ export interface ResolvedRoleFields {
 }
 
 /**
- * Tra cứu thông tin hồ sơ vai trò (Role Profile) kết hợp với Quyền hạn động (Permissions).
+ * Tra cứu thông tin hồ sơ vai trò (Role Profile) kết hợp với Quyền hạn động từ Ma trận phân quyền.
  * - Các thuộc tính trình bày (tiêu đề vai trò, phòng ban, hướng dẫn nghiệp vụ) lấy theo Role.
  * - Các cờ phân quyền hành vi (canView, canInput, canApprove, canConfigure, canExport)
- *   được tính ĐỘNG hoàn toàn dựa trên mảng `user.permissions`.
+ *   được tính ĐỘNG hoàn toàn dựa trên Ma trận phân quyền (Matrix).
  */
 export function resolveRoleProfile<TProfile extends object>(
   user: AuthUser | null,
@@ -30,24 +30,16 @@ export function resolveRoleProfile<TProfile extends object>(
 ): TProfile & ResolvedRoleFields {
   const role = user?.role as Role | undefined;
   const profile = (role && profiles[role]) || fallback;
-  const permissions = user?.permissions ?? [];
-  const hasGranular = permissions.length > 0;
-  const p = profile as Record<string, unknown>;
-
-  const defaultCanView = p.canAccessModule !== false;
-  const defaultCanInput = Boolean(p.canEdit ?? p.canManageIncidents ?? false);
-  const defaultCanApprove = Boolean(p.canApprove ?? false);
-  const defaultCanConfigure = Boolean(p.canManageBond ?? false);
-  const defaultCanExport = (p.exportScope ?? "NONE") !== "NONE";
+  const permissions = getUserEffectivePermissions(user);
 
   return {
     ...profile,
     roleCode: role ?? "GUEST",
     userName: user?.displayName || user?.name || "Khách truy cập",
-    canView: hasGranular ? canDo(permissions, moduleKey, "view") : defaultCanView,
-    canInput: hasGranular ? canDo(permissions, moduleKey, "input") : defaultCanInput,
-    canApprove: hasGranular ? canDo(permissions, moduleKey, "approve") : defaultCanApprove,
-    canConfigure: hasGranular ? canDo(permissions, moduleKey, "configure") : defaultCanConfigure,
-    canExport: hasGranular ? canDo(permissions, moduleKey, "export") : defaultCanExport,
+    canView: canDo(permissions, moduleKey, "view"),
+    canInput: canDo(permissions, moduleKey, "input"),
+    canApprove: canDo(permissions, moduleKey, "approve"),
+    canConfigure: canDo(permissions, moduleKey, "configure"),
+    canExport: canDo(permissions, moduleKey, "export"),
   };
 }

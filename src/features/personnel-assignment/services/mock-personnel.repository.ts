@@ -862,7 +862,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
         accountActive: input.accountActive !== false,
       };
 
-      dataset.staff = [...dataset.staff, newStaff];
+      dataset.staff = [newStaff, ...dataset.staff];
 
       if (input.isLeader) {
         const team = dataset.teams.find((t) => t.id === input.teamId);

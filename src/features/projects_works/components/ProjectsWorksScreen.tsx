@@ -17,7 +17,7 @@ import ProjectsTable from "./ProjectsTable";
 import ProjectDetailModal, { type ProjectDetailTab } from "./ProjectDetailModal";
 import CreateProjectModal from "./CreateProjectModal";
 import ProjectActionConfirmModal, { type ProjectActionType } from "./ProjectActionConfirmModal";
-import { isBoardOfDirectors } from "../utils/project-permissions";
+import { canUserDo } from "@/access-control";
 
 export default function ProjectsWorksScreen() {
   const { message } = App.useApp();
@@ -28,7 +28,7 @@ export default function ProjectsWorksScreen() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedType, setSelectedType] = useState<ProjectWorkType | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "active" | "closed">("ALL");
-  const [sortBy, setSortBy] = useState<string>("code_asc");
+  const [sortBy, setSortBy] = useState<string>("latest");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 10;
 
@@ -108,6 +108,8 @@ const STAGE_ORDER: Record<string, number> = {
     // 5. Sắp xếp đa chiều
     result.sort((a, b) => {
       switch (sortBy) {
+        case "latest":
+          return 0; // Giữ nguyên thứ tự ưu tiên (phần tử mới thêm luôn nằm trên cùng do unshift/prepend)
         case "investment_desc":
           return b.totalInvestment - a.totalInvestment;
         case "investment_asc":
@@ -139,8 +141,9 @@ const STAGE_ORDER: Record<string, number> = {
         case "endDate_desc":
           return (b.endDatePlanned || "").localeCompare(a.endDatePlanned || "");
         case "code_asc":
-        default:
           return a.code.localeCompare(b.code, "vi");
+        default:
+          return 0;
       }
     });
 
@@ -258,6 +261,15 @@ const STAGE_ORDER: Record<string, number> = {
     };
 
     setProjects((prev) => [newProject, ...prev]);
+    setSortBy("latest");
+    setCurrentPage(1);
+    if (activeTab !== "ALL" && activeTab !== newProject.currentStage) {
+      setActiveTab("ALL");
+    }
+    if (statusFilter === "closed") {
+      setStatusFilter("ALL");
+    }
+    setSearchTerm("");
     message.success(`Đã khởi tạo thành công dự án mới với mã: ${autoCode}`);
   };
 
@@ -423,7 +435,7 @@ const STAGE_ORDER: Record<string, number> = {
         onSortChange={handleSortChange}
         totalFilteredCount={total}
         filteredProjects={filteredProjects}
-        canCreateProject={isBoardOfDirectors(user)}
+        canCreateProject={canUserDo(user, "m2_projects", "input")}
         onOpenCreateModal={() => setIsCreateOpen(true)}
       />
 

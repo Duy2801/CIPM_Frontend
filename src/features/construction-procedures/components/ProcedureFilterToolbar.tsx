@@ -168,8 +168,7 @@ export default function ProcedureFilterToolbar({
           })()}
 
 
-          {/* Giám đốc KHÔNG phải người cấu hình/thêm quy trình nữa. Chỉ quản trị viên cấp cao khác nếu cần */}
-          {!isDirector && canUpdateProcedure && !isLeadOfDept && (
+          {canUpdateProcedure && (
             <Button
               intent="outline"
               scale="compact"

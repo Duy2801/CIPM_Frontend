@@ -250,6 +250,7 @@ export default function StaffProjectRoleModal({
   const { modal, message } = App.useApp();
   const [savingProjectPerms, setSavingProjectPerms] = useState(false);
   const [activeTab, setActiveTab] = useState<"user" | "project">("user");
+  const [revokingProjectId, setRevokingProjectId] = useState<string | null>(null);
 
   // Đồng bộ khi staff hoặc dataset thay đổi
   useEffect(() => {
@@ -340,8 +341,6 @@ export default function StaffProjectRoleModal({
     });
     setProjectPermissionsMap(map);
   };
-
-  const [revokingProjectId, setRevokingProjectId] = useState<string | null>(null);
 
   const handleRevokeCnda = (proj: PersonnelProject) => {
     modal.confirm({
@@ -507,6 +506,7 @@ export default function StaffProjectRoleModal({
       const ok = await onUpdateProjectPermissions(currentProject.id, perms);
       if (ok) {
         toast.success(`Đã lưu quyền ủy quyền cho dự án "${currentProject.name}" thành công!`);
+        onClose();
       }
     } finally {
       setSavingProjectPerms(false);
@@ -538,6 +538,7 @@ export default function StaffProjectRoleModal({
             permissions: Array.from(updatedPerms),
           });
         }
+        onClose();
       }
     } finally {
       setSavingPermissions(false);
@@ -592,6 +593,7 @@ export default function StaffProjectRoleModal({
             permissions: Array.from(updatedPerms),
           });
         }
+        onClose();
       }
     } finally {
       setSavingPermissions(false);
@@ -621,6 +623,7 @@ export default function StaffProjectRoleModal({
       if (ok) {
         setIsPromoting(false);
         toast.success(`Đã cập nhật vai trò & phân công tổ của cán bộ ${staff.name} thành công!`);
+        onClose();
       }
     } finally {
       setSavingStaff(false);

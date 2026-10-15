@@ -100,7 +100,7 @@ export function createMockWarrantyRepository(): WarrantyRepository {
       if (!input.months || input.months <= 0) throw new Error("Thời hạn bảo hành phải lớn hơn 0 tháng.");
       if (!input.workName.trim()) throw new Error("Vui lòng nhập tên hạng mục / công trình bảo hành.");
 
-      const id = `WR-${String(dataset.warranties.length + 1).padStart(3, "0")}`;
+      const id = `WR-${Date.now()}`;
       const record: WarrantyRecord = {
         id,
         projectId: input.projectId || "PRJ-101",
@@ -113,6 +113,7 @@ export function createMockWarrantyRepository(): WarrantyRepository {
         bank: input.bank.trim() || "Chưa cập nhật ngân hàng",
         bondStatus: input.bondStatus || "HOLDING",
       };
+      (record as any).createdAt = Date.now();
       dataset.warranties = [record, ...dataset.warranties];
       return clone(record);
     },

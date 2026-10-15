@@ -58,6 +58,7 @@ export interface Household {
   currentStepStartedAt: string;
   proposal?: StepProposal;
   rejection?: StepRejection;
+  createdAt?: number;
 }
 
 export interface GpmbDataset {

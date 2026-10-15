@@ -70,18 +70,19 @@ const ROLE_PROFILES: Record<string, WarrantyRoleProfile> = {
     canAccessModule: true,
     roleTitle: "Giám đốc",
     department: "Ban Giám đốc",
-    isReadOnly: true,
-    canManageIncidents: false,
-    canManageBond: false,
+    isReadOnly: false,
+    canManageIncidents: true,
+    canManageBond: true,
     exportScope: "ALL",
     defaultTab: "warranties",
-    scopeDescription: "Theo dõi thời hạn bảo hành, sự cố và tình hình bảo lãnh của toàn bộ các công trình đã bàn giao. Toàn quyền xuất báo cáo.",
+    scopeDescription: "Toàn quyền quản lý bảo hành và bảo trì: ghi nhận sự cố, theo dõi sửa chữa, giải tỏa bảo lãnh và xuất báo cáo toàn diện.",
     allowedDuties: [
-      "Xem thời hạn bảo hành và bảo lãnh toàn hệ thống",
-      "Xem tiến độ khắc phục sự cố",
+      "Thêm/sửa hồ sơ công trình bảo hành & bảo lãnh",
+      "Ghi nhận sự cố, theo dõi nhà thầu khắc phục và nghiệm thu sửa",
+      "Quản lý, giải tỏa hoặc thu hồi bảo lãnh bảo hành",
       "Toàn quyền xuất báo cáo PDF/Excel bảo hành",
     ],
-    readingGuide: "Thẻ đỏ là công trình còn ≤ 30 ngày bảo hành; kiểm tra xem còn sự cố nào chưa khắc phục.",
+    readingGuide: "Giám đốc có toàn quyền xử lý sự cố công trình, giải tỏa bảo lãnh và quản lý danh mục bảo hành.",
   },
   DEPUTY_DIRECTOR: {
     canAccessModule: true,
@@ -116,12 +117,13 @@ const BLOCKED_PROFILE: WarrantyRoleProfile = {
   readingGuide: "Vui lòng liên hệ Quản trị hệ thống nếu cần phân công nhiệm vụ.",
 };
 
+import { getUserEffectivePermissions } from "@/access-control";
+
 export function getWarrantyRolePermissions(user: AuthUser | null): WarrantyRolePermissions {
   const profile = resolveRoleProfile(user, ROLE_PROFILES, BLOCKED_PROFILE, "m8_warranty");
+  const permissions = getUserEffectivePermissions(user);
   const hasModulePermission =
-    user?.permissions && user.permissions.length > 0
-      ? user.permissions.includes("m8_warranty:view")
-      : profile.canAccessModule;
+    permissions.includes("m8_warranty:view") || permissions.includes("m8.view" as any);
 
   if (!hasModulePermission) {
     return {
@@ -132,9 +134,9 @@ export function getWarrantyRolePermissions(user: AuthUser | null): WarrantyRoleP
     };
   }
 
-  // Quyền động theo Permission
-  const canManageIncidents = profile.canInput;
-  const canManageBond = profile.canConfigure || (user?.role === "CHIEF_ACCOUNTANT" && profile.canInput);
+  // Quyền động theo Permission trong ma trận
+  const canManageIncidents = profile.canInput || permissions.includes("m8.manage_incidents" as any);
+  const canManageBond = profile.canApprove || profile.canConfigure || permissions.includes("m8.release_bond" as any);
   const isReadOnly = !canManageIncidents && !canManageBond;
 
   return {

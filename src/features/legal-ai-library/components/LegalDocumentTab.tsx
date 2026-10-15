@@ -126,7 +126,11 @@ export default function LegalDocumentTab({
         return (
           <div className="py-1">
             <div className="flex items-center gap-2">
-              {row.fileType === "PDF" ? (
+              {row.files && row.files.length > 1 ? (
+                <span className="flex h-6 px-1.5 shrink-0 items-center justify-center rounded bg-amber-50 text-amber-700 text-[10.5px] font-semibold border border-amber-200">
+                  {row.files.length} tệp
+                </span>
+              ) : row.fileType === "PDF" ? (
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-rose-50 text-rose-600">
                   <FilePdfOutlined className="text-xs" />
                 </span>

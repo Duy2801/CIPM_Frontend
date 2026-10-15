@@ -12,6 +12,7 @@ import {
   FileWordOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
+  PaperClipOutlined,
   SafetyCertificateOutlined,
   TagOutlined,
 } from "@ant-design/icons";
@@ -46,6 +47,28 @@ export default function DocumentDetailDrawer({
     });
     element.href = URL.createObjectURL(file);
     element.download = fileName;
+    window.document.body.appendChild(element);
+    element.click();
+    window.document.body.removeChild(element);
+  };
+
+  const handleDownloadFile = (fileNameToDownload: string, fileTypeToDownload: "PDF" | "DOCX") => {
+    const ext = fileTypeToDownload === "PDF" ? "pdf" : "docx";
+    const safeName =
+      fileNameToDownload.endsWith(".pdf") ||
+      fileNameToDownload.endsWith(".docx") ||
+      fileNameToDownload.endsWith(".doc")
+        ? fileNameToDownload
+        : `${fileNameToDownload}.${ext}`;
+    const element = window.document.createElement("a");
+    const file = new Blob(
+      [
+        `Tập tin văn bản pháp lý / biểu mẫu chuẩn: ${document.title}\nTên tệp: ${safeName}\nSố hiệu: ${document.code}\nCơ quan ban hành: ${document.issuer}\nNội dung tóm tắt:\n${document.summary}`,
+      ],
+      { type: "text/plain;charset=utf-8" }
+    );
+    element.href = URL.createObjectURL(file);
+    element.download = safeName;
     window.document.body.appendChild(element);
     element.click();
     window.document.body.removeChild(element);
@@ -210,33 +233,86 @@ export default function DocumentDetailDrawer({
 
         {/* File đính kèm */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              {document.fileType === "PDF" ? (
-                <FilePdfOutlined className="text-2xl text-rose-500" />
-              ) : (
-                <FileWordOutlined className="text-2xl text-blue-500" />
-              )}
-              <div>
-                <div className="text-xs font-bold text-slate-800">
-                  {document.code} - {document.title}
+          <div className="text-xs font-bold text-slate-700 mb-2.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <PaperClipOutlined className="text-[#DC2626]" />
+              Tệp văn bản đính kèm ({document.files && document.files.length > 0 ? document.files.length : 1})
+            </span>
+          </div>
+
+          {document.files && document.files.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {document.files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 shadow-xs hover:border-slate-300 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    {file.type === "PDF" ? (
+                      <FilePdfOutlined className="text-xl text-rose-500 shrink-0" />
+                    ) : (
+                      <FileWordOutlined className="text-xl text-blue-600 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-800 truncate" title={file.name}>
+                        {file.name}
+                      </div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                        <span
+                          className={`px-1.5 py-0.2 rounded font-semibold text-[9.5px] ${
+                            file.type === "PDF"
+                              ? "bg-rose-50 text-rose-600 border border-rose-200"
+                              : "bg-blue-50 text-blue-600 border border-blue-200"
+                          }`}
+                        >
+                          {file.type}
+                        </span>
+                        <span>{file.size}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    intent="primary"
+                    scale="xs"
+                    icon={<DownloadOutlined />}
+                    onClick={() => handleDownloadFile(file.name, file.type)}
+                    className="!border-[#DC2626] !bg-[#DC2626] text-xs font-semibold !text-white shadow-xs hover:!bg-[#B91C1C] shrink-0"
+                  >
+                    Tải về
+                  </Button>
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Định dạng {document.fileType} · Kích thước {document.fileSize} · {document.downloads} lượt tải
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {document.fileType === "PDF" ? (
+                  <FilePdfOutlined className="text-2xl text-rose-500" />
+                ) : (
+                  <FileWordOutlined className="text-2xl text-blue-500" />
+                )}
+                <div>
+                  <div className="text-xs font-bold text-slate-800">
+                    {document.code} - {document.title}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Định dạng {document.fileType} · Kích thước {document.fileSize} · {document.downloads} lượt tải
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <Button
-              intent="primary"
-              scale="sm"
-              icon={<DownloadOutlined />}
-              onClick={handleDownload}
-              className="!border-[#DC2626] !bg-[#DC2626] text-xs font-semibold !text-white shadow-xs hover:!bg-[#B91C1C]"
-            >
-              Tải file
-            </Button>
-          </div>
+              <Button
+                intent="primary"
+                scale="sm"
+                icon={<DownloadOutlined />}
+                onClick={handleDownload}
+                className="!border-[#DC2626] !bg-[#DC2626] text-xs font-semibold !text-white shadow-xs hover:!bg-[#B91C1C]"
+              >
+                Tải file
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </Drawer>

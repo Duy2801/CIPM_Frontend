@@ -163,10 +163,10 @@ export default function ProcedureStepList({
           {isLeadOfDept
             ? `Quy trình thủ tục của dự án sẽ do Tổ trưởng thiết lập. Bạn có thể nhấn nút bên dưới để thêm quy trình chuyên môn của ${userDepartment || "phòng ban mình"} vào dự án.`
             : isDirector
-            ? "Quy trình thủ tục sẽ do các Tổ trưởng phòng ban được phân công vào dự án chủ động thiết lập. Ban Giám đốc có thể sử dụng bộ lọc phòng ban ở trên để xem quy trình ngay khi các Tổ trưởng hoàn tất việc thêm."
+            ? "Ban Giám đốc có toàn quyền thiết lập quy trình hoặc giao cho các Tổ trưởng chủ động thêm các bước thủ tục chuyên môn vào dự án."
             : "Quy trình thủ tục của dự án sẽ do các Tổ trưởng/Trưởng phòng ban được phân công chủ động thiết lập và phân công nhiệm vụ cho từng cán bộ."}
         </p>
-        {isLeadOfDept && onOpenAddDeptProcedure && (
+        {(isLeadOfDept || isDirector || canConfigureProcedure) && onOpenAddDeptProcedure && (
           <div className="flex items-center justify-center gap-3">
             <Button
               intent="primary"

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  AppstoreOutlined,
   LockOutlined,
   SearchOutlined,
   UnlockOutlined,
@@ -11,6 +12,7 @@ import { App } from "antd";
 import {
   Button,
   Card,
+  Flex,
   Input,
   Modal,
   Pagination,
@@ -25,6 +27,7 @@ import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
 import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { Staff } from "../types/personnel.types";
 import StaffModal from "./StaffModal";
+import RolePermissionMatrixModal from "./RolePermissionMatrixModal";
 
 interface AccountsTabProps {
   controller: PersonnelController;
@@ -39,6 +42,7 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
 
   const confirmUnlock = (person: Staff) => {
     modal.confirm({
@@ -223,16 +227,26 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
         countLabel={`${staff.length} tài khoản`}
         readOnly={!permissions.canManageAccounts}
         actions={
-          permissions.canManageAccounts && (
+          <Flex align="center" gap={8}>
             <Button
-              intent="primary"
-              icon={<UserAddOutlined />}
-              className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
-              onClick={() => setStaffModalOpen(true)}
+              intent="outline"
+              icon={<AppstoreOutlined />}
+              className="font-semibold text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]/50 bg-white shadow-2xs"
+              onClick={() => setMatrixModalOpen(true)}
             >
-              Thêm tài khoản
+              Ma trận phân quyền
             </Button>
-          )
+            {permissions.canManageAccounts && (
+              <Button
+                intent="primary"
+                icon={<UserAddOutlined />}
+                className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
+                onClick={() => setStaffModalOpen(true)}
+              >
+                Thêm tài khoản
+              </Button>
+            )}
+          </Flex>
         }
       />
 
@@ -299,7 +313,22 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
         data={controller.data}
         errorText={controller.feedback?.type === "error" ? controller.feedback.text : undefined}
         onClose={() => setStaffModalOpen(false)}
-        onCreate={controller.createStaff}
+        onCreate={async (input) => {
+          const res = await controller.createStaff(input);
+          if (res) {
+            setCurrentPage(1);
+            setSearchQuery("");
+          }
+          return res;
+        }}
+      />
+    )}
+
+    {matrixModalOpen && (
+      <RolePermissionMatrixModal
+        open={matrixModalOpen}
+        onClose={() => setMatrixModalOpen(false)}
+        canManage={permissions.canManageAccounts}
       />
     )}
   </>

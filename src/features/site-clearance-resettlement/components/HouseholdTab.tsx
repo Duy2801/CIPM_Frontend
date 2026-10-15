@@ -97,7 +97,12 @@ export default function HouseholdTab({
           ),
       )
       .sort((a, b) => {
-        // Hộ quá hạn và chờ duyệt lên đầu để người dùng xử lý trước
+        // Hộ mới thêm luôn được ưu tiên hiển thị lên đầu danh sách
+        const aCreated = a.createdAt || (a.id.startsWith("HH-1") ? Number(a.id.replace("HH-", "")) : 0);
+        const bCreated = b.createdAt || (b.id.startsWith("HH-1") ? Number(b.id.replace("HH-", "")) : 0);
+        if (aCreated !== bCreated) return bCreated - aCreated;
+
+        // Tiếp theo ưu tiên hộ quá hạn và chờ duyệt
         const weight = (item: Household) => {
           const legal = getLegalStatus(item, today).state;
           if (legal === "OVERDUE") return 0;
@@ -426,7 +431,14 @@ export default function HouseholdTab({
             : undefined
         }
         onClose={() => setCreateDrawerOpen(false)}
-        onCreate={controller.createHousehold}
+        onCreate={async (input) => {
+          const res = await controller.createHousehold(input);
+          if (res) {
+            setSearch("");
+            onFilterChange("ALL");
+          }
+          return res;
+        }}
       />
     </Card>
   );

@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Cookies from "js-cookie";
 import { toast } from "@/components/ui";
+import { useAuthStore } from "@/stores/auth.store";
+import type { AuthUser, Permission } from "@/types/auth";
 import {
   DEFAULT_ROLE_PERMISSIONS_MAP,
   MATRIX_MODULES,
@@ -10,8 +13,39 @@ import {
   type MatrixRole,
 } from "../constants/role-matrix-data";
 
-const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v1";
+import {
+  convertMatrixPermIdsToPermissionCodes,
+  STORAGE_KEY_PERMISSIONS,
+} from "@/access-control";
+
 const STORAGE_KEY_ROLES = "cipm_custom_roles_matrix_v1";
+
+function syncCurrentUserPermissions(permissionsMap: Record<string, string[]>) {
+  if (typeof window === "undefined") return;
+  try {
+    const currentUser = useAuthStore.getState().user;
+    const roleCode = currentUser?.role || (currentUser as any)?.roleCode;
+    if (roleCode && permissionsMap[roleCode]) {
+      const rolePermIds = permissionsMap[roleCode];
+      const updatedPerms = convertMatrixPermIdsToPermissionCodes(rolePermIds);
+      useAuthStore.getState().updateUser({ permissions: updatedPerms });
+    }
+
+    const userInfoStr = Cookies.get("user_info");
+    if (userInfoStr) {
+      const userObj = JSON.parse(userInfoStr) as AuthUser;
+      const rCode = userObj.role || (userObj as any).roleCode;
+      if (rCode && permissionsMap[rCode]) {
+        const rPermIds = permissionsMap[rCode];
+        userObj.permissions = convertMatrixPermIdsToPermissionCodes(rPermIds);
+        Cookies.set("user_info", JSON.stringify(userObj), { path: "/", sameSite: "lax" });
+      }
+    }
+    window.dispatchEvent(new CustomEvent("cipm-permissions-updated"));
+  } catch (err) {
+    console.error("Lỗi đồng bộ permissions vào session:", err);
+  }
+}
 
 function getInitialRoles(): MatrixRole[] {
   if (typeof window === "undefined") return SYSTEM_MATRIX_ROLES;
@@ -36,6 +70,9 @@ function getInitialPermissions(): Record<string, string[]> {
     if (storedPerms) {
       const parsedPerms = JSON.parse(storedPerms);
       if (parsedPerms && typeof parsedPerms === "object") {
+        if (!parsedPerms.ADMIN) {
+          parsedPerms.ADMIN = DEFAULT_ROLE_PERMISSIONS_MAP.ADMIN;
+        }
         return parsedPerms;
       }
     }
@@ -50,12 +87,13 @@ export function useRoleMatrix() {
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>(getInitialPermissions);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Tự động lưu cấu hình vào localStorage khi có thay đổi (Auto-save)
+  // Tự động lưu cấu hình vào localStorage khi có thay đổi (Auto-save) và đồng bộ ngay
   useEffect(() => {
     if (!isDirty || typeof window === "undefined") return;
     try {
       window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(permissionsMap));
       window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(roles));
+      syncCurrentUserPermissions(permissionsMap);
     } catch (err) {
       console.error("Lỗi tự động lưu ma trận phân quyền:", err);
     }
@@ -64,25 +102,22 @@ export function useRoleMatrix() {
   // Kiểm tra vai trò có quyền permId không
   const hasPermission = useCallback(
     (roleCode: string, permId: string): boolean => {
-      // Giám đốc luôn có mọi quyền
+      const currentPerms = permissionsMap[roleCode];
+      if (currentPerms !== undefined) {
+        return currentPerms.includes(permId);
+      }
+      // Giám đốc mặc định có mọi quyền nếu chưa thiết lập riêng
       if (roleCode === "ADMIN") return true;
 
-      const currentPerms = permissionsMap[roleCode] || [];
-      return currentPerms.includes(permId);
+      return false;
     },
     [permissionsMap]
   );
 
   // Bật/tắt 1 quyền của 1 role
   const togglePermission = useCallback((roleCode: string, permId: string) => {
-    // Không cho phép bỏ quyền của ADMIN vì là tài khoản cao nhất
-    if (roleCode === "ADMIN") {
-      toast.warning("Tài khoản Giám đốc mặc định có toàn quyền hệ thống.");
-      return;
-    }
-
     setPermissionsMap((prev) => {
-      const current = prev[roleCode] || [];
+      const current = prev[roleCode] || (roleCode === "ADMIN" ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
       const has = current.includes(permId);
       const updated = has ? current.filter((id) => id !== permId) : [...current, permId];
 
@@ -124,17 +159,12 @@ export function useRoleMatrix() {
   // Bật/tắt toàn bộ quyền trong 1 Module cho 1 Role
   const toggleModuleForRole = useCallback(
     (roleCode: string, moduleId: string) => {
-      if (roleCode === "ADMIN") {
-        toast.warning("Tài khoản Giám đốc mặc định có toàn quyền hệ thống.");
-        return;
-      }
-
       const modulePermIds = MATRIX_PERMISSIONS.filter((p) => p.moduleId === moduleId).map((p) => p.id);
-      const current = permissionsMap[roleCode] || [];
+      const current = permissionsMap[roleCode] || (roleCode === "ADMIN" ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
       const allActive = modulePermIds.every((id) => current.includes(id));
 
       setPermissionsMap((prev) => {
-        const cur = prev[roleCode] || [];
+        const cur = prev[roleCode] || (roleCode === "ADMIN" ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
         const next = allActive
           ? cur.filter((id) => !modulePermIds.includes(id))
           : Array.from(new Set([...cur, ...modulePermIds]));
@@ -148,13 +178,8 @@ export function useRoleMatrix() {
 
   // Bật/tắt toàn bộ quyền cho 1 Role
   const toggleAllForRole = useCallback((roleCode: string) => {
-    if (roleCode === "ADMIN") {
-      toast.warning("Tài khoản Giám đốc mặc định có toàn quyền hệ thống.");
-      return;
-    }
-
     const allPermIds = MATRIX_PERMISSIONS.map((p) => p.id);
-    const current = permissionsMap[roleCode] || [];
+    const current = permissionsMap[roleCode] || (roleCode === "ADMIN" ? allPermIds : []);
     const isFull = allPermIds.every((id) => current.includes(id));
 
     setPermissionsMap((prev) => ({
@@ -222,7 +247,7 @@ export function useRoleMatrix() {
         isCustom: true,
       };
 
-      setRoles((prev) => [...prev, roleObj]);
+      setRoles((prev) => [roleObj, ...prev]);
 
       // Khởi tạo quyền mặc định: ưu tiên danh sách chỉ định, nếu không thì kế thừa
       const initialPerms =
@@ -265,6 +290,7 @@ export function useRoleMatrix() {
       window.localStorage.removeItem(STORAGE_KEY_PERMISSIONS);
       window.localStorage.removeItem(STORAGE_KEY_ROLES);
     }
+    syncCurrentUserPermissions(DEFAULT_ROLE_PERMISSIONS_MAP);
     toast.info("Đã khôi phục ma trận phân quyền về mặc định ban đầu của Ban QLDA.");
   }, []);
 
@@ -273,6 +299,7 @@ export function useRoleMatrix() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(permissionsMap));
       window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(roles));
+      syncCurrentUserPermissions(permissionsMap);
     }
     setIsDirty(false);
     toast.success("Đã lưu thành công phân quyền hệ thống!");

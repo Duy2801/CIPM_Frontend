@@ -1,5 +1,6 @@
 import type { AuthUser } from "@/types/auth";
 import type { ProjectItem } from "../types/project.types";
+import { canDo, getUserEffectivePermissions } from "@/access-control";
 
 export interface PermissionCheckResult {
   allowed: boolean;
@@ -81,23 +82,23 @@ export function canUpdateProjectProgress(
     };
   }
 
-  const permissions = user.permissions ?? [];
-  const hasInput = permissions.includes("m2_projects:input");
-  const hasApprove = permissions.includes("m2_projects:approve");
+  const permissions = getUserEffectivePermissions(user);
+  const hasInput = canDo(permissions, "m2_projects", "input") || permissions.includes("m2_projects:progress" as any);
+  const hasApprove = canDo(permissions, "m2_projects", "approve");
 
-  // 1. Ban Giám đốc / Quyền phê duyệt
-  if (hasApprove || isBoardOfDirectors(user)) {
+  // 1. Quyền phê duyệt / Ban Giám đốc được cấp quyền
+  if (hasApprove) {
     return {
       allowed: true,
-      roleDescription: "Ban Giám đốc (Toàn quyền chỉ đạo & phê duyệt)",
+      roleDescription: "Quyền phê duyệt / Chỉ đạo dự án",
     };
   }
 
-  // 2. Quyền nhập liệu (m2_projects:input) hoặc Tổ Giám sát – Kỹ thuật
-  if (hasInput || isTechnicalInspectionTeam(user)) {
+  // 2. Quyền nhập liệu (m2_projects:input)
+  if (hasInput) {
     return {
       allowed: true,
-      roleDescription: "Tổ Giám sát – Kỹ thuật (Chuyên trách hiện trường)",
+      roleDescription: "Quyền cập nhật tiến độ dự án",
     };
   }
 
@@ -112,14 +113,14 @@ export function canUpdateProjectProgress(
   return {
     allowed: false,
     reason:
-      "Chỉ người phụ trách dự án, Tổ Giám sát – KT và Ban Giám đốc mới có quyền cập nhật tiến độ theo Quy tắc 4.2.4.",
+      "Chỉ người phụ trách dự án hoặc vai trò được cấp quyền cập nhật tiến độ trong Ma trận phân quyền mới có thể thực hiện.",
     roleDescription: "Chỉ xem (Không có quyền cập nhật)",
   };
 }
 
 /**
  * Quy tắc phân quyền xóa hoặc đóng dự án:
- * Chỉ Ban Giám đốc hoặc người có quyền m2_projects:configure / m2_projects:approve mới có thẩm quyền xóa hoặc đóng dự án.
+ * Dựa vào quyền m2_projects:configure / m2_projects:approve trong Ma trận phân quyền.
  */
 export function canDeleteOrCloseProject(user: AuthUser | null): PermissionCheckResult {
   if (!user) {
@@ -129,17 +130,17 @@ export function canDeleteOrCloseProject(user: AuthUser | null): PermissionCheckR
     };
   }
 
-  const permissions = user.permissions ?? [];
-  if (permissions.includes("m2_projects:configure") || permissions.includes("m2_projects:approve") || isBoardOfDirectors(user)) {
+  const permissions = getUserEffectivePermissions(user);
+  if (canDo(permissions, "m2_projects", "configure") || canDo(permissions, "m2_projects", "approve")) {
     return {
       allowed: true,
-      roleDescription: "Ban Giám đốc có thẩm quyền quản lý vòng đời dự án.",
+      roleDescription: "Có quyền đóng hoặc quản lý vòng đời dự án.",
     };
   }
 
   return {
     allowed: false,
-    reason: "Chỉ Ban Giám đốc hoặc cán bộ được cấp quyền quản trị mới có quyền đóng hoặc xóa dự án khỏi hệ thống.",
+    reason: "Bạn không có quyền đóng hoặc xóa dự án trong Ma trận phân quyền.",
   };
 }
 
@@ -150,32 +151,27 @@ export interface ProjectExportScopeResult {
 }
 
 /**
- * Căn cứ: BRD BQL-BRD-2026-003, Mục 5 Ma trận phân quyền người dùng:
- * | Xuất báo cáo PDF/Excel | GĐ: ✓ | PGĐ: ✓ | Tổ KT: DA mình | KT trưởng: TC mình | KT viên: TC mình | Tổ BT: BT mình |
- * - GĐ & PGĐ: Toàn quyền xuất toàn bộ danh sách dự án (scope = ALL)
- * - Tổ KT: Chỉ xuất các dự án do mình phụ trách / giám sát kỹ thuật (scope = OWN_PROJECTS)
- * - Các vai trò khác (KT trưởng, KT viên, Tổ BT, Hành chính): Không có quyền xuất báo cáo danh mục dự án (scope = NONE)
+ * Quyền xuất báo cáo danh mục dự án theo Ma trận phân quyền
  */
 export function getProjectExportScope(user: AuthUser | null): ProjectExportScopeResult {
   if (!user) {
     return { canExport: false, scope: "NONE", reason: "Chưa đăng nhập" };
   }
 
-  // 1. Ban Giám đốc (ADMIN / DEPUTY_DIRECTOR): Toàn quyền
-  if (isBoardOfDirectors(user)) {
+  const permissions = getUserEffectivePermissions(user);
+  if (canDo(permissions, "m2_projects", "export")) {
     return { canExport: true, scope: "ALL" };
   }
 
-  // 2. Tổ Giám sát – Kỹ thuật (TECHNICAL_OFFICER): Chỉ xuất DA mình
+  // Người phụ trách dự án cụ thể có thể xuất dự án mình
   if (isTechnicalInspectionTeam(user) || user.role === "TECHNICAL_OFFICER") {
     return { canExport: true, scope: "OWN_PROJECTS" };
   }
 
-  // 3. Các vai trò khác: Bị chặn xuất báo cáo dự án
   return {
     canExport: false,
     scope: "NONE",
-    reason: "Theo Ma trận phân quyền BRD Mục 5, quyền xuất báo cáo dự án chỉ dành cho Ban Giám đốc và Cán bộ kỹ thuật phụ trách dự án (DA mình).",
+    reason: "Vai trò của bạn chưa được cấp quyền xuất báo cáo dự án trong Ma trận phân quyền.",
   };
 }
 

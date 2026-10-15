@@ -26,26 +26,27 @@ const ROLE_PROFILES: Record<string, RoleProfile> = {
     roleCode: "ADMIN",
     roleTitle: "Giám đốc",
     department: "Ban Giám đốc",
-    canCreateDisbursement: false,
-    canApproveChief: false,
+    canCreateDisbursement: true,
+    canApproveChief: true,
     canApproveDirector: true,
     canReject: true,
     canManageCapitalPlan: true,
-    canCreateCapitalPlan: false,
+    canCreateCapitalPlan: true,
     canAdjustCapitalPlan: true,
     canSettleProject: true,
     isReadOnly: false,
     actionStatus: "PENDING_DIRECTOR",
     settlementSteps: [1, 2, 3, 4, 5],
     defaultTab: "disbursement",
-    readingGuide: "Xem các hồ sơ “Chờ GĐ duyệt”: xem xét thẩm tra của Kế toán trưởng và chứng từ trước khi ký tờ trình KBNN.",
+    readingGuide: "Toàn quyền quản lý tài chính: lập đề nghị giải ngân, phê duyệt thanh toán cấp 1 & 2, ký tờ trình KBNN, điều hành vốn và tất toán.",
     badgeColor: "teal",
-    scopeDescription: "Phê duyệt thanh toán cấp 2 (ký tờ trình KBNN), trả lại hồ sơ và quyết định đóng mã dự án tất toán.",
+    scopeDescription: "Toàn quyền lập hồ sơ giải ngân, phê duyệt thanh toán, điều chỉnh kế hoạch vốn và quyết định tất toán dự án.",
     allowedDuties: [
-      "Phê duyệt thanh toán cấp 2 (ký tờ trình KBNN)",
+      "Lập mới và phê duyệt thanh toán giải ngân, ký tờ trình KBNN",
+      "Thẩm tra hồ sơ thanh toán cấp 1 & phê duyệt cấp 2",
       "Trả lại hồ sơ giải ngân cho Tổ HC-TH kèm lý do",
-      "Thẩm quyền duy nhất phê duyệt đóng mã dự án tất toán (bước 5)",
-      "Quyết định điều chỉnh kế hoạch vốn và giám sát toàn diện",
+      "Thẩm quyền phê duyệt đóng mã dự án tất toán (bước 1 đến 5)",
+      "Lập mới, quyết định điều chỉnh kế hoạch vốn và giám sát toàn diện",
     ],
   },
   CHIEF_ACCOUNTANT: {
@@ -196,10 +197,12 @@ const GUEST_PROFILE: RoleProfile = {
   allowedDuties: ["Chỉ xem dữ liệu"],
 };
 
+import { getUserEffectivePermissions } from "@/access-control";
+
 export function getFinanceRolePermissions(user: AuthUser | null): FinanceRolePermissions {
   const role = user?.role as Role | undefined;
   const profile = (role && ROLE_PROFILES[role]) || GUEST_PROFILE;
-  const permissions = user?.permissions ?? [];
+  const permissions = getUserEffectivePermissions(user);
 
   // Quyền động theo Permission: Cấp/thu hồi quyền 'm4_finance_settlement:*' có hiệu lực tức thì
   const hasInput = permissions.includes("m4_finance_settlement:input");
@@ -208,16 +211,22 @@ export function getFinanceRolePermissions(user: AuthUser | null): FinanceRolePer
 
   const canCreateDisbursement = hasInput;
   const canCreateCapitalPlan = hasInput || hasConfigure;
-  const canApproveChief = hasApprove && role !== "ADMIN";
-  const canApproveDirector = hasApprove && (hasConfigure || role === "ADMIN" || role === "DEPUTY_DIRECTOR");
+  const canApproveChief = hasApprove;
+  const canApproveDirector = hasApprove;
   const canReject = hasApprove;
-  const canManageCapitalPlan = hasApprove || hasConfigure;
-  const canAdjustCapitalPlan = hasConfigure || (hasApprove && role === "ADMIN");
-  const canSettleProject = hasConfigure || (hasApprove && role === "ADMIN");
-  const isReadOnly = !canCreateDisbursement && !canApproveChief && !canApproveDirector && !canManageCapitalPlan;
+  const canManageCapitalPlan = hasApprove || hasConfigure || hasInput;
+  const canAdjustCapitalPlan = hasConfigure || hasApprove;
+  const canSettleProject = hasConfigure || hasApprove;
+  const isReadOnly = !hasInput && !hasApprove && !hasConfigure;
+  const settlementSteps = hasApprove
+    ? profile.settlementSteps
+    : hasInput
+      ? profile.settlementSteps.filter((s) => s === 1 || s === 3)
+      : [];
 
   return {
     ...profile,
+    settlementSteps,
     canCreateDisbursement,
     canCreateCapitalPlan,
     canApproveChief,
@@ -228,7 +237,7 @@ export function getFinanceRolePermissions(user: AuthUser | null): FinanceRolePer
     canSettleProject,
     isReadOnly,
     userName: user?.displayName || user?.name || "Khách truy cập",
-    canExport: Boolean(user?.permissions.includes(EXPORT_PERMISSION)),
+    canExport: Boolean(permissions.includes(EXPORT_PERMISSION)),
   };
 }
 

@@ -82,6 +82,11 @@ export function clearAuthSession() {
   Cookies.remove("user_info", { path: "/" });
 }
 
+import {
+  getRoleEffectivePermissions,
+  getUserEffectivePermissions,
+} from "@/access-control";
+
 export function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
   const userInfoStr = Cookies.get("user_info");
@@ -89,7 +94,12 @@ export function getStoredUser(): AuthUser | null {
 
   try {
     const stored = JSON.parse(userInfoStr) as User & { permissions?: Permission[] };
-    return toAuthUser(stored, stored.permissions ?? []);
+    const authUser = toAuthUser(stored, stored.permissions ?? []);
+    const dynamicPerms = getUserEffectivePermissions(authUser);
+    return {
+      ...authUser,
+      permissions: dynamicPerms.length > 0 ? dynamicPerms : authUser.permissions,
+    };
   } catch (err) {
     console.error("Loi parse user_info tu Cookie:", err);
     return null;
@@ -119,13 +129,19 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
       };
     }
 
+    const dynamicPerms = getRoleEffectivePermissions(mockAccount.roleCode);
+    const resolvedPerms = dynamicPerms.length > 0 ? dynamicPerms : mockAccount.permissions;
+
     const authData = normalizeAuthResponse({
-      user: mockAccount.user,
+      user: {
+        ...mockAccount.user,
+        permissions: Array.isArray(resolvedPerms) ? resolvedPerms : undefined,
+      },
       tokens: {
         accessToken: `mock_access_token_${mockAccount.roleCode.toLowerCase()}_${Date.now()}`,
         refreshToken: `mock_refresh_token_${mockAccount.roleCode.toLowerCase()}_${Date.now()}`,
       },
-      permissions: mockAccount.permissions,
+      permissions: resolvedPerms,
     });
 
     persistAuthSession(authData, credentials.rememberMe ?? true);

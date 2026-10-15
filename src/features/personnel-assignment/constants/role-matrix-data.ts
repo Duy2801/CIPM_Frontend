@@ -111,7 +111,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   // M3
   {
     id: "m3.view",
-    code: "m3_procedures:view",
+    code: "m3_construction_procedures:view",
     name: "Xem thủ tục 7 GĐ & 46 bước",
     description: "Theo dõi luồng 46 bước thủ tục XDCB từ chuẩn bị đến hoàn thành",
     moduleId: "M3",
@@ -120,7 +120,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m3.update_step",
-    code: "m3_procedures:input",
+    code: "m3_construction_procedures:input",
     name: "Cập nhật bước thủ tục & biên bản",
     description: "Nhập hồ sơ, đính kèm tờ trình, biên bản nghiệm thu bước",
     moduleId: "M3",
@@ -129,7 +129,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m3.approve_step",
-    code: "m3_procedures:approve",
+    code: "m3_construction_procedures:approve",
     name: "Phê duyệt hoàn thành bước",
     description: "Ký duyệt chuyển giai đoạn và xác nhận hoàn tất bước thủ tục",
     moduleId: "M3",
@@ -138,7 +138,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m3.config_template",
-    code: "m3_procedures:configure",
+    code: "m3_construction_procedures:configure",
     name: "Cấu hình quy trình mẫu XDCB",
     description: "Thêm bớt, điều chỉnh danh mục bước thủ tục chuẩn của Ban",
     moduleId: "M3",
@@ -149,7 +149,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   // M4
   {
     id: "m4.view",
-    code: "m4_finance:view",
+    code: "m4_finance_settlement:view",
     name: "Xem tài chính & kế hoạch vốn",
     description: "Theo dõi dòng tiền, hạn mức giải ngân, số liệu Kho bạc Nhà nước",
     moduleId: "M4",
@@ -158,7 +158,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m4.create_disbursement",
-    code: "m4_finance:input",
+    code: "m4_finance_settlement:input",
     name: "Lập đề nghị giải ngân & thanh toán",
     description: "Soạn hồ sơ tạm ứng, thanh toán khối lượng A-B",
     moduleId: "M4",
@@ -167,7 +167,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m4.approve_disbursement",
-    code: "m4_finance:approve",
+    code: "m4_finance_settlement:approve",
     name: "Phê duyệt giải ngân & quyết toán",
     description: "Ký duyệt chứng từ thanh toán, phê duyệt tất toán vốn dự án",
     moduleId: "M4",
@@ -176,7 +176,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m4.export",
-    code: "m4_finance:export",
+    code: "m4_finance_settlement:export",
     name: "Xuất báo cáo tài chính KBNN",
     description: "In bảng kê thanh toán, phụ lục giải ngân vốn đầu tư công",
     moduleId: "M4",
@@ -187,7 +187,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   // M5
   {
     id: "m5.view",
-    code: "m5_personnel:view",
+    code: "m5_personnel_assignment:view",
     name: "Xem cơ cấu tổ chức & phân công",
     description: "Xem sơ đồ nhân sự, danh sách cán bộ và nhiệm vụ các tổ",
     moduleId: "M5",
@@ -196,7 +196,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m5.assign_project_leaders",
-    code: "m5_personnel:assign_leaders",
+    code: "m5_personnel_assignment:configure",
     name: "Phân công lãnh đạo dự án",
     description: "Chỉ định Chủ nhiệm dự án và Giám sát chính cho công trình",
     moduleId: "M5",
@@ -205,7 +205,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m5.grant_cnda",
-    code: "m5_personnel:grant_cnda",
+    code: "m5_personnel_assignment:grant_cnda",
     name: "Cấp / Thu hồi quyền CNDA",
     description: "Ủy quyền Quyền Chủ nhiệm dự án cho cán bộ thực hiện chính",
     moduleId: "M5",
@@ -214,7 +214,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m5.assign_tasks",
-    code: "m5_personnel:assign_tasks",
+    code: "m5_personnel_assignment:input",
     name: "Giao việc nhân viên theo giai đoạn",
     description: "Phân công nhiệm vụ cụ thể cho từng thành viên trong tổ/dự án",
     moduleId: "M5",
@@ -223,7 +223,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m5.review_submissions",
-    code: "m5_personnel:review_submissions",
+    code: "m5_personnel_assignment:approve",
     name: "Nghiệm thu kết quả & đôn đốc việc",
     description: "Kiểm tra sản phẩm nhiệm vụ, duyệt hoàn thành hoặc yêu cầu sửa",
     moduleId: "M5",
@@ -232,7 +232,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
   {
     id: "m5.manage_accounts",
-    code: "m5_personnel:manage_accounts",
+    code: "m5_personnel_assignment:accounts",
     name: "Quản lý nhân sự & tài khoản",
     description: "Thêm cán bộ mới, sửa chức danh, khóa hoặc mở tài khoản",
     moduleId: "M5",

@@ -46,7 +46,7 @@ export default function ProjectsFilterToolbar({
   onStatusFilterChange,
   totalFilteredCount,
   filteredProjects,
-  canCreateProject = true,
+  canCreateProject = false,
   onOpenCreateModal,
 }: ProjectsFilterToolbarProps) {
   const { message } = App.useApp();
@@ -240,6 +240,7 @@ export default function ProjectsFilterToolbar({
               onChange={(val) => onSortChange(val)}
               className="h-8.5 w-full text-xs"
               options={[
+                { value: "latest", label: "Mới nhất (Ưu tiên đầu danh sách)" },
                 { value: "code_asc", label: "Mã dự án (A-Z)" },
                 { value: "code_desc", label: "Mã dự án (Z-A)" },
                 { value: "name_asc", label: "Tên dự án (A-Z)" },

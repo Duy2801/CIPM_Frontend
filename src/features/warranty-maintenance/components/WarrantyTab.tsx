@@ -76,6 +76,11 @@ export default function WarrantyTab({
         );
       })
       .sort((a, b) => {
+        // Bản ghi mới thêm luôn ưu tiên lên đầu danh sách
+        const aCreated = a.id.startsWith("WR-1") ? Number(a.id.replace("WR-", "")) : (a as any).createdAt || 0;
+        const bCreated = b.id.startsWith("WR-1") ? Number(b.id.replace("WR-", "")) : (b as any).createdAt || 0;
+        if (aCreated !== bCreated) return bCreated - aCreated;
+
         // Đang còn hạn: sắp hết hạn trước; đã hết hạn xếp cuối
         const da = getCountdown(a, today).daysLeft;
         const db = getCountdown(b, today).daysLeft;

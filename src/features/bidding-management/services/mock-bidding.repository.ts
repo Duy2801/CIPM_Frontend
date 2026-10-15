@@ -77,6 +77,7 @@ export function createMockBiddingRepository(): BiddingRepository {
         winningPrice: input.winningPrice ? Number(input.winningPrice) : undefined,
         records,
         currentStepStartedAt: todayIso(),
+        createdAt: Date.now(),
       };
       dataset.packages = [pkg, ...dataset.packages];
       return clone(pkg);

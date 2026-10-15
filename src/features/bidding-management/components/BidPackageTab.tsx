@@ -85,6 +85,11 @@ export default function BidPackageTab({
       .filter((pkg) => matchesPackageFilter(pkg, filter, today))
       .filter((pkg) => !query || [pkg.code, pkg.name, pkg.winner ?? ""].some((value) => value.toLowerCase().includes(query)))
       .sort((a, b) => {
+        // Gói thầu mới tạo luôn ưu tiên hiển thị lên đầu danh sách
+        const aCreated = a.createdAt || (a.id.startsWith("PKG-1") ? Number(a.id.replace("PKG-", "")) : 0);
+        const bCreated = b.createdAt || (b.id.startsWith("PKG-1") ? Number(b.id.replace("PKG-", "")) : 0);
+        if (aCreated !== bCreated) return bCreated - aCreated;
+
         const weight = (pkg: BidPackage) => {
           if (getBidDeadlineStatus(pkg, today).state === "DANGER") return 0;
           if (pkg.submission || pkg.rejection) return 1;

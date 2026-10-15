@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ApartmentOutlined,
+  AppstoreOutlined,
   LockOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
@@ -13,6 +14,7 @@ import {
   ModuleTabLabel,
   ReasonModal,
 } from "@/components/workspace";
+import { hasMatrixPermission } from "@/access-control";
 import { PERSONNEL_TAB_LABELS } from "../constants/personnel-labels";
 import { usePersonnelAssignment } from "../hooks/usePersonnelAssignment";
 import type {
@@ -27,6 +29,7 @@ import AssignmentModal from "./AssignmentModal";
 import OrganizationTab from "./OrganizationTab";
 import ProjectLeadershipModal from "./ProjectLeadershipModal";
 import ProjectTeamTab from "./ProjectTeamTab";
+import RolePermissionMatrixModal from "./RolePermissionMatrixModal";
 
 type ModalState =
   | { mode: "closed" }
@@ -48,6 +51,7 @@ export default function PersonnelAssignmentScreen() {
   const [activeTab, setActiveTab] = useState<PersonnelTabKey | null>(null);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [leadershipModalOpen, setLeadershipModalOpen] = useState(false);
+  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
   const [leadershipProject, setLeadershipProject] = useState<PersonnelProject | undefined>();
   const [lockTargetId, setLockTargetId] = useState<string>();
   const [detailAssignmentId, setDetailAssignmentId] = useState<string>();
@@ -200,43 +204,61 @@ export default function PersonnelAssignmentScreen() {
     ? currentTab
     : tabItems[0]?.key || "project-team";
 
+  const canConfigPermissions =
+    hasMatrixPermission(controller.currentUser, "sys.config_permissions") ||
+    controller.currentUser?.permissions?.includes("system:permissions" as any) ||
+    controller.currentUser?.role === "ADMIN";
+
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
 
       <section id="personnel-tabs" className="scroll-mt-4">
-        <div className="mb-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-2xs">
-          {tabItems.map((item) => {
-            const isActive = resolvedCurrentTab === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActiveTab(item.key as PersonnelTabKey)}
-                className={`relative flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
-                  isActive
-                    ? "bg-[#DC2626] text-white shadow-sm font-bold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-                }`}
-              >
-                <span className={`text-base leading-none transition-colors ${isActive ? "text-white" : "text-slate-500"}`}>
-                  {item.key === "project-team" ? (
-                    <TeamOutlined />
-                  ) : item.key === "organization" ? (
-                    <ApartmentOutlined />
-                  ) : (
-                    <SafetyCertificateOutlined />
-                  )}
-                </span>
-                <span className="whitespace-nowrap tracking-wide">
-                  {item.key === "project-team"
-                    ? projectTeamTabTitle
-                    : item.key === "organization"
-                    ? PERSONNEL_TAB_LABELS.organization
-                    : PERSONNEL_TAB_LABELS.accounts}
-                </span>
-              </button>
-            );
-          })}
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+          <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-2xs">
+            {tabItems.map((item) => {
+              const isActive = resolvedCurrentTab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveTab(item.key as PersonnelTabKey)}
+                  className={`relative flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
+                    isActive
+                      ? "bg-[#DC2626] text-white shadow-sm font-bold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                >
+                  <span className={`text-base leading-none transition-colors ${isActive ? "text-white" : "text-slate-500"}`}>
+                    {item.key === "project-team" ? (
+                      <TeamOutlined />
+                    ) : item.key === "organization" ? (
+                      <ApartmentOutlined />
+                    ) : (
+                      <SafetyCertificateOutlined />
+                    )}
+                  </span>
+                  <span className="whitespace-nowrap tracking-wide">
+                    {item.key === "project-team"
+                      ? projectTeamTabTitle
+                      : item.key === "organization"
+                      ? PERSONNEL_TAB_LABELS.organization
+                      : PERSONNEL_TAB_LABELS.accounts}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {canConfigPermissions && (
+            <Button
+              intent="outline"
+              icon={<AppstoreOutlined />}
+              className="font-semibold text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]/50 bg-white shadow-2xs"
+              onClick={() => setMatrixModalOpen(true)}
+            >
+              Ma trận phân quyền
+            </Button>
+          )}
         </div>
 
         {/* Nội dung tab đang hiển thị */}
@@ -312,6 +334,13 @@ export default function PersonnelAssignmentScreen() {
             }}
           />
         )}
+
+      {matrixModalOpen && (
+        <RolePermissionMatrixModal
+          open={matrixModalOpen}
+          onClose={() => setMatrixModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

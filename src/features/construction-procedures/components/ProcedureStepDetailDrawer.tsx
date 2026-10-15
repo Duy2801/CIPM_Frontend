@@ -40,6 +40,7 @@ import {
   isDirectorUser,
   isLeadOfDepartment,
 } from "../constants/procedure-department-templates";
+import { canUserDo } from "@/access-control";
 
 interface ProcedureStepDetailDrawerProps {
   step: ProcedureStep | null;
@@ -193,7 +194,7 @@ export default function ProcedureStepDetailDrawer({
   const isNotStarted = step.status === "NOT_STARTED";
   const isDisabled = !step.isEnabled;
 
-  // Xác định vai trò
+  // Xác định vai trò & quyền hạn theo Ma trận phân quyền
   const isDirector = isDirectorUser(user);
   const isLeadOfThisStep = isLeadOfDepartment(user, step.department);
   const userName = (user?.displayName || user?.name || "").trim().toLowerCase();
@@ -203,6 +204,10 @@ export default function ProcedureStepDetailDrawer({
       (assignedName === userName ||
         (step.assignedToId && step.assignedToId === user?.id))
   );
+
+  const canOperateStep = canUserDo(user, "m3_construction_procedures", "input") || isAssigned;
+  const canApproveStep = canUserDo(user, "m3_construction_procedures", "approve") || isLeadOfThisStep;
+  const canAssignStep = canUserDo(user, "m3_construction_procedures", "configure") || canApproveStep;
 
   const departmentStaff = getDepartmentStaff(step.department);
 
@@ -269,8 +274,8 @@ export default function ProcedureStepDetailDrawer({
         footer={
           <div className="flex items-center justify-between gap-2.5 flex-wrap px-1 py-1">
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Thao tác của Thành viên được giao việc */}
-              {isAssigned && !isCompleted && !isDisabled && sequence.canOperate && (
+              {/* Thao tác của Thành viên được giao việc hoặc có quyền nhập/sửa */}
+              {canOperateStep && !isCompleted && !isDisabled && sequence.canOperate && (
                 <>
                   {isNotStarted && (
                     <Button
@@ -283,12 +288,12 @@ export default function ProcedureStepDetailDrawer({
                     </Button>
                   )}
 
-                  {step.submissionStatus === "SUBMITTED" && !isLeadOfThisStep && (
+                  {step.submissionStatus === "SUBMITTED" && !canApproveStep && (
                     <Tag
                       className="!bg-amber-50 !text-amber-800 !border-amber-200 text-xs font-semibold flex items-center gap-1.5 px-3 py-1.5 shadow-2xs"
                       icon={<ClockCircleFilled className="text-amber-600" />}
                     >
-                      Đã nộp kết quả – Đang chờ Tổ trưởng phê duyệt
+                      Đã nộp kết quả – Đang chờ phê duyệt
                     </Tag>
                   )}
 
@@ -336,8 +341,8 @@ export default function ProcedureStepDetailDrawer({
                 </>
               )}
 
-              {/* Thao tác của Lead: Phê duyệt / Từ chối */}
-              {isLeadOfThisStep && !isDirector && step.submissionStatus === "SUBMITTED" && !isCompleted && (
+              {/* Thao tác Phê duyệt / Từ chối (dành cho người có quyền approve hoặc Lead) */}
+              {canApproveStep && step.submissionStatus === "SUBMITTED" && !isCompleted && (
                 <>
                   <Button
                     intent="primary"
@@ -364,7 +369,6 @@ export default function ProcedureStepDetailDrawer({
 
               {/* Thao tác Bỏ qua bước: Chỉ cho phép khi CHƯA có ai nộp hồ sơ/nộp duyệt */}
               {canUpdateProcedure &&
-                !isDirector &&
                 !isDisabled &&
                 !isCompleted &&
                 !isSkipped &&
@@ -405,8 +409,8 @@ export default function ProcedureStepDetailDrawer({
                 </Tag>
               )}
               {isDirector && (
-                <Tag className="!bg-blue-50 !text-blue-700 !border-blue-200 text-xs font-semibold" icon={<EyeOutlined />}>
-                  Ban Giám đốc (Chỉ xem)
+                <Tag className="!bg-red-50 !text-red-700 !border-red-200 text-xs font-semibold">
+                  Ban Giám đốc (Toàn quyền)
                 </Tag>
               )}
               {renderStatusBadge()}
@@ -450,7 +454,7 @@ export default function ProcedureStepDetailDrawer({
                 Bạn là người phụ trách bước này
               </Tag>
             )}
-            {!isAssigned && !isLeadOfThisStep && !isDirector && (
+            {!isAssigned && !isLeadOfThisStep && !canOperateStep && !canApproveStep && (
               <Tag className="!bg-slate-100 !text-slate-600 !border-slate-300 text-xs">
                 Chỉ có quyền xem (Chỉ người được giao mới có quyền cập nhật)
               </Tag>
@@ -462,7 +466,7 @@ export default function ProcedureStepDetailDrawer({
               <span className="text-xs text-slate-500 font-medium block mb-1">
                 Người thực hiện:
               </span>
-              {isLeadOfThisStep && !isCompleted ? (
+              {canAssignStep && !isCompleted ? (
                 <Select
                   className="w-full text-xs"
                   placeholder="Chọn thành viên thực hiện..."

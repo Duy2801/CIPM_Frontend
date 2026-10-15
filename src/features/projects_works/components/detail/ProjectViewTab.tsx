@@ -16,9 +16,7 @@ import {
   getProjectHealthStatus,
 } from "../../constants/project-enums";
 import type { ProjectItem } from "../../types/project.types";
-import {
-  isBoardOfDirectors,
-} from "../../utils/project-permissions";
+import { canUserDo } from "@/access-control";
 
 interface ProjectViewTabProps {
   project: ProjectItem;
@@ -279,7 +277,7 @@ export default function ProjectViewTab({
 
       {/* Footer thao tác của màn hình Chi tiết (Cố định ở đáy, nút chức năng đứng TRƯỚC, Đóng đứng SAU) */}
       <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)]">
-        {isBoardOfDirectors(user) && (
+        {canUserDo(user, "m2_projects", "input") && (
           <Button
             intent="primary"
             scale="sm"

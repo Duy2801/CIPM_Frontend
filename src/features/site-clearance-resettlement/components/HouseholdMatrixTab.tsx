@@ -116,6 +116,11 @@ export default function HouseholdMatrixTab({
           ),
       )
       .sort((a, b) => {
+        // Hộ mới thêm luôn được ưu tiên hiển thị lên đầu danh sách
+        const aCreated = a.createdAt || (a.id.startsWith("HH-1") ? Number(a.id.replace("HH-", "")) : 0);
+        const bCreated = b.createdAt || (b.id.startsWith("HH-1") ? Number(b.id.replace("HH-", "")) : 0);
+        if (aCreated !== bCreated) return bCreated - aCreated;
+
         const weight = (item: Household) => {
           const legal = getLegalStatus(item, today).state;
           if (legal === "OVERDUE") return 0;
@@ -382,7 +387,15 @@ export default function HouseholdMatrixTab({
             : undefined
         }
         onClose={() => setCreateDrawerOpen(false)}
-        onCreate={controller.createHousehold}
+        onCreate={async (input) => {
+          const res = await controller.createHousehold(input);
+          if (res) {
+            setSearch("");
+            setFilter("ALL");
+            setCurrentPage(1);
+          }
+          return res;
+        }}
       />
     </Card>
   );

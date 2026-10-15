@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { usePathname } from "next/navigation";
@@ -18,6 +18,7 @@ import {
 } from "@/features/auth";
 import { useAppRefreshStore } from "@/stores/app-refresh.store";
 import { useAuthStore } from "@/stores/auth.store";
+import { getUserEffectivePermissions } from "@/access-control";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -81,6 +82,21 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     } else {
       useAuthStore.getState().setInitialized(true);
     }
+  }, []);
+
+  // Lắng nghe sự kiện cập nhật Ma trận phân quyền để cập nhật tức thì toàn bộ màn hình
+  React.useEffect(() => {
+    const handlePermissionsUpdated = () => {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        const freshPerms = getUserEffectivePermissions(currentUser);
+        useAuthStore.getState().updateUser({ permissions: freshPerms });
+      }
+    };
+    window.addEventListener("cipm-permissions-updated", handlePermissionsUpdated);
+    return () => {
+      window.removeEventListener("cipm-permissions-updated", handlePermissionsUpdated);
+    };
   }, []);
 
   const isAuthRoute = pathname.startsWith("/auth") || pathname === "/login";

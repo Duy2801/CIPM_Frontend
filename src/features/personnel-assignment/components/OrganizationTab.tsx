@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   ApartmentOutlined,
-  AppstoreOutlined,
   CrownOutlined,
   LockOutlined,
   MailOutlined,
@@ -30,12 +29,10 @@ import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { Staff, Team } from "../types/personnel.types";
 import AddTeamModal from "./AddTeamModal";
 import StaffProjectRoleModal from "./StaffProjectRoleModal";
-import RolePermissionMatrixModal from "./RolePermissionMatrixModal";
 
 export default function OrganizationTab({ controller }: { controller: PersonnelController }) {
   const { data, staff, permissions } = controller;
   const [addTeamModalOpen, setAddTeamModalOpen] = useState(false);
-  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStaffForRole, setSelectedStaffForRole] = useState<Staff | null>(null);
@@ -216,28 +213,16 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
           description="Ban Giám đốc và các tổ chuyên môn. Quản lý thông tin, phân công và quyền hạn cán bộ."
           countLabel={filteredStaff.length === staff.length ? `${staff.length} cán bộ` : `${filteredStaff.length}/${staff.length} cán bộ`}
           actions={
-            <Flex align="center" gap={8}>
-              {(permissions.canManageAccounts || permissions.canManageOrganization) && (
-                <Button
-                  intent="outline"
-                  icon={<AppstoreOutlined />}
-                  className="font-semibold text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]/50 bg-white shadow-2xs"
-                  onClick={() => setMatrixModalOpen(true)}
-                >
-                  Ma trận phân quyền
-                </Button>
-              )}
-              {(permissions.canManageAccounts || permissions.canManageOrganization) && (
-                <Button
-                  intent="primary"
-                  icon={<ApartmentOutlined />}
-                  className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
-                  onClick={() => setAddTeamModalOpen(true)}
-                >
-                  Thêm phòng ban
-                </Button>
-              )}
-            </Flex>
+            (permissions.canManageAccounts || permissions.canManageOrganization) && (
+              <Button
+                intent="primary"
+                icon={<ApartmentOutlined />}
+                className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
+                onClick={() => setAddTeamModalOpen(true)}
+              >
+                Thêm phòng ban
+              </Button>
+            )
           }
           toolbar={
             <Flex align="center" justify="space-between" wrap="wrap" gap="small" className="w-full">
@@ -365,15 +350,6 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
           onRevokeRole={controller.revokeActingDirector}
           onUpdateStaff={controller.updateStaff}
           onUpdateProjectPermissions={controller.updateProjectPermissions}
-        />
-      )}
-
-      {/* Modal Ma trận phân quyền hệ thống */}
-      {matrixModalOpen && (
-        <RolePermissionMatrixModal
-          open={matrixModalOpen}
-          onClose={() => setMatrixModalOpen(false)}
-          canManage={permissions.canManageAccounts}
         />
       )}
     </>

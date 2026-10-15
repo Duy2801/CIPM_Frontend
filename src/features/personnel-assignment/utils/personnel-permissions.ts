@@ -1,6 +1,6 @@
 import type { AuthUser } from "@/types/auth";
 import { resolveRoleProfile } from "../../../utils/role-profile.ts";
-import type { PersonnelRolePermissions } from "../types/personnel.types";
+import type { PersonnelRolePermissions, PersonnelTabKey } from "../types/personnel.types";
 
 type PersonnelRoleProfile = Omit<PersonnelRolePermissions, "roleCode" | "userName" | "canExport">;
 
@@ -23,23 +23,23 @@ const ROLE_PROFILES: Record<string, PersonnelRoleProfile> = {
     canAssignProjectLeaders: true,
     canGrantRole: true,
     canRevokeRole: true,
-    canAssignStaffTasks: false,
-    canAssign: false,
-    isProjectLeader: false,
+    canAssignStaffTasks: true,
+    canAssign: true,
+    isProjectLeader: true,
     canManageTeamMembers: true,
     canUrgeMembers: true,
     canManageAccounts: true,
     canManageOrganization: true,
     defaultTab: "organization",
-    scopeDescription: "Quản lý cơ cấu tổ chức, phân công nhân sự và tài khoản hệ thống.",
+    scopeDescription: "Toàn quyền quản trị nhân sự, cơ cấu tổ chức, phân công dự án và nhiệm vụ cán bộ.",
     allowedDuties: [
-      "Phân công Người thực hiện chính (Chủ nhiệm dự án) & Người giám sát chính cho toàn bộ dự án",
+      "Phân công Người thực hiện chính (Chủ nhiệm dự án) & Giám sát chính",
       "Cấp và thu hồi vai trò Quyền Chủ nhiệm dự án (chỉ cấp cho Người thực hiện chính)",
-      "Đôn đốc tiến độ dự án cấp lãnh đạo",
+      "Phân công và điều phối nhiệm vụ cán bộ, đôn đốc tiến độ",
       "Quản lý cơ cấu phòng ban và tài khoản hệ thống",
-      "Xuất báo cáo phân công nhân sự",
+      "Toàn quyền xuất báo cáo nhân sự và ma trận phân quyền",
     ],
-    readingGuide: "Giám đốc chỉ thực hiện phân công dự án và cấp quyền chủ dự án. Việc phân công nhiệm vụ nhân viên do Chủ nhiệm dự án thực hiện.",
+    readingGuide: "Giám đốc có toàn quyền phân công lãnh đạo dự án, giao việc nhân viên, cấp quyền và quản trị hệ thống.",
   },
   DEPUTY_DIRECTOR: {
     roleTitle: "Phó Giám đốc",
@@ -128,22 +128,30 @@ export interface PersonnelContext {
   teams?: Array<{ id: string; name: string; leaderId: string }>;
 }
 
+import { getUserEffectivePermissions } from "@/access-control";
+
 export function getPersonnelRolePermissions(
   user: AuthUser | null,
   context?: PersonnelContext,
 ): PersonnelRolePermissions {
   const baseProfile = resolveRoleProfile(user, ROLE_PROFILES, NO_ACCESS_PROFILE, "m5_personnel_assignment");
-  const permissions = (user?.permissions ?? []) as string[];
+  const permissions = (getUserEffectivePermissions(user) ?? []) as string[];
 
-  const hasView = permissions.includes("m5_personnel_assignment:view");
-  const hasInput = permissions.includes("m5_personnel_assignment:input");
-  const hasApprove = permissions.includes("m5_personnel_assignment:approve");
-  const hasConfigure = permissions.includes("m5_personnel_assignment:configure");
-  const hasPhaseAssign = permissions.includes("project.phase.assign");
-  const hasReportExport = permissions.includes("project.report.export");
-
-  // 1. Kiểm tra nếu người dùng có quyền quản trị/phân công lãnh đạo dự án
-  const isDirector = user?.role === "ADMIN" || user?.role === "DEPUTY_DIRECTOR" || hasApprove || hasConfigure;
+  // 1. Phân quyền chi tiết dựa trên Ma trận phân quyền (Single Source of Truth)
+  // Mọi hành động, giao diện và nút bấm đều dựa trên ma trận phân quyền
+  const canAccessModule = permissions.includes("m5_personnel_assignment:view") || permissions.includes("m5.view");
+  const canAssignProjectLeaders = permissions.includes("m5.assign_project_leaders") || permissions.includes("m5_personnel_assignment:configure");
+  const canGrantRole = permissions.includes("m5.grant_cnda") || permissions.includes("m5_personnel_assignment:grant_cnda");
+  const canRevokeRole = canGrantRole;
+  const canAssignStaffTasks = permissions.includes("m5.assign_tasks") || permissions.includes("m5_personnel_assignment:input");
+  const canReviewSubmissions = permissions.includes("m5.review_submissions") || permissions.includes("m5_personnel_assignment:approve");
+  const canManageAccounts = permissions.includes("m5.manage_accounts") || permissions.includes("m5_personnel_assignment:accounts");
+  const canManageOrganization = canAssignProjectLeaders || canManageAccounts;
+  const canExport = Boolean(
+    permissions.includes("m5_personnel_assignment:export") ||
+    permissions.includes("m5.export") ||
+    permissions.includes("project.report.export")
+  );
 
   // 2. Tìm cán bộ tương ứng trong danh sách nhân sự (khớp theo ID, Email hoặc Họ tên)
   let matchingStaffId: string | undefined;
@@ -188,34 +196,49 @@ export function getPersonnelRolePermissions(
   );
   const isTeamLeader = Boolean(leadingTeam);
 
-  // 6. Nếu là Ban Giám đốc / Có quyền approve/configure
-  if (isDirector) {
+  // Xác định tab mặc định phù hợp với quyền hạn thực tế
+  let resolvedDefaultTab: PersonnelTabKey = "project-team";
+  if (canManageOrganization) {
+    resolvedDefaultTab = "organization";
+  } else if (canManageAccounts) {
+    resolvedDefaultTab = "accounts";
+  }
+
+  // 6. Nếu là Ban Giám đốc hoặc có quyền quản trị phân công lãnh đạo
+  const isLeadership = user?.role === "ADMIN" || user?.role === "DEPUTY_DIRECTOR";
+  if (isLeadership || canAssignProjectLeaders || canGrantRole) {
     return {
       ...baseProfile,
-      canAccessModule: true,
-      canAssignProjectLeaders: true,
-      canGrantRole: true,
-      canRevokeRole: true,
-      canManageAccounts: hasConfigure || user?.role === "ADMIN",
-      canManageOrganization: true,
-      canAssignStaffTasks: false,
-      canAssign: false,
-      isProjectLeader: false,
+      canAccessModule,
+      canAssignProjectLeaders,
+      canGrantRole,
+      canRevokeRole,
+      canManageAccounts,
+      canManageOrganization,
+      canAssignStaffTasks,
+      canAssign: canAssignStaffTasks,
+      isProjectLeader: true,
+      canManageTeamMembers: canAssignStaffTasks || canAssignProjectLeaders,
+      canUrgeMembers: true,
+      canExport,
+      defaultTab: resolvedDefaultTab,
     };
   }
 
-  // 7. Nếu người dùng có role trực tiếp là ACTING_DIRECTOR / PROJECT_LEADER hoặc có dự án được phân quyền CNDA và có quyền thao tác
-  if (user?.role === "ACTING_DIRECTOR" || user?.role === "PROJECT_LEADER" || (actingProjectIds.length > 0 && (hasInput || hasPhaseAssign))) {
+  // 7. Nếu người dùng có role trực tiếp là ACTING_DIRECTOR / PROJECT_LEADER hoặc có dự án được phân quyền CNDA
+  if (user?.role === "ACTING_DIRECTOR" || user?.role === "PROJECT_LEADER" || (actingProjectIds.length > 0 && canAssignStaffTasks)) {
     return {
       ...baseProfile,
       ...ROLE_PROFILES.ACTING_DIRECTOR,
       roleCode: user?.role ?? "ACTING_DIRECTOR",
       userName: user?.displayName || user?.name || "Quyền Chủ nhiệm dự án",
-      canExport: Boolean(user?.permissions?.includes("m5_personnel_assignment:export") || hasReportExport),
-      canAccessModule: true,
-      canAssignProjectLeaders: false,
-      canAssignStaffTasks: true,
-      canAssign: true,
+      canAccessModule,
+      canExport,
+      canAssignProjectLeaders,
+      canGrantRole,
+      canRevokeRole,
+      canAssignStaffTasks,
+      canAssign: canAssignStaffTasks,
       isProjectLeader: true,
       isTeamLeader,
       leadingTeamId: leadingTeam?.id as any,
@@ -223,6 +246,9 @@ export function getPersonnelRolePermissions(
       isMember: memberProjectIds.length > 0,
       actingProjectIds,
       memberProjectIds,
+      canManageAccounts,
+      canManageOrganization,
+      defaultTab: "project-team",
     };
   }
 
@@ -232,21 +258,21 @@ export function getPersonnelRolePermissions(
       ...baseProfile,
       roleTitle: matchingStaff?.title || "Tổ trưởng chuyên môn",
       userName: user?.displayName || user?.name || "Tổ trưởng chuyên môn",
-      canAccessModule: true,
-      canExport: Boolean(user?.permissions?.includes("m5_personnel_assignment:export") || hasReportExport),
+      canAccessModule,
+      canExport,
       isMember: true,
       isTeamLeader: true,
       leadingTeamId: leadingTeam?.id as any,
       leadingTeamName: leadingTeam?.name,
-      canAssign: true,
-      canAssignStaffTasks: true,
-      canAssignProjectLeaders: false,
-      canGrantRole: false,
-      canRevokeRole: false,
+      canAssign: canAssignStaffTasks,
+      canAssignStaffTasks,
+      canAssignProjectLeaders,
+      canGrantRole,
+      canRevokeRole,
       canUrgeMembers: true,
       canManageTeamMembers: true,
-      canManageAccounts: false,
-      canManageOrganization: false,
+      canManageAccounts,
+      canManageOrganization,
       isProjectLeader: false,
       memberProjectIds,
       defaultTab: "project-team",
@@ -265,20 +291,21 @@ export function getPersonnelRolePermissions(
     ...baseProfile,
     roleTitle: matchingStaff?.title || "Thành viên dự án",
     userName: user?.displayName || user?.name || "Thành viên dự án",
-    canAccessModule: true,
+    canAccessModule,
     isMember: true,
-    canAssign: false,
-    canAssignStaffTasks: false,
-    canAssignProjectLeaders: false,
-    canGrantRole: false,
-    canRevokeRole: false,
+    canAssign: canAssignStaffTasks,
+    canAssignStaffTasks,
+    canAssignProjectLeaders,
+    canGrantRole,
+    canRevokeRole,
     canUrgeMembers: false,
     canManageTeamMembers: false,
-    canManageAccounts: false,
-    canManageOrganization: false,
+    canManageAccounts,
+    canManageOrganization,
     isProjectLeader: false,
     memberProjectIds,
     defaultTab: "project-team",
+    canExport,
     scopeDescription: "Theo dõi nhiệm vụ được giao theo giai đoạn, phối hợp cùng tổ công tác và gửi xác nhận hoàn thành công việc kèm hồ sơ.",
     allowedDuties: [
       "Xem nhiệm vụ được phân công và giai đoạn thực hiện của bản thân",
