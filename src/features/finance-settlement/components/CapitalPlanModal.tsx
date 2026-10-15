@@ -3,7 +3,7 @@
 import type { ChangeEvent, ReactNode } from "react";
 import { EditOutlined, InfoCircleOutlined, PaperClipOutlined, PlusCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
-import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, Text } from "@/components/ui";
+import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, StandardFileUpload, Text } from "@/components/ui";
 import { CAPITAL_SOURCES } from "../constants/finance-labels";
 import { parseMoney } from "@/utils/format-money";
 import type {
@@ -280,17 +280,13 @@ export default function CapitalPlanModal({
                 </Form.Item>
                 <Form.Item
                   name="approvalFileName"
-                  label={<FieldLabel required>File Quyết định phê duyệt</FieldLabel>}
-                  extra="Đính kèm file Quyết định giao vốn (.pdf, .doc, .docx) — Bắt buộc ≥ 1 file"
                   rules={[{ required: true, message: "Vui lòng đính kèm file Quyết định giao vốn." }]}
-                  getValueFromEvent={(event: ChangeEvent<HTMLInputElement>) => event.target.files?.[0]?.name ?? ""}
-                  getValueProps={() => ({})}
                   className="!mb-0"
                 >
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-emerald-700 hover:border-emerald-400"
+                  <StandardFileUpload
+                    title="Đính kèm file Quyết định phê duyệt giao vốn"
+                    subTitle="Chấp nhận .pdf, .docx, .doc (Bắt buộc ≥ 1 file)"
+                    onSingleFileNameChange={(name) => form.setFieldsValue({ approvalFileName: name })}
                   />
                 </Form.Item>
               </Card>
@@ -311,17 +307,14 @@ export default function CapitalPlanModal({
                 </Form.Item>
                 <Form.Item
                   name="approvalFileName"
-                  label={<FieldLabel required>File văn bản phê duyệt</FieldLabel>}
                   rules={[{ required: true, message: "Đính kèm file văn bản phê duyệt điều chỉnh." }]}
-                  extra="Đính kèm file văn bản (.pdf, .doc, .docx) — Bắt buộc"
-                  getValueFromEvent={(event: ChangeEvent<HTMLInputElement>) => event.target.files?.[0]?.name ?? ""}
-                  getValueProps={() => ({})}
                   className="!mb-0"
                 >
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-emerald-700 hover:border-emerald-400"
+                  <StandardFileUpload
+                    title="Đính kèm file văn bản phê duyệt điều chỉnh"
+                    subTitle="Chấp nhận .pdf, .docx, .doc (Bắt buộc ≥ 1 file)"
+                    singleFileName={adjustingPlan?.approvalFileName}
+                    onSingleFileNameChange={(name) => form.setFieldsValue({ approvalFileName: name })}
                   />
                 </Form.Item>
                 {adjustingPlan?.approvalFileName && (

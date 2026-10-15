@@ -258,16 +258,14 @@ export default function EditProjectModal({
 
           <Flex vertical gap={4}>
             <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              TỔNG MỨC ĐẦU TƯ (TỶ VNĐ)
+              TỔNG MỨC ĐẦU TƯ (VNĐ)
             </Text>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="VD: 100"
+            <MoneyInput
+              placeholder="VD: 1.000.000.000"
               value={formData.totalInvestment === "" ? "" : formData.totalInvestment}
               onChange={(e) => {
-                const val = e.target.value === "" ? "" : Number(e.target.value);
+                const raw = e.target.value;
+                const val = raw === "" ? "" : parseMoney(raw);
                 setFormData({ ...formData, totalInvestment: val });
                 setErrorMsg("");
               }}

@@ -9,7 +9,7 @@ import {
   PlusCircleOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, Text, useWatch } from "@/components/ui";
+import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, StandardFileUpload, Text, useWatch } from "@/components/ui";
 import { parseMoney } from "@/utils/format-money";
 import type {
   Contract,
@@ -379,28 +379,18 @@ export default function DisbursementModal({
             </Card>
 
             {/* 8. File chứng từ (≥ 1 file trước khi lưu) */}
-            <SectionCard title="File chứng từ">
-              <Form.Item
-                name="evidenceName"
-                label={<FieldLabel required>File chứng từ</FieldLabel>}
-                extra="Tờ trình, ủy nhiệm chi, biên bản NT — Bắt buộc ≥ 1 file trước khi lưu"
-                rules={[{ required: true, message: "Cần ít nhất 1 file chứng từ trước khi lưu." }]}
-                getValueFromEvent={(event: ChangeEvent<HTMLInputElement>) => event.target.files?.[0]?.name ?? ""}
-                getValueProps={() => ({})}
-                className="!mb-0"
-              >
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-                  className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-emerald-700 hover:border-emerald-400"
-                />
-              </Form.Item>
-              {isEditing && editingDisbursement?.evidence[0] && (
-                <Text className="mt-2 block text-[11px] text-slate-500">
-                  Đang dùng: {editingDisbursement.evidence[0].name} – chọn file mới nếu cần thay thế.
-                </Text>
-              )}
-            </SectionCard>
+            <Form.Item
+              name="evidenceName"
+              rules={[{ required: true, message: "Cần ít nhất 1 file chứng từ trước khi lưu." }]}
+              className="!mb-0"
+            >
+              <StandardFileUpload
+                title="Đính kèm tệp chứng từ thanh toán"
+                subTitle="Tờ trình, ủy nhiệm chi, biên bản nghiệm thu (Bắt buộc ≥ 1 file)"
+                singleFileName={isEditing ? editingDisbursement?.evidence[0]?.name : undefined}
+                onSingleFileNameChange={(name) => form.setFieldsValue({ evidenceName: name })}
+              />
+            </Form.Item>
           </Flex>
         </Form>
       </div>

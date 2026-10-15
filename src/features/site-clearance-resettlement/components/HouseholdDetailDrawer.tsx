@@ -16,7 +16,8 @@ import {
   UploadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Flex, Form, Input, Modal, Text } from "@/components/ui";
+import { Button, Drawer, Flex, Form, Input, Modal, StandardFileUpload, Text } from "@/components/ui";
+import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi, todayIso } from "@/utils/date";
 import { cn } from "@/utils/cn";
 import { GPMB_STEPS, LAND_TYPE_LABELS } from "../constants/gpmb-steps";
@@ -101,7 +102,7 @@ export default function HouseholdDetailDrawer({
     { label: "Loại đất", value: LAND_TYPE_LABELS[household.landType] },
     {
       label: "Tiền bồi thường",
-      value: `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 }).format(household.compensation)} tỷ đồng`,
+      value: `${formatMoneyString(household.compensation)} VNĐ`,
     },
   ];
 
@@ -643,56 +644,17 @@ export default function HouseholdDetailDrawer({
               <Input placeholder="Ví dụ: 125/BB-BT hoặc 45/QĐ-UBND" className="h-9 text-xs" />
             </Form.Item>
 
-            <Form.Item
-              name="fileName"
-              label={
-                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <PaperClipOutlined className="text-slate-400" />
-                  Tệp đính kèm {editingStepDef.forms ? `(${editingStepDef.forms})` : "(tùy chọn)"}
-                </span>
-              }
-              className="mb-3"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                  <UploadOutlined className="text-slate-500 text-sm" />
-                  <span>Chọn tệp đính kèm</span>
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.png,.jpg"
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      const name = file?.name ?? "";
-                      supplementForm.setFieldsValue({ fileName: name });
-                      setSelectedFileName(name);
-                    }}
-                  />
-                </label>
-
-                {selectedFileName ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-xs text-slate-800 font-medium">
-                    <FileTextOutlined className="text-slate-500" />
-                    <span className="truncate max-w-[220px] font-mono">{selectedFileName}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        supplementForm.setFieldsValue({ fileName: "" });
-                        setSelectedFileName("");
-                      }}
-                      className="text-slate-400 hover:text-rose-600 ml-1 cursor-pointer font-bold"
-                      title="Xóa tệp"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-[11.5px] text-slate-400">
-                    Chưa có tệp (PDF, DOC, DOCX, ảnh)
-                  </span>
-                )}
-              </div>
-            </Form.Item>
+            <div className="mb-3">
+              <StandardFileUpload
+                title={`Tệp đính kèm ${editingStepDef.forms ? `(${editingStepDef.forms})` : "(tùy chọn)"}`}
+                subTitle="Biên bản scan, quyết định, phiếu khảo sát (PDF, DOCX, ảnh)"
+                singleFileName={selectedFileName}
+                onSingleFileNameChange={(name) => {
+                  supplementForm.setFieldsValue({ fileName: name });
+                  setSelectedFileName(name);
+                }}
+              />
+            </div>
 
             <Form.Item
               name="note"

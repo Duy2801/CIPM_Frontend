@@ -4,6 +4,7 @@ import React from "react";
 import { App } from "antd";
 import { DownloadOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Input, Select } from "@/components/ui";
+import { formatMoneyString } from "@/utils/format-money";
 import { useAuthStore } from "@/stores/auth.store";
 import { getProjectExportScope } from "../utils/project-permissions";
 import {
@@ -82,9 +83,9 @@ export default function ProjectsFilterToolbar({
       "Tên công trình",
       "Loại công trình",
       "Nguồn vốn",
-      "Tổng mức ĐT (tỷ)",
-      "KH vốn 2026 (tỷ)",
-      "Đã giải ngân (tỷ)",
+      "Tổng mức ĐT (VNĐ)",
+      "KH vốn 2026 (VNĐ)",
+      "Đã giải ngân (VNĐ)",
       "Người phụ trách",
       "Giám sát KT",
       "Giai đoạn",
@@ -99,9 +100,9 @@ export default function ProjectsFilterToolbar({
       `"${p.name.replace(/"/g, '""')}"`,
       `"${p.type}"`,
       `"${p.fundingSource}"`,
-      p.totalInvestment.toFixed(2),
-      p.plan2026.toFixed(2),
-      p.disbursedAmount.toFixed(2),
+      formatMoneyString(p.totalInvestment),
+      formatMoneyString(p.plan2026),
+      formatMoneyString(p.disbursedAmount),
       `"${p.managerName}"`,
       `"${p.supervisorName}"`,
       `"${p.currentStage}"`,

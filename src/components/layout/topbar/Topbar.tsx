@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { antdLightTheme, themeClassNames } from "@/components/theme";
 import { useAppRefreshStore } from "@/stores/app-refresh.store";
+import { useFiscalYearStore } from "@/stores/fiscal-year.store";
 import { getTopbarPageTitle } from "./topbar-page-title";
 
 interface TopbarProps {
@@ -29,6 +30,7 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
   const pathname = usePathname();
   const pageTitle = getTopbarPageTitle(pathname);
   const { isRefreshing, triggerRefresh, setRefreshing } = useAppRefreshStore();
+  const { selectedYear, setSelectedYear, availableYears } = useFiscalYearStore();
 
   const handleRefresh = () => {
     triggerRefresh();
@@ -66,7 +68,8 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
               <CalendarOutlined className="text-slate-500 text-xs" />
               <Text className="!text-[12px] !text-slate-700 font-semibold whitespace-nowrap">Niên độ:</Text>
               <Select
-                defaultValue="2026"
+                value={selectedYear}
+                onChange={setSelectedYear}
                 intent="subtle"
                 scale="compact"
                 className="!w-[76px] [&_.ant-select-selector]:!px-1 [&_.ant-select-selection-item]:!text-[12px] [&_.ant-select-selection-item]:!font-bold [&_.ant-select-selection-item]:!text-slate-900"
@@ -75,11 +78,7 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
                     root: "[&_.ant-select-item-option-selected]:!bg-red-50 [&_.ant-select-item-option-selected]:!text-red-700 [&_.ant-select-item-option-selected]:!font-bold [&_.ant-select-item]:!text-xs [&_.ant-select-item]:!rounded-md",
                   },
                 }}
-                options={[
-                  { value: "2025", label: "2025" },
-                  { value: "2026", label: "2026" },
-                  { value: "2027", label: "2027" },
-                ]}
+                options={availableYears.map((yr) => ({ value: yr, label: yr }))}
               />
             </div>
 

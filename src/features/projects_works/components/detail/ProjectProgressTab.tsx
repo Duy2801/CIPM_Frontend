@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   CheckCircleFilled,
   CloseOutlined,
   HistoryOutlined,
   LockOutlined,
-  RollbackOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import { Button, Card, Flex, Input, Select, Tag, Text } from "@/components/ui";
@@ -50,14 +49,16 @@ export default function ProjectProgressTab({
   // QUY TẮC 6: Không tự động gán ngày hôm nay nếu chưa có
   const [actualEndDate, setActualEndDate] = useState<string>(project.actualEndDate || "");
   const [progressErrorMsg, setProgressErrorMsg] = useState<string>("");
+  const [prevProjectId, setPrevProjectId] = useState<string>(project.id);
 
-  useEffect(() => {
+  if (project.id !== prevProjectId) {
+    setPrevProjectId(project.id);
     setNewProgress(project.actualProgress);
     setNewStage(project.currentStage);
     setProgressNote("");
     setActualEndDate(project.actualEndDate || "");
     setProgressErrorMsg("");
-  }, [project]);
+  }
 
   // Xử lý lưu tiến độ tuần
   const handleSaveProgressSubmit = () => {
@@ -306,7 +307,7 @@ export default function ProjectProgressTab({
       </div>
 
       {/* Footer thao tác cập nhật tiến độ (Cố định ở đáy, nút chức năng đứng TRƯỚC, Đóng đứng SAU) */}
-      <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)]">
+      <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)] flex-wrap">
         <Button
           intent="primary"
           scale="sm"

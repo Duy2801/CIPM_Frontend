@@ -15,6 +15,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Drawer, Flex, Progress, Tag, Text, Tooltip } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
+import { formatMoneyString } from "@/utils/format-money";
 import { BOND_STATUS_META, COUNTDOWN_META } from "../constants/warranty-labels";
 import type { WarrantyController } from "../hooks/useWarrantyMaintenance";
 import type { WarrantyRecord } from "../types/warranty.types";
@@ -32,7 +33,7 @@ interface WarrantyDetailDrawerProps {
 }
 
 const formatBillions = (value: number) =>
-  `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 }).format(value)} tỷ`;
+  `${formatMoneyString(value)} VNĐ`;
 
 export default function WarrantyDetailDrawer({
   warranty,

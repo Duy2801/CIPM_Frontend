@@ -17,7 +17,7 @@ export default function LoginView() {
   };
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden flex items-center justify-center font-sans select-none bg-slate-50">
+    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col items-center font-sans select-none bg-slate-50">
       {/* 1. NỬA PHÍA TRÊN: Hình ảnh Trụ sở UBND xã (chiếm ~48vh-50vh để không bị phóng to) */}
       <div className="absolute top-0 left-0 right-0 h-[48vh] sm:h-[50vh] z-0 overflow-hidden pointer-events-none">
         <Image
@@ -94,24 +94,29 @@ export default function LoginView() {
         <ComprehensiveCulturalWatermark />
       </div>
 
-      {/* 3. KHU VỰC CHÍNH: Tiêu đề cơ quan & Form đăng nhập đúng y hệt vị trí chuẩn */}
-      <main className="relative z-20 w-full flex flex-col items-center justify-center px-4 pt-2">
-        {/* TIÊU ĐỀ CƠ QUAN NHÀ NƯỚC (ĐẦY ĐẶN, TRANG TRỌNG, CÂN ĐỐI KHÔNG CHẠM CỘT ĐÁ) */}
-        <div className="w-full max-w-5xl text-center mb-3 sm:mb-4.5 px-3 select-none">
-          <p className="text-sm sm:text-base md:text-[17px] lg:text-[18px] xl:text-[19px] font-bold text-[#b91c1c] tracking-[0.12em] sm:tracking-[0.16em] uppercase leading-snug whitespace-nowrap [text-shadow:_0_1px_2px_rgba(255,255,255,0.95)]">
+      {/* 3. KHU VỰC CHÍNH: Tiêu đề cơ quan & Form đăng nhập khóa tọa độ tuyệt đối vào tâm khung đá tòa nhà */}
+      <main
+        style={{
+          marginTop: "clamp(75px, calc(25vh - 4.65vw - 28px), 380px)",
+        }}
+        className="relative z-20 w-full flex flex-col items-center justify-center px-4 pb-12"
+      >
+        {/* TIÊU ĐỀ CƠ QUAN NHÀ NƯỚC: Luôn khớp chuẩn xác 100% vào tâm khung đá ở mọi độ phân giải */}
+        <div className="w-full max-w-[min(92vw,960px)] text-center mb-2.5 sm:mb-3.5 px-3 select-none">
+          <p className="text-[clamp(12px,1.1vw,17px)] font-bold text-[#b91c1c] tracking-[0.12em] sm:tracking-[0.16em] uppercase leading-snug whitespace-nowrap [text-shadow:_0_1px_2px_rgba(255,255,255,0.95)]">
             ỦY BAN NHÂN DÂN TỈNH AN GIANG
           </p>
-          <h1 className="text-base sm:text-lg md:text-xl lg:text-[23px] xl:text-[26px] font-black text-[#fbbf24] tracking-normal sm:tracking-[0.025em] uppercase leading-tight mt-1 sm:mt-1.5 whitespace-nowrap [text-shadow:_0_1px_2px_rgba(0,0,0,0.5),_0_2px_4px_rgba(0,0,0,0.2)]">
+          <h1 className="text-[clamp(15px,1.55vw,25px)] font-black text-[#fbbf24] tracking-normal sm:tracking-[0.025em] uppercase leading-tight mt-0.5 sm:mt-1 whitespace-nowrap [text-shadow:_0_1px_2px_rgba(0,0,0,0.5),_0_2px_4px_rgba(0,0,0,0.2)]">
             BAN QUẢN LÝ DỰ ÁN ĐẦU TƯ XÂY DỰNG HÀ TIÊN
           </h1>
         </div>
 
-        {/* FORM ĐĂNG NHẬP XÍCH XUỐNG DƯỚI */}
+        {/* FORM ĐĂNG NHẬP: Nằm ngay dưới tiêu đề, cân đối trang trọng */}
         <Card
           surface="portal"
           padding="comfortable"
           rounded="lg"
-          className="w-full max-w-[420px] min-h-[465px] shadow-2xl bg-white/95 dark:bg-white/95 backdrop-blur-xl border border-white/90 text-slate-800 ring-1 ring-slate-900/5 z-10 transition-shadow duration-300 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] flex flex-col justify-between"
+          className="w-full max-w-[420px] shadow-2xl bg-white/95 dark:bg-white/95 backdrop-blur-xl border border-white/90 text-slate-800 ring-1 ring-slate-900/5 z-10 transition-shadow duration-300 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] flex flex-col justify-between"
         >
           {/* QUỐC HUY VIỆT NAM TRANG TRỌNG Ở TRUNG TÂM FORM */}
           <div className="flex flex-col items-center justify-center text-center -mt-1 mb-4">

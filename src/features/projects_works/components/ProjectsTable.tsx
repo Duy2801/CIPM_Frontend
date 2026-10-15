@@ -3,6 +3,7 @@
 import React from "react";
 import { EyeOutlined, StopOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Pagination, Tag, Text, Tooltip } from "@/components/ui";
+import { formatMoneyString } from "@/utils/format-money";
 import { useAuth } from "@/features/auth";
 import {
   STAGE_BADGE_CLASSES,
@@ -231,8 +232,8 @@ export default function ProjectsTable({
                 defaultSort="asc"
               />
               <SortColumnHeader
-                label="VỐN ĐẦU TƯ"
-                widthClass="w-[10%]"
+                label="VỐN ĐẦU TƯ (VNĐ)"
+                widthClass="w-[12%]"
                 paddingClass="px-3 py-2"
                 currentSort={sortBy}
                 onSortChange={onSortChange}
@@ -349,7 +350,7 @@ export default function ProjectsTable({
 
                       <td className="px-3 py-1.5 align-middle whitespace-nowrap">
                         <Text strong className="font-sans text-slate-900 text-xs font-semibold">
-                          {new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(prj.totalInvestment || 0)} tỷ
+                          {formatMoneyString(prj.totalInvestment || 0)} VNĐ
                         </Text>
                       </td>
 

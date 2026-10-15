@@ -8,7 +8,6 @@ import {
   FileTextOutlined,
   PaperClipOutlined,
   PlusOutlined,
-  RollbackOutlined,
   SaveOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
@@ -19,9 +18,13 @@ import {
   Input,
   MoneyInput,
   Select,
+  StandardFileUpload,
   Tag,
   Text,
+  STANDARD_DRAWER_WIDTH,
+  detectAttachmentType,
 } from "@/components/ui";
+import type { UploadedAttachment } from "@/components/ui";
 import { parseMoney } from "@/utils/format-money";
 import {
   DEPARTMENT_OPTIONS,
@@ -227,10 +230,10 @@ export default function CreateProjectModal({
     <Drawer
       open={open}
       closable={false}
-      width="min(680px, 100vw)"
+      width={STANDARD_DRAWER_WIDTH}
       onClose={onClose}
       footer={
-        <div className="flex items-center justify-start gap-3 px-1 py-1">
+        <div className="flex items-center justify-start gap-3 px-1 py-1 flex-wrap">
           <Button
             intent="primary"
             className="!bg-[#DC2626] !border-[#DC2626] text-white"
@@ -344,16 +347,14 @@ export default function CreateProjectModal({
 
               <Flex vertical gap={4}>
                 <Text variant="label" className="text-[11px] font-semibold text-slate-700">
-                  Tổng mức đầu tư (tỷ VNĐ)
+                  Tổng mức đầu tư (VNĐ)
                 </Text>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="VD: 100"
+                <MoneyInput
+                  placeholder="VD: 1.000.000.000"
                   value={formData.totalInvestment === "" ? "" : formData.totalInvestment}
                   onChange={(e) => {
-                    const val = e.target.value === "" ? "" : Number(e.target.value);
+                    const raw = e.target.value;
+                    const val = raw === "" ? "" : parseMoney(raw);
                     setFormData({ ...formData, totalInvestment: val });
                     setErrorMsg("");
                   }}
@@ -582,74 +583,27 @@ export default function CreateProjectModal({
           </div>
 
           {/* Khối 5: Tài liệu đính kèm (Không bắt buộc) */}
-          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                  Tài liệu đính kèm
-                </Text>
-                <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 font-medium">
-                  Không bắt buộc · {formData.documents.length} tệp
-                </span>
-              </div>
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-semibold text-slate-700 hover:text-[#DC2626] transition-colors shadow-2xs">
-                <UploadOutlined className="text-xs" />
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                  style={{ display: "none" }}
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </div>
-
-            <p className="text-[11px] text-slate-400 m-0">
-              Đính kèm hồ sơ pháp lý, quyết định chủ trương đầu tư, tờ trình, báo cáo nghiên cứu khả thi, bản vẽ... (PDF, Word, Excel, Ảnh).
-            </p>
-
-            {/* Danh sách các tài liệu đã thêm */}
-            {formData.documents.length > 0 ? (
-              <div className="space-y-1.5 max-h-[220px] overflow-y-auto [scrollbar-width:thin] pr-1">
-                {formData.documents.map((doc, idx) => (
-                  <div
-                    key={doc.id || idx}
-                    className="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex h-7 w-7 items-center justify-center rounded bg-red-50 text-[#DC2626] border border-red-200 shrink-0">
-                        <FileTextOutlined className="text-xs" />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-slate-800 truncate" title={doc.fileName || doc.name}>
-                          {doc.fileName || doc.name}
-                        </div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                          {doc.fileSize && <span>{doc.fileSize}</span>}
-                          {doc.uploadedAt && <span>· Ngày tải: {doc.uploadedAt}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDocument(doc.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer shrink-0 ml-2"
-                      title="Xóa tài liệu này"
-                    >
-                      <DeleteOutlined className="text-xs" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/40 text-center">
-                <PaperClipOutlined className="text-slate-300 text-base mb-1 block" />
-                <span className="text-xs text-slate-400">
-                  Chưa có tài liệu đính kèm. Bấm &quot;+ Thêm tài liệu&quot; ở trên để tải lên nếu cần.
-                </span>
-              </div>
-            )}
-          </div>
+          <StandardFileUpload
+            title="Đính kèm hồ sơ / tài liệu dự án (PDF, DOCX, XLSX, Ảnh)"
+            subTitle="Chấp nhận .pdf, .docx, .doc, .xlsx, .png, .jpg (Không bắt buộc)"
+            value={(formData.documents || []).map((doc) => ({
+              id: doc.id,
+              name: doc.fileName || doc.name,
+              size: doc.fileSize || "1.0 MB",
+              type: detectAttachmentType(doc.fileName || doc.name),
+            }))}
+            onChange={(files) => {
+              const updatedDocs = files.map((f) => ({
+                id: f.id,
+                name: f.name.replace(/\.[^/.]+$/, ""),
+                fileName: f.name,
+                fileSize: f.size,
+                uploadedAt: new Date().toISOString().slice(0, 10),
+                type: f.rawFile?.type || "application/octet-stream",
+              }));
+              setFormData((prev) => ({ ...prev, documents: updatedDocs }));
+            }}
+          />
 
           {/* Error Message */}
           {errorMsg && (

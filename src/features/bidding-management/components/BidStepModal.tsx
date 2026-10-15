@@ -8,7 +8,8 @@ import {
   PaperClipOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Form, Input, MoneyInput, Text } from "@/components/ui";
+import { Button, Drawer, Form, Input, MoneyInput, StandardFileUpload, Text } from "@/components/ui";
+import type { UploadedAttachment } from "@/components/ui";
 import { todayIso } from "@/utils/date";
 import type { BidPackage, BidStepInput } from "../types/bidding.types";
 import { getBidStepDefinition, getCurrentBidStep } from "../utils/bidding-rules";
@@ -35,7 +36,7 @@ interface FormValues {
 export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSubmit }: BidStepModalProps) {
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<{ name: string; size: string } | null>(null);
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
   const current = getCurrentBidStep(pkg) ?? 0;
   const definition = getBidStepDefinition(current);
   const needsApproval = Boolean(definition?.requiresApproval);
@@ -43,14 +44,15 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
   const handleFinish = async (values: FormValues) => {
     setSubmitting(true);
     try {
+      const firstFile = attachments[0];
       const input: BidStepInput = {
         documentNo: values.documentNo.trim(),
         completedAt: values.completedAt,
         bidDeadline: values.bidDeadline,
         winner: values.winner?.trim(),
         winningPrice: values.winningPrice ? parseMoney(values.winningPrice) : undefined,
-        fileName: selectedFile?.name || values.fileName,
-        fileSize: selectedFile?.size || values.fileSize,
+        fileName: firstFile?.name || values.fileName,
+        fileSize: firstFile?.size || values.fileSize,
       };
       const success = needsApproval ? await onSubmit(pkg.id, input) : await onComplete(pkg.id, input);
       if (success) onClose();
@@ -132,70 +134,27 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
         </div>
 
         {/* Đính kèm tài liệu / minh chứng cho bước */}
-        <Form.Item
-          name="fileName"
-          label={
-            <span className="flex items-center gap-1.5 font-semibold text-xs text-slate-700">
-              <PaperClipOutlined className="text-slate-500" />
-              Tài liệu / Văn bản đính kèm
-            </span>
-          }
-          className="mb-3"
-        >
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                <UploadOutlined className="text-blue-600 text-sm" />
-                <span>Chọn tệp đính kèm</span>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const name = file.name;
-                      const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
-                      const sizeStr = `${sizeInMb} MB`;
-                      setSelectedFile({ name, size: sizeStr });
-                      form.setFieldsValue({ fileName: name, fileSize: sizeStr });
-                    }
-                  }}
-                />
-              </label>
+        <div className="mb-3">
+          <StandardFileUpload
+            title="Tài liệu / Văn bản đính kèm"
+            value={attachments}
+            onChange={(files) => {
+              setAttachments(files);
+              if (files[0]) {
+                form.setFieldsValue({ fileName: files[0].name, fileSize: files[0].size });
+              } else {
+                form.setFieldsValue({ fileName: undefined, fileSize: undefined });
+              }
+            }}
+          />
+        </div>
 
-              {selectedFile ? (
-                <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-blue-50 border border-blue-200 text-xs text-blue-800 font-medium">
-                  <FileTextOutlined className="text-blue-600 text-sm" />
-                  <span className="truncate max-w-[260px] font-mono">{selectedFile.name}</span>
-                  <span className="text-[11px] text-blue-600">({selectedFile.size})</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      form.setFieldsValue({ fileName: undefined, fileSize: undefined });
-                    }}
-                    className="text-slate-400 hover:text-rose-600 ml-1 cursor-pointer font-bold leading-none"
-                    title="Xóa tệp đính kèm"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <span className="text-[11.5px] text-slate-400">
-                  Hỗ trợ định dạng PDF, Word (.doc, .docx), Excel (.xls, .xlsx), ảnh (.png, .jpg)
-                </span>
-              )}
-            </div>
-
-            {definition?.output && (
-              <div className="text-[11px] text-slate-500 italic bg-slate-50 px-2.5 py-1.5 rounded border border-slate-100 flex items-center gap-1.5">
-                <span className="font-semibold text-slate-600 not-italic">Văn bản đầu ra:</span>
-                <span>{definition.output}</span>
-              </div>
-            )}
+        {definition?.output && (
+          <div className="text-[11px] text-slate-500 italic bg-slate-50 px-2.5 py-1.5 rounded border border-slate-100 flex items-center gap-1.5 mb-3">
+            <span className="font-semibold text-slate-600 not-italic">Văn bản đầu ra:</span>
+            <span>{definition.output}</span>
           </div>
-        </Form.Item>
+        )}
 
         {current === 4 && (
           <Form.Item

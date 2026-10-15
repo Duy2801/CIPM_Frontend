@@ -18,11 +18,12 @@ import IncidentDetailDrawer from "./IncidentDetailDrawer";
 import IncidentReportModal from "./IncidentReportModal";
 import WarrantyDetailDrawer from "./WarrantyDetailDrawer";
 import WarrantyTab from "./WarrantyTab";
+import { formatMoneyString } from "@/utils/format-money";
 
 type IncidentModalState = { mode: "closed" } | { mode: "report"; warrantyId?: string } | { mode: "fix"; incident: Incident };
 
 const formatBillions = (value: number) =>
-  `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 }).format(value)} tỷ`;
+  `${formatMoneyString(value)} VNĐ`;
 
 export default function WarrantyMaintenanceScreen() {
   const router = useRouter();

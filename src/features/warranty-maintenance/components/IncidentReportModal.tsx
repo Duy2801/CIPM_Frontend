@@ -8,7 +8,7 @@ import {
   FileTextOutlined,
   PaperClipOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Form, Input, Select, Tag } from "@/components/ui";
+import { Button, Drawer, Form, Input, Select, StandardFileUpload, Tag } from "@/components/ui";
 import { addDays, todayIso } from "@/utils/date";
 import { SEVERITY_META } from "../constants/warranty-labels";
 import type { IncidentInput, IncidentSeverity, WarrantyRecord } from "../types/warranty.types";
@@ -175,27 +175,13 @@ export default function IncidentReportModal({
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-            <PaperClipOutlined className="text-sm text-slate-500" />
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-600">
-              Hồ sơ ảnh hiện trường / Biên bản
-            </span>
-          </div>
-
-          <Form.Item
-            name="attachment"
-            label="Ảnh hiện trường hoặc biên bản ghi nhận (.pdf, .jpg, .png)"
-            getValueFromEvent={(event: ChangeEvent<HTMLInputElement>) => event.target.files?.[0]?.name ?? ""}
-            getValueProps={() => ({})}
-          >
-            <input
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-[13px] file:font-medium file:text-slate-700 hover:border-slate-400"
-            />
-          </Form.Item>
-        </section>
+        <Form.Item name="attachment" className="mb-0">
+          <StandardFileUpload
+            title="Đính kèm hồ sơ ảnh hiện trường / Biên bản sự cố"
+            subTitle="Chấp nhận .pdf, .docx, .png, .jpg (Không bắt buộc)"
+            onSingleFileNameChange={(name) => form.setFieldsValue({ attachment: name })}
+          />
+        </Form.Item>
       </Form>
     </Drawer>
   );

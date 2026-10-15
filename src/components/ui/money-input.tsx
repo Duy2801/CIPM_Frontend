@@ -17,7 +17,7 @@ export const MoneyInput = React.forwardRef<any, MoneyInputProps>(
       value,
       onChange,
       allowNegative = false,
-      maxDecimals = 3,
+      maxDecimals = 0,
       className,
       ...props
     },

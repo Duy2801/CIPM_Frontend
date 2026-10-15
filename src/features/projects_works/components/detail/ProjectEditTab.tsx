@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CheckOutlined,
   CloseOutlined,
@@ -8,15 +8,12 @@ import {
   FileTextOutlined,
   PaperClipOutlined,
   PlusOutlined,
-  RollbackOutlined,
   SaveOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Flex, Input, MoneyInput, Select, Text } from "@/components/ui";
-import { parseMoney } from "@/utils/format-money";
+import { Button, Flex, Input, Select, StandardFileUpload, Text, detectAttachmentType } from "@/components/ui";
 import {
   DEPARTMENT_OPTIONS,
-  FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
   PROJECT_STATUS_TABS,
   WORK_TYPE_OPTIONS,
@@ -70,8 +67,6 @@ export default function ProjectEditTab({
   onBackToView,
   onUpdateProject,
 }: ProjectEditTabProps) {
-  const currentFiscalYear = new Date().getFullYear();
-
   // Form State: Cập nhật thông tin dự án
   const [formData, setFormData] = useState<FormState>({
     name: project.name || "",
@@ -91,8 +86,10 @@ export default function ProjectEditTab({
     documents: project.documents || [],
   });
   const [editErrorMsg, setEditErrorMsg] = useState<string>("");
+  const [prevProjectId, setPrevProjectId] = useState<string>(project.id);
 
-  useEffect(() => {
+  if (project.id !== prevProjectId) {
+    setPrevProjectId(project.id);
     setFormData({
       name: project.name || "",
       type: project.type || "Giao thông",
@@ -111,7 +108,7 @@ export default function ProjectEditTab({
       documents: project.documents || [],
     });
     setEditErrorMsg("");
-  }, [project]);
+  }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -155,14 +152,6 @@ export default function ProjectEditTab({
     }
     return base;
   }, [formData.managerName]);
-
-  const fundingSourceOptions = useMemo(() => {
-    const base = FUNDING_SOURCE_OPTIONS.map((s) => ({ value: s, label: s }));
-    if (formData.fundingSource && !base.some((b) => b.value === formData.fundingSource)) {
-      return [{ value: formData.fundingSource, label: formData.fundingSource }, ...base];
-    }
-    return base;
-  }, [formData.fundingSource]);
 
   // Xử lý lưu thông tin dự án
   const handleUpdateProjectSubmit = () => {
@@ -481,75 +470,27 @@ export default function ProjectEditTab({
 
 
           {/* TÀI LIỆU DỰ ÁN (ĐÍNH KÈM) - KHÔNG BẮT BUỘC */}
-          <div className="pt-2 border-t border-slate-100 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                  Tài liệu đính kèm
-                </Text>
-                <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 font-medium">
-                  Không bắt buộc · {formData.documents.length} tệp
-                </span>
-              </div>
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-semibold text-slate-700 hover:text-[#DC2626] transition-colors shadow-2xs">
-                <UploadOutlined className="text-xs" />
-                <span>+ Thêm tài liệu</span>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-                  style={{ display: "none" }}
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </div>
-
-            <p className="text-[11px] text-slate-400 m-0">
-              Đính kèm hồ sơ pháp lý, quyết định chủ trương đầu tư, tờ trình, báo cáo nghiên cứu khả thi, bản vẽ... (PDF, Word, Excel, Ảnh).
-            </p>
-
-            {/* Danh sách các tài liệu đã thêm */}
-            {formData.documents.length > 0 ? (
-              <div className="space-y-1.5 max-h-[220px] overflow-y-auto [scrollbar-width:thin] pr-1">
-                {formData.documents.map((doc, idx) => (
-                  <div
-                    key={doc.id || idx}
-                    className="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex h-7 w-7 items-center justify-center rounded bg-red-50 text-[#DC2626] border border-red-200 shrink-0">
-                        <FileTextOutlined className="text-xs" />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-slate-800 truncate" title={doc.fileName || doc.name}>
-                          {doc.fileName || doc.name}
-                        </div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                          {doc.fileSize && <span>{doc.fileSize}</span>}
-                          {doc.uploadedAt && <span>· Ngày tải: {doc.uploadedAt}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDocument(doc.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer shrink-0 ml-2"
-                      title="Xóa tài liệu này"
-                    >
-                      <DeleteOutlined className="text-xs" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/40 text-center">
-                <PaperClipOutlined className="text-slate-300 text-base mb-1 block" />
-                <span className="text-xs text-slate-400">
-                  Chưa có tài liệu đính kèm. Bấm &quot;+ Thêm tài liệu&quot; ở trên để tải lên nếu cần.
-                </span>
-              </div>
-            )}
-          </div>
+          <StandardFileUpload
+            title="Đính kèm hồ sơ / tài liệu dự án (PDF, DOCX, XLSX, Ảnh)"
+            subTitle="Chấp nhận .pdf, .docx, .doc, .xlsx, .png, .jpg (Không bắt buộc)"
+            value={(formData.documents || []).map((doc) => ({
+              id: doc.id,
+              name: doc.fileName || doc.name,
+              size: doc.fileSize || "1.0 MB",
+              type: detectAttachmentType(doc.fileName || doc.name),
+            }))}
+            onChange={(files) => {
+              const updatedDocs = files.map((f) => ({
+                id: f.id,
+                name: f.name.replace(/\.[^/.]+$/, ""),
+                fileName: f.name,
+                fileSize: f.size,
+                uploadedAt: new Date().toISOString().slice(0, 10),
+                type: f.rawFile?.type || "application/octet-stream",
+              }));
+              setFormData((prev) => ({ ...prev, documents: updatedDocs }));
+            }}
+          />
 
           {editErrorMsg && (
             <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
@@ -560,7 +501,7 @@ export default function ProjectEditTab({
       </div>
 
       {/* Footer thao tác chỉnh sửa thông tin (Cố định ở đáy, nút chức năng đứng TRƯỚC, Đóng đứng SAU) */}
-      <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)]">
+      <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)] flex-wrap">
         <Button
           intent="primary"
           scale="sm"

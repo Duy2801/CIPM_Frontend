@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import {
@@ -14,10 +14,12 @@ import {
   FilePdfOutlined,
   FileTextOutlined,
   FileWordOutlined,
+  InboxOutlined,
   PaperClipOutlined,
   PlusOutlined,
   TeamOutlined,
   UndoOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import { App } from "antd";
 import {
@@ -995,13 +997,15 @@ export default function AssignmentDetailDrawer({
               />
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-1.5">
-                  <PaperClipOutlined className="text-emerald-600 text-sm" />
+                  <UploadOutlined className="text-[#DC2626] text-sm" />
                   <span className="text-xs font-semibold text-slate-900">
-                    Tài liệu & Hồ sơ đính kèm
+                    Đính kèm tệp văn bản số hóa (PDF, DOCX)
                   </span>
-                  <span className="text-xs font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
-                    {submissions.length}
-                  </span>
+                  {submissions.length > 0 && (
+                    <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      Đã chọn {submissions.length} tệp
+                    </span>
+                  )}
                 </div>
 
                 <Button
@@ -1010,10 +1014,28 @@ export default function AssignmentDetailDrawer({
                   icon={<PlusOutlined />}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={liveAssignment.approvalStage === "RETURNED_TO_LEAD"}
-                  className="text-xs h-7 px-2.5 rounded-md border-emerald-300 text-emerald-700 hover:!bg-emerald-50 cursor-pointer"
+                  className="text-xs h-7 px-2.5 rounded-md border-red-300 text-[#DC2626] hover:!bg-red-50 cursor-pointer"
                 >
-                  Đính kèm tệp
+                  Tải thêm tệp
                 </Button>
+              </div>
+
+              {/* Vùng kéo thả chuẩn */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 rounded-xl p-4 text-center cursor-pointer transition-colors group bg-slate-50/50"
+              >
+                <div className="flex flex-col items-center justify-center">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 group-hover:bg-red-50 text-slate-500 group-hover:text-red-500 transition-colors mb-1.5">
+                    <InboxOutlined className="text-2xl" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-800 group-hover:text-red-600 transition-colors">
+                    Nhấn hoặc kéo thả để tải lên tệp tài liệu số hóa
+                  </span>
+                  <span className="text-[11px] text-slate-500 mt-1">
+                    Tự động nhận diện cả .pdf, .docx, .doc · Hỗ trợ chọn nhiều tệp cùng lúc (Tối đa 50MB/tệp)
+                  </span>
+                </div>
               </div>
 
               {submissions.length > 0 ? (

@@ -28,6 +28,7 @@ import {
 import type { ColumnsType } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
 import { formatDateVi } from "@/utils/date";
+import { formatMoneyString } from "@/utils/format-money";
 import { WARRANTY_FILTER_LABELS } from "../constants/warranty-labels";
 import type { WarrantyController } from "../hooks/useWarrantyMaintenance";
 import type { WarrantyFilter, WarrantyRecord } from "../types/warranty.types";
@@ -46,7 +47,7 @@ interface WarrantyTabProps {
 
 const FILTER_ORDER: WarrantyFilter[] = ["ALL", "URGENT", "WATCH", "EXPIRED", "BOND_READY"];
 const PAGE_SIZE = 10;
-const formatBillions = (value: number) => `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 }).format(value)} tỷ`;
+const formatBillions = (value: number) => `${formatMoneyString(value)} VNĐ`;
 
 export default function WarrantyTab({
   controller,
@@ -149,7 +150,7 @@ export default function WarrantyTab({
       "Thời hạn (tháng)",
       "Ngày hết hạn",
       "Số ngày còn lại",
-      "Giá trị bảo lãnh (tỷ)",
+      "Giá trị bảo lãnh (VNĐ)",
       "Ngân hàng phát hành",
       "Trạng thái bảo lãnh",
       "Số sự cố tồn đọng",
@@ -169,7 +170,7 @@ export default function WarrantyTab({
         w.months,
         `"${cd.expiryDate}"`,
         cd.daysLeft,
-        w.bondValue.toFixed(3),
+        formatMoneyString(w.bondValue),
         `"${w.bank}"`,
         `"${w.bondStatus === "HOLDING" ? "Đang giữ" : w.bondStatus === "RETURNED" ? "Đã hoàn trả" : "Đã thu hồi"}"`,
         openInc,

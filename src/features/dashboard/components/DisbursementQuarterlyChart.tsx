@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Card, Flex, Text } from "@/components/ui";
+import { DownOutlined } from "@ant-design/icons";
+import { Card, Dropdown, Flex, Text, type MenuProps } from "@/components/ui";
+import { useFiscalYearStore } from "@/stores/fiscal-year.store";
 import type { QuarterlyData } from "../constants/dashboard-mock-data";
 
-export type DisbursementTimeFilter = "week" | "quarter" | "year";
+export type DisbursementTimeFilter = "week" | "month" | "quarter";
 
 interface ChartBarItem {
   label: string;
@@ -49,104 +51,351 @@ export default function DisbursementQuarterlyChart({
   requiredMonthlySpeed = 69.8,
   initialTimeFilter = "quarter",
 }: DisbursementQuarterlyChartProps) {
+  const { selectedYear } = useFiscalYearStore();
+  const currentFiscalYear = Number(selectedYear) || 2026;
+
   const [timeFilter, setTimeFilter] = useState<DisbursementTimeFilter>(initialTimeFilter);
+  const [selectedWeek, setSelectedWeek] = useState<number>(41);
+  const [selectedMonth, setSelectedMonth] = useState<number>(10);
+  const [selectedQuarter, setSelectedQuarter] = useState<string>("4");
 
-  const datasets: Record<DisbursementTimeFilter, ChartDataset> = useMemo(() => {
-    // 1. Dữ liệu Quý
-    const quarterItems: ChartBarItem[] =
-      quarters && quarters.length > 0
-        ? quarters.map((q) => ({
-            label: q.quarter,
-            plan: q.plan,
-            actual: q.actual,
-            isCurrent: q.isCurrent,
-          }))
-        : [
-            { label: "Quý 1", plan: 145, actual: 158 },
-            { label: "Quý 2 (HT)", plan: 180, actual: 175, isCurrent: true },
-            { label: "Quý 3", plan: 190, actual: 76.5 },
-            { label: "Quý 4", plan: 150, actual: 0 },
-          ];
+  // Danh sách các tuần cho Dropdown (Tuần 1 - Tuần 52)
+  const weekMenuItems: MenuProps["items"] = useMemo(() => {
+    const items: MenuProps["items"] = [];
 
-    const quarterDataset: ChartDataset = {
-      title: "BIỂU ĐỒ GIẢI NGÂN THEO QUÝ (NĂM 2026)",
-      subtitle: "So sánh Kế hoạch phân bổ và Thực tế giải ngân qua các quý",
-      unit: "ĐVT: Tỷ đồng",
-      maxScale: 220,
-      items: quarterItems,
-      metrics: {
-        m1Label: "Đã giải ngân lũy kế",
-        m1Value: `${accumulatedDisbursed} tỷ`,
-        m1Sub: "VNĐ",
-        m2Label: "Còn lại cần giải ngân",
-        m2Value: `${remainingAmount} tỷ`,
-        m2Sub: "VNĐ",
-        m3Label: "Tốc độ yêu cầu",
-        m3Value: `${requiredMonthlySpeed} tỷ`,
-        m3Sub: "/ tháng",
-      },
-    };
+    // Đưa tuần hiện tại lên đầu tiên để thao tác nhanh
+    if (currentFiscalYear === 2026) {
+      items.push({
+        key: "current-week",
+        label: (
+          <div className="flex items-center justify-between gap-3 text-xs py-0.5">
+            <span className="font-bold text-red-600">Tuần 41</span>
+            <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold">
+              Hiện tại
+            </span>
+          </div>
+        ),
+      });
+      items.push({ type: "divider", key: "divider-current" });
+    }
 
-    // 2. Dữ liệu Tuần (Chiến dịch cao điểm giải ngân tuần 37 - 41)
-    const weekDataset: ChartDataset = {
-      title: "BIỂU ĐỒ GIẢI NGÂN THEO TUẦN (THÁNG 09 - 10/2026)",
-      subtitle: "Theo dõi tiến độ giải ngân từng tuần chiến dịch cao điểm",
-      unit: "ĐVT: Tỷ đồng",
-      maxScale: 32,
-      items: [
-        { label: "Tuần 37", plan: 18.5, actual: 19.2 },
-        { label: "Tuần 38", plan: 22.0, actual: 20.8 },
-        { label: "Tuần 39", plan: 25.0, actual: 24.5 },
-        { label: "Tuần 40", plan: 20.5, actual: 21.0 },
-        { label: "Tuần 41 (HT)", plan: 18.0, actual: 11.5, isCurrent: true },
-      ],
-      metrics: {
-        m1Label: "Đã giải ngân 5 tuần",
-        m1Value: "97.0 tỷ",
-        m1Sub: "VNĐ",
-        m2Label: "Kế hoạch 5 tuần",
-        m2Value: "104.0 tỷ",
-        m2Sub: "VNĐ",
-        m3Label: "Tốc độ trung bình",
-        m3Value: "19.4 tỷ",
-        m3Sub: "/ tuần",
-      },
-    };
+    for (let w = 1; w <= 52; w++) {
+      const isCurrent = currentFiscalYear === 2026 && w === 41;
+      items.push({
+        key: String(w),
+        label: (
+          <div className="flex items-center justify-between gap-3 text-xs py-0.5 min-w-[100px]">
+            <span className={w === selectedWeek ? "font-bold text-red-600" : ""}>Tuần {w}</span>
+            {isCurrent && <span className="text-[10px] text-red-500 font-semibold">(HT)</span>}
+          </div>
+        ),
+      });
+    }
 
-    // 3. Dữ liệu Năm (Giai đoạn trung hạn 2023 - 2027)
-    const yearDataset: ChartDataset = {
-      title: "BIỂU ĐỒ GIẢI NGÂN THEO NĂM (GIAI ĐOẠN 2023 - 2027)",
-      subtitle: "Kế hoạch vốn đầu tư công trung hạn & Thực tế giải ngân qua các năm",
-      unit: "ĐVT: Tỷ đồng",
-      maxScale: 850,
-      items: [
-        { label: "Năm 2023", plan: 380, actual: 372 },
-        { label: "Năm 2024", plan: 460, actual: 451.8 },
-        { label: "Năm 2025", plan: 540, actual: 528.5 },
-        { label: "Năm 2026 (HT)", plan: 650, actual: 418.5, isCurrent: true },
-        { label: "Năm 2027", plan: 720, actual: 0 },
-      ],
-      metrics: {
-        m1Label: "Lũy kế giải ngân",
-        m1Value: "1,770.8 tỷ",
-        m1Sub: "VNĐ (Giai đoạn 2023-2026)",
-        m2Label: "Kế hoạch năm 2026",
-        m2Value: "650.0 tỷ",
-        m2Sub: "VNĐ",
-        m3Label: "Tỷ lệ năm 2026",
-        m3Value: "64.4%",
-        m3Sub: "Đạt KH 418.5/650 tỷ",
-      },
-    };
+    return items;
+  }, [currentFiscalYear, selectedWeek]);
+
+  // Danh sách các tháng cho Dropdown (Tháng 1 - Tháng 12)
+  const monthMenuItems: MenuProps["items"] = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const isCurrent = currentFiscalYear === 2026 && m === 10;
+      return {
+        key: String(m),
+        label: (
+          <div className="flex items-center justify-between gap-3 text-xs py-0.5 min-w-[110px]">
+            <span className={m === selectedMonth ? "font-bold text-red-600" : ""}>Tháng {m}</span>
+            {isCurrent && (
+              <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-semibold">
+                Hiện tại
+              </span>
+            )}
+          </div>
+        ),
+      };
+    });
+  }, [currentFiscalYear, selectedMonth]);
+
+  // Danh sách Quý cho Dropdown
+  const quarterMenuItems: MenuProps["items"] = useMemo(() => [
+    {
+      key: "all",
+      label: (
+        <span className={`text-xs py-0.5 ${selectedQuarter === "all" ? "font-bold text-red-600" : ""}`}>
+          Cả 4 Quý (Quý 1 - 4)
+        </span>
+      ),
+    },
+    { type: "divider" as const },
+    {
+      key: "1",
+      label: (
+        <span className={`text-xs py-0.5 ${selectedQuarter === "1" ? "font-bold text-red-600" : ""}`}>
+          Quý 1 (Tháng 1 - 3)
+        </span>
+      ),
+    },
+    {
+      key: "2",
+      label: (
+        <span className={`text-xs py-0.5 ${selectedQuarter === "2" ? "font-bold text-red-600" : ""}`}>
+          Quý 2 (Tháng 4 - 6)
+        </span>
+      ),
+    },
+    {
+      key: "3",
+      label: (
+        <span className={`text-xs py-0.5 ${selectedQuarter === "3" ? "font-bold text-red-600" : ""}`}>
+          Quý 3 (Tháng 7 - 9)
+        </span>
+      ),
+    },
+    {
+      key: "4",
+      label: (
+        <div className="flex items-center justify-between gap-3 text-xs py-0.5 min-w-[125px]">
+          <span className={selectedQuarter === "4" ? "font-bold text-red-600" : ""}>
+            Quý 4 (Tháng 10 - 12)
+          </span>
+          {currentFiscalYear === 2026 && (
+            <span className="text-[10px] bg-red-50 text-red-600 px-1 rounded font-semibold">
+              Hiện tại
+            </span>
+          )}
+        </div>
+      ),
+    },
+  ], [currentFiscalYear, selectedQuarter]);
+
+  // Dataset động phụ thuộc vào: Niên độ (selectedYear), timeFilter, selectedWeek / selectedMonth / selectedQuarter
+  const currentData: ChartDataset = useMemo(() => {
+    const yr = currentFiscalYear;
+    const yearRatio = yr === 2026 ? 1.0 : yr === 2025 ? 0.88 : yr === 2024 ? 0.75 : 1.12;
+
+    // ─── 1. BỘ LỌC THEO TUẦN ──────────────────────────────────────────
+    if (timeFilter === "week") {
+      const endW = Math.min(52, Math.max(5, selectedWeek));
+      const startW = endW - 4;
+      const weekNums = [startW, startW + 1, startW + 2, startW + 3, endW];
+
+      const items: ChartBarItem[] = weekNums.map((w) => {
+        const isCurrent = (yr === 2026 && w === 41) || (yr !== 2026 && w === selectedWeek);
+        const plan = Number(((18 + ((w * 7) % 8)) * yearRatio).toFixed(1));
+        let actual = 0;
+
+        if (yr < 2026 || (yr === 2026 && w < 41)) {
+          actual = Number(((17 + ((w * 5) % 9)) * yearRatio).toFixed(1));
+        } else if (yr === 2026 && w === 41) {
+          actual = Number((11.5 * yearRatio).toFixed(1));
+        }
+
+        return {
+          label: isCurrent ? `Tuần ${w} (HT)` : `Tuần ${w}`,
+          plan,
+          actual,
+          isCurrent,
+        };
+      });
+
+      const totalPlan = items.reduce((acc, it) => acc + it.plan, 0);
+      const totalActual = items.reduce((acc, it) => acc + it.actual, 0);
+      const activeCount = items.filter((it) => it.actual > 0).length || 1;
+      const maxVal = Math.max(...items.flatMap((i) => [i.plan, i.actual]), 20);
+
+      return {
+        title: `BIỂU ĐỒ GIẢI NGÂN THEO TUẦN (NIÊN ĐỘ ${yr})`,
+        subtitle: `Theo dõi tiến độ giải ngân Tuần ${selectedWeek} và 4 tuần liền kề (Niên độ ${yr})`,
+        unit: "ĐVT: Tỷ đồng",
+        maxScale: Math.ceil(maxVal * 1.25),
+        items,
+        metrics: {
+          m1Label: "Đã giải ngân 5 tuần",
+          m1Value: `${totalActual.toFixed(1)} tỷ`,
+          m1Sub: "VNĐ",
+          m2Label: "Kế hoạch 5 tuần",
+          m2Value: `${totalPlan.toFixed(1)} tỷ`,
+          m2Sub: "VNĐ",
+          m3Label: "Tốc độ trung bình",
+          m3Value: `${(totalActual / activeCount).toFixed(1)} tỷ`,
+          m3Sub: "/ tuần",
+        },
+      };
+    }
+
+    // ─── 2. BỘ LỌC THEO THÁNG ─────────────────────────────────────────
+    if (timeFilter === "month") {
+      const items: ChartBarItem[] = [1, 2, 3, 4].map((wk) => {
+        const isCurrent = yr === 2026 && selectedMonth === 10 && wk === 3;
+        const plan = Number(((14 + ((selectedMonth * 3 + wk * 5) % 7)) * yearRatio).toFixed(1));
+        let actual = 0;
+
+        if (yr < 2026 || (yr === 2026 && selectedMonth < 10)) {
+          actual = Number(((13 + ((selectedMonth * 2 + wk * 4) % 8)) * yearRatio).toFixed(1));
+        } else if (yr === 2026 && selectedMonth === 10) {
+          if (wk === 1) actual = Number((15.2 * yearRatio).toFixed(1));
+          else if (wk === 2) actual = Number((14.8 * yearRatio).toFixed(1));
+          else if (wk === 3) actual = Number((11.5 * yearRatio).toFixed(1));
+          else actual = 0;
+        }
+
+        return {
+          label: isCurrent ? `Tuần ${wk} (HT)` : `Tuần ${wk}`,
+          plan,
+          actual,
+          isCurrent,
+        };
+      });
+
+      const totalPlan = items.reduce((acc, it) => acc + it.plan, 0);
+      const totalActual = items.reduce((acc, it) => acc + it.actual, 0);
+      const maxVal = Math.max(...items.flatMap((i) => [i.plan, i.actual]), 20);
+      const rate = totalPlan > 0 ? ((totalActual / totalPlan) * 100).toFixed(1) : "0";
+
+      return {
+        title: `BIỂU ĐỒ GIẢI NGÂN THEO THÁNG (THÁNG ${selectedMonth}/${yr})`,
+        subtitle: `Kế hoạch phân bổ & Thực tế giải ngân 4 tuần thuộc Tháng ${selectedMonth}/${yr}`,
+        unit: "ĐVT: Tỷ đồng",
+        maxScale: Math.ceil(maxVal * 1.25),
+        items,
+        metrics: {
+          m1Label: `Đã giải ngân T${selectedMonth}`,
+          m1Value: `${totalActual.toFixed(1)} tỷ`,
+          m1Sub: "VNĐ",
+          m2Label: `Kế hoạch T${selectedMonth}`,
+          m2Value: `${totalPlan.toFixed(1)} tỷ`,
+          m2Sub: "VNĐ",
+          m3Label: "Tỷ lệ hoàn thành tháng",
+          m3Value: `${rate}%`,
+          m3Sub: `Đạt KH ${totalActual.toFixed(1)}/${totalPlan.toFixed(1)} tỷ`,
+        },
+      };
+    }
+
+    // ─── 3. BỘ LỌC THEO QUÝ (Mặc định) ───────────────────────────────
+    // 3.1 Nếu chọn cả năm 4 Quý
+    if (selectedQuarter === "all") {
+      let quarterItems: ChartBarItem[];
+
+      if (yr === 2026 && quarters && quarters.length > 0) {
+        quarterItems = quarters.map((q) => ({
+          label: q.quarter,
+          plan: q.plan,
+          actual: q.actual,
+          isCurrent: q.isCurrent,
+        }));
+      } else {
+        quarterItems = [
+          {
+            label: "Quý 1",
+            plan: Number((145 * yearRatio).toFixed(1)),
+            actual: Number((yr <= 2026 ? 158 * yearRatio : 0).toFixed(1)),
+          },
+          {
+            label: "Quý 2",
+            plan: Number((180 * yearRatio).toFixed(1)),
+            actual: Number((yr <= 2026 ? 175 * yearRatio : 0).toFixed(1)),
+          },
+          {
+            label: "Quý 3",
+            plan: Number((190 * yearRatio).toFixed(1)),
+            actual: Number((yr <= 2026 ? 76.5 * yearRatio : 0).toFixed(1)),
+          },
+          {
+            label: yr === 2026 ? "Quý 4 (HT)" : "Quý 4",
+            plan: Number((150 * yearRatio).toFixed(1)),
+            actual: Number((yr < 2026 ? 148 * yearRatio : yr === 2026 ? 8.5 : 0).toFixed(1)),
+            isCurrent: yr === 2026,
+          },
+        ];
+      }
+
+      const maxVal = Math.max(...quarterItems.flatMap((i) => [i.plan, i.actual]), 100);
+
+      return {
+        title: `BIỂU ĐỒ GIẢI NGÂN THEO QUÝ (NIÊN ĐỘ ${yr})`,
+        subtitle: `So sánh Kế hoạch phân bổ và Thực tế giải ngân qua các quý năm ${yr}`,
+        unit: "ĐVT: Tỷ đồng",
+        maxScale: Math.ceil(maxVal * 1.2),
+        items: quarterItems,
+        metrics: {
+          m1Label: "Đã giải ngân lũy kế",
+          m1Value: `${(accumulatedDisbursed * yearRatio).toFixed(1)} tỷ`,
+          m1Sub: "VNĐ",
+          m2Label: "Còn lại cần giải ngân",
+          m2Value: `${(remainingAmount * yearRatio).toFixed(1)} tỷ`,
+          m2Sub: "VNĐ",
+          m3Label: "Tốc độ yêu cầu",
+          m3Value: `${(requiredMonthlySpeed * yearRatio).toFixed(1)} tỷ`,
+          m3Sub: "/ tháng",
+        },
+      };
+    }
+
+    // 3.2 Nếu chọn 1 Quý cụ thể (Quý 1, 2, 3, 4) -> Hiển thị 3 tháng của Quý đó
+    const qNum = Number(selectedQuarter);
+    const monthsOfQuarter = [(qNum - 1) * 3 + 1, (qNum - 1) * 3 + 2, (qNum - 1) * 3 + 3];
+
+    const quarterMonthItems: ChartBarItem[] = monthsOfQuarter.map((m) => {
+      const isCurrent = yr === 2026 && m === 10;
+      const plan = Number(((50 + ((m * 4) % 15)) * yearRatio).toFixed(1));
+      let actual = 0;
+
+      if (yr < 2026 || (yr === 2026 && m < 10)) {
+        actual = Number(((48 + ((m * 6) % 12)) * yearRatio).toFixed(1));
+      } else if (yr === 2026 && m === 10) {
+        actual = Number((41.5 * yearRatio).toFixed(1));
+      }
+
+      return {
+        label: isCurrent ? `Tháng ${m} (HT)` : `Tháng ${m}`,
+        plan,
+        actual,
+        isCurrent,
+      };
+    });
+
+    const totalPlan = quarterMonthItems.reduce((acc, it) => acc + it.plan, 0);
+    const totalActual = quarterMonthItems.reduce((acc, it) => acc + it.actual, 0);
+    const maxVal = Math.max(...quarterMonthItems.flatMap((i) => [i.plan, i.actual]), 50);
+    const rate = totalPlan > 0 ? ((totalActual / totalPlan) * 100).toFixed(1) : "0";
 
     return {
-      quarter: quarterDataset,
-      week: weekDataset,
-      year: yearDataset,
+      title: `BIỂU ĐỒ GIẢI NGÂN CHI TIẾT QUÝ ${qNum} (NIÊN ĐỘ ${yr})`,
+      subtitle: `Tiến độ giải ngân 3 tháng thuộc Quý ${qNum} niên độ ${yr}`,
+      unit: "ĐVT: Tỷ đồng",
+      maxScale: Math.ceil(maxVal * 1.25),
+      items: quarterMonthItems,
+      metrics: {
+        m1Label: `Đã giải ngân Quý ${qNum}`,
+        m1Value: `${totalActual.toFixed(1)} tỷ`,
+        m1Sub: "VNĐ",
+        m2Label: `Kế hoạch Quý ${qNum}`,
+        m2Value: `${totalPlan.toFixed(1)} tỷ`,
+        m2Sub: "VNĐ",
+        m3Label: `Tỷ lệ hoàn thành Quý ${qNum}`,
+        m3Value: `${rate}%`,
+        m3Sub: `Đạt KH ${totalActual.toFixed(1)}/${totalPlan.toFixed(1)} tỷ`,
+      },
     };
-  }, [quarters, accumulatedDisbursed, remainingAmount, requiredMonthlySpeed]);
+  }, [
+    currentFiscalYear,
+    timeFilter,
+    selectedWeek,
+    selectedMonth,
+    selectedQuarter,
+    quarters,
+    accumulatedDisbursed,
+    remainingAmount,
+    requiredMonthlySpeed,
+  ]);
 
-  const currentData = datasets[timeFilter];
+  const gridColsClass =
+    currentData.items.length === 3
+      ? "grid-cols-3"
+      : currentData.items.length === 4
+      ? "grid-cols-4"
+      : "grid-cols-5";
 
   return (
     <Card
@@ -156,9 +405,9 @@ export default function DisbursementQuarterlyChart({
       className="w-full border border-slate-200/80 bg-white shadow-xs flex flex-col justify-between rounded-2xl p-5"
     >
       <Flex vertical gap={16} className="w-full">
-        {/* Header với Tiêu đề, Bộ lọc Tuần/Quý/Năm và Chú thích */}
-        <Flex align="start" justify="space-between" wrap="wrap" gap={12} className="w-full">
-          <Flex vertical gap={2} className="min-w-[260px]">
+        {/* Header với Tiêu đề */}
+        <Flex align="start" justify="space-between" wrap="wrap" gap={8} className="w-full">
+          <Flex vertical gap={2} className="w-full">
             <Text strong className="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-tight">
               {currentData.title}
             </Text>
@@ -166,60 +415,117 @@ export default function DisbursementQuarterlyChart({
               {currentData.subtitle}
             </Text>
           </Flex>
+        </Flex>
 
-          {/* Time Filter Tabs & Legend */}
-          <Flex align="center" gap={14} wrap="wrap" className="justify-end">
-            {/* Bộ lọc theo Tuần / Quý / Năm */}
-            <div className="inline-flex items-center rounded-lg bg-slate-100 p-1 border border-slate-200/90 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setTimeFilter("week")}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                  timeFilter === "week"
-                    ? "bg-white text-[#DC2626] shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
+        {/* Hàng điều khiển tách 2 bên: Bộ lọc bên trái, Chú thích bên phải */}
+        <div className="w-full flex items-center justify-between flex-wrap gap-3">
+          {/* Bên trái: Bộ lọc gộp chung duy nhất: Tuần / Tháng / Quý */}
+          <div className="inline-flex items-center rounded-lg bg-slate-100 p-1 border border-slate-200/90 shadow-2xs gap-0.5">
+              {/* 1. Nút Tuần - Chọn tuần trực tiếp */}
+              <Dropdown
+                menu={{
+                  items: weekMenuItems,
+                  selectable: true,
+                  selectedKeys: selectedWeek === 41 ? ["41", "current-week"] : [String(selectedWeek)],
+                  onClick: ({ key }) => {
+                    const targetWeek = key === "current-week" ? 41 : Number(key);
+                    setSelectedWeek(targetWeek);
+                    setTimeFilter("week");
+                  },
+                  style: { maxHeight: "280px", overflowY: "auto" },
+                }}
+                trigger={["click"]}
+                placement="bottomLeft"
               >
-                Tuần
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeFilter("quarter")}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                  timeFilter === "quarter"
-                    ? "bg-white text-[#DC2626] shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
+                <button
+                  type="button"
+                  onClick={() => setTimeFilter("week")}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    timeFilter === "week"
+                      ? "bg-white text-[#DC2626] shadow-xs font-bold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>Tuần {selectedWeek}</span>
+                  <DownOutlined className="text-[9px] opacity-70" />
+                </button>
+              </Dropdown>
+
+              {/* 2. Nút Tháng - Chọn tháng trực tiếp */}
+              <Dropdown
+                menu={{
+                  items: monthMenuItems,
+                  selectable: true,
+                  selectedKeys: [String(selectedMonth)],
+                  onClick: ({ key }) => {
+                    setSelectedMonth(Number(key));
+                    setTimeFilter("month");
+                  },
+                  style: { maxHeight: "280px", overflowY: "auto" },
+                }}
+                trigger={["click"]}
+                placement="bottomLeft"
               >
-                Quý
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeFilter("year")}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                  timeFilter === "year"
-                    ? "bg-white text-[#DC2626] shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
+                <button
+                  type="button"
+                  onClick={() => setTimeFilter("month")}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    timeFilter === "month"
+                      ? "bg-white text-[#DC2626] shadow-xs font-bold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>Tháng {selectedMonth}</span>
+                  <DownOutlined className="text-[9px] opacity-70" />
+                </button>
+              </Dropdown>
+
+              {/* 3. Nút Quý - Chọn quý trực tiếp */}
+              <Dropdown
+                menu={{
+                  items: quarterMenuItems,
+                  selectable: true,
+                  selectedKeys: [selectedQuarter],
+                  onClick: ({ key }) => {
+                    setSelectedQuarter(key);
+                    setTimeFilter("quarter");
+                  },
+                }}
+                trigger={["click"]}
+                placement="bottomLeft"
               >
-                Năm
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setTimeFilter("quarter")}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    timeFilter === "quarter"
+                      ? "bg-white text-[#DC2626] shadow-xs font-bold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>
+                    {selectedQuarter === "all"
+                      ? "Quý 1 - 4"
+                      : `Quý ${selectedQuarter}`}
+                  </span>
+                  <DownOutlined className="text-[9px] opacity-70" />
+                </button>
+              </Dropdown>
             </div>
 
             {/* Chú thích màu sắc */}
-            <Flex align="center" gap={12} className="text-xs text-slate-600">
-              <Flex align="center" gap={6}>
+            <Flex align="center" gap={10} className="text-xs text-slate-600">
+              <Flex align="center" gap={5}>
                 <span className="w-3 h-3 rounded-xs bg-[#F59E0B] inline-block shadow-2xs" />
                 <span className="text-xs font-semibold text-[#D97706]">Kế hoạch</span>
               </Flex>
-              <Flex align="center" gap={6}>
+              <Flex align="center" gap={5}>
                 <span className="w-3 h-3 rounded-xs bg-[#DC2626] inline-block shadow-2xs" />
                 <span className="text-xs font-semibold text-[#DC2626]">Thực tế</span>
               </Flex>
               <span className="text-xs text-slate-500 font-medium">{currentData.unit}</span>
             </Flex>
-          </Flex>
-        </Flex>
+          </div>
 
         {/* Chart Canvas Area */}
         <div className="w-full pt-4 pb-2 select-none relative">
@@ -233,9 +539,7 @@ export default function DisbursementQuarterlyChart({
 
           {/* Dynamic Columns Group */}
           <div
-            className={`grid ${
-              currentData.items.length === 4 ? "grid-cols-4" : "grid-cols-5"
-            } gap-2 sm:gap-6 items-end h-[190px] px-2 sm:px-4 border-b border-slate-200 relative z-10`}
+            className={`grid ${gridColsClass} gap-2 sm:gap-6 items-end h-[190px] px-2 sm:px-4 border-b border-slate-200 relative z-10`}
           >
             {currentData.items.map((item) => {
               const planPercent = Math.min(100, Math.round((item.plan / currentData.maxScale) * 100));
@@ -279,11 +583,7 @@ export default function DisbursementQuarterlyChart({
           </div>
 
           {/* X-axis Labels */}
-          <div
-            className={`grid ${
-              currentData.items.length === 4 ? "grid-cols-4" : "grid-cols-5"
-            } gap-2 sm:gap-6 pt-3 text-center`}
-          >
+          <div className={`grid ${gridColsClass} gap-2 sm:gap-6 pt-3 text-center`}>
             {currentData.items.map((item) => (
               <div key={item.label} className="flex justify-center items-center">
                 {item.isCurrent ? (

@@ -147,27 +147,6 @@ export default function ProcedureFilterToolbar({
 
         {/* Cụm nút thao tác bên phải theo Phân quyền nghiệp vụ */}
         <div className="flex shrink-0 items-center gap-2 pt-1 sm:pt-0 flex-wrap">
-          {/* Nút dành cho Lead Phòng ban / Cán bộ có quyền: Thêm quy trình phòng ban */}
-          {(isLeadOfDept || canUpdateProcedure) && currentProject && (() => {
-            const currentDeptTarget =
-              departmentFilter && availableDepartments.includes(departmentFilter)
-                ? departmentFilter
-                : availableDepartments[0] || userDepartment;
-
-            return (
-              <Button
-                intent="primary"
-                scale="compact"
-                icon={<PlusOutlined />}
-                onClick={onOpenAddDeptProcedure}
-                className="h-9 text-xs font-semibold !bg-[#DC2626] hover:!bg-[#b91c1c] text-white shadow-2xs"
-              >
-                Thêm quy trình
-              </Button>
-            );
-          })()}
-
-
           {canUpdateProcedure && (
             <Button
               intent="outline"

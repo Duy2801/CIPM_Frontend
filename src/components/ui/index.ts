@@ -62,6 +62,16 @@ export { Form, formVariants, useForm, useWatch } from "./form";
 export type { FormProps } from "./form";
 export { Switch, switchVariants } from "./switch";
 export type { SwitchProps } from "./switch";
+export {
+  StandardFileUpload,
+  detectAttachmentType,
+  formatAttachmentSize,
+} from "./standard-file-upload";
+export type {
+  StandardFileUploadProps,
+  UploadedAttachment,
+  AttachmentFileType,
+} from "./standard-file-upload";
 
 /* ── Data Display ────────────────────────────────────────── */
 export { Card, cardVariants } from "./card";

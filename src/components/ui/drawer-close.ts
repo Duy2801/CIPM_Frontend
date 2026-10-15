@@ -1,6 +1,6 @@
 export const DRAWER_CLOSE_BUTTON_LABEL = "Đóng ngăn chi tiết";
 export const DRAWER_OVERLAY_Z_INDEX = 1200;
-export const STANDARD_DRAWER_WIDTH = "min(680px, 100vw)";
+export const STANDARD_DRAWER_WIDTH = "clamp(320px, max(46vw, min(95vw, 640px)), 860px)";
 
 type DrawerClosable = boolean | { placement?: "start" | "end" } | undefined;
 
@@ -22,6 +22,9 @@ export function getDrawerSize(
   size: string | number | undefined,
   legacyWidth: string | number | undefined,
 ): string | number | undefined {
+  if (legacyWidth === "min(680px, 100vw)") {
+    return STANDARD_DRAWER_WIDTH;
+  }
   return size ?? legacyWidth ?? STANDARD_DRAWER_WIDTH;
 }
 

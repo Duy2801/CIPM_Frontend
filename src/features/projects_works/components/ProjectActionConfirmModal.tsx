@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { WarningOutlined, LockOutlined, DeleteOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Modal, Button } from "@/components/ui";
+import { formatMoneyString } from "@/utils/format-money";
 import type { ProjectItem } from "../types/project.types";
 
 export type ProjectActionType =
@@ -97,7 +98,7 @@ export default function ProjectActionConfirmModal({
 
           {isRule5 && (
             <p className="text-[11.5px] text-slate-600 m-0">
-              Đã giải ngân: <strong className="text-rose-600 font-mono">{project.disbursedAmount.toFixed(2)} tỷ VNĐ</strong>.
+              Đã giải ngân: <strong className="text-rose-600 font-mono">{formatMoneyString(project.disbursedAmount)} VNĐ</strong>.
               Dự án đã có phát sinh tài chính không được phép xóa, chỉ chuyển sang trạng thái <strong>&quot;Đóng&quot;</strong> để lưu trữ hồ sơ.
             </p>
           )}
@@ -110,7 +111,7 @@ export default function ProjectActionConfirmModal({
 
           {isDelete && (
             <p className="text-[11.5px] text-rose-600 font-medium m-0">
-              Dự án chưa phát sinh tài chính (0.00 tỷ). Bạn có chắc chắn muốn xóa vĩnh viễn khỏi danh mục hệ thống?
+              Dự án chưa phát sinh tài chính (0 VNĐ). Bạn có chắc chắn muốn xóa vĩnh viễn khỏi danh mục hệ thống?
             </p>
           )}
 

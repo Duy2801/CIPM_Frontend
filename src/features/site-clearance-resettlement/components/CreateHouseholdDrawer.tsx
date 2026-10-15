@@ -26,6 +26,7 @@ import {
   Modal,
   Row,
   Select,
+  StandardFileUpload,
   Tag,
   Text,
 } from "@/components/ui";
@@ -663,56 +664,17 @@ export default function CreateHouseholdDrawer({
               <Input placeholder="vd: 12/TB-UBND hoặc 05/PA-BT" />
             </Form.Item>
 
-            <Form.Item
-              name="fileName"
-              label={
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                  <PaperClipOutlined className="text-slate-400" />
-                  Tệp đính kèm {editingStepDef?.forms ? `(${editingStepDef.forms})` : "(tùy chọn)"}
-                </span>
-              }
-              extra="Đính kèm biên bản scan, quyết định, phiếu khảo sát (PDF, DOC, DOCX, ảnh)"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                  <UploadOutlined className="text-slate-500 text-sm" />
-                  <span>Chọn tệp đính kèm</span>
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.png,.jpg"
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      const name = file?.name ?? "";
-                      editForm.setFieldsValue({ fileName: name });
-                      setSelectedCellFileName(name);
-                    }}
-                  />
-                </label>
-
-                {selectedCellFileName ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-xs text-slate-800 font-medium">
-                    <FileTextOutlined className="text-slate-500" />
-                    <span className="truncate max-w-[200px]">{selectedCellFileName}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        editForm.setFieldsValue({ fileName: "" });
-                        setSelectedCellFileName("");
-                      }}
-                      className="text-slate-400 hover:text-rose-600 ml-1 cursor-pointer font-bold"
-                      title="Xóa tệp"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-[11px] text-slate-400">
-                    Chưa có tệp được chọn
-                  </span>
-                )}
-              </div>
-            </Form.Item>
+            <div className="mb-3">
+              <StandardFileUpload
+                title={`Tệp đính kèm ${editingStepDef?.forms ? `(${editingStepDef.forms})` : "(tùy chọn)"}`}
+                subTitle="Biên bản scan, quyết định, phiếu khảo sát (PDF, DOCX, ảnh)"
+                singleFileName={selectedCellFileName}
+                onSingleFileNameChange={(name) => {
+                  editForm.setFieldsValue({ fileName: name });
+                  setSelectedCellFileName(name);
+                }}
+              />
+            </div>
 
             <Form.Item name="note" label="Ghi chú bước">
               <Input.TextArea

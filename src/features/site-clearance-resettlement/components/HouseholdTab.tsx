@@ -24,6 +24,7 @@ import {
 import type { ColumnsType } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
 import { cn } from "@/utils/cn";
+import { formatMoneyString } from "@/utils/format-money";
 import {
   GPMB_STEPS,
   LAND_TYPE_LABELS,
@@ -255,7 +256,7 @@ export default function HouseholdTab({
       "Địa chỉ",
       "Diện tích (m2)",
       "Loại đất",
-      "Tiền bồi thường (tỷ)",
+      "Tiền bồi thường (VNĐ)",
       "Bước hiện tại",
       "Tên bước",
       "Trạng thái đặc biệt",
@@ -271,7 +272,7 @@ export default function HouseholdTab({
         `"${(h.address || "").replace(/"/g, '""')}"`,
         h.areaM2,
         `"${LAND_TYPE_LABELS[h.landType] || h.landType}"`,
-        h.compensation.toFixed(3),
+        formatMoneyString(h.compensation),
         current ?? 16,
         `"${(stepDef?.title || (current === null ? "Đã bàn giao mặt bằng" : "")).replace(/"/g, '""')}"`,
         `"${h.specialStatus || "Bình thường"}"`,

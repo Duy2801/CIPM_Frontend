@@ -15,7 +15,7 @@
 export function formatMoneyString(
   input: string | number | undefined | null,
   allowNegative = false,
-  maxDecimals = 3
+  maxDecimals = 0
 ): string {
   if (input === undefined || input === null || input === "") return "";
 
@@ -26,7 +26,7 @@ export function formatMoneyString(
     const abs = Math.abs(input);
     const [intPart, decPart] = abs.toString().split(".");
     const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    const formattedDec = decPart ? `,${decPart.slice(0, maxDecimals)}` : "";
+    const formattedDec = maxDecimals > 0 && decPart ? `,${decPart.slice(0, maxDecimals)}` : "";
     return `${isNeg ? "-" : ""}${formattedInt}${formattedDec}`;
   }
 
@@ -41,14 +41,16 @@ export function formatMoneyString(
   let intRaw = str;
   let decRaw: string | null = null;
 
-  if (str.includes(",")) {
-    const parts = str.split(",");
-    intRaw = parts[0];
-    decRaw = parts.slice(1).join("");
-  } else if (str.endsWith(".")) {
-    // Nếu người dùng nhập kết thúc bằng dấu chấm: vd "25." -> chuẩn bị nhập số thập phân
-    intRaw = str.slice(0, -1);
-    decRaw = "";
+  if (maxDecimals > 0) {
+    if (str.includes(",")) {
+      const parts = str.split(",");
+      intRaw = parts[0];
+      decRaw = parts.slice(1).join("");
+    } else if (str.endsWith(".")) {
+      // Nếu người dùng nhập kết thúc bằng dấu chấm: vd "25." -> chuẩn bị nhập số thập phân
+      intRaw = str.slice(0, -1);
+      decRaw = "";
+    }
   }
 
   // Loại bỏ tất cả ký tự không phải chữ số ở phần nguyên (bao gồm các dấu chấm phân cách hàng nghìn cũ)
@@ -60,7 +62,7 @@ export function formatMoneyString(
 
   // Định dạng phần thập phân
   let formattedDec = "";
-  if (decRaw !== null) {
+  if (decRaw !== null && maxDecimals > 0) {
     const cleanDec = decRaw.replace(/[^\d]/g, "").slice(0, maxDecimals);
     formattedDec = `,${cleanDec}`;
   }

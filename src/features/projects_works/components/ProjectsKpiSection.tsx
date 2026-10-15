@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Card, Flex, Text } from "@/components/ui";
+import { formatMoneyString } from "@/utils/format-money";
 import type { ProjectItem } from "../types/project.types";
 
 interface ProjectsKpiSectionProps {
@@ -37,10 +38,10 @@ export default function ProjectsKpiSection({ projects }: ProjectsKpiSectionProps
     },
     {
       id: "investment",
-      value: `${totalInvested.toFixed(1)} tỷ`,
+      value: `${formatMoneyString(totalInvested)} VNĐ`,
       label: "Tổng mức đầu tư",
       color: "#B91C1C",
-      subtext: `Kế hoạch 2026: ${plan2026Total.toFixed(1)} tỷ`,
+      subtext: `Kế hoạch 2026: ${formatMoneyString(plan2026Total)} VNĐ`,
       subtextColor: totalInvested > 0 ? "text-red-700 font-semibold" : "text-slate-400 font-normal",
     },
     {

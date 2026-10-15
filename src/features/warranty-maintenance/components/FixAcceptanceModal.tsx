@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
 import { ExclamationCircleFilled } from "@ant-design/icons";
-import { Button, Form, Input, Modal, Text } from "@/components/ui";
+import { Button, Form, Input, Modal, StandardFileUpload, Text } from "@/components/ui";
 import { todayIso } from "@/utils/date";
 import type { FixInput, Incident } from "../types/warranty.types";
 
@@ -52,16 +52,11 @@ export default function FixAcceptanceModal({ incident, errorText, onClose, onSub
             <Input placeholder="Ví dụ: BB-NT-KP-015" />
           </Form.Item>
         </div>
-        <Form.Item
-          name="attachment"
-          label="Biên bản nghiệm thu lại / ảnh sau sửa chữa"
-          getValueFromEvent={(event: ChangeEvent<HTMLInputElement>) => event.target.files?.[0]?.name ?? ""}
-          getValueProps={() => ({})}
-        >
-          <input
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg"
-            className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-[13px] file:font-medium file:text-slate-700 hover:border-slate-400"
+        <Form.Item name="attachment" className="mb-3">
+          <StandardFileUpload
+            title="Biên bản nghiệm thu lại / ảnh sau sửa chữa"
+            subTitle="Chấp nhận .pdf, .docx, .png, .jpg (Không bắt buộc)"
+            onSingleFileNameChange={(name) => form.setFieldsValue({ attachment: name })}
           />
         </Form.Item>
         <footer className="flex items-center justify-start gap-2.5 border-t border-slate-100 pt-4">

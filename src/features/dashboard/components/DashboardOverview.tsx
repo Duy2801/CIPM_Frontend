@@ -6,6 +6,7 @@ import { useDashboardData } from "../hooks/useDashboardData";
 import DashboardKpiSection from "./DashboardKpiSection";
 import DisbursementQuarterlyChart from "./DisbursementQuarterlyChart";
 import DashboardAlertPanel from "./DashboardAlertPanel";
+import DashboardProjectsSection from "./DashboardProjectsSection";
 import ActivityLogSection from "./ActivityLogSection";
 
 export default function DashboardOverview() {
@@ -46,7 +47,10 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          {/* 3. Hàng dưới: Bảng Nhật ký điều hành gần nhất */}
+          {/* 3. Hàng giữa-dưới: Khung danh sách các dự án (Phân trang 5 dự án/trang & Bộ lọc) */}
+          <DashboardProjectsSection />
+
+          {/* 4. Hàng dưới cùng: Bảng Nhật ký điều hành gần nhất */}
           <ActivityLogSection activities={activities} />
         </Flex>
       </Spin>

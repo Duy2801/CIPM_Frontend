@@ -3,7 +3,6 @@
 import React from "react";
 import {
   CloseOutlined,
-  DownloadOutlined,
   EditOutlined,
   FileTextOutlined,
   HistoryOutlined,
@@ -11,6 +10,7 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 import { Button, Flex, Progress, Tag, Text } from "@/components/ui";
+import { formatMoneyString } from "@/utils/format-money";
 import type { AuthUser } from "@/types/auth";
 import {
   getProjectHealthStatus,
@@ -31,8 +31,6 @@ export default function ProjectViewTab({
   project,
   user,
   onEditClick,
-  onProgressClick,
-  onReopenProject,
   onClose,
 }: ProjectViewTabProps) {
 
@@ -48,10 +46,10 @@ export default function ProjectViewTab({
     { label: "Loại dự án", value: project.type },
     { label: "Địa bàn xây dựng", value: project.location || "TP. Hà Tiên" },
     { label: "Nguồn vốn", value: project.fundingSource },
-    { label: "Tổng mức đầu tư", value: `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(project.totalInvestment || 0)} tỷ` },
+    { label: "Tổng mức đầu tư", value: `${formatMoneyString(project.totalInvestment || 0)} VNĐ` },
     {
       label: `Kế hoạch vốn ${currentFiscalYear}`,
-      value: project.plan2026 > 0 ? `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(project.plan2026)} tỷ` : "Chưa giao kế hoạch",
+      value: project.plan2026 > 0 ? `${formatMoneyString(project.plan2026)} VNĐ` : "Chưa giao kế hoạch",
     },
     { label: "Cơ quan quản lý", value: "Ban QLDA ĐTXD Hà Tiên" },
     {
@@ -73,13 +71,13 @@ export default function ProjectViewTab({
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {/* Thông tin tổng quan (Fact grid) */}
-      <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <dl className="m-0 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
         {facts.map((fact) => (
-          <div key={fact.label}>
-            <dt className="text-xs text-slate-500 font-medium">{fact.label}</dt>
+          <div key={fact.label} className="min-w-0">
+            <dt className="text-xs text-slate-500 font-medium truncate" title={fact.label}>{fact.label}</dt>
             <dd className="m-0 mt-0.5">
               <span
-                className={`text-[13px] font-semibold text-slate-800 ${fact.isMono ? "font-mono" : ""
+                className={`text-[13px] font-semibold text-slate-800 break-words leading-snug block ${fact.isMono ? "font-mono" : ""
                   }`}
               >
                 {fact.value}
@@ -89,8 +87,8 @@ export default function ProjectViewTab({
         ))}
 
         {/* Phòng ban được giao / phối hợp thực hiện */}
-        <div className="col-span-2 pt-2.5 mt-1 border-t border-slate-200">
-          <dt className="text-xs text-slate-500 font-medium mb-1.5 flex items-center gap-1.5">
+        <div className="col-span-1 sm:col-span-2 pt-2.5 mt-1 border-t border-slate-200">
+          <dt className="text-xs text-slate-500 font-medium mb-1.5 flex items-center gap-1.5 flex-wrap">
             <TeamOutlined className="text-blue-600 text-xs" />
             <span className="font-semibold text-slate-700">Phòng ban được giao phụ trách:</span>
             {project.departments && project.departments.length > 0 && (
@@ -123,13 +121,13 @@ export default function ProjectViewTab({
       {project.scale && (
         <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 text-xs">
           <span className="text-slate-500 font-medium block mb-1">Mục tiêu / Quy mô dự án:</span>
-          <p className="text-slate-800 m-0 leading-relaxed font-normal">{project.scale}</p>
+          <p className="text-slate-800 m-0 leading-relaxed font-normal break-words">{project.scale}</p>
         </div>
       )}
 
       {/* Khối Tiến độ thực tế vs Kế hoạch */}
       <section className="rounded-xl border border-slate-200 p-4">
-        <Flex align="center" justify="space-between" gap="small">
+        <Flex align="center" justify="space-between" gap="small" wrap="wrap">
           <Text className="text-[13px] font-semibold text-slate-800">Tiến độ thực hiện dự án</Text>
           <Tag
             className={
@@ -151,7 +149,7 @@ export default function ProjectViewTab({
         </Flex>
 
         <div className="mt-3">
-          <Flex align="center" justify="space-between" className="text-xs text-slate-600 mb-1">
+          <Flex align="center" justify="space-between" wrap="wrap" gap={8} className="text-xs text-slate-600 mb-1">
             <span>
               Tiến độ thực tế:{" "}
               <strong className="text-slate-900 font-mono text-[13px]">
@@ -170,10 +168,10 @@ export default function ProjectViewTab({
           />
         </div>
 
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs flex-wrap gap-2">
           <span className="text-slate-500">Tỷ lệ giải ngân vốn:</span>
           <span className="font-semibold text-slate-800">
-            {project.disbursedAmount.toFixed(2)} / {project.totalInvestment.toFixed(2)} tỷ ({disbursedPercent}%)
+            {formatMoneyString(project.disbursedAmount)} / {formatMoneyString(project.totalInvestment)} VNĐ ({disbursedPercent}%)
           </span>
         </div>
       </section>
@@ -276,7 +274,7 @@ export default function ProjectViewTab({
       </div>
 
       {/* Footer thao tác của màn hình Chi tiết (Cố định ở đáy, nút chức năng đứng TRƯỚC, Đóng đứng SAU) */}
-      <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)]">
+      <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3 flex items-center justify-start gap-2.5 z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.03)] flex-wrap">
         {canUserDo(user, "m2_projects", "input") && (
           <Button
             intent="primary"

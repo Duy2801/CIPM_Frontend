@@ -15,7 +15,8 @@ import {
   TagOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Input, Select, Text } from "@/components/ui";
+import { Button, Drawer, Input, Select, StandardFileUpload, Text, STANDARD_DRAWER_WIDTH } from "@/components/ui";
+import type { UploadedAttachment } from "@/components/ui/standard-file-upload";
 import { todayIso } from "@/utils/date";
 import { CATEGORY_LABELS } from "../constants/legal-mock-data";
 import type {
@@ -80,7 +81,7 @@ export default function CreateDocumentDrawer({
   const [scope, setScope] = useState(SCOPE_SUGGESTIONS[0]);
   const [summary, setSummary] = useState("");
   const [tagsStr, setTagsStr] = useState("");
-  const [attachedFiles, setAttachedFiles] = useState<AttachedDocumentFile[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<UploadedAttachment[]>([]);
   const [errorText, setErrorText] = useState("");
 
   useEffect(() => {
@@ -96,7 +97,14 @@ export default function CreateDocumentDrawer({
       setSummary(editingDocument.summary);
       setTagsStr(editingDocument.tags.join(", "));
       if (editingDocument.files && editingDocument.files.length > 0) {
-        setAttachedFiles(editingDocument.files);
+        setAttachedFiles(
+          editingDocument.files.map((f) => ({
+            id: f.id,
+            name: f.name,
+            size: f.size,
+            type: f.type,
+          }))
+        );
       } else if (editingDocument.code) {
         setAttachedFiles([
           {
@@ -166,7 +174,8 @@ export default function CreateDocumentDrawer({
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
-    const primaryType: "PDF" | "DOCX" = attachedFiles.length > 0 ? attachedFiles[0].type : "PDF";
+    const primaryType: "PDF" | "DOCX" =
+      attachedFiles.length > 0 && attachedFiles[0].type === "DOCX" ? "DOCX" : "PDF";
     const totalSizeStr =
       attachedFiles.length === 1
         ? attachedFiles[0].size
@@ -189,7 +198,14 @@ export default function CreateDocumentDrawer({
       fileSize: totalSizeStr,
       downloads: editingDocument?.downloads ?? 0,
       tags: tags.length > 0 ? tags : ["Pháp lý", "Quy chuẩn", "Ban QLDA"],
-      files: attachedFiles,
+      files: attachedFiles.map((f) => ({
+        id: f.id,
+        name: f.name,
+        size: f.size,
+        type: f.type === "DOCX" ? "DOCX" : "PDF",
+        rawFile: f.rawFile,
+        url: f.url,
+      })),
     };
 
     onSubmit(newDoc);
@@ -200,7 +216,7 @@ export default function CreateDocumentDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      width="min(680px, 100vw)"
+      width={STANDARD_DRAWER_WIDTH}
       title={
         <div className="py-1">
           <div className="flex items-center gap-2 text-base font-bold text-slate-800">
@@ -384,99 +400,11 @@ export default function CreateDocumentDrawer({
         </div>
 
         {/* 6. Tập tin đính kèm */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <UploadOutlined className="text-[#DC2626]" />
-              Đính kèm tệp văn bản số hóa (PDF, DOCX)
-            </span>
-            {attachedFiles.length > 0 && (
-              <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                Đã chọn {attachedFiles.length} tệp
-              </span>
-            )}
-          </div>
-
-          <label
-            htmlFor="legal-files-input"
-            className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 bg-white rounded-xl cursor-pointer hover:border-red-400 hover:bg-red-50/20 transition-all text-center group"
-          >
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 group-hover:bg-red-50 text-slate-500 group-hover:text-red-500 transition-colors mb-1.5">
-              <InboxOutlined className="text-2xl" />
-            </div>
-            <span className="text-xs font-semibold text-slate-800 group-hover:text-red-600 transition-colors">
-              Nhấn hoặc kéo thả để tải lên tệp tài liệu số hóa
-            </span>
-            <span className="text-[11px] text-slate-500 mt-1">
-              Tự động nhận diện cả .pdf, .docx, .doc · Hỗ trợ chọn nhiều tệp cùng lúc (Tối đa 50MB/tệp)
-            </span>
-            <input
-              id="legal-files-input"
-              type="file"
-              multiple
-              accept=".pdf,.docx,.doc"
-              className="hidden"
-              onChange={(e) => {
-                handleFilesSelected(e.target.files);
-                e.target.value = "";
-              }}
-            />
-          </label>
-
-          {/* Danh sách các tệp đã thêm */}
-          {attachedFiles.length > 0 && (
-            <div className="mt-3 flex flex-col gap-2">
-              <div className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                <PaperClipOutlined /> Danh sách tệp đính kèm ({attachedFiles.length}):
-              </div>
-              <div className="max-h-48 overflow-y-auto pr-1 flex flex-col gap-1.5">
-                {attachedFiles.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors shadow-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      {file.type === "PDF" ? (
-                        <FilePdfOutlined className="text-lg text-rose-500 shrink-0" />
-                      ) : (
-                        <FileWordOutlined className="text-lg text-blue-600 shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-slate-800 truncate" title={file.name}>
-                          {file.name}
-                        </div>
-                        <div className="text-[10.5px] text-slate-500 flex items-center gap-2">
-                          <span
-                            className={`px-1.5 py-0.2 rounded font-semibold text-[9.5px] ${
-                              file.type === "PDF"
-                                ? "bg-rose-50 text-rose-600 border border-rose-200"
-                                : "bg-blue-50 text-blue-600 border border-blue-200"
-                            }`}
-                          >
-                            {file.type}
-                          </span>
-                          <span>{file.size}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveFile(file.id);
-                      }}
-                      title="Xóa tệp"
-                      className="shrink-0 p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                    >
-                      <DeleteOutlined className="text-sm" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <StandardFileUpload
+          value={attachedFiles}
+          onChange={setAttachedFiles}
+          accept=".pdf,.docx,.doc"
+        />
       </form>
     </Drawer>
   );

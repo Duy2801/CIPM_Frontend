@@ -605,15 +605,17 @@ export default function ProcedureStepDetailDrawer({
           {/* Vùng kéo thả / Nhấp để chọn tệp */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="mb-3.5 border-2 border-dashed border-slate-200 hover:border-red-400 hover:bg-red-50/20 rounded-xl p-4 text-center cursor-pointer transition-colors group"
+            className="mb-3.5 border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 rounded-xl p-4 text-center cursor-pointer transition-colors group bg-white"
           >
             <div className="flex flex-col items-center justify-center">
-              <InboxOutlined className="text-2xl text-slate-400 group-hover:text-[#DC2626] mb-1.5 transition-colors" />
-              <span className="text-xs font-semibold text-slate-700 group-hover:text-[#DC2626]">
-                Nhấn vào đây để chọn tệp từ máy tính
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 group-hover:bg-red-50 text-slate-500 group-hover:text-red-500 transition-colors mb-1.5">
+                <InboxOutlined className="text-2xl" />
+              </div>
+              <span className="text-xs font-semibold text-slate-800 group-hover:text-red-600 transition-colors">
+                Nhấn hoặc kéo thả để tải lên tệp tài liệu số hóa
               </span>
-              <span className="text-[11px] text-slate-400 mt-0.5">
-                Hỗ trợ PDF, Word (DOCX), Excel (XLSX), Bản vẽ, Tệp nén ZIP/RAR (Tối đa 50MB)
+              <span className="text-[11px] text-slate-500 mt-1">
+                Tự động nhận diện cả .pdf, .docx, .doc · Hỗ trợ chọn nhiều tệp cùng lúc (Tối đa 50MB/tệp)
               </span>
             </div>
           </div>

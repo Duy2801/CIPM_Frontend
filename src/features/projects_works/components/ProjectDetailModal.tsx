@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { App } from "antd";
-import { Drawer, Flex, Spin, Tag } from "@/components/ui";
+import { Drawer, Flex, Spin, Tag, STANDARD_DRAWER_WIDTH } from "@/components/ui";
 import { useAuth } from "@/features/auth";
 import {
   STAGE_BADGE_CLASSES,
@@ -46,9 +46,7 @@ export default function ProjectDetailModal({
   onClose,
   onSaveProgress,
   onUpdateProject,
-  onCloseProject,
   onReopenProject,
-  onDeleteProject,
 }: ProjectDetailModalProps) {
   const { message } = App.useApp();
   const { user } = useAuth();
@@ -57,15 +55,16 @@ export default function ProjectDetailModal({
   const [activeTab, setActiveTab] = useState<ProjectDetailTab>(initialMode);
   // Trạng thái tải lại chi tiết sau khi cập nhật
   const [isReloading, setIsReloading] = useState<boolean>(false);
+  const [prevSyncKey, setPrevSyncKey] = useState<string>("");
 
-  // Đồng bộ tab khi modal được mở lại
-  useEffect(() => {
-    if (project && open) {
-      const canEdit = canUserDo(user, "m2_projects", "input");
-      const targetTab = initialMode === "edit" && !canEdit ? "view" : (initialMode || "view");
-      setActiveTab(targetTab);
-    }
-  }, [project, open, initialMode, user]);
+  // Đồng bộ tab khi modal được mở lại theo pattern React docs
+  const currentSyncKey = project && open ? `${project.id}-${initialMode}` : "";
+  if (currentSyncKey && currentSyncKey !== prevSyncKey) {
+    setPrevSyncKey(currentSyncKey);
+    const canEdit = canUserDo(user, "m2_projects", "input");
+    const targetTab = initialMode === "edit" && !canEdit ? "view" : (initialMode || "view");
+    setActiveTab(targetTab);
+  }
 
   if (!project) return null;
 
@@ -98,14 +97,14 @@ export default function ProjectDetailModal({
     <Drawer
       open={open}
       closable={false}
-      width="min(680px, 100vw)"
+      width={STANDARD_DRAWER_WIDTH}
       onClose={onClose}
       className="[&_.ant-drawer-body]:!p-0 [&_.ant-drawer-body]:!overflow-hidden [&_.ant-drawer-body]:flex [&_.ant-drawer-body]:flex-col [&_.ant-drawer-body]:h-full"
       title={
-        <div className="w-full flex items-start justify-between gap-4">
-          <div className="min-w-0">
+        <div className="w-full flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0 flex-1">
             <Flex align="center" gap={8} className="flex-wrap">
-              <span className="text-base font-bold text-[#102A43]">{project.code}</span>
+              <span className="text-base sm:text-lg font-bold text-[#102A43] tracking-tight">{project.code}</span>
               {project.status === "closed" ? (
                 <Tag intent="muted" scale="sm">
                   Đã đóng
@@ -126,7 +125,7 @@ export default function ProjectDetailModal({
                 {STAGE_DISPLAY_NAMES[project.currentStage]}
               </span>
             </Flex>
-            <span className="block text-xs font-normal text-slate-500 mt-1 line-clamp-1">
+            <span className="block text-xs font-normal text-slate-500 mt-1 line-clamp-1 break-words" title={project.name}>
               {project.name}
             </span>
           </div>
