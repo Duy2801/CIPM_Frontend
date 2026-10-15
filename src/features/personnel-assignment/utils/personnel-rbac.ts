@@ -188,7 +188,7 @@ export function resolveStaffRbac(
   let teamCode: RbacTeamCode | null = null;
   const teamId = team?.id || staff.teamId;
 
-  if (teamId === "GSKT") {
+  if (teamId === "GSKT" || teamId === "KHKT" || teamId === "DT") {
     teamCode = "TECHNICAL";
   } else if (teamId === "BT") {
     teamCode = "COMPENSATION";

@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { LoginView } from "@/features/auth";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Đăng nhập · BQL ĐTXD Hà Tiên",
-  description: "Cổng đăng nhập Hệ thống Quản lý Dự án Đầu tư Xây dựng BQL ĐTXD Hà Tiên",
-};
-
-export default function LoginPage() {
-  return <LoginView />;
+export default function RedirectToLogin() {
+  redirect("/login");
 }

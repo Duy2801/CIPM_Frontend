@@ -78,6 +78,26 @@ export interface ProcedureStep {
   actualStartDate?: string;    // YYYY-MM-DD
   actualEndDate?: string;      // YYYY-MM-DD
 
+  // Phân quyền theo Phòng ban & Phân công nhiệm vụ thành viên
+  department?: string;         // Phòng ban sở hữu bước quy trình (VD: "Tổ Giám sát – Kỹ thuật")
+  assignedTo?: string;         // Tên thành viên được giao việc (VD: "Trần Quốc Việt")
+  assignedToId?: string;       // ID nhân sự được giao (VD: "ST-006")
+  assignedBy?: string;         // Tên Lead đã giao việc
+  assignedAt?: string;         // Ngày giao việc
+
+  // Luồng duyệt của Lead phòng ban
+  submissionStatus?:
+    | "PENDING_SUBMISSION"     // Chưa nộp (thành viên đang thực hiện)
+    | "SUBMITTED"              // Thành viên đã nộp/xác nhận, chờ Lead duyệt
+    | "APPROVED"               // Lead đã duyệt bước
+    | "REJECTED";              // Lead từ chối (yêu cầu làm lại)
+  submittedBy?: string;        // Người nộp bước
+  submittedAt?: string;        // Thời gian nộp
+  submissionNote?: string;     // Ghi chú nộp của thành viên
+  approvedBy?: string;         // Lead duyệt
+  approvedAt?: string;         // Thời gian duyệt
+  rejectionReason?: string;    // Lý do từ chối của Lead nếu reject
+
   // Dữ liệu giải trình nếu bỏ qua (Quy tắc 7)
   skipReason?: string;
   skipDocumentCode?: string;
@@ -86,6 +106,36 @@ export interface ProcedureStep {
   // Danh mục hồ sơ đính kèm (Quy tắc 10 - bắt buộc >= 1 để hoàn thành)
   attachments: ProcedureDocument[];
   notes?: string;
+}
+
+export interface DepartmentProcedureStatus {
+  department?: string;
+  isCompletedByLead: boolean;  // Lead đã xác nhận hoàn thành toàn bộ bước của phòng ban
+  completedAt?: string;
+  completedBy?: string;        // Tên Lead xác nhận
+  confirmedAt?: string;
+  confirmedBy?: string;
+  note?: string;
+}
+
+export interface StageApprovalStatus {
+  status: "APPROVED" | "REJECTED";
+  decidedBy?: string;
+  decidedAt?: string;
+  rejectionReason?: string;
+  note?: string;
+}
+
+export interface DirectorApprovalStatus {
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  decidedBy?: string;          // Giám đốc / Phó Giám đốc phê duyệt
+  decidedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  note?: string;
+  rejectionReason?: string;
 }
 
 export interface ProjectProcedureData {
@@ -98,6 +148,10 @@ export interface ProjectProcedureData {
   supervisorName: string;
   startDate: string;
   expectedFinishDate: string;
+  departments?: string[];      // Các phòng ban tham gia dự án
+  departmentStatuses?: Record<string, DepartmentProcedureStatus>;
+  directorApproval?: DirectorApprovalStatus;
+  stageApprovals?: Record<string, StageApprovalStatus>;
   steps: ProcedureStep[];
   history: ProcedureHistoryLog[];
 }

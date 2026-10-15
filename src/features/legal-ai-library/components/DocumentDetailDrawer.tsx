@@ -89,7 +89,7 @@ export default function DocumentDetailDrawer({
             scale="sm"
             icon={<DownloadOutlined />}
             onClick={handleDownload}
-            className="text-xs font-semibold text-teal-800 hover:!border-teal-600 hover:!text-teal-700"
+            className="text-xs font-semibold text-[#DC2626] border-slate-300 hover:!border-[#DC2626] hover:!text-[#B91C1C]"
           >
             Tải văn bản ({document.fileSize})
           </Button>
@@ -113,7 +113,7 @@ export default function DocumentDetailDrawer({
               intent="primary"
               scale="sm"
               onClick={onClose}
-              className="!border-[#007A78] !bg-[#007A78] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#006361]"
+              className="!border-[#DC2626] !bg-[#DC2626] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#B91C1C]"
             >
               Đóng
             </Button>
@@ -125,7 +125,7 @@ export default function DocumentDetailDrawer({
         {/* Thuộc tính cơ bản */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
           <div className="mb-3 flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            <SafetyCertificateOutlined className="text-[#007A78]" />
+            <SafetyCertificateOutlined className="text-[#DC2626]" />
             Thông tin pháp lý & Thuộc tính ban hành
           </div>
 
@@ -162,8 +162,8 @@ export default function DocumentDetailDrawer({
               <span className="text-[11px] font-medium text-slate-500">
                 Ngày bắt đầu hiệu lực
               </span>
-              <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                <CheckCircleOutlined className="text-emerald-600" />
+              <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                <CheckCircleOutlined className="text-slate-500" />
                 {formatDateVi(document.effectiveDate)}
               </div>
             </div>
@@ -173,7 +173,7 @@ export default function DocumentDetailDrawer({
             <span className="text-[11px] font-medium text-slate-500">
               Phạm vi áp dụng trong BQL
             </span>
-            <div className="mt-0.5 text-xs font-semibold text-teal-800">
+            <div className="mt-0.5 text-xs font-semibold text-slate-800">
               {document.scope}
             </div>
           </div>
@@ -182,7 +182,7 @@ export default function DocumentDetailDrawer({
         {/* Tóm tắt nội dung */}
         <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            <InfoCircleOutlined className="text-[#007A78]" />
+            <InfoCircleOutlined className="text-[#DC2626]" />
             Tóm tắt nội dung trọng tâm & Hướng dẫn áp dụng
           </div>
           <p className="text-xs leading-relaxed text-slate-700">
@@ -193,7 +193,7 @@ export default function DocumentDetailDrawer({
         {/* Từ khóa & Thẻ liên kết */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
           <div className="mb-2.5 flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            <TagOutlined className="text-[#007A78]" />
+            <TagOutlined className="text-[#DC2626]" />
             Từ khóa tra cứu & Đối tượng liên quan
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -209,7 +209,7 @@ export default function DocumentDetailDrawer({
         </div>
 
         {/* File đính kèm */}
-        <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-4">
+        <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               {document.fileType === "PDF" ? (
@@ -232,7 +232,7 @@ export default function DocumentDetailDrawer({
               scale="sm"
               icon={<DownloadOutlined />}
               onClick={handleDownload}
-              className="!border-[#007A78] !bg-[#007A78] text-xs font-semibold !text-white shadow-xs hover:!bg-[#006361]"
+              className="!border-[#DC2626] !bg-[#DC2626] text-xs font-semibold !text-white shadow-xs hover:!bg-[#B91C1C]"
             >
               Tải file
             </Button>

@@ -72,7 +72,7 @@ export default function ContractLimitTab({
       width: 260,
       render: (_, row) => (
         <section className="py-0.5">
-          <Text className="block text-xs font-bold text-[#007A78]">{row.code}</Text>
+          <Text className="block text-xs font-bold text-[#DC2626]">{row.code}</Text>
           <Text className="mt-0.5 block line-clamp-2 text-xs font-semibold leading-5 text-[#102A43]">
             {row.project?.name}
           </Text>
@@ -100,7 +100,7 @@ export default function ContractLimitTab({
       width: 120,
       align: "right",
       render: (value: number) => (
-        <Text className="text-xs font-semibold text-emerald-700">{formatVndBillions(value)}</Text>
+        <Text className="text-xs font-semibold text-[#DC2626]">{formatVndBillions(value)}</Text>
       ),
     },
     {
@@ -126,11 +126,11 @@ export default function ContractLimitTab({
                 Chạm ngưỡng 95%
               </Tag>
             ) : (
-              <Tag intent="success" scale="sm" icon={<CheckCircleOutlined />} className="m-0">
+              <Tag scale="sm" icon={<CheckCircleOutlined className="text-slate-500" />} className="m-0 !bg-slate-100 !text-slate-700 !border-slate-200">
                 An toàn
               </Tag>
             )}
-            <Text className={`text-xs font-bold ${row.usage.isWarning ? "text-amber-700" : "text-teal-800"}`}>
+            <Text className={`text-xs font-bold ${row.usage.isWarning ? "text-amber-700" : "text-slate-800"}`}>
               {row.usage.percent}%
             </Text>
           </Flex>
@@ -138,7 +138,7 @@ export default function ContractLimitTab({
             percent={Math.min(100, row.usage.percent)}
             showInfo={false}
             size="small"
-            strokeColor={row.usage.isWarning ? "#E09F3E" : "#007A78"}
+            strokeColor={row.usage.isWarning ? "#E09F3E" : "#DC2626"}
           />
         </section>
       ),

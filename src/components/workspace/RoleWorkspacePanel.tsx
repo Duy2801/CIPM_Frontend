@@ -62,7 +62,7 @@ export default function RoleWorkspacePanel<TTask extends WorkspaceTask>({
         >
           <Flex align="center" justify="space-between" className="border-b border-slate-100 px-4 py-3 sm:px-5 shrink-0">
             <Text className="text-base font-bold text-[#102A43]">{heading}</Text>
-            <Text className="text-xs text-slate-500">Bấm vào từng mục để mở danh sách tương ứng</Text>
+            <Text className="text-xs text-slate-600 font-medium">Bấm vào từng mục để mở danh sách tương ứng</Text>
           </Flex>
 
           {tasks.length === 0 ? (
@@ -72,7 +72,7 @@ export default function RoleWorkspacePanel<TTask extends WorkspaceTask>({
               </span>
               <span>
                 <Text className="block text-sm font-semibold text-slate-800">Không có việc tồn đọng</Text>
-                <Text className="block text-xs text-slate-500">
+                <Text className="block text-xs text-slate-600 font-medium">
                   Mọi hồ sơ trong phạm vi bộ lọc hiện tại đều đã được xử lý.
                 </Text>
               </span>
@@ -86,23 +86,23 @@ export default function RoleWorkspacePanel<TTask extends WorkspaceTask>({
                     <button
                       type="button"
                       onClick={() => onSelectTask(task)}
-                      className={`group flex h-full w-full cursor-pointer items-center gap-3 rounded-lg border border-l-4 border-slate-200 bg-white px-3.5 py-3 text-left transition-all hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 ${tone.bar}`}
+                      className={`group flex h-full w-full cursor-pointer items-center gap-3 rounded-lg border border-l-4 border-slate-200 bg-white px-3.5 py-3 text-left transition-all hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${tone.bar}`}
                     >
                       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tone.iconBox}`}>
                         {tone.icon}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-slate-800 group-hover:text-teal-700 leading-snug">
+                        <span className="block truncate text-sm font-semibold text-slate-800 group-hover:text-emerald-700 leading-snug">
                           {task.title}
                         </span>
-                        <span className="mt-0.5 block truncate text-xs text-slate-500">
-                          {task.description} · <span className="text-slate-400">Tab {tabLabels[task.tab]}</span>
+                        <span className="mt-0.5 block truncate text-xs text-slate-600 font-medium">
+                          {task.description} · <span className="text-slate-600 font-semibold">Tab {tabLabels[task.tab]}</span>
                         </span>
                       </span>
                       <span className={`flex min-w-5 h-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-bold ${tone.count}`}>
                         {task.count}
                       </span>
-                      <RightOutlined className="text-[10px] text-slate-400 transition-transform group-hover:translate-x-0.5" />
+                      <RightOutlined className="text-[10px] text-slate-500 transition-transform group-hover:translate-x-0.5" />
                     </button>
                   </li>
                 );
@@ -122,23 +122,23 @@ export default function RoleWorkspacePanel<TTask extends WorkspaceTask>({
           <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-4">
             <div>
               <Flex align="center" gap="small">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0B2546] text-sm font-bold text-white">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-sm font-bold text-white shadow-xs">
                   {getInitials(profile.userName)}
                 </span>
                 <span className="min-w-0">
-                  <Text className="block truncate text-sm font-bold text-[#102A43]">{profile.userName}</Text>
-                  <Text className="block truncate text-xs text-slate-500">
+                  <Text className="block truncate text-sm font-bold text-slate-900">{profile.userName}</Text>
+                  <Text className="block truncate text-xs text-slate-600 font-medium">
                     {profile.roleTitle} · {profile.department}
                   </Text>
                 </span>
               </Flex>
 
-              <Text className="mt-3 block text-[13px] leading-5 text-slate-600">
+              <Text className="mt-3 block text-[13px] leading-5 text-slate-700 font-medium">
                 {profile.scopeDescription}
               </Text>
 
               <details className="group mt-2">
-                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-[#0F4C81] hover:underline">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-[#DC2626] hover:underline">
                   <SafetyCertificateOutlined />
                   {profile.isReadOnly ? "Phạm vi được xem" : "Quyền hạn của bạn"} ({profile.allowedDuties.length})
                   <RightOutlined className="text-[9px] transition-transform group-open:rotate-90" />
@@ -154,12 +154,12 @@ export default function RoleWorkspacePanel<TTask extends WorkspaceTask>({
               </details>
             </div>
 
-            <aside className="mt-3 rounded-lg border border-teal-100 bg-teal-50/70 px-3 py-2">
+            <aside className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-2">
               <Flex align="start" gap="small">
-                <BulbOutlined className="mt-0.5 text-teal-700" />
+                <BulbOutlined className="mt-0.5 text-emerald-700" />
                 <span>
                   <Tag intent="brand" scale="sm" className="mb-1">Nên đọc trước</Tag>
-                  <Text className="block text-[13px] leading-5 text-teal-900">{profile.readingGuide}</Text>
+                  <Text className="block text-[13px] leading-5 text-emerald-900">{profile.readingGuide}</Text>
                 </span>
               </Flex>
             </aside>

@@ -8,13 +8,26 @@ import type { LoginCredentials } from "../types/auth.types";
 interface LoginFormProps {
   onSubmit: (values: LoginCredentials) => void;
   loading?: boolean;
+  initialUsername?: string;
+  initialPassword?: string;
 }
 
 export default function LoginForm({
   onSubmit,
   loading = false,
+  initialUsername = "",
+  initialPassword = "",
 }: LoginFormProps) {
   const [form] = useForm<LoginCredentials>();
+
+  React.useEffect(() => {
+    if (initialUsername) {
+      form.setFieldsValue({
+        username: initialUsername,
+        password: initialPassword || "123456",
+      });
+    }
+  }, [initialUsername, initialPassword, form]);
 
   const onFinish = (values: LoginCredentials) => {
     onSubmit({
@@ -42,7 +55,7 @@ export default function LoginForm({
         }
         name="username"
         rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập" }]}
-        className="!mb-4"
+        className="!mb-1 [&_.ant-form-item-explain]:!min-h-[22px] [&_.ant-form-item-explain]:!text-[12px] [&_.ant-form-item-explain]:!pt-1 [&_.ant-form-item-row]:!mb-0"
       >
         <Input
           intent="clean"
@@ -61,7 +74,7 @@ export default function LoginForm({
         }
         name="password"
         rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
-        className="!mb-4"
+        className="!mb-1 [&_.ant-form-item-explain]:!min-h-[22px] [&_.ant-form-item-explain]:!text-[12px] [&_.ant-form-item-explain]:!pt-1 [&_.ant-form-item-row]:!mb-0"
       >
         <Input.Password
           intent="clean"
@@ -72,7 +85,7 @@ export default function LoginForm({
         />
       </Form.Item>
 
-      <Flex align="center" justify="space-between" className="!mb-6">
+      <Flex align="center" justify="space-between" className="!mt-2 !mb-6">
         <Form.Item name="rememberMe" valuePropName="checked" noStyle>
           <Checkbox className="text-[13px] text-[var(--cipm-text-muted)] select-none">
             Ghi nhớ đăng nhập

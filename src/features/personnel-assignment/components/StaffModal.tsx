@@ -349,12 +349,12 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
         {/* Section 2: Vai trò & Phân quyền hệ thống */}
         <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3.5">
           <div className="mb-2.5 flex items-center gap-1.5 border-b border-slate-200/70 pb-1.5">
-            <SafetyCertificateOutlined className="text-teal-700" />
-            <Text className="text-xs font-bold text-[#102A43]">Vai trò & Phân quyền hệ thống</Text>
+            <SafetyCertificateOutlined className="text-emerald-700" />
+            <Text className="text-xs font-bold text-[#102A43]">Vai trò hệ thống</Text>
           </div>
 
-          <Row gutter={[16, 0]} align="middle">
-            <Col xs={24} sm={12}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24}>
               <Form.Item
                 name="roleCode"
                 label="Vai trò hệ thống"
@@ -363,13 +363,6 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
               >
                 <Select options={roleOptions} placeholder="Chọn vai trò hệ thống" />
               </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <div className="mt-4 sm:mt-5 rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-500">
-                <Text className="block text-[11px] leading-4 text-slate-500">
-                  * Tài khoản theo <strong>Email</strong>, mật khẩu mặc định là <code className="rounded bg-slate-100 px-1 py-0.5 font-mono font-bold text-slate-700">1111</code>.
-                </Text>
-              </div>
             </Col>
           </Row>
         </div>

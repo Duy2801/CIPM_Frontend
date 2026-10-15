@@ -3,6 +3,7 @@ import { WARRANTY_MOCK_DATA } from "../constants/warranty-mock-data.ts";
 import type { Incident, WarrantyDataset, WarrantyRecord } from "../types/warranty.types";
 import { getBondReturnBlocker, getCountdown, validateFix, validateIncident } from "../utils/warranty-rules.ts";
 import type { WarrantyRepository } from "./warranty.repository.ts";
+import { getSharedProjects } from "../../../stores/project.store.ts";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
@@ -17,7 +18,20 @@ export function createMockWarrantyRepository(): WarrantyRepository {
 
   return {
     async getDataset() {
-      return clone(dataset);
+      const copy = clone(dataset);
+      const shared = getSharedProjects();
+      const existingIds = new Set(copy.projects.map((p) => p.id));
+      for (const sp of shared) {
+        if (!existingIds.has(sp.id)) {
+          copy.projects.push({
+            id: sp.id,
+            code: sp.code,
+            name: sp.name,
+          });
+          existingIds.add(sp.id);
+        }
+      }
+      return copy;
     },
 
     async reportIncident(input, actor) {

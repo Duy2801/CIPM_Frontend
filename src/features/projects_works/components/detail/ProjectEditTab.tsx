@@ -1,9 +1,21 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { CloseOutlined, RollbackOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, Flex, Input, Select, Text } from "@/components/ui";
+import { useEffect, useMemo, useState } from "react";
 import {
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  FileTextOutlined,
+  PaperClipOutlined,
+  PlusOutlined,
+  RollbackOutlined,
+  SaveOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+import { Button, Flex, Input, MoneyInput, Select, Text } from "@/components/ui";
+import { parseMoney } from "@/utils/format-money";
+import {
+  DEPARTMENT_OPTIONS,
   FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
   PROJECT_STATUS_TABS,
@@ -11,6 +23,7 @@ import {
 } from "../../constants/project-enums";
 import type {
   FundingSourceType,
+  ProjectDocument,
   ProjectFormData,
   ProjectItem,
   ProjectNature,
@@ -30,6 +43,7 @@ interface FormState {
   fundingSource: FundingSourceType | "";
   totalInvestment: number | "";
   plan2026: number | "";
+  departments: string[];
   managerName: string;
   startDate: string;
   endDatePlanned: string;
@@ -38,6 +52,7 @@ interface FormState {
   actualProgress: number | "";
   plannedProgress: number | "";
   note: string;
+  documents: ProjectDocument[];
 }
 
 const PROJECT_NATURE_OPTIONS = [
@@ -64,7 +79,8 @@ export default function ProjectEditTab({
     fundingSource: project.fundingSource || "Ngân sách tỉnh",
     totalInvestment: project.totalInvestment ?? "",
     plan2026: project.plan2026 ?? "",
-    managerName: project.managerName || "",
+    departments: project.departments && project.departments.length > 0 ? project.departments : ["Tổ Giám sát – Kỹ thuật"],
+    managerName: project.managerName || "Huỳnh Thái Hải",
     startDate: project.startDate || "",
     endDatePlanned: project.endDatePlanned || "",
     nature: project.nature || (project.actualProgress > 0 ? "transitional" : "new"),
@@ -72,6 +88,7 @@ export default function ProjectEditTab({
     actualProgress: project.actualProgress ?? 0,
     plannedProgress: project.plannedProgress ?? 0,
     note: project.note || "",
+    documents: project.documents || [],
   });
   const [editErrorMsg, setEditErrorMsg] = useState<string>("");
 
@@ -82,7 +99,8 @@ export default function ProjectEditTab({
       fundingSource: project.fundingSource || "Ngân sách tỉnh",
       totalInvestment: project.totalInvestment ?? "",
       plan2026: project.plan2026 ?? "",
-      managerName: project.managerName || "",
+      departments: project.departments && project.departments.length > 0 ? project.departments : ["Tổ Giám sát – Kỹ thuật"],
+      managerName: project.managerName || "Huỳnh Thái Hải",
       startDate: project.startDate || "",
       endDatePlanned: project.endDatePlanned || "",
       nature: project.nature || (project.actualProgress > 0 ? "transitional" : "new"),
@@ -90,9 +108,41 @@ export default function ProjectEditTab({
       actualProgress: project.actualProgress ?? 0,
       plannedProgress: project.plannedProgress ?? 0,
       note: project.note || "",
+      documents: project.documents || [],
     });
     setEditErrorMsg("");
   }, [project]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newDocs: ProjectDocument[] = Array.from(files).map((file) => ({
+      id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: file.name.replace(/\.[^/.]+$/, ""),
+      fileName: file.name,
+      fileSize:
+        file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      uploadedAt: new Date().toISOString().slice(0, 10),
+      type: file.type || "application/octet-stream",
+    }));
+
+    setFormData((prev) => ({
+      ...prev,
+      documents: [...(prev.documents || []), ...newDocs],
+    }));
+
+    e.target.value = "";
+  };
+
+  const handleRemoveDocument = (docId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: (prev.documents || []).filter((d) => d.id !== docId),
+    }));
+  };
 
   // Options người phụ trách & nguồn vốn có fallback
   const personnelOptions = useMemo(() => {
@@ -131,18 +181,8 @@ export default function ProjectEditTab({
       return;
     }
 
-    if (!formData.fundingSource) {
-      setEditErrorMsg("Vui lòng chọn nguồn vốn (*).");
-      return;
-    }
-
-    if (formData.totalInvestment === "" || Number(formData.totalInvestment) <= 0) {
-      setEditErrorMsg("Vui lòng nhập tổng mức đầu tư lớn hơn 0 (*).");
-      return;
-    }
-
-    if (!formData.managerName) {
-      setEditErrorMsg("Vui lòng chọn người phụ trách chính (*).");
+    if (!formData.departments || formData.departments.length === 0) {
+      setEditErrorMsg("Vui lòng chọn ít nhất một phòng ban phụ trách (*).");
       return;
     }
 
@@ -167,10 +207,11 @@ export default function ProjectEditTab({
       location: project.location,
       scale: project.scale,
       fundingSource: (formData.fundingSource as FundingSourceType) || project.fundingSource,
-      totalInvestment: Number(formData.totalInvestment),
+      totalInvestment: formData.totalInvestment === "" ? (project.totalInvestment ?? 0) : Number(formData.totalInvestment),
       plan2026: formData.plan2026 === "" ? 0 : Number(formData.plan2026),
-      managerName: formData.managerName,
-      supervisorName: project.supervisorName,
+      departments: formData.departments,
+      managerName: formData.managerName?.trim() || "Huỳnh Thái Hải",
+      supervisorName: project.supervisorName || "Huỳnh Thái Hải",
       startDate: formData.startDate,
       endDatePlanned: formData.endDatePlanned,
       nature: formData.nature,
@@ -178,6 +219,7 @@ export default function ProjectEditTab({
       actualProgress: formData.nature === "new" ? 0 : (formData.actualProgress === "" ? 0 : Number(formData.actualProgress)),
       plannedProgress: formData.plannedProgress === "" ? 0 : Number(formData.plannedProgress),
       note: formData.note.trim(),
+      documents: formData.documents,
     };
 
     onUpdateProject(project.id, payload);
@@ -189,7 +231,7 @@ export default function ProjectEditTab({
         <div className="rounded-xl border border-slate-200 p-4 space-y-3.5">
           <div className="flex justify-between items-center pb-2 border-b border-slate-100">
             <span className="text-xs text-slate-500 font-medium">Mã dự án (Cố định):</span>
-            <span className="font-mono text-xs font-bold text-[#007A78] bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
+            <span className="font-mono text-xs font-bold text-[#DC2626] bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
               {project.code}
             </span>
           </div>
@@ -210,103 +252,108 @@ export default function ProjectEditTab({
             />
           </Flex>
 
-          {/* LOẠI CÔNG TRÌNH & NGUỒN VỐN */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Flex vertical gap={4}>
-              <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                LOẠI CÔNG TRÌNH <span className="text-rose-500">*</span>
-              </Text>
-              <Select
-                placeholder="— Chọn loại công trình —"
-                value={formData.type || undefined}
-                onChange={(val) => {
-                  setFormData({ ...formData, type: val as ProjectWorkType });
-                  setEditErrorMsg("");
-                }}
-                className="w-full text-xs"
-                options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
-              />
-            </Flex>
+          {/* LOẠI CÔNG TRÌNH */}
+          <Flex vertical gap={4}>
+            <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
+              LOẠI CÔNG TRÌNH <span className="text-rose-500">*</span>
+            </Text>
+            <Select
+              placeholder="— Chọn loại công trình —"
+              value={formData.type || undefined}
+              onChange={(val) => {
+                setFormData({ ...formData, type: val as ProjectWorkType });
+                setEditErrorMsg("");
+              }}
+              className="w-full text-xs"
+              options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
+            />
+          </Flex>
 
-            <Flex vertical gap={4}>
+          {/* HÀNG: CHỦ NHIỆM DỰ ÁN (1 hàng riêng biệt toàn chiều rộng) */}
+          <Flex vertical gap={4} className="w-full">
+            <div className="flex items-center justify-between">
               <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                NGUỒN VỐN <span className="text-rose-500">*</span>
+                CHỦ NHIỆM DỰ ÁN <span className="text-slate-400 font-normal lowercase">(người phụ trách chung toàn dự án)</span>
               </Text>
-              <Select
-                placeholder="— Chọn nguồn vốn —"
-                value={formData.fundingSource || undefined}
-                onChange={(val) => {
-                  setFormData({ ...formData, fundingSource: val as FundingSourceType });
-                  setEditErrorMsg("");
-                }}
-                className="w-full text-xs"
-                options={fundingSourceOptions}
-              />
-            </Flex>
+              <span className="text-[10px] text-[#DC2626] bg-red-50 px-2 py-0.5 rounded border border-red-200 font-medium">
+                Mặc định Giám đốc BQL
+              </span>
+            </div>
+            <Select
+              placeholder="— Chọn chủ nhiệm dự án —"
+              value={formData.managerName || "Huỳnh Thái Hải"}
+              onChange={(val) => {
+                setFormData({ ...formData, managerName: val });
+                setEditErrorMsg("");
+              }}
+              className="w-full text-xs"
+              options={personnelOptions}
+            />
+          </Flex>
+
+          {/* HÀNG: PHÒNG BAN PHỤ TRÁCH (1 hàng riêng biệt dạng thẻ chọn thông minh) */}
+          <div className="space-y-2">
+            <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide block">
+              PHÒNG BAN PHỤ TRÁCH <span className="text-rose-500">*</span>
+            </Text>
+
+            {/* Danh sách các phòng ban: mỗi phòng 1 hàng để hiển thị đầy đủ tên, rõ ràng, không bị co cụm */}
+            <div className="flex flex-col gap-1.5">
+              {DEPARTMENT_OPTIONS.map((dept) => {
+                const isSelected = formData.departments.includes(dept.value);
+                return (
+                  <button
+                    key={dept.value}
+                    type="button"
+                    onClick={() => {
+                      const next = isSelected
+                        ? formData.departments.filter((d: string) => d !== dept.value)
+                        : [...formData.departments, dept.value];
+                      setFormData({ ...formData, departments: next });
+                      setEditErrorMsg("");
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-red-50/70 border-[#DC2626] text-[#DC2626] shadow-xs ring-1 ring-red-200"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`font-mono text-xs px-2 py-0.5 rounded font-bold shrink-0 ${
+                          isSelected
+                            ? "bg-[#DC2626] text-white"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}
+                      >
+                        {dept.short}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-800" title={dept.label}>
+                        {dept.value}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isSelected ? (
+                        <span className="text-[11px] font-semibold text-[#DC2626] flex items-center gap-1">
+                          <CheckOutlined className="text-xs" /> Đã chọn
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <PlusOutlined className="text-xs" /> Bấm để chọn
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="block text-[11px] text-slate-400">
+              Bấm trực tiếp vào từng phòng ban để chọn hoặc bỏ chọn phối hợp thực hiện dự án.
+            </span>
           </div>
 
-          {/* TỔNG MỨC ĐẦU TƯ & KẾ HOẠCH VỐN 2026 */}
+          {/* HÀNG: THỜI GIAN TRIỂN KHAI (NGÀY BẮT ĐẦU & NGÀY KẾT THÚC KẾ HOẠCH) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Flex vertical gap={4}>
-              <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                TỔNG MỨC ĐẦU TƯ (TỶ ĐỒNG) <span className="text-rose-500">*</span>
-              </Text>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                placeholder="VD: 8.4"
-                value={formData.totalInvestment}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    totalInvestment: e.target.value === "" ? "" : Number(e.target.value),
-                  });
-                  setEditErrorMsg("");
-                }}
-                className="font-mono text-xs"
-              />
-            </Flex>
-
-            <Flex vertical gap={4}>
-              <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                KẾ HOẠCH VỐN {currentFiscalYear} (TỶ ĐỒNG)
-              </Text>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                placeholder="VD: 5.0"
-                value={formData.plan2026}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    plan2026: e.target.value === "" ? "" : Number(e.target.value),
-                  })
-                }
-                className="font-mono text-xs"
-              />
-            </Flex>
-          </div>
-
-          {/* NGƯỜI PHỤ TRÁCH CHÍNH & NGÀY BẮT ĐẦU */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Flex vertical gap={4}>
-              <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-                NGƯỜI PHỤ TRÁCH CHÍNH <span className="text-rose-500">*</span>
-              </Text>
-              <Select
-                placeholder="— Chọn người phụ trách —"
-                value={formData.managerName || undefined}
-                onChange={(val) => {
-                  setFormData({ ...formData, managerName: val });
-                  setEditErrorMsg("");
-                }}
-                className="w-full text-xs"
-                options={personnelOptions}
-              />
-            </Flex>
-
             <Flex vertical gap={4}>
               <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
                 NGÀY BẮT ĐẦU <span className="text-rose-500">*</span>
@@ -321,10 +368,7 @@ export default function ProjectEditTab({
                 className="font-mono text-xs"
               />
             </Flex>
-          </div>
 
-          {/* NGÀY KẾT THÚC KẾ HOẠCH */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Flex vertical gap={4}>
               <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
                 NGÀY KẾT THÚC KẾ HOẠCH <span className="text-rose-500">*</span>
@@ -339,7 +383,6 @@ export default function ProjectEditTab({
                 className="font-mono text-xs"
               />
             </Flex>
-            <div className="hidden sm:block" />
           </div>
 
           {/* TIẾN ĐỘ & TRẠNG THÁI */}
@@ -357,7 +400,7 @@ export default function ProjectEditTab({
                   value={formData.nature}
                   onChange={(val) => {
                     const nextNature = val as ProjectNature;
-                    setFormData((prev) => ({
+                    setFormData((prev: FormState) => ({
                       ...prev,
                       nature: nextNature,
                       ...(nextNature === "new" ? { actualProgress: 0 } : {}),
@@ -436,19 +479,77 @@ export default function ProjectEditTab({
             </div>
           </div>
 
-          {/* GHI CHÚ */}
-          <Flex vertical gap={4} className="pt-1">
-            <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              GHI CHÚ
-            </Text>
-            <textarea
-              rows={3}
-              placeholder="Mô tả chi tiết, lưu ý đặc biệt..."
-              value={formData.note}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-              className="w-full p-2.5 rounded-lg border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#007A78] focus:ring-1 focus:ring-[#007A78] transition-all resize-y"
-            />
-          </Flex>
+
+          {/* TÀI LIỆU DỰ ÁN (ĐÍNH KÈM) - KHÔNG BẮT BUỘC */}
+          <div className="pt-2 border-t border-slate-100 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
+                  Tài liệu đính kèm
+                </Text>
+                <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 font-medium">
+                  Không bắt buộc · {formData.documents.length} tệp
+                </span>
+              </div>
+              <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-semibold text-slate-700 hover:text-[#DC2626] transition-colors shadow-2xs">
+                <UploadOutlined className="text-xs" />
+                <span>+ Thêm tài liệu</span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                  style={{ display: "none" }}
+                  onChange={handleFileUpload}
+                />
+              </label>
+            </div>
+
+            <p className="text-[11px] text-slate-400 m-0">
+              Đính kèm hồ sơ pháp lý, quyết định chủ trương đầu tư, tờ trình, báo cáo nghiên cứu khả thi, bản vẽ... (PDF, Word, Excel, Ảnh).
+            </p>
+
+            {/* Danh sách các tài liệu đã thêm */}
+            {formData.documents.length > 0 ? (
+              <div className="space-y-1.5 max-h-[220px] overflow-y-auto [scrollbar-width:thin] pr-1">
+                {formData.documents.map((doc, idx) => (
+                  <div
+                    key={doc.id || idx}
+                    className="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="flex h-7 w-7 items-center justify-center rounded bg-red-50 text-[#DC2626] border border-red-200 shrink-0">
+                        <FileTextOutlined className="text-xs" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-slate-800 truncate" title={doc.fileName || doc.name}>
+                          {doc.fileName || doc.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                          {doc.fileSize && <span>{doc.fileSize}</span>}
+                          {doc.uploadedAt && <span>· Ngày tải: {doc.uploadedAt}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDocument(doc.id)}
+                      className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer shrink-0 ml-2"
+                      title="Xóa tài liệu này"
+                    >
+                      <DeleteOutlined className="text-xs" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/40 text-center">
+                <PaperClipOutlined className="text-slate-300 text-base mb-1 block" />
+                <span className="text-xs text-slate-400">
+                  Chưa có tài liệu đính kèm. Bấm &quot;+ Thêm tài liệu&quot; ở trên để tải lên nếu cần.
+                </span>
+              </div>
+            )}
+          </div>
 
           {editErrorMsg && (
             <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
@@ -463,7 +564,7 @@ export default function ProjectEditTab({
         <Button
           intent="primary"
           scale="sm"
-          className="bg-[#007A78] border-[#007A78] hover:bg-[#005F5D] text-white"
+          className="bg-[#DC2626] border-[#DC2626] hover:bg-[#B91C1C] text-white"
           onClick={handleUpdateProjectSubmit}
         >
           <SaveOutlined className="mr-1" />

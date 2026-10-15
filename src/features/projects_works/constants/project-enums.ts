@@ -17,21 +17,21 @@ export const STAGE_DISPLAY_NAMES: Record<ProjectStage, string> = {
   DESIGN: "Thiết kế",
   BIDDING: "Đấu thầu",
   CONSTRUCTION: "Thi công",
-  COMPENSATION: "Bồi thường (GPMB)",
+  COMPENSATION: "Bồi thường",
   INSPECTION: "Nghiệm thu",
   SETTLEMENT: "Quyết toán",
   COMPLETED: "Hoàn thành",
 };
 
 export const STAGE_BADGE_CLASSES: Record<ProjectStage, string> = {
-  PREPARATION: "bg-slate-100 text-slate-700 border-slate-200",
-  DESIGN: "bg-sky-50 text-sky-700 border-sky-200",
-  BIDDING: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  CONSTRUCTION: "bg-amber-50 text-amber-700 border-amber-200",
-  COMPENSATION: "bg-orange-50 text-orange-700 border-orange-200",
-  INSPECTION: "bg-purple-50 text-purple-700 border-purple-200",
-  SETTLEMENT: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  PREPARATION: "bg-slate-100 text-slate-800 border-slate-200/80",
+  DESIGN: "bg-slate-100 text-slate-800 border-slate-200/80",
+  BIDDING: "bg-slate-100 text-slate-800 border-slate-200/80",
+  CONSTRUCTION: "bg-slate-100 text-slate-800 border-slate-200/80",
+  COMPENSATION: "bg-slate-100 text-slate-800 border-slate-200/80",
+  INSPECTION: "bg-slate-100 text-slate-800 border-slate-200/80",
+  SETTLEMENT: "bg-slate-100 text-slate-800 border-slate-200/80",
+  COMPLETED: "bg-slate-100 text-slate-800 border-slate-200/80",
 };
 
 /**
@@ -56,8 +56,8 @@ export function getProjectHealthStatus(actualProgress: number, plannedProgress: 
       status: "normal",
       diff,
       label: diff === 0 ? "Đúng tiến độ" : `Vượt +${diff.toFixed(1)}%`,
-      badgeClass: "text-emerald-700 bg-emerald-50 border-emerald-200",
-      dotClass: "bg-emerald-500",
+      badgeClass: "text-amber-800 bg-amber-50 border-amber-300",
+      dotClass: "bg-amber-500",
     };
   }
 
@@ -134,11 +134,20 @@ export const LOCATION_OPTIONS = [
 ] as const;
 
 export const PERSONNEL_OPTIONS = [
-  { name: "Lê Hoàng Minh", role: "Kỹ sư Giám sát KT", dept: "Tổ Giám sát – Kỹ thuật" },
-  { name: "Nguyễn Văn An", role: "Trưởng phòng Kỹ thuật", dept: "Tổ Giám sát – Kỹ thuật" },
-  { name: "Phạm Quốc Tuấn", role: "Chuyên viên QLDA", dept: "Tổ Giám sát – Kỹ thuật" },
-  { name: "Phan Thanh Cường", role: "Tổ trưởng KT", dept: "Tổ Giám sát – Kỹ thuật" },
-  { name: "Huỳnh Thái Hải", role: "Giám đốc BQL", dept: "Ban Giám đốc" },
+  { name: "Huỳnh Thái Hải", role: "Giám đốc BQL (Mặc định)", dept: "Ban Giám đốc" },
   { name: "Trần Văn Nam", role: "Phó Giám đốc BQL", dept: "Ban Giám đốc" },
-  { name: "Phạm Quốc Bảo", role: "Chuyên viên Bồi thường", dept: "Tổ Bồi thường – GPMB" },
+  { name: "Nguyễn Thanh Tùng", role: "Phó Giám đốc BQL", dept: "Ban Giám đốc" },
+  { name: "Lê Hoàng Minh", role: "Tổ trưởng – Kỹ sư Giám sát KT", dept: "Tổ Giám sát – Kỹ thuật" },
+  { name: "Phan Văn Đức", role: "Kỹ sư Giám sát KT", dept: "Tổ Giám sát – Kỹ thuật" },
+  { name: "Phạm Quốc Bảo", role: "Tổ trưởng – Chuyên viên Bồi thường", dept: "Tổ Bồi thường – GPMB – TĐC" },
+  { name: "Đặng Thị Kim Ngân", role: "Kế toán trưởng", dept: "Tổ Hành chính – Tổng hợp" },
 ] as const;
+
+export const DEPARTMENT_OPTIONS = [
+  { value: "Tổ Giám sát – Kỹ thuật", label: "Tổ Giám sát – Kỹ thuật", short: "GSKT" },
+  { value: "Tổ Kế hoạch – Kỹ thuật", label: "Tổ Kế hoạch – Kỹ thuật (Chuẩn bị ĐT & Thiết kế)", short: "KHKT" },
+  { value: "Tổ Bồi thường – GPMB – TĐC", label: "Tổ Bồi thường – GPMB – TĐC", short: "BT" },
+  { value: "Tổ Quản lý Đấu thầu", label: "Tổ Quản lý Đấu thầu", short: "DT" },
+  { value: "Tổ Hành chính – Tổng hợp", label: "Tổ Hành chính – Tổng hợp (Tài chính - Kế toán)", short: "HCTH" },
+] as const;
+

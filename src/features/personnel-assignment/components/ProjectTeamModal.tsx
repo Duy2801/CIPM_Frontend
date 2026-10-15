@@ -178,7 +178,7 @@ export default function ProjectTeamModal({
           isCndaRevoked
             ? "border-rose-200 bg-rose-50/60"
             : actingDirector
-            ? "border-teal-200 bg-teal-50/60"
+            ? "border-red-200 bg-red-50/60"
             : "border-slate-200 bg-slate-50/60"
         )}
       >
@@ -190,7 +190,7 @@ export default function ProjectTeamModal({
                 isCndaRevoked
                   ? "bg-rose-500"
                   : actingDirector
-                  ? "bg-teal-600"
+                  ? "bg-[#DC2626]"
                   : "bg-slate-400"
               )}
             >
@@ -206,7 +206,7 @@ export default function ProjectTeamModal({
                     Đã thu hồi quyền điều hành
                   </Tag>
                 ) : actingDirector ? (
-                  <Tag color="cyan" className="m-0 text-[11px] font-semibold">
+                  <Tag color="red" className="m-0 text-[11px] font-semibold">
                     Đang hiệu lực
                   </Tag>
                 ) : (
@@ -234,7 +234,7 @@ export default function ProjectTeamModal({
                     {project.actingDirectorAssignedAt && ` (${project.actingDirectorAssignedAt})`}
                   </Text>
                   {project.actingDirectorNote && (
-                    <Text className="mt-1 block text-[11px] italic text-slate-600 bg-white/70 p-2 rounded border border-teal-100">
+                    <Text className="mt-1 block text-[11px] italic text-slate-600 bg-white/70 p-2 rounded border border-red-100">
                       &ldquo;{project.actingDirectorNote}&rdquo;
                     </Text>
                   )}
@@ -265,7 +265,7 @@ export default function ProjectTeamModal({
                   intent="outline"
                   scale="compact"
                   icon={<CrownOutlined />}
-                  className="!border-teal-300 !text-teal-700 hover:!bg-teal-50"
+                  className="!border-red-300 !text-[#DC2626] hover:!bg-red-50"
                   onClick={() => onOpenGrantModal(project)}
                 >
                   Cấp lại quyền CNDA
@@ -382,7 +382,7 @@ export default function ProjectTeamModal({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">
+                    <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                       {taskCount} việc
                     </span>
 

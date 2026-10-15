@@ -6,13 +6,13 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import { usePathname } from "next/navigation";
-import { message } from "antd";
 import {
   Badge,
   Button,
   ConfigProvider,
   Divider,
   Header,
+  Select,
   Text,
   Tooltip,
   toast,
@@ -62,24 +62,25 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
 
           {/* Right section: Fiscal Year, Reload button, Notifications, Divider */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className={`${themeClassNames.topbar.fiscalFilter} flex items-center gap-1.5`}>
-              <CalendarOutlined className={themeClassNames.topbar.fiscalIcon} />
-              <Text className={themeClassNames.topbar.fiscalLabel}>Niên độ:</Text>
-              <select
+            <div className="flex items-center gap-1.5 h-8 rounded-lg border border-slate-200/90 bg-slate-50 pl-2.5 pr-1 shadow-2xs hover:border-red-400 transition-colors">
+              <CalendarOutlined className="text-slate-500 text-xs" />
+              <Text className="!text-[12px] !text-slate-700 font-semibold whitespace-nowrap">Niên độ:</Text>
+              <Select
                 defaultValue="2026"
-                aria-label="Chọn niên độ"
-                className="bg-transparent border-0 text-[12px] font-semibold text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none appearance-none pr-4 pl-0 py-0 leading-normal"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right center",
-                  backgroundSize: "11px",
+                intent="subtle"
+                scale="compact"
+                className="!w-[76px] [&_.ant-select-selector]:!px-1 [&_.ant-select-selection-item]:!text-[12px] [&_.ant-select-selection-item]:!font-bold [&_.ant-select-selection-item]:!text-slate-900"
+                classNames={{
+                  popup: {
+                    root: "[&_.ant-select-item-option-selected]:!bg-red-50 [&_.ant-select-item-option-selected]:!text-red-700 [&_.ant-select-item-option-selected]:!font-bold [&_.ant-select-item]:!text-xs [&_.ant-select-item]:!rounded-md",
+                  },
                 }}
-              >
-                <option value="2025" className="text-slate-800 bg-white">2025</option>
-                <option value="2026" className="text-slate-800 bg-white">2026</option>
-                <option value="2027" className="text-slate-800 bg-white">2027</option>
-              </select>
+                options={[
+                  { value: "2025", label: "2025" },
+                  { value: "2026", label: "2026" },
+                  { value: "2027", label: "2027" },
+                ]}
+              />
             </div>
 
             {/* Nút Load / Làm mới thay thế nút Xuất PDF (BRD 4.1.3: Tự làm mới mỗi 15 phút hoặc khi nhấn nút) */}
@@ -89,7 +90,7 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
                 onClick={handleRefresh}
                 disabled={isRefreshing}
               >
-                <ReloadOutlined className={isRefreshing ? "animate-spin text-[#007A78]" : ""} />
+                <ReloadOutlined className={isRefreshing ? "animate-spin text-red-600" : ""} />
                 <span>Làm mới</span>
               </Button>
             </Tooltip>

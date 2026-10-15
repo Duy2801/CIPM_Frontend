@@ -21,7 +21,6 @@ export function useActionFeedback(onSuccess?: () => Promise<void>) {
       setFeedback(null);
       await action();
       await onSuccess?.();
-      setFeedback({ type: "success", text: successText });
       toast.success(successText);
       return true;
     } catch (error) {

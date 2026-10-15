@@ -136,7 +136,7 @@ export default function LegalDocumentTab({
                 </span>
               )}
 
-              <span className="text-left text-xs font-bold text-slate-900 transition-colors group-hover:text-teal-700">
+              <span className="text-left text-xs font-bold text-slate-900 transition-colors group-hover:text-[#DC2626]">
                 {row.code}
               </span>
 
@@ -175,7 +175,7 @@ export default function LegalDocumentTab({
       render: (_, row) => (
         <div className="py-1">
           <div className="flex items-center gap-1.5">
-            <span className="rounded bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 border border-teal-200">
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200">
               {CATEGORY_LABELS[row.category].split("(")[0].trim()}
             </span>
           </div>
@@ -205,7 +205,7 @@ export default function LegalDocumentTab({
               Ban hành: <span className="font-medium text-slate-800">{formatDateVi(row.issueDate)}</span>
             </div>
             <div className="mt-0.5 text-[11px] text-slate-500">
-              Hiệu lực: <span className="font-medium text-emerald-700">{formatDateVi(row.effectiveDate)}</span>
+              Hiệu lực: <span className="font-medium text-slate-800">{formatDateVi(row.effectiveDate)}</span>
             </div>
           </div>
         );
@@ -223,7 +223,7 @@ export default function LegalDocumentTab({
               intent="ghost"
               icon={<EyeOutlined />}
               onClick={() => onOpenDetail(row)}
-              className="text-slate-600 hover:text-teal-700"
+              className="text-slate-600 hover:text-[#DC2626]"
             />
           </Tooltip>
 
@@ -233,7 +233,7 @@ export default function LegalDocumentTab({
               intent="ghost"
               icon={<DownloadOutlined />}
               onClick={() => handleDownload(row)}
-              className="text-teal-700 hover:text-teal-800"
+              className="text-[#DC2626] hover:text-[#B91C1C]"
             />
           </Tooltip>
 
@@ -244,7 +244,7 @@ export default function LegalDocumentTab({
                 intent="ghost"
                 icon={<EditOutlined />}
                 onClick={() => onOpenEdit(row)}
-                className="text-slate-600 hover:text-teal-700"
+                className="text-slate-600 hover:text-[#DC2626]"
               />
             </Tooltip>
           )}
@@ -271,9 +271,9 @@ export default function LegalDocumentTab({
             <Button
               intent="outline"
               scale="sm"
-              icon={<TagOutlined className="text-teal-700" />}
+              icon={<TagOutlined className="text-[#DC2626]" />}
               onClick={onOpenAssistant}
-              className="!border-teal-600 !text-teal-800 hover:!bg-teal-50 h-8 text-xs font-semibold rounded-lg"
+              className="!border-red-300 !text-[#DC2626] hover:!bg-red-50 hover:!border-red-400 h-8 text-xs font-semibold rounded-lg"
             >
               Hỏi Trợ lý AI Pháp lý
             </Button>
@@ -284,7 +284,7 @@ export default function LegalDocumentTab({
                 scale="sm"
                 icon={<PlusOutlined />}
                 onClick={onOpenCreate}
-                className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white h-8 text-xs font-semibold rounded-lg shadow-xs"
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-8 text-xs font-semibold rounded-lg shadow-xs"
               >
                 Thêm văn bản / biểu mẫu
               </Button>

@@ -1,6 +1,6 @@
 import type { WorkspaceRoleProfile, WorkspaceTask } from "../../../components/workspace/workspace.types.ts";
 
-export type TeamId = "BGD" | "GSKT" | "HCTH" | "BT";
+export type TeamId = "BGD" | "GSKT" | "HCTH" | "BT" | "KHKT" | "DT" | (string & {});
 export type Employment = "Viên chức" | "Hợp đồng";
 export type AssignmentStatus = "TODO" | "IN_PROGRESS" | "PENDING_APPROVAL" | "DONE";
 export type AssignmentPriority = "HIGH" | "NORMAL";
@@ -36,12 +36,17 @@ export interface PersonnelProject {
   id: string;
   code: string;
   name: string;
+  /** Tên Chủ nhiệm dự án (người phụ trách chung) */
+  managerName?: string;
   /** Tình trạng dự án: Đang thi công, Chuẩn bị ĐT, Bồi thường GPMB, Đã hoàn thành,... */
   status?: string;
+
   /** Thời gian bắt đầu thực hiện dự án (YYYY-MM-DD) */
   startDate?: string;
   /** Thời gian hoàn thành dự án (YYYY-MM-DD) */
   endDate?: string;
+  /** Danh sách phòng ban phụ trách dự án */
+  departments?: string[];
   /** Người thực hiện chính do Giám đốc phân công (1 người duy nhất) */
   mainExecutorId?: string;
   /** Người giám sát chính do Giám đốc phân công (1 người duy nhất) */
@@ -191,7 +196,13 @@ export interface AssignmentInput {
 export interface ProjectLeadershipInput {
   projectId: string;
   mainExecutorId: string;
-  mainSupervisorId: string;
+  mainSupervisorId?: string;
+  departments?: string[];
+  stageAssignments?: Array<{
+    stageCode: string;
+    stageTitle: string;
+    department: string;
+  }>;
   note?: string;
   grantActingDirector?: boolean;
   actingDirectorId?: string;

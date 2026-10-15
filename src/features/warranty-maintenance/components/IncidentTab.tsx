@@ -71,19 +71,19 @@ export default function IncidentTab({
       render: (_, row) => (
         <section>
           <Flex align="center" gap={6}>
-            <span className="text-xs font-bold text-[#007A78] group-hover:underline">
+            <span className="text-xs font-bold text-[#DC2626] group-hover:underline">
               {row.code}
             </span>
             <Tag intent={SEVERITY_META[row.severity].intent} scale="sm" className="m-0">
               {SEVERITY_META[row.severity].label}
             </Tag>
           </Flex>
-          <div className="mt-0.5 block text-left text-sm font-semibold leading-5 text-[#102A43] group-hover:text-[#007A78] group-hover:underline">
+          <div className="mt-0.5 block text-left text-sm font-semibold leading-5 text-[#102A43] group-hover:text-[#DC2626] group-hover:underline">
             {row.description}
           </div>
           <Text className="block text-xs text-slate-500">Vị trí: {row.location}</Text>
           {row.attachments.length > 0 && (
-            <Text className="block text-xs text-teal-700">
+            <Text className="block text-xs text-slate-500">
               <PaperClipOutlined /> {row.attachments.length} tệp đính kèm
             </Text>
           )}
@@ -161,7 +161,7 @@ export default function IncidentTab({
           intent="textLink"
           scale="sm"
           onClick={() => onOpenDetail(row)}
-          className="text-xs font-semibold text-[#007A78]"
+          className="text-xs font-semibold text-[#DC2626]"
         >
           Xem chi tiết
         </Button>
@@ -231,7 +231,7 @@ export default function IncidentTab({
           className: "cursor-pointer hover:bg-slate-50/70 transition-colors group",
         })}
         rowClassName={(row) => (isIncidentOverdue(row, today) ? "align-top [&>td]:!bg-rose-50/50 cursor-pointer" : "align-top cursor-pointer")}
-        className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-3 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-3"
+        className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-3 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-thead>tr>th::before]:!hidden [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-tbody>tr>td]:py-3"
         locale={{ emptyText: <Text className="block py-10 text-center text-sm text-slate-500">Không có sự cố nào khớp bộ lọc.</Text> }}
       />
     </Card>

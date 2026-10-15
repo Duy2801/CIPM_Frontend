@@ -2,22 +2,19 @@
 
 import { useMemo, useState } from "react";
 import {
+  ApartmentOutlined,
   AppstoreOutlined,
   CrownOutlined,
   LockOutlined,
   MailOutlined,
   PhoneOutlined,
   SearchOutlined,
-  UnorderedListOutlined,
-  UserAddOutlined,
 } from "@ant-design/icons";
 import {
   Button,
   Card,
-  Col,
   Flex,
   Input,
-  Row,
   Select,
   Table,
   Tag,
@@ -26,38 +23,27 @@ import {
 } from "@/components/ui";
 import type { ColumnsType } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
-import { cn } from "@/utils/cn";
 import { getInitials } from "@/utils/initials";
 import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
 import { resolveStaffRbac } from "../utils/personnel-rbac";
 import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { Staff, Team } from "../types/personnel.types";
-import StaffModal from "./StaffModal";
+import AddTeamModal from "./AddTeamModal";
 import StaffProjectRoleModal from "./StaffProjectRoleModal";
+import RolePermissionMatrixModal from "./RolePermissionMatrixModal";
 
 export default function OrganizationTab({ controller }: { controller: PersonnelController }) {
   const { data, staff, permissions } = controller;
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [addTeamModalOpen, setAddTeamModalOpen] = useState(false);
+  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"ALL" | "ACTING_DIRECTOR" | "MAIN_EXECUTOR">("ALL");
   const [selectedStaffForRole, setSelectedStaffForRole] = useState<Staff | null>(null);
 
   const filteredStaff = useMemo(() => {
     return staff.filter((person) => {
       if (selectedTeamId !== "ALL" && person.teamId !== selectedTeamId) {
         return false;
-      }
-
-      if (roleFilter === "ACTING_DIRECTOR") {
-        const hasActingRole = data.projects.some((p) => p.actingDirectorId === person.id);
-        if (!hasActingRole) return false;
-      }
-
-      if (roleFilter === "MAIN_EXECUTOR") {
-        const isExecutor = data.projects.some((p) => p.mainExecutorId === person.id);
-        if (!isExecutor) return false;
       }
 
       if (searchQuery.trim()) {
@@ -73,7 +59,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
 
       return true;
     });
-  }, [staff, selectedTeamId, roleFilter, data.projects, searchQuery]);
+  }, [staff, selectedTeamId, searchQuery]);
 
   const visibleTeams = useMemo(() => {
     return data.teams
@@ -81,15 +67,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
       .filter((team) => filteredStaff.some((person) => person.teamId === team.id));
   }, [data.teams, selectedTeamId, filteredStaff]);
 
-  const actingStaffCount = useMemo(
-    () => data.staff.filter((s) => data.projects.some((p) => p.actingDirectorId === s.id)).length,
-    [data.projects, data.staff]
-  );
 
-  const executorStaffCount = useMemo(
-    () => data.staff.filter((s) => data.projects.some((p) => p.mainExecutorId === s.id)).length,
-    [data.projects, data.staff]
-  );
 
   const getColumns = (team: Team): ColumnsType<Staff> => [
     {
@@ -100,12 +78,12 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
         const isLeader = team.leaderId === person.id;
         return (
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#0B2546] to-[#174674] text-xs font-bold text-white shadow-xs">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-xs font-bold text-white shadow-xs">
               {getInitials(person.name)}
             </span>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <Text className="truncate text-[13px] font-bold text-[#102A43] group-hover:text-teal-700 transition-colors">
+                <Text className="truncate text-[13px] font-bold text-slate-900 group-hover:text-[#DC2626] transition-colors">
                   {person.name}
                 </Text>
                 {isLeader && (
@@ -170,7 +148,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                   {rbac.displayBadge}
                 </div>
                 <div className="text-slate-200">
-                  <span className="text-teal-300 font-semibold">1. Cấp bậc (Role):</span> {rbac.roleLabel}
+                  <span className="text-emerald-300 font-semibold">1. Cấp bậc (Role):</span> {rbac.roleLabel}
                 </div>
                 <div className="text-[11px] text-slate-300 pl-3">
                   Quyền hạn: {rbac.rolePermissions.map((p) => p.name).slice(0, 2).join(", ")}...
@@ -200,7 +178,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
               <Tag
                 intent={rbac.isLeader || rbac.roleCode === "DIRECTOR" ? "brand" : "subtle"}
                 scale="sm"
-                className="m-0 font-medium whitespace-nowrap cursor-pointer hover:border-teal-400 transition-colors"
+                className="m-0 font-medium whitespace-nowrap cursor-pointer hover:border-[#DC2626] transition-colors"
               >
                 {rbac.displayBadge}
               </Tag>
@@ -218,7 +196,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
         <Button
           intent="outline"
           scale="compact"
-          className="text-xs h-7.5 px-3 font-medium !border-slate-300 hover:!border-teal-600 hover:!text-teal-700"
+          className="text-xs h-7.5 px-3 font-medium !border-slate-300 hover:!border-[#DC2626] hover:!text-[#DC2626]"
           onClick={(e) => {
             e.stopPropagation();
             setSelectedStaffForRole(person);
@@ -238,15 +216,28 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
           description="Ban Giám đốc và các tổ chuyên môn. Quản lý thông tin, phân công và quyền hạn cán bộ."
           countLabel={filteredStaff.length === staff.length ? `${staff.length} cán bộ` : `${filteredStaff.length}/${staff.length} cán bộ`}
           actions={
-            permissions.canManageAccounts ? (
-              <Button
-                intent="primary"
-                icon={<UserAddOutlined />}
-                onClick={() => setStaffModalOpen(true)}
-              >
-                Thêm nhân sự
-              </Button>
-            ) : null
+            <Flex align="center" gap={8}>
+              {(permissions.canManageAccounts || permissions.canManageOrganization) && (
+                <Button
+                  intent="outline"
+                  icon={<AppstoreOutlined />}
+                  className="font-semibold text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]/50 bg-white shadow-2xs"
+                  onClick={() => setMatrixModalOpen(true)}
+                >
+                  Ma trận phân quyền
+                </Button>
+              )}
+              {(permissions.canManageAccounts || permissions.canManageOrganization) && (
+                <Button
+                  intent="primary"
+                  icon={<ApartmentOutlined />}
+                  className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
+                  onClick={() => setAddTeamModalOpen(true)}
+                >
+                  Thêm phòng ban
+                </Button>
+              )}
+            </Flex>
           }
           toolbar={
             <Flex align="center" justify="space-between" wrap="wrap" gap="small" className="w-full">
@@ -258,34 +249,15 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                     onChange={(val) => setSelectedTeamId(val)}
                     className="w-full text-xs"
                     options={[
-                      { value: "ALL", label: `Tất cả tổ / bộ phận (${staff.length})` },
+                      { value: "ALL", label: "Tất cả tổ / bộ phận" },
                       ...data.teams.map((t) => ({
                         value: t.id,
-                        label: `${t.name} (${staff.filter((s) => s.teamId === t.id).length})`,
+                        label: t.name,
                       })),
                     ]}
                   />
                 </div>
 
-                {/* Lọc theo vai trò phụ trách dự án */}
-                <div className="w-full sm:w-64">
-                  <Select
-                    value={roleFilter}
-                    onChange={(val) => setRoleFilter(val)}
-                    className="w-full text-xs"
-                    options={[
-                      { value: "ALL", label: "Tất cả vai trò cán bộ" },
-                      {
-                        value: "ACTING_DIRECTOR",
-                        label: `Cán bộ giữ Quyền CNDA (${actingStaffCount})`,
-                      },
-                      {
-                        value: "MAIN_EXECUTOR",
-                        label: `Cán bộ Phụ trách DA (${executorStaffCount})`,
-                      },
-                    ]}
-                  />
-                </div>
 
                 {/* Ô tìm kiếm */}
                 <div className="w-full sm:w-64">
@@ -299,38 +271,6 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                   />
                 </div>
               </Flex>
-
-              {/* Chuyển đổi dạng Danh sách / Thẻ */}
-              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
-                    viewMode === "list"
-                      ? "bg-white text-teal-800 shadow-xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                  title="Xem dạng danh sách"
-                >
-                  <UnorderedListOutlined />
-                  <span>Danh sách</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
-                    viewMode === "grid"
-                      ? "bg-white text-teal-800 shadow-xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                  title="Xem dạng thẻ"
-                >
-                  <AppstoreOutlined />
-                  <span>Dạng thẻ</span>
-                </button>
-              </div>
             </Flex>
           }
         />
@@ -366,7 +306,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3.5">
                   <div>
                     <div className="flex items-center gap-2.5">
-                      <Text className="text-sm font-bold text-[#102A43]">{team.name}</Text>
+                      <Text className="text-sm font-bold text-slate-900">{team.name}</Text>
                       <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                         {members.length} người
                       </span>
@@ -376,119 +316,25 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                 </div>
 
                 {/* Danh sách cán bộ */}
-                {viewMode === "list" ? (
-                  members.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-slate-400">
-                      Không có cán bộ phù hợp trong tổ này.
-                    </div>
-                  ) : (
-                    <Table
-                      rowKey="id"
-                      columns={getColumns(team)}
-                      dataSource={members}
-                      pagination={false}
-                      size="middle"
-                      tableLayout="fixed"
-                      scroll={{ x: 750 }}
-                      className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-2.5 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-3 [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none"
-                      onRow={(person) => ({
-                        onClick: () => setSelectedStaffForRole(person),
-                        className: "cursor-pointer hover:bg-slate-50/70 transition-colors group",
-                      })}
-                    />
-                  )
-                ) : (
-                  <div className="p-4 sm:p-5">
-                    <Row gutter={[16, 16]}>
-                      {members.map((person) => {
-                        const isLeader = team.leaderId === person.id;
-
-                        return (
-                          <Col xs={24} md={12} xl={8} key={person.id} className="flex">
-                            <article
-                              onClick={() => setSelectedStaffForRole(person)}
-                              className="group flex w-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:border-teal-400 hover:shadow-xs cursor-pointer"
-                            >
-                              <div>
-                                {/* Thông tin chính: avatar, tên, chức danh, biểu tượng lãnh đạo */}
-                                <div className="flex items-start gap-3">
-                                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B2546] to-[#174674] text-sm font-bold text-white shadow-xs">
-                                    {getInitials(person.name)}
-                                  </span>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <Text className="truncate text-sm font-bold text-[#102A43] group-hover:text-teal-700 transition-colors">
-                                        {person.name}
-                                      </Text>
-                                      <div className="flex shrink-0 items-center gap-1">
-                                        {isLeader && (
-                                          <Tooltip title="Phụ trách tổ / Tổ trưởng">
-                                            <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
-                                              <CrownOutlined className="text-amber-500" />
-                                              Phụ trách
-                                            </span>
-                                          </Tooltip>
-                                        )}
-                                        {!person.accountActive && (
-                                          <Tooltip title={person.lockReason || "Tài khoản đang bị khóa"}>
-                                            <span className="inline-flex items-center gap-0.5 rounded bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 border border-rose-200">
-                                              <LockOutlined className="text-rose-500" />
-                                              Khóa
-                                            </span>
-                                          </Tooltip>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                                      <span className="font-medium text-slate-700">{person.title}</span>
-                                      <span>·</span>
-                                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
-                                        {person.employment}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Thông tin liên hệ */}
-                                <div className="mt-3.5 space-y-1.5 rounded-lg bg-slate-50/90 p-2.5 text-xs text-slate-600">
-                                  <div className="flex items-center gap-2 truncate">
-                                    <PhoneOutlined className="shrink-0 text-[11px] text-slate-400" />
-                                    <span className="truncate select-all">{person.phone}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 truncate">
-                                    <MailOutlined className="shrink-0 text-[11px] text-slate-400" />
-                                    <span className="truncate select-all">{person.email}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Chân thẻ: Vai trò hệ thống & nút Xem chi tiết / Ủy quyền */}
-                              <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                                <Tag
-                                  intent={team.leaderId === person.id ? "brand" : "subtle"}
-                                  scale="sm"
-                                  className="m-0 font-medium truncate max-w-[150px]"
-                                >
-                                  {resolveStaffRbac(person, team, data.projects).displayBadge}
-                                </Tag>
-                                <Button
-                                  intent="outline"
-                                  scale="compact"
-                                  className="shrink-0 text-[11px] h-7 px-2.5 font-medium !border-slate-300 hover:!border-teal-600 hover:!text-teal-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedStaffForRole(person);
-                                  }}
-                                >
-                                  Chi tiết
-                                </Button>
-                              </div>
-                            </article>
-                          </Col>
-                        );
-                      })}
-                    </Row>
+                {members.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-400">
+                    Không có cán bộ phù hợp trong tổ này.
                   </div>
+                ) : (
+                  <Table
+                    rowKey="id"
+                    columns={getColumns(team)}
+                    dataSource={members}
+                    pagination={false}
+                    size="middle"
+                    tableLayout="fixed"
+                    scroll={{ x: 750 }}
+                    className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-2.5 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-3 [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none"
+                    onRow={(person) => ({
+                      onClick: () => setSelectedStaffForRole(person),
+                      className: "cursor-pointer hover:bg-slate-50/70 transition-colors group",
+                    })}
+                  />
                 )}
               </section>
             );
@@ -496,12 +342,12 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
         </div>
       </Card>
 
-      {staffModalOpen && (
-        <StaffModal
+      {addTeamModalOpen && (
+        <AddTeamModal
+          open={addTeamModalOpen}
           data={controller.data}
-          errorText={controller.feedback?.type === "error" ? controller.feedback.text : undefined}
-          onClose={() => setStaffModalOpen(false)}
-          onCreate={controller.createStaff}
+          onClose={() => setAddTeamModalOpen(false)}
+          onSubmit={controller.createTeam}
         />
       )}
 
@@ -519,6 +365,15 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
           onRevokeRole={controller.revokeActingDirector}
           onUpdateStaff={controller.updateStaff}
           onUpdateProjectPermissions={controller.updateProjectPermissions}
+        />
+      )}
+
+      {/* Modal Ma trận phân quyền hệ thống */}
+      {matrixModalOpen && (
+        <RolePermissionMatrixModal
+          open={matrixModalOpen}
+          onClose={() => setMatrixModalOpen(false)}
+          canManage={permissions.canManageAccounts}
         />
       )}
     </>

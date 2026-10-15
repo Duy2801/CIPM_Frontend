@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from "react";
 import {
-  AlertOutlined,
-  ClockCircleOutlined,
   DownloadOutlined,
   FileSearchOutlined,
   PlusOutlined,
@@ -17,7 +15,7 @@ import { ReasonModal, SectionIntro } from "@/components/workspace";
 import { APPROVAL_STATUS_META, STATUS_FILTER_ORDER } from "../constants/finance-labels";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
 import type { Disbursement, DisbursementStatusFilter } from "../types/finance.types";
-import { formatVndBillions, getContractUsagePercent, getWorkingDaysUntil } from "../utils/finance-rules";
+import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
 import DisbursementActions from "./DisbursementActions";
 import DisbursementDetailDrawer from "./DisbursementDetailDrawer";
 
@@ -54,16 +52,6 @@ export default function DisbursementTab({
   const findProject = (id: string) => data.projects.find((item) => item.id === id);
   const findContract = (id?: string) => data.contracts.find((item) => item.id === id);
   const detailItem = controller.visibleDisbursements.find((item) => item.id === detailId);
-
-  const statusCounts = useMemo(() => {
-    const counts: Partial<Record<DisbursementStatusFilter, number>> = {
-      ALL: controller.visibleDisbursements.length,
-    };
-    controller.visibleDisbursements.forEach((item) => {
-      counts[item.status] = (counts[item.status] ?? 0) + 1;
-    });
-    return counts;
-  }, [controller.visibleDisbursements]);
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -120,7 +108,7 @@ export default function DisbursementTab({
           className="group block w-full cursor-pointer text-left"
         >
           <span className="flex items-center gap-1.5">
-            <span className="text-[13px] font-bold text-[#007A78] group-hover:underline">{row.code}</span>
+            <span className="text-[13px] font-bold text-[#DC2626] group-hover:underline">{row.code}</span>
             {row.status === actionStatus && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-label="Đến lượt bạn" />
             )}
@@ -168,25 +156,11 @@ export default function DisbursementTab({
       dataIndex: "dueDate",
       width: 130,
       align: "center",
-      render: (value: string, row) => {
-        const isPending = row.status === "PENDING_CHIEF" || row.status === "PENDING_DIRECTOR";
-        const days = isPending ? getWorkingDaysUntil(value) : undefined;
-        return (
-          <span className="block text-center">
-            <Text className="block text-[13px] text-slate-700">{new Date(value).toLocaleDateString("vi-VN")}</Text>
-            {days !== undefined && days < 0 && (
-              <Text className="block text-xs font-semibold text-rose-700">
-                <AlertOutlined /> Quá hạn {Math.abs(days)} ngày
-              </Text>
-            )}
-            {days !== undefined && days >= 0 && days <= 5 && (
-              <Text className="block text-xs font-semibold text-amber-700">
-                <ClockCircleOutlined /> Còn {days} ngày
-              </Text>
-            )}
-          </span>
-        );
-      },
+      render: (value: string) => (
+        <span className="block text-center">
+          <Text className="block text-[13px] text-slate-700">{new Date(value).toLocaleDateString("vi-VN")}</Text>
+        </span>
+      ),
     },
     {
       title: "Trạng thái",
@@ -194,18 +168,11 @@ export default function DisbursementTab({
       width: 155,
       align: "center",
       render: (value: Disbursement["status"], row) => (
-        <span className="flex flex-col items-center">
-          <Tooltip title={APPROVAL_STATUS_META[value].hint}>
-            <Tag intent={APPROVAL_STATUS_META[value].intent} scale="md" className="m-0 whitespace-nowrap font-medium">
-              {APPROVAL_STATUS_META[value].label}
-            </Tag>
-          </Tooltip>
-          {value === "REJECTED" && row.rejectionReason && (
-            <Button intent="textLink" className="mt-0.5 block text-xs" onClick={() => setDetailId(row.id)}>
-              Xem lý do trả lại
-            </Button>
-          )}
-        </span>
+        <Tooltip title={value === "REJECTED" && row.rejectionReason ? `Lý do: ${row.rejectionReason}` : APPROVAL_STATUS_META[value].hint}>
+          <Tag intent={APPROVAL_STATUS_META[value].intent} scale="md" className="m-0 whitespace-nowrap font-semibold rounded-md">
+            {APPROVAL_STATUS_META[value].label}
+          </Tag>
+        </Tooltip>
       ),
     },
   ];
@@ -214,7 +181,7 @@ export default function DisbursementTab({
     columns.push({
       title: "Thao tác",
       key: "action",
-      width: 235,
+      width: 150,
       align: "center",
       render: (_, row) => (
         <div className="flex justify-center">
@@ -233,10 +200,10 @@ export default function DisbursementTab({
   }
 
   const statusOptions = [
-    { value: "ALL", label: `Tất cả trạng thái (${statusCounts.ALL ?? 0})` },
+    { value: "ALL", label: "Tất cả trạng thái" },
     ...STATUS_FILTER_ORDER.map((key) => ({
       value: key,
-      label: `${APPROVAL_STATUS_META[key].label} (${statusCounts[key] ?? 0})`,
+      label: APPROVAL_STATUS_META[key].label,
     })),
   ];
 
@@ -267,7 +234,7 @@ export default function DisbursementTab({
                   scale="sm"
                   icon={<PlusOutlined />}
                   onClick={onCreateDisbursement}
-                  className="bg-[#007A78] hover:bg-[#006664] text-white font-semibold shadow-xs"
+                  className="bg-[#DC2626] hover:bg-[#006664] text-white font-semibold shadow-xs"
                 >
                   Lập đề nghị thanh toán
                 </Button>

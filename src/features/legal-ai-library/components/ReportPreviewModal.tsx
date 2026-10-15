@@ -59,7 +59,7 @@ export default function ReportPreviewModal({
       title={
         <div className="flex items-center justify-between pb-2 border-b border-slate-200">
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-[#007A78]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-[#DC2626]">
               <RobotOutlined className="text-base" />
             </span>
             <div>
@@ -75,7 +75,7 @@ export default function ReportPreviewModal({
       footer={
         <div className="flex w-full items-center justify-between pt-2">
           <span className="text-[11px] text-slate-500 flex items-center gap-1">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             Tổng hợp từ dữ liệu thực tế M2, M4, M6, M7, M8
           </span>
           <div className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export default function ReportPreviewModal({
               scale="sm"
               intent="primary"
               onClick={onClose}
-              className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white text-xs font-semibold px-4"
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold px-4"
             >
               Đóng
             </Button>

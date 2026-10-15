@@ -1,10 +1,15 @@
 "use client";
 
+import React from "react";
 import {
   AppstoreOutlined,
   CalendarOutlined,
+  CheckCircleFilled,
+  CheckOutlined,
   DollarCircleOutlined,
+  FilterOutlined,
   HistoryOutlined,
+  PlusOutlined,
   ProjectOutlined,
   SearchOutlined,
   SlidersOutlined,
@@ -16,6 +21,8 @@ import type {
   ProcedureViewMode,
   ProjectProcedureData,
 } from "../types/procedure.types";
+import { useAuth } from "@/features/auth";
+import { isDirectorUser } from "../constants/procedure-department-templates";
 
 export interface ProcedureOptionItem {
   id: string;
@@ -33,10 +40,19 @@ interface ProcedureFilterToolbarProps {
   onSearchChange: (value: string) => void;
   statusFilter: ProcedureFilterStatus;
   onStatusFilterChange: (status: ProcedureFilterStatus) => void;
+  departmentFilter?: string;
+  onDepartmentFilterChange?: (dept: string) => void;
+  availableDepartments?: string[];
   viewMode: ProcedureViewMode;
   onViewModeChange: (mode: ProcedureViewMode) => void;
   onOpenAuditLog: () => void;
   onOpenStepConfig?: () => void;
+  onOpenAddDeptProcedure?: () => void;
+  userDepartment?: string;
+  isLeadOfDept?: boolean;
+  canConfirmDeptComplete?: boolean;
+  isDeptCompletedByLead?: boolean;
+  onConfirmDeptComplete?: () => void;
   procedureProfiles?: ProcedureOptionItem[];
   selectedProcedureId?: string;
   onSelectProcedure?: (procedureId: string) => void;
@@ -65,21 +81,42 @@ export default function ProcedureFilterToolbar({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  departmentFilter = "",
+  onDepartmentFilterChange,
+  availableDepartments = [],
   viewMode,
   onViewModeChange,
   onOpenAuditLog,
   onOpenStepConfig,
+  onOpenAddDeptProcedure,
+  userDepartment,
+  isLeadOfDept = false,
+  canConfirmDeptComplete = false,
+  isDeptCompletedByLead = false,
+  onConfirmDeptComplete,
   canUpdateProcedure = true,
 }: ProcedureFilterToolbarProps) {
+  const { user } = useAuth();
+  const isDirector = isDirectorUser(user);
   const currentProject = projects.find((project) => project.projectId === selectedProjectId);
+
+  const departmentOptions = availableDepartments.map((dept) => ({
+    value: dept,
+    label: dept,
+  }));
+
+  const activeDepartmentValue =
+    departmentFilter && availableDepartments.includes(departmentFilter)
+      ? departmentFilter
+      : availableDepartments[0] || undefined;
 
   return (
     <Card surface="workspace" padding="none" className="overflow-hidden border border-slate-200/80 shadow-xs">
-      {/* 1. Header: Chọn dự án & Thao tác cấu hình / nhật ký */}
+      {/* 1. Header: Chọn dự án & Thao tác nghiệp vụ theo vai trò */}
       <div className="flex flex-col gap-3.5 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 bg-white">
         {/* Chọn dự án */}
         <div className="flex items-center gap-3 flex-1 min-w-0 max-w-xl lg:max-w-2xl">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 text-[#007A78] shadow-2xs">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[#DC2626] shadow-2xs">
             <ProjectOutlined className="text-base" />
           </div>
           <div className="min-w-0 flex-1">
@@ -95,7 +132,8 @@ export default function ProcedureFilterToolbar({
             </div>
             <Select
               className="h-8.5 w-full text-xs"
-              value={selectedProjectId}
+              value={selectedProjectId || undefined}
+              placeholder="— Chọn dự án để theo dõi —"
               showSearch
               optionFilterProp="label"
               onChange={onSelectProject}
@@ -107,25 +145,50 @@ export default function ProcedureFilterToolbar({
           </div>
         </div>
 
-        {/* Cụm nút thao tác bên phải */}
-        <div className="flex shrink-0 items-center gap-2 pt-1 sm:pt-0">
-          {canUpdateProcedure && (
+        {/* Cụm nút thao tác bên phải theo Phân quyền nghiệp vụ */}
+        <div className="flex shrink-0 items-center gap-2 pt-1 sm:pt-0 flex-wrap">
+          {/* Nút dành cho Lead Phòng ban / Cán bộ có quyền: Thêm quy trình phòng ban */}
+          {(isLeadOfDept || canUpdateProcedure) && currentProject && (() => {
+            const currentDeptTarget =
+              departmentFilter && availableDepartments.includes(departmentFilter)
+                ? departmentFilter
+                : availableDepartments[0] || userDepartment;
+
+            return (
+              <Button
+                intent="primary"
+                scale="compact"
+                icon={<PlusOutlined />}
+                onClick={onOpenAddDeptProcedure}
+                className="h-9 text-xs font-semibold !bg-[#DC2626] hover:!bg-[#b91c1c] text-white shadow-2xs"
+              >
+                Thêm quy trình
+              </Button>
+            );
+          })()}
+
+
+          {/* Giám đốc KHÔNG phải người cấu hình/thêm quy trình nữa. Chỉ quản trị viên cấp cao khác nếu cần */}
+          {!isDirector && canUpdateProcedure && !isLeadOfDept && (
             <Button
               intent="outline"
               scale="compact"
+              disabled={!currentProject}
               icon={<SlidersOutlined />}
               onClick={onOpenStepConfig}
-              className="h-9 text-xs font-semibold text-slate-700 hover:border-[#007A78] hover:text-[#007A78] shadow-2xs"
+              className="h-9 text-xs font-semibold text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] shadow-2xs"
             >
               Cấu hình quy trình
             </Button>
           )}
+
           <Button
             intent="outline"
             scale="compact"
+            disabled={!currentProject}
             icon={<HistoryOutlined />}
             onClick={onOpenAuditLog}
-            className="h-9 text-xs font-semibold text-slate-700 hover:border-[#007A78] hover:text-[#007A78] shadow-2xs"
+            className="h-9 text-xs font-semibold text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] shadow-2xs"
           >
             Nhật ký thay đổi
           </Button>
@@ -151,12 +214,11 @@ export default function ProcedureFilterToolbar({
           {/* Cột 2: Tổng mức đầu tư */}
           <div className="flex flex-col justify-center px-4 py-2.5">
             <span className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              <DollarCircleOutlined className="text-emerald-600" />
+              <DollarCircleOutlined className="text-[#DC2626]" />
               Tổng mức đầu tư
             </span>
             <span className="text-sm font-bold text-slate-900">
               {currentProject.totalInvestment}{" "}
-              <span className="text-xs font-normal text-slate-500">tỷ VNĐ</span>
             </span>
           </div>
 
@@ -189,13 +251,13 @@ export default function ProcedureFilterToolbar({
         </div>
       )}
 
-      {/* 3. Toolbar tìm kiếm, lọc & chuyển đổi chế độ xem */}
+      {/* 3. Toolbar tìm kiếm, lọc theo phòng ban & trạng thái, chuyển đổi chế độ xem */}
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between bg-white">
-        {/* Nhóm tìm kiếm & Bộ lọc trạng thái */}
+        {/* Nhóm tìm kiếm & Bộ lọc */}
         <div className="flex flex-1 flex-wrap items-center gap-2.5">
-          <div className="w-full sm:w-[300px] md:w-[340px]">
+          <div className="w-full sm:w-[240px] md:w-[280px]">
             <Input
-              placeholder="Tìm mã bước, tên hoặc đơn vị thực hiện..."
+              placeholder="Tìm mã bước, tên hoặc đơn vị..."
               prefix={<SearchOutlined className="text-slate-400" />}
               value={searchTerm}
               onChange={(event) => onSearchChange(event.target.value)}
@@ -204,7 +266,19 @@ export default function ProcedureFilterToolbar({
             />
           </div>
 
-          <div className="w-full sm:w-[210px]">
+          {/* Nút lọc theo phòng ban (Dành cho Giám đốc & các bộ phận giám sát) */}
+          <div className="w-full sm:w-[220px]">
+            <Select
+              className="h-8.5 w-full text-xs"
+              value={activeDepartmentValue}
+              onChange={(val) => onDepartmentFilterChange?.(val)}
+              options={departmentOptions}
+              placeholder="Chọn phòng ban"
+              prefix={<FilterOutlined className="text-slate-400 mr-1" />}
+            />
+          </div>
+
+          <div className="w-full sm:w-[190px]">
             <Select
               className="h-8.5 w-full text-xs"
               value={statusFilter}

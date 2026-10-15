@@ -22,77 +22,86 @@ body {
   background: var(--cipm-surface-page);
 }
 
-/* ── CIPM shell: AntD menu brand tuning ─────────────────── */
+/* ── CIPM shell: AntD menu minimalist light tuning ─────────────────── */
+.cipm-sidebar-menu.ant-menu,
+.cipm-sidebar-menu.ant-menu-light,
 .cipm-sidebar-menu.ant-menu-dark {
   background: transparent !important;
+  border-inline-end: none !important;
 }
 
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item {
-  height: 36px !important;
-  line-height: 36px !important;
-  margin: 2px 6px !important;
-  border-radius: var(--cipm-radius-menu-item, 6px) !important;
-  padding-inline: 12px !important;
-  width: calc(100% - 12px) !important;
-  transition: all 0.2s ease;
+.cipm-sidebar-menu .ant-menu-item {
+  height: 42px !important;
+  line-height: 42px !important;
+  margin: 3px 10px !important;
+  border-radius: 10px !important;
+  padding-inline: 14px !important;
+  width: calc(100% - 20px) !important;
+  transition: all 0.15s ease;
+  border-left: none !important;
 }
 
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-group-title {
-  color: #94A3B8;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 16px;
-  padding: 10px 12px 3px !important;
+.cipm-sidebar-menu .ant-menu-item-group-title {
+  color: #94A3B8 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 16px !important;
+  padding: 14px 16px 4px !important;
+  text-transform: uppercase !important;
 }
 
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item,
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item .ant-menu-title-content {
+.cipm-sidebar-menu .ant-menu-item,
+.cipm-sidebar-menu .ant-menu-item .ant-menu-title-content {
+  color: #334155 !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+}
+
+.cipm-sidebar-menu .ant-menu-item .anticon {
+  color: #1E293B !important;
+  font-size: 16px !important;
+  transition: all 0.15s ease;
+}
+
+.cipm-sidebar-menu .ant-menu-item:hover {
+  background: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+.cipm-sidebar-menu .ant-menu-item:hover .anticon,
+.cipm-sidebar-menu .ant-menu-item:hover .ant-menu-title-content {
+  color: #0F172A !important;
+}
+
+.cipm-sidebar-menu .ant-menu-item-selected,
+.cipm-sidebar-menu .ant-menu-item-selected:hover {
+  background: #DC2626 !important;
   color: #FFFFFF !important;
-  font-size: 13px;
-  font-weight: 500;
+  border-left: none !important;
+  box-shadow: 0 1px 3px 0 rgba(220, 38, 38, 0.25) !important;
 }
 
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item .anticon {
-  color: #E2E8F0 !important;
-  font-size: 16px;
-  transition: all 0.2s ease;
-}
-
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
+.cipm-sidebar-menu .ant-menu-item-selected .ant-menu-title-content,
+.cipm-sidebar-menu .ant-menu-item-selected:hover .ant-menu-title-content {
   color: #FFFFFF !important;
+  font-weight: 600 !important;
 }
 
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item:hover .anticon,
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item:hover .ant-menu-title-content {
+.cipm-sidebar-menu .ant-menu-item-selected .anticon,
+.cipm-sidebar-menu .ant-menu-item-selected:hover .anticon {
   color: #FFFFFF !important;
-}
-
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected {
-  background: var(--cipm-sidebar-active) !important;
-  border-left: 3px solid var(--cipm-brand) !important;
-  color: #FFFFFF !important;
-}
-
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected .ant-menu-title-content {
-  color: #FFFFFF !important;
-  font-weight: 600;
-}
-
-.cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected .anticon {
-  color: var(--cipm-brand) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
 }
 
 /* ── Collapsed Sidebar Menu (1 hàng dọc icon căn giữa) ─── */
-.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark,
+.ant-layout-sider-collapsed .cipm-sidebar-menu,
 .cipm-sidebar-menu.ant-menu-inline-collapsed {
   width: 100% !important;
   padding: 8px 0 !important;
 }
 
-.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item,
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item,
 .cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item {
   width: 44px !important;
   height: 44px !important;
@@ -103,11 +112,11 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   border-left: none !important;
 }
 
-.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item .anticon,
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item .anticon,
 .cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item .anticon {
   font-size: 18px !important;
   margin: 0 !important;
@@ -115,23 +124,69 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  color: #1E293B !important;
 }
 
-.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item-selected,
-.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-selected {
-  background: var(--cipm-sidebar-active) !important;
-  box-shadow: inset 0 0 0 1.5px var(--cipm-brand) !important;
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item-selected,
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item-selected:hover,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-selected,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-selected:hover {
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 1px 3px 0 rgba(220, 38, 38, 0.25) !important;
   border-left: none !important;
 }
 
-.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-item-group-title,
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item-selected .anticon,
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item-selected:hover .anticon,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-selected .anticon,
+.cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-selected:hover .anticon {
+  color: #FFFFFF !important;
+}
+
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-item-group-title,
 .cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-item-group-title {
   display: none !important;
 }
 
-.ant-layout-sider-collapsed .cipm-sidebar-menu.ant-menu-dark .ant-menu-title-content,
+.ant-layout-sider-collapsed .cipm-sidebar-menu .ant-menu-title-content,
 .cipm-sidebar-menu.ant-menu-inline-collapsed .ant-menu-title-content {
   display: none !important;
+}
+
+/* ── Menu collapsed tooltip / popup & general tooltip: Nền trắng, chữ đen sắc nét ─── */
+.ant-tooltip .ant-tooltip-inner {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 14px -1px rgba(0, 0, 0, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #E2E8F0 !important;
+  padding: 6px 12px !important;
+}
+
+.ant-tooltip .ant-tooltip-arrow::before {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+/* Ant Design menu inline collapsed tooltip & submenu popups */
+.ant-menu-submenu-popup .ant-menu {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.06) !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-item {
+  color: #0F172A !important;
+  font-weight: 500 !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-item:hover {
+  background-color: #FEF2F2 !important;
+  color: #DC2626 !important;
 }
 
 /* ── Scrollbar (optional, tinh tế hơn) ──────────────────── */
@@ -167,6 +222,13 @@ body {
   align-items: center !important;
   padding: 24px !important;
   z-index: 1300 !important;
+  overflow: hidden !important;
+}
+
+html:has(.ant-modal-wrap:not(.ant-modal-wrap-hidden)),
+body:has(.ant-modal-wrap:not(.ant-modal-wrap-hidden)),
+body.ant-scrolling-effect {
+  overflow: hidden !important;
 }
 
 .ant-modal-wrap[style*="display: none"],
@@ -279,4 +341,37 @@ header.ant-layout-header {
 
 .animate-toast-slide-out {
   animation: cipm-toast-slide-out-right 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Ant Design Table: Ẩn thanh phân cách dọc (|) giữa các cột ở header ── */
+.ant-table-thead > tr > th::before,
+.ant-table-thead th::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* ── Toast Progress Bar Keyframe ────────────────────────── */
+@keyframes shrinkWidth {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* ── Ant Design Message Notifications (Tông đỏ thương hiệu #DC2626) ── */
+.ant-message .ant-message-notice-content {
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #FEE2E2 !important;
+  background: #FFFFFF !important;
+  padding: 9px 16px !important;
+}
+
+.ant-message-notice-content .ant-message-custom-content.ant-message-success > .anticon,
+.ant-message-notice-content .ant-message-success .anticon,
+.ant-message-success .anticon,
+.ant-message-success .anticon-check-circle {
+  color: #DC2626 !important;
 }

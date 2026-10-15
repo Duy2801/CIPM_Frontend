@@ -22,12 +22,14 @@ import {
   Drawer,
   Form,
   Input,
+  MoneyInput,
   Modal,
   Row,
   Select,
   Tag,
   Text,
 } from "@/components/ui";
+import { parseMoney } from "@/utils/format-money";
 import { todayIso } from "@/utils/date";
 import { cn } from "@/utils/cn";
 import { GPMB_STEPS } from "../constants/gpmb-steps";
@@ -215,7 +217,7 @@ export default function CreateHouseholdDrawer({
         ...values,
         code: generatedCode,
         areaM2: Number(Number(values.areaM2).toFixed(2)) || 0,
-        compensation: Number(values.compensation) || 0,
+        compensation: parseMoney(values.compensation) || 0,
         currentStep: Number(values.currentStep) || 1,
         specialStatus: values.specialStatus || "NORMAL",
         matrixSteps,
@@ -428,18 +430,21 @@ export default function CreateHouseholdDrawer({
             <Col xs={24} sm={12}>
               <Form.Item
                 name="compensation"
-                label="Tiền BT theo phương án (tỷ đồng)"
+                label="Tiền BT theo phương án"
                 rules={[
                   { required: true, message: "Vui lòng nhập số tiền bồi thường." },
+                  () => ({
+                    validator: (_, val) => {
+                      const num = parseMoney(val);
+                      if (isNaN(num) || num < 0) return Promise.reject(new Error("Vui lòng nhập số tiền hợp lệ."));
+                      return Promise.resolve();
+                    },
+                  }),
                 ]}
                 extra="Theo QĐ phê duyệt phương án (đồng bộ với M4)"
               >
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.001}
-                  suffix="tỷ đồng"
-                  placeholder="vd: 1.245"
+                <MoneyInput
+                  placeholder="VD: 100.000.000"
                 />
               </Form.Item>
             </Col>
@@ -493,8 +498,8 @@ export default function CreateHouseholdDrawer({
             <div className="mb-2 flex items-center justify-between text-xs text-slate-500 font-medium">
               <span>Bảng 16 ô quy trình GPMB:</span>
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1 text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Hoàn thành
+                <span className="inline-flex items-center gap-1 text-amber-700">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" /> Hoàn thành
                 </span>
                 <span className="inline-flex items-center gap-1 text-blue-700">
                   <span className="h-2 w-2 rounded-full bg-blue-500" /> Đang làm
@@ -519,7 +524,7 @@ export default function CreateHouseholdDrawer({
                     className={cn(
                       "group relative flex flex-col justify-between rounded-lg border p-2 text-left transition-all cursor-pointer",
                       isCompleted &&
-                        "border-emerald-200 bg-emerald-50/60 hover:border-emerald-400 hover:bg-emerald-50",
+                        "border-amber-200 bg-amber-50/60 hover:border-amber-400 hover:bg-amber-50",
                       isInProgress &&
                         "border-blue-300 bg-blue-50/70 ring-1 ring-blue-300 hover:border-blue-400 hover:bg-blue-50",
                       !isCompleted &&
@@ -531,7 +536,7 @@ export default function CreateHouseholdDrawer({
                       <span
                         className={cn(
                           "rounded px-1.5 py-0.2 text-[11px] font-bold",
-                          isCompleted && "bg-emerald-600 text-white",
+                          isCompleted && "bg-amber-500 text-white",
                           isInProgress && "bg-blue-600 text-white",
                           !isCompleted && !isInProgress && "bg-slate-200 text-slate-600"
                         )}
@@ -569,7 +574,7 @@ export default function CreateHouseholdDrawer({
                         <span />
                       )}
                       {cell.fileName && (
-                        <span className="flex items-center gap-0.5 text-[#007A78] font-semibold" title={cell.fileName}>
+                        <span className="flex items-center gap-0.5 text-[#DC2626] font-semibold" title={cell.fileName}>
                           <PaperClipOutlined className="text-[9px]" />
                           Tệp
                         </span>
@@ -669,8 +674,8 @@ export default function CreateHouseholdDrawer({
               extra="Đính kèm biên bản scan, quyết định, phiếu khảo sát (PDF, DOC, DOCX, ảnh)"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#007A78] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                  <UploadOutlined className="text-teal-700 text-sm" />
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
+                  <UploadOutlined className="text-slate-500 text-sm" />
                   <span>Chọn tệp đính kèm</span>
                   <input
                     type="file"
@@ -686,8 +691,8 @@ export default function CreateHouseholdDrawer({
                 </label>
 
                 {selectedCellFileName ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium">
-                    <FileTextOutlined className="text-teal-600" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-xs text-slate-800 font-medium">
+                    <FileTextOutlined className="text-slate-500" />
                     <span className="truncate max-w-[200px]">{selectedCellFileName}</span>
                     <button
                       type="button"

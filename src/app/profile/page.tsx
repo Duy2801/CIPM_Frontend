@@ -12,7 +12,7 @@ import {
   SaveOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { message } from "antd";
+import { App } from "antd";
 import {
   Avatar,
   Button,
@@ -41,6 +41,7 @@ interface PasswordFormValues {
 }
 
 export default function ProfilePage() {
+  const { message } = App.useApp();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
 

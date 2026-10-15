@@ -33,9 +33,9 @@ import {
 import { App, Radio } from "antd";
 import { MASTER_PROCEDURE_STEPS } from "@/features/construction-procedures/constants/procedure-steps-master";
 import GrantActingDirectorModal from "./GrantActingDirectorModal";
-import ProjectPermissionsModal from "./ProjectPermissionsModal";
 import ProjectTeamModal from "./ProjectTeamModal";
 import UrgeMemberModal from "./UrgeMemberModal";
+import SubmitToCndaModal from "./SubmitToCndaModal";
 import {
   Button,
   Card,
@@ -101,24 +101,6 @@ const FILTER_ORDER: AssignmentFilter[] = [
 
 const PAGE_SIZE = 10;
 
-/** Màu chỉ báo dot cho trạng thái dự án (đơn giản, chuyên nghiệp) */
-function getProjectStatusDotColor(status?: string): string {
-  switch (status) {
-    case "Đã hoàn thành":
-      return "bg-emerald-500";
-    case "Đang thi công":
-      return "bg-blue-500";
-    case "Bồi thường GPMB":
-      return "bg-amber-500";
-    case "Thiết kế BVTC":
-      return "bg-cyan-500";
-    case "Đấu thầu XL":
-      return "bg-indigo-500";
-    case "Chuẩn bị ĐT":
-    default:
-      return "bg-slate-400";
-  }
-}
 
 export default function AssignmentTab({
   controller,
@@ -187,49 +169,12 @@ export default function AssignmentTab({
     }
   }, [canAssignLeaders, canAssignTasks]);
 
+  // Trạng thái modal nộp hồ sơ trình CNDA / Tổ trưởng duyệt
+  const [submitToCndaAssignment, setSubmitToCndaAssignment] = useState<Assignment | null>(null);
+
   // Gửi duyệt nghiệm thu nhiệm vụ từ phía Cán bộ thực hiện
   const handleConfirmMemberCompletion = (assignment: Assignment) => {
-    const isPhase = assignment.assignmentLevel === "PHASE_LEAD";
-    const approverText =
-      isPhase || assignment.assignedByRole === "PROJECT_LEAD"
-        ? "Chủ nhiệm dự án"
-        : "Tổ trưởng chuyên môn";
-
-    modal.confirm({
-      width: 460,
-      centered: true,
-      title: "Gửi báo cáo hoàn thành & yêu cầu nghiệm thu?",
-      icon: null,
-      content: (
-        <div className="space-y-2.5 pt-1 text-xs">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-800 space-y-1">
-            <div className="font-bold text-slate-900">{assignment.title}</div>
-            <div className="text-[11px] text-slate-500">
-              Dự án: {data.projects.find((p) => p.id === assignment.projectId)?.name} · Hạn: {formatDateVi(assignment.dueDate)}
-            </div>
-            {assignment.submissions && assignment.submissions.length > 0 && (
-              <div className="text-[11px] text-emerald-700 font-medium">
-                Đã đính kèm {assignment.submissions.length} hồ sơ/tài liệu
-              </div>
-            )}
-          </div>
-          <p className="text-slate-600 leading-relaxed">
-            Bạn có chắc chắn đã hoàn thành toàn bộ nội dung công việc và muốn gửi hồ sơ trình <strong>{approverText}</strong> xem xét nghiệm thu?
-          </p>
-        </div>
-      ),
-      okText: "Gửi duyệt nghiệm thu",
-      cancelText: "Hủy",
-      okButtonProps: {
-        className: "!bg-[#007A78] hover:!bg-[#006361] !border-[#007A78] !text-white text-xs font-semibold h-8 px-4",
-      },
-      cancelButtonProps: {
-        className: "text-xs font-medium h-8 px-4",
-      },
-      onOk: async () => {
-        await controller.requestCompletion(assignment.id);
-      },
-    });
+    setSubmitToCndaAssignment(assignment);
   };
 
   const handleStartAssignment = async (assignment: Assignment) => {
@@ -240,8 +185,6 @@ export default function AssignmentTab({
   const [grantModalOpen, setGrantModalOpen] = useState(false);
   const [grantProject, setGrantProject] = useState<PersonnelProject | undefined>();
   const [teamModalProject, setTeamModalProject] = useState<PersonnelProject | undefined>();
-  const [projectPermissionsModalOpen, setProjectPermissionsModalOpen] = useState(false);
-  const [projectPermissionsTargetProjectId, setProjectPermissionsTargetProjectId] = useState<string | undefined>();
 
   // Modal Đôn đốc thành viên
   const [urgeModalOpen, setUrgeModalOpen] = useState(false);
@@ -511,8 +454,11 @@ export default function AssignmentTab({
         );
         const isAllPhasesDone = projectPhases.length > 0 && projectPhases.every((a) => a.status === "DONE");
 
+        const isAssigned = Boolean(p.mainExecutorId || p.mainSupervisorId);
         let statusText = p.status ?? "Đang thi công";
-        if (p.directorApprovalStatus === "APPROVED") {
+        if (!isAssigned) {
+          statusText = "Chưa phân công";
+        } else if (p.directorApprovalStatus === "APPROVED") {
           statusText = "Đã hoàn thành";
         } else if (p.directorApprovalStatus === "REJECTED") {
           statusText = "Yêu cầu hoàn thiện";
@@ -520,19 +466,17 @@ export default function AssignmentTab({
           statusText = "Chờ BGĐ phê duyệt";
         }
 
-        const dotColor = getProjectStatusDotColor(statusText);
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 whitespace-nowrap">
-            <span className={`h-2 w-2 rounded-full ${dotColor}`} />
+          <span className="inline-flex items-center text-xs font-medium text-slate-700 whitespace-nowrap">
             <span>{statusText}</span>
           </span>
         );
       },
     },
     {
-      title: "Người thực hiện chính",
+      title: "Chủ nhiệm dự án",
       key: "mainExecutor",
-      width: "24%",
+      width: "20%",
       render: (_, p) => {
         const person = p.mainExecutorId
           ? data.staff.find((s) => s.id === p.mainExecutorId)
@@ -546,18 +490,33 @@ export default function AssignmentTab({
             <div className="text-[13px] font-semibold text-slate-800 leading-tight">
               {person.name}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5 leading-snug" title={`${person.title} · ${team?.name}`}>
-              {person.title} · {team?.name}
+            <div className="text-xs text-slate-500 mt-0.5 leading-snug" title={`${person.title} · ${team?.name || "BQL"}`}>
+              {person.title} · {team?.name || "BQL"}
             </div>
           </div>
         );
       },
     },
     {
-      title: "Người giám sát chính",
-      key: "mainSupervisor",
-      width: "18%",
+      title: "Phòng ban phụ trách",
+      key: "departments",
+      width: "22%",
       render: (_, p) => {
+        const depts = p.departments && p.departments.length > 0 ? p.departments : undefined;
+        if (depts) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              {depts.map((d) => (
+                <span
+                  key={d}
+                  className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded"
+                >
+                  {d}
+                </span>
+              ))}
+            </div>
+          );
+        }
         const person = p.mainSupervisorId
           ? data.staff.find((s) => s.id === p.mainSupervisorId)
           : undefined;
@@ -592,9 +551,22 @@ export default function AssignmentTab({
         const isAllPhasesDone = projectPhases.length > 0 && projectPhases.every((a) => a.status === "DONE");
 
         return (
-          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-            {/* Khi Ban Giám đốc xem và toàn bộ giai đoạn đã hoàn thành xong (100%) hoặc có tờ trình PENDING */}
-            {isDirector && (isAllPhasesDone || p.directorApprovalStatus === "PENDING" || p.directorApprovalStatus === "APPROVED" || p.directorApprovalStatus === "REJECTED") && (
+          <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
+            {/* Trường hợp 1: Chưa phân công cán bộ -> Luôn hiển thị nút Phân công */}
+            {!isAssigned && (
+              <Button
+                intent="primary"
+                scale="compact"
+                icon={<SafetyCertificateOutlined />}
+                className="!w-[126px] !inline-flex !items-center !justify-center !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold shadow-2xs"
+                onClick={() => onAssignLeadership?.(p)}
+              >
+                Phân công
+              </Button>
+            )}
+
+            {/* Khi Ban Giám đốc xem và dự án ĐÃ PHÂN CÔNG & toàn bộ giai đoạn đã hoàn thành xong (100%) hoặc có tờ trình PENDING */}
+            {isAssigned && isDirector && (isAllPhasesDone || p.directorApprovalStatus === "PENDING" || p.directorApprovalStatus === "APPROVED" || p.directorApprovalStatus === "REJECTED") && (
               <>
                 {p.directorApprovalStatus === "APPROVED" ? (
                   <Tag color="success" className="px-2.5 py-1 font-semibold text-xs rounded-full border border-emerald-300 bg-emerald-50 text-emerald-800 m-0">
@@ -609,7 +581,7 @@ export default function AssignmentTab({
                       intent="primary"
                       scale="compact"
                       icon={<CheckCircleOutlined />}
-                      className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold"
+                      className="!w-[126px] !inline-flex !items-center !justify-center !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold shadow-2xs"
                       onClick={() => handleOpenDirectorReview("APPROVE", p)}
                     >
                       Duyệt lại DA
@@ -621,7 +593,7 @@ export default function AssignmentTab({
                       intent="primary"
                       scale="compact"
                       icon={<CheckCircleOutlined />}
-                      className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold shadow-2xs"
+                      className="!w-[126px] !inline-flex !items-center !justify-center !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold shadow-2xs"
                       onClick={() => handleOpenDirectorReview("APPROVE", p)}
                     >
                       Phê duyệt DA
@@ -631,7 +603,7 @@ export default function AssignmentTab({
                       scale="compact"
                       danger
                       icon={<CloseCircleOutlined />}
-                      className="!border-rose-300 !text-rose-600 hover:!bg-rose-50 font-medium"
+                      className="!w-[126px] !inline-flex !items-center !justify-center !border-rose-300 !text-rose-600 hover:!bg-rose-50 font-medium shadow-2xs"
                       onClick={() => handleOpenDirectorReview("REJECT", p)}
                     >
                       Từ chối
@@ -641,30 +613,27 @@ export default function AssignmentTab({
               </>
             )}
 
-            {/* Các thao tác phân công / thu hồi nhân sự khi dự án chưa hoàn thành toàn bộ */}
-            {(!isDirector || (!isAllPhasesDone && !p.directorApprovalStatus)) && (
+            {/* Các thao tác phân công / thu hồi nhân sự khi dự án đã phân công nhưng chưa hoàn thành toàn bộ */}
+            {isAssigned && (!isDirector || (!isAllPhasesDone && !p.directorApprovalStatus)) && (
               <>
-                {/* Trường hợp 1: Chưa phân công cán bộ nào */}
-                {!isAssigned && (
-                  <Button
-                    intent="primary"
-                    scale="compact"
-                    icon={<SafetyCertificateOutlined />}
-                    className="!w-[126px] !inline-flex !items-center !justify-center"
-                    onClick={() => onAssignLeadership?.(p)}
-                  >
-                    Phân công
-                  </Button>
-                )}
 
                 {/* Trường hợp 2: Đang có Chủ nhiệm dự án hoạt động bình thường */}
                 {canManageRole && hasMainExecutor && !isCndaRevoked && (
-                  <Tooltip title="Thu hồi quyền Chủ nhiệm dự án (rút quyền điều hành của cán bộ đương nhiệm)">
+                  <>
+                    <Button
+                      intent="outline"
+                      scale="compact"
+                      icon={<EditOutlined />}
+                      className="!w-[126px] !inline-flex !items-center !justify-center !border-slate-300 !text-slate-700 hover:!bg-slate-50 shadow-2xs"
+                      onClick={() => onAssignLeadership?.(p)}
+                    >
+                      Điều chỉnh
+                    </Button>
                     <Button
                       intent="outline"
                       scale="compact"
                       icon={<UserDeleteOutlined />}
-                      className="!w-[126px] !inline-flex !items-center !justify-center !border-rose-300 !text-rose-700 hover:!bg-rose-50"
+                      className="!w-[126px] !inline-flex !items-center !justify-center !border-rose-300 !text-rose-700 hover:!bg-rose-50 shadow-2xs"
                       onClick={(e) => {
                         e.stopPropagation();
                         confirmRevokeRole(p);
@@ -672,34 +641,30 @@ export default function AssignmentTab({
                     >
                       Thu hồi CNDA
                     </Button>
-                  </Tooltip>
+                  </>
                 )}
 
                 {/* Trường hợp 3: Đã thu hồi quyền CNDA -> HIỆN ĐIỀU CHỈNH THAY THẾ & CẤP LẠI */}
                 {canManageRole && isCndaRevoked && (
                   <>
-                    <Tooltip title="Chỉ định cán bộ mới thay thế vị trí Chủ nhiệm dự án vừa thu hồi">
-                      <Button
-                        intent="primary"
-                        scale="compact"
-                        icon={<EditOutlined />}
-                        className="!w-[126px] !inline-flex !items-center !justify-center"
-                        onClick={() => onAssignLeadership?.(p)}
-                      >
-                        Điều chỉnh
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="Khôi phục lại quyền Chủ nhiệm dự án cho cán bộ cũ">
-                      <Button
-                        intent="outline"
-                        scale="compact"
-                        icon={<SafetyCertificateOutlined />}
-                        className="!w-[126px] !inline-flex !items-center !justify-center !border-slate-300 !text-[#0F4C81] hover:!bg-slate-50"
-                        onClick={() => handleRestoreCnda(p)}
-                      >
-                        Cấp lại CNDA
-                      </Button>
-                    </Tooltip>
+                    <Button
+                      intent="primary"
+                      scale="compact"
+                      icon={<EditOutlined />}
+                      className="!w-[126px] !inline-flex !items-center !justify-center shadow-2xs"
+                      onClick={() => onAssignLeadership?.(p)}
+                    >
+                      Điều chỉnh
+                    </Button>
+                    <Button
+                      intent="outline"
+                      scale="compact"
+                      icon={<SafetyCertificateOutlined />}
+                      className="!w-[126px] !inline-flex !items-center !justify-center !border-slate-300 !text-[#0F4C81] hover:!bg-slate-50 shadow-2xs"
+                      onClick={() => handleRestoreCnda(p)}
+                    >
+                      Cấp lại CNDA
+                    </Button>
                   </>
                 )}
 
@@ -709,7 +674,7 @@ export default function AssignmentTab({
                     intent="primary"
                     scale="compact"
                     icon={<EditOutlined />}
-                    className="!w-[126px] !inline-flex !items-center !justify-center"
+                    className="!w-[126px] !inline-flex !items-center !justify-center shadow-2xs"
                     onClick={() => onAssignLeadership?.(p)}
                   >
                     Điều chỉnh
@@ -1095,14 +1060,14 @@ export default function AssignmentTab({
     return [
       {
         value: "ALL",
-        label: `Tất cả giai đoạn (${visibleStageAssignments.length})`,
+        label: "Tất cả giai đoạn",
       },
-      ...projectActiveStages.map(({ stage: s, count }) => ({
+      ...projectActiveStages.map(({ stage: s }) => ({
         value: s.value,
-        label: `${s.label} – ${s.fullName} (${count})`,
+        label: `${s.label} – ${s.fullName}`,
       })),
     ];
-  }, [projectActiveStages, visibleStageAssignments.length]);
+  }, [projectActiveStages]);
 
   const projectFilteredAssignments = useMemo(() => {
     return visibleStageAssignments.filter((item) => {
@@ -1160,14 +1125,14 @@ export default function AssignmentTab({
     if (leadProjects.length > 0 && memberProjects.length > 0) {
       return [
         {
-          label: `👑 DỰ ÁN PHỤ TRÁCH / CHỦ NHIỆM (${leadProjects.length})`,
+          label: "👑 DỰ ÁN PHỤ TRÁCH / CHỦ NHIỆM",
           options: leadProjects.map((p) => ({
             value: p.id,
             label: `${p.code} · ${p.name} [Chủ nhiệm DA]`,
           })),
         },
         {
-          label: `👤 DỰ ÁN THAM GIA / THÀNH VIÊN (${memberProjects.length})`,
+          label: "👤 DỰ ÁN THAM GIA / THÀNH VIÊN",
           options: memberProjects.map((p) => {
             const role = getProjectRole(p.id);
             const roleText = role === "SUPERVISOR" ? "Giám sát chính" : "Thành viên";
@@ -1378,7 +1343,7 @@ export default function AssignmentTab({
               Cán bộ thực hiện: <strong className="text-slate-700">{executor?.name || "Chưa rõ"}</strong> ({executor?.title || ""})
             </div>
             {assignment.submissions && assignment.submissions.length > 0 && (
-              <div className="text-[11px] text-teal-700 pt-1">
+              <div className="text-[11px] text-emerald-700 pt-1">
                 Tệp hồ sơ nộp: <strong>{assignment.submissions[assignment.submissions.length - 1].fileName}</strong>
               </div>
             )}
@@ -1388,7 +1353,7 @@ export default function AssignmentTab({
       okText: assignment.assignmentLevel === "PHASE_LEAD" ? "Hoàn thành giai đoạn" : "Chấp nhận",
       okButtonProps: {
         className:
-          "!h-9 !px-5 !rounded-lg !font-semibold !bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white !shadow-xs",
+          "!h-9 !px-5 !rounded-lg !font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white !shadow-xs",
       },
       cancelText: "Hủy",
       cancelButtonProps: {
@@ -1415,7 +1380,7 @@ export default function AssignmentTab({
         return (
           <div className="py-0.5 min-w-0 pr-1">
             <span
-              className="text-left text-xs font-semibold text-slate-900 group-hover:text-[#0F4C81] truncate max-w-full block"
+              className="text-left text-xs font-semibold text-slate-900 group-hover:text-[#DC2626] transition-colors truncate max-w-full block"
               title={row.title}
             >
               {row.title}
@@ -1465,26 +1430,23 @@ export default function AssignmentTab({
               className="flex items-center gap-1.5 flex-wrap text-left group/stage w-fit max-w-full"
               title={`Xem chi tiết ${stageMeta?.label || `Giai đoạn ${stageGroup}`}: ${stageMeta?.fullName || ""}`}
             >
-              <Tag
-                color={stageMeta?.color || "blue"}
-                className="m-0 text-[11px] font-bold px-1.5 py-0 shrink-0 group-hover/stage:opacity-85 transition-opacity"
-              >
+              <span className="inline-flex items-center text-[10.5px] font-bold px-2 py-0.5 rounded bg-rose-50 text-[#DC2626] border border-rose-200/80 shrink-0 group-hover/stage:opacity-85 transition-opacity">
                 {stageMeta?.label || `Giai đoạn ${stageGroup}`}
-              </Tag>
-              <span className="text-xs font-semibold text-slate-800 group-hover/stage:text-[#007A78] truncate" title={stageMeta?.fullName || ""}>
+              </span>
+              <span className="text-xs font-semibold text-slate-800 group-hover/stage:text-[#DC2626] truncate" title={stageMeta?.fullName || ""}>
                 {stageMeta?.fullName || ""}
               </span>
             </div>
 
             {/* Mục nhỏ: Bước thủ tục chi tiết */}
             {isPhaseLead ? (
-              <span className="text-[11px] text-blue-700 font-medium italic">
+              <span className="text-[11px] text-slate-500 font-medium italic">
               </span>
             ) : stepCode ? (
               <div className="flex items-center gap-1.5 text-[11px] text-slate-700 bg-slate-50 border border-slate-200/90 rounded px-1.5 py-0.5 w-fit max-w-full">
-                <Tag color="cyan" className="m-0 text-[10px] leading-4 px-1 py-0 font-bold shrink-0">
+                <span className="inline-flex items-center font-mono font-bold text-[10px] leading-4 px-1.5 py-0 rounded bg-white text-slate-700 border border-slate-200 shrink-0">
                   Bước {stepCode}
-                </Tag>
+                </span>
                 <span className="truncate text-slate-700 font-medium" title={stepName || ""}>
                   {stepName || "Thực hiện thủ tục"}
                 </span>
@@ -1514,7 +1476,7 @@ export default function AssignmentTab({
                 {person.name}
               </span>
               {isLeader ? (
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1 py-0.2 rounded shrink-0 border border-blue-200/60">
+                <span className="text-[10px] font-bold text-[#DC2626] bg-red-50 px-1 py-0.2 rounded shrink-0 border border-red-200/60">
                   Tổ trưởng
                 </span>
               ) : (
@@ -1544,7 +1506,7 @@ export default function AssignmentTab({
             <span className="ml-1 text-[10px] font-semibold text-amber-600 block">Sắp đến hạn</span>
           )}
           {row.status === "DONE" && (
-            <span className="ml-1 text-[10px] text-emerald-600 block">Đã xong</span>
+            <span className="ml-1 text-[10px] text-slate-600 block font-medium">Đã xong</span>
           )}
         </div>
       ),
@@ -1558,15 +1520,18 @@ export default function AssignmentTab({
 
         if (isPendingApproval) {
           return (
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" />
-                <span>{row.assignmentLevel === "PHASE_LEAD" ? "Chờ CNDA duyệt giai đoạn" : row.approvalStage === "PROJECT_APPROVED" ? "Chờ chốt giai đoạn" : row.approvalStage === "LEAD_APPROVED" ? "Chờ CNDA duyệt" : "Chờ tổ trưởng duyệt"}</span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" />
+              <span>
+                {row.assignmentLevel === "PHASE_LEAD"
+                  ? "Chờ CNDA duyệt giai đoạn"
+                  : row.approvalStage === "PROJECT_APPROVED"
+                  ? "Chờ chốt giai đoạn"
+                  : row.approvalStage === "LEAD_APPROVED"
+                  ? "Chờ CNDA duyệt"
+                  : "Chờ tổ trưởng duyệt"}
               </span>
-              <Tag color="warning" className="m-0 text-[10px] font-bold mt-1 block w-fit">
-                {row.assignmentLevel === "PHASE_LEAD" ? "Chờ chốt giai đoạn" : row.approvalStage === "PROJECT_APPROVED" ? "CNDA đã duyệt" : row.approvalStage === "LEAD_APPROVED" ? "Tổ trưởng đã duyệt" : "Chờ tổ trưởng duyệt"}
-              </Tag>
-            </div>
+            </span>
           );
         }
 
@@ -1574,7 +1539,7 @@ export default function AssignmentTab({
           TODO: { label: "Chưa bắt đầu", dot: "bg-slate-400" },
           IN_PROGRESS: { label: "Đang thực hiện", dot: "bg-blue-500" },
           PENDING_APPROVAL: { label: "Chờ nghiệm thu", dot: "bg-amber-500" },
-          DONE: { label: "Đã hoàn thành", dot: "bg-emerald-500" },
+          DONE: { label: "Đã hoàn thành", dot: "bg-slate-700" },
         };
         const meta = statusMeta[value] || statusMeta.IN_PROGRESS;
         const approvalLabel = row.approvalStage === "RETURNED_TO_LEAD"
@@ -1677,7 +1642,7 @@ export default function AssignmentTab({
                 <button
                   type="button"
                   onClick={() => handleAcceptCompletion(row)}
-                  className="w-[124px] h-6.5 rounded-md bg-[#007A78] hover:bg-[#006361] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   title="Chủ nhiệm dự án chấp nhận nghiệm thu giai đoạn"
                 >
                   Chấp nhận
@@ -1695,12 +1660,62 @@ export default function AssignmentTab({
           }
 
           // Trạng thái TODO hoặc IN_PROGRESS -> CNDA chỉnh sửa phân công hoặc đôn đốc Tổ trưởng
+          const phaseChildren = data.assignments.filter((item) => item.parentAssignmentId === row.id);
+          const canCompleteDirectly = phaseChildren.length > 0 &&
+            phaseChildren.every((item) => item.approvalStage === "PROJECT_APPROVED" || item.status === "DONE");
+          const hasWaitingCndaSteps = phaseChildren.some((item) => item.approvalStage === "LEAD_APPROVED");
+
+          if (canCompleteDirectly) {
+            return (
+              <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleAcceptCompletion(row)}
+                  className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  title="Tất cả bước con đã duyệt xong. Bấm để nghiệm thu hoàn thành giai đoạn"
+                >
+                  Nghiệm thu giai đoạn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenDetail(row)}
+                  className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                >
+                  Xem chi tiết
+                </button>
+              </div>
+            );
+          }
+
+          if (hasWaitingCndaSteps) {
+            return (
+              <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
+                <button
+                  type="button"
+                  onClick={() => onOpenDetail(row)}
+                  className="w-[124px] h-6.5 rounded-md bg-amber-500 hover:bg-amber-600 text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  title="Có bước con đang chờ CNDA duyệt. Bấm để xem chi tiết và phê duyệt"
+                >
+                  Duyệt bước con
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onEdit(row)}
+                  className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  title="Chỉnh sửa phân công giai đoạn cho Tổ trưởng"
+                >
+                  Sửa phân công
+                </button>
+              </div>
+            );
+          }
+
           return (
             <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
               <button
                 type="button"
                 onClick={() => onEdit(row)}
-                className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#007A78] border border-slate-300 hover:border-[#007A78] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                 title="Chỉnh sửa phân công giai đoạn cho Tổ trưởng"
               >
                 Sửa phân công
@@ -1744,14 +1759,11 @@ export default function AssignmentTab({
 
             if (row.status === "PENDING_APPROVAL") {
               return (
-                <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
-                  <span className="w-[124px] h-6.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium text-[11px] flex items-center justify-center whitespace-nowrap">
-                    Chờ CNDA duyệt
-                  </span>
+                <div className="flex flex-col items-center justify-center py-0.5">
                   <button
                     type="button"
                     onClick={() => onOpenDetail(row)}
-                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   >
                     Xem hồ sơ
                   </button>
@@ -1766,7 +1778,7 @@ export default function AssignmentTab({
                   <button
                     type="button"
                     onClick={() => handleStartAssignment(row)}
-                    className="w-[124px] h-6.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                    className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                     title="Bắt đầu triển khai giai đoạn này"
                   >
                     ▶ Bắt đầu làm
@@ -1782,7 +1794,7 @@ export default function AssignmentTab({
                   type="button"
                   onClick={() => handleConfirmMemberCompletion(row)}
                   disabled={!(data.assignments.some((item) => item.parentAssignmentId === row.id) && data.assignments.filter((item) => item.parentAssignmentId === row.id).every((item) => item.approvalStage === "PROJECT_APPROVED"))}
-                  className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#007A78] border border-slate-300 hover:border-[#007A78] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   title="Chỉ gửi khi tất cả bước con đã được CNDA duyệt"
                 >
                   Gửi CNDA duyệt
@@ -1810,14 +1822,11 @@ export default function AssignmentTab({
 
             if (row.status === "PENDING_APPROVAL") {
               return (
-                <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
-                  <span className="w-[124px] h-6.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium text-[11px] flex items-center justify-center whitespace-nowrap">
-                    Chờ nghiệm thu
-                  </span>
+                <div className="flex flex-col items-center justify-center py-0.5">
                   <button
                     type="button"
                     onClick={() => onOpenDetail(row)}
-                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   >
                     Xem hồ sơ
                   </button>
@@ -1831,14 +1840,14 @@ export default function AssignmentTab({
                   <button
                     type="button"
                     onClick={() => handleStartAssignment(row)}
-                    className="w-[124px] h-6.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                    className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   >
                     ▶ Bắt đầu làm
                   </button>
                   <button
                     type="button"
                     onClick={() => onOpenDetail(row)}
-                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   >
                     Chi tiết
                   </button>
@@ -1859,7 +1868,7 @@ export default function AssignmentTab({
                 <button
                   type="button"
                   onClick={() => handleConfirmMemberCompletion(row)}
-                  className="w-[124px] h-6.5 rounded-md bg-[#007A78] hover:bg-[#006361] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                 >
                   Xác nhận hoàn thành
                 </button>
@@ -1883,7 +1892,29 @@ export default function AssignmentTab({
           }
 
           if (row.status === "PENDING_APPROVAL") {
-            // Thành viên đã nộp bài -> Tổ trưởng DUYỆT hoặc TỪ CHỐI
+            // Thành viên đã nộp bài -> CNDA duyệt nếu đã qua Tổ trưởng
+            if (row.approvalStage === "LEAD_APPROVED" && isLeadOnThisProject) {
+              return (
+                <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleAcceptCompletion(row)}
+                    className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                    title="Chủ nhiệm dự án phê duyệt bước con này"
+                  >
+                    CNDA duyệt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenReject(row)}
+                    className="w-[124px] h-6.5 rounded-md bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer whitespace-nowrap shadow-2xs"
+                    title="CNDA từ chối bước con này"
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              );
+            }
             if (row.approvalStage) {
               return (
                 <button type="button" onClick={() => onOpenDetail(row)} className="w-[124px] rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">
@@ -1896,7 +1927,7 @@ export default function AssignmentTab({
                 <button
                   type="button"
                   onClick={() => handleAcceptCompletion(row)}
-                  className="w-[124px] h-6.5 rounded-md bg-[#007A78] hover:bg-[#006361] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   title="Tổ trưởng phê duyệt hoàn thành nhiệm vụ cho thành viên"
                 >
                   Chấp nhận
@@ -1927,7 +1958,7 @@ export default function AssignmentTab({
               <button
                 type="button"
                 onClick={() => onEdit(row)}
-                className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#007A78] border border-slate-300 hover:border-[#007A78] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
               >
                 Sửa nhiệm vụ
               </button>
@@ -1964,21 +1995,12 @@ export default function AssignmentTab({
         }
 
         if (row.status === "PENDING_APPROVAL") {
-          const approverRoleText =
-            row.approvalStage === "PROJECT_APPROVED" ? "Chờ chốt giai đoạn" :
-            row.approvalStage === "LEAD_APPROVED" ? "Chờ CNDA duyệt" :
-            row.assignmentLevel === "TASK_MEMBER" || row.assignedByRole === "TEAM_LEAD"
-              ? "Chờ Tổ trưởng duyệt"
-              : "Chờ CNDA duyệt";
           return (
-            <div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
-              <span className="w-[124px] h-6.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-medium text-[11px] flex items-center justify-center whitespace-nowrap">
-                {approverRoleText}
-              </span>
+            <div className="flex flex-col items-center justify-center py-0.5">
               <button
                 type="button"
                 onClick={() => onOpenDetail(row)}
-                className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
               >
                 Xem hồ sơ
               </button>
@@ -1997,7 +2019,7 @@ export default function AssignmentTab({
                 <button
                   type="button"
                   onClick={() => handleStartAssignment(row)}
-                  className="w-[124px] h-6.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                   title="Bắt đầu thực hiện nhiệm vụ này"
                 >
                   ▶ Bắt đầu làm
@@ -2005,7 +2027,7 @@ export default function AssignmentTab({
                 <button
                   type="button"
                   onClick={() => onOpenDetail(row)}
-                  className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                  className="w-[124px] h-6.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 hover:text-[#DC2626] border border-slate-300 hover:border-[#DC2626] font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                 >
                   Chi tiết
                 </button>
@@ -2031,7 +2053,7 @@ export default function AssignmentTab({
               <button
                 type="button"
                 onClick={() => handleConfirmMemberCompletion(row)}
-                className="w-[124px] h-6.5 rounded-md bg-[#007A78] hover:bg-[#006361] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
+                className="w-[124px] h-6.5 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium text-[11px] transition-colors flex items-center justify-center cursor-pointer shadow-2xs whitespace-nowrap"
                 title="Báo cáo hoàn thành và gửi hồ sơ đề nghị phê duyệt nghiệm thu"
               >
                 {sendBtnText}
@@ -2070,20 +2092,7 @@ export default function AssignmentTab({
             description="Giám đốc và Phó Giám đốc chỉ định Người thực hiện chính (Chủ nhiệm dự án) và Người giám sát chính cho từng công trình."
             countLabel={`${filteredProjects.length} dự án`}
             readOnly={false}
-            guide=""
-            actions={
-              <Button
-                intent="primary"
-                scale="sm"
-                icon={<KeyOutlined />}
-                onClick={() => {
-                  setProjectPermissionsTargetProjectId(undefined);
-                  setProjectPermissionsModalOpen(true);
-                }}
-              >
-                Cấp quyền dự án
-              </Button>
-            }
+
             toolbar={
               <div className="flex w-full flex-wrap items-center justify-between gap-3">
                 <div className="w-full max-w-md">
@@ -2179,7 +2188,7 @@ export default function AssignmentTab({
                               intent="primary"
                               scale="sm"
                               icon={<CheckCircleOutlined />}
-                              className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-medium shadow-xs"
+                              className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-medium shadow-xs"
                               onClick={() => handleOpenDirectorReview("APPROVE")}
                             >
                               Phê duyệt kết thúc DA
@@ -2250,7 +2259,7 @@ export default function AssignmentTab({
                         intent="primary"
                         scale="sm"
                         icon={<SendOutlined />}
-                        className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold shadow-xs"
+                        className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold shadow-xs"
                         onClick={handleOpenSubmitToDirector}
                       >
                         Trình Ban Giám đốc
@@ -2385,7 +2394,7 @@ export default function AssignmentTab({
                           className={cn(
                             "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer border",
                             isActive
-                              ? "bg-[#0F4C81] text-white border-[#0F4C81] shadow-xs font-semibold"
+                              ? "bg-[#DC2626] text-white border-[#DC2626] shadow-xs font-semibold hover:bg-[#B91C1C] hover:border-[#B91C1C]"
                               : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                           )}
                         >
@@ -2426,12 +2435,12 @@ export default function AssignmentTab({
                 className={cn(
                   "rounded-xl border p-4 shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-3.5",
                   activeProject.directorApprovalStatus === "APPROVED"
-                    ? "bg-gradient-to-r from-emerald-50/90 via-teal-50/50 to-white border-emerald-200"
+                    ? "bg-gradient-to-r from-emerald-50/90 via-emerald-50/50 to-white border-emerald-200"
                     : activeProject.directorApprovalStatus === "PENDING"
                     ? "bg-gradient-to-r from-sky-50/90 via-blue-50/50 to-white border-blue-200"
                     : activeProject.directorApprovalStatus === "REJECTED"
                     ? "bg-gradient-to-r from-rose-50/90 via-amber-50/50 to-white border-rose-200"
-                    : "bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-slate-50 border-emerald-300"
+                    : "bg-gradient-to-r from-emerald-50/80 via-emerald-50/40 to-slate-50 border-emerald-300"
                 )}
               >
                 <div className="flex items-start gap-3 min-w-0">
@@ -2535,7 +2544,7 @@ export default function AssignmentTab({
                       intent="primary"
                       scale="sm"
                       icon={<SendOutlined />}
-                      className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold shadow-xs"
+                      className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold shadow-xs"
                       onClick={handleOpenSubmitToDirector}
                     >
                       Trình Ban Giám đốc
@@ -2548,7 +2557,7 @@ export default function AssignmentTab({
                         intent="primary"
                         scale="sm"
                         icon={<CheckCircleOutlined />}
-                        className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold shadow-xs"
+                        className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold shadow-xs"
                         onClick={() => handleOpenDirectorReview("APPROVE")}
                       >
                         Phê duyệt kết thúc DA
@@ -2670,21 +2679,7 @@ export default function AssignmentTab({
         />
       )}
 
-      {/* Modal Cấp quyền & Ủy quyền điều hành dự án */}
-      {projectPermissionsModalOpen && (
-        <ProjectPermissionsModal
-          open={projectPermissionsModalOpen}
-          initialProjectId={projectPermissionsTargetProjectId}
-          data={data}
-          currentUser={controller.currentUser}
-          canManageRole={canManageRole}
-          onClose={() => {
-            setProjectPermissionsModalOpen(false);
-            setProjectPermissionsTargetProjectId(undefined);
-          }}
-          onUpdateProjectPermissions={controller.updateProjectPermissions}
-        />
-      )}
+
 
       {/* Drawer Tổ công tác dự án & Quản lý thành viên */}
       {teamModalProject && (
@@ -2798,7 +2793,7 @@ export default function AssignmentTab({
           className:
             activeProject?.directorApprovalStatus === "APPROVED"
               ? "!bg-slate-700 hover:!bg-slate-800"
-              : "!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold",
+              : "!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold",
         }}
         cancelText="Đóng"
         cancelButtonProps={
@@ -2977,7 +2972,7 @@ export default function AssignmentTab({
           disabled: directorReviewAction === "REJECT" && !directorReviewNote.trim(),
           className:
             directorReviewAction === "APPROVE"
-              ? "!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !text-white font-semibold"
+              ? "!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white font-semibold"
               : "!bg-rose-600 hover:!bg-rose-700 !border-rose-600 !text-white font-semibold",
         }}
         cancelText="Hủy"
@@ -3050,6 +3045,21 @@ export default function AssignmentTab({
           })()
         ) : null}
       </Modal>
+
+      {/* Modal nộp hồ sơ trình Chủ nhiệm dự án (CNDA) / Tổ trưởng duyệt */}
+      <SubmitToCndaModal
+        open={Boolean(submitToCndaAssignment)}
+        assignment={submitToCndaAssignment}
+        projectName={
+          submitToCndaAssignment
+            ? data.projects.find((p) => p.id === submitToCndaAssignment.projectId)?.name || "Dự án"
+            : "Dự án"
+        }
+        onClose={() => setSubmitToCndaAssignment(null)}
+        onSubmit={async (assignmentId, submissionData) => {
+          await controller.requestCompletion(assignmentId, submissionData);
+        }}
+      />
     </div>
   );
 }

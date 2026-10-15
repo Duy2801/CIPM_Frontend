@@ -14,26 +14,56 @@ import type {
 /**
  * Hàm tiện ích sinh cấu trúc 16 bước mặc định từ MASTER_PROCEDURE_STEPS
  */
-function createBaseSteps(): ProcedureStep[] {
-  return MASTER_PROCEDURE_STEPS.map((m) => ({
-    id: m.id,
-    order: m.order,
-    code: m.code,
-    groupCode: m.groupCode,
-    groupTitle: m.groupTitle,
-    name: m.name,
-    type: m.type,
-    responsibleUnit: m.responsibleUnit,
-    durationMargin: m.durationMargin,
-    durationDaysMin: m.durationDaysMin,
-    durationDaysMax: m.durationDaysMax,
-    isContractBased: m.isContractBased,
-    isSpecialRequest: m.isSpecialRequest,
-    isEnabled: true, // Mặc định bật, sau đó tùy dự án tinh chỉnh
-    status: "NOT_STARTED",
-    plannedDays: m.defaultDays,
-    attachments: [],
-  }));
+export function createBaseSteps(): ProcedureStep[] {
+  return MASTER_PROCEDURE_STEPS.map((m) => {
+    let department = "Tổ Giám sát – Kỹ thuật";
+    let assignedTo = "Trần Quốc Việt";
+    let assignedToId = "ST-006";
+
+    if (m.responsibleUnit.includes("Kế hoạch") || m.groupCode === "I" || m.groupCode === "II") {
+      department = "Tổ Kế hoạch – Kỹ thuật";
+      assignedTo = "Vũ Hoàng Long";
+      assignedToId = "ST-010";
+    } else if (m.responsibleUnit.includes("Đấu thầu") || m.groupCode === "V" || m.code.includes("DT")) {
+      department = "Tổ Quản lý Đấu thầu";
+      assignedTo = "Bùi Thị Mai";
+      assignedToId = "ST-013";
+    } else if (m.responsibleUnit.includes("GPMB") || m.name.includes("GPMB")) {
+      department = "Tổ Bồi thường – GPMB – TĐC";
+      assignedTo = "Nguyễn Văn Dũng";
+      assignedToId = "ST-015";
+    } else if (m.responsibleUnit.includes("Hành chính") || m.groupCode === "VIII" || m.name.includes("Quyết toán")) {
+      department = "Tổ Hành chính – Tổng hợp";
+      assignedTo = "Phạm Thu Hương";
+      assignedToId = "ST-018";
+    }
+
+    return {
+      id: m.id,
+      order: m.order,
+      code: m.code,
+      groupCode: m.groupCode,
+      groupTitle: m.groupTitle,
+      name: m.name,
+      type: m.type,
+      responsibleUnit: m.responsibleUnit,
+      department,
+      assignedTo,
+      assignedToId,
+      assignedBy: "Tổ trưởng " + department,
+      assignedAt: "2025-08-01",
+      submissionStatus: "PENDING_SUBMISSION",
+      durationMargin: m.durationMargin,
+      durationDaysMin: m.durationDaysMin,
+      durationDaysMax: m.durationDaysMax,
+      isContractBased: m.isContractBased,
+      isSpecialRequest: m.isSpecialRequest,
+      isEnabled: true,
+      status: "NOT_STARTED",
+      plannedDays: m.defaultDays,
+      attachments: [],
+    };
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,6 +333,13 @@ PRJ_001_STEPS[11] = {
 PRJ_001_STEPS[12] = {
   ...PRJ_001_STEPS[12],
   status: "IN_PROGRESS",
+  department: "Tổ Giám sát – Kỹ thuật",
+  assignedTo: "Trần Quốc Việt",
+  assignedToId: "ST-006",
+  submissionStatus: "SUBMITTED",
+  submittedBy: "Trần Quốc Việt",
+  submittedAt: "2026-09-15",
+  submissionNote: "Đã hoàn thành đợt nghiệm thu hạng mục cọc và hồ sơ hoàn công đợt 1. Kính gửi Tổ trưởng Lê Hoàng Minh duyệt hoàn thành bước.",
   startDatePlanned: "2026-02-25",
   endDatePlanned: "2026-09-22",
   actualStartDate: "2026-02-28",
@@ -661,44 +698,4 @@ const PRJ_003_HISTORY: ProcedureHistoryLog[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 // DANH SÁCH DỮ LIỆU TỔNG HỢP CHO CÁC DỰ ÁN
 // ─────────────────────────────────────────────────────────────────────────────
-export const INITIAL_PROCEDURE_PROJECTS: ProjectProcedureData[] = [
-  {
-    projectId: "PRJ-001",
-    projectCode: "BQL-DA-2026-001",
-    projectName: "Kè bảo vệ bờ biển phường Pháo Đài (Đoạn xung yếu)",
-    projectType: "Thủy lợi",
-    totalInvestment: 125.5,
-    managerName: "Lê Hoàng Minh",
-    supervisorName: "Nguyễn Văn An",
-    startDate: "2025-08-15",
-    expectedFinishDate: "2026-11-30",
-    steps: PRJ_001_STEPS,
-    history: PRJ_001_HISTORY,
-  },
-  {
-    projectId: "PRJ-002",
-    projectCode: "BQL-DA-2026-002",
-    projectName: "Tuyến đường ven biển phường Pháo Đài (Gói XL-02)",
-    projectType: "Giao thông",
-    totalInvestment: 185.0,
-    managerName: "Nguyễn Văn An",
-    supervisorName: "Lê Hoàng Minh",
-    startDate: "2025-03-01",
-    expectedFinishDate: "2026-12-25",
-    steps: PRJ_002_STEPS,
-    history: PRJ_002_HISTORY,
-  },
-  {
-    projectId: "PRJ-003",
-    projectCode: "BQL-DA-2026-003",
-    projectName: "Trường Mầm non Pháo Đài (Điểm trường số 2)",
-    projectType: "Dân dụng",
-    totalInvestment: 18.5,
-    managerName: "Lê Hoàng Minh",
-    supervisorName: "Trần Văn Bình",
-    startDate: "2026-08-01",
-    expectedFinishDate: "2027-05-30",
-    steps: PRJ_003_STEPS,
-    history: PRJ_003_HISTORY,
-  },
-];
+export const INITIAL_PROCEDURE_PROJECTS: ProjectProcedureData[] = [];

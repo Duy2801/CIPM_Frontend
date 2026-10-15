@@ -108,12 +108,12 @@ const TOAST_THEMES: Record<
   }
 > = {
   success: {
-    icon: <CheckCircleFilled className="text-emerald-500 text-lg shrink-0" />,
-    borderColor: "border-emerald-200",
+    icon: <CheckCircleFilled className="text-[#DC2626] text-lg shrink-0" />,
+    borderColor: "border-red-200",
     bgColor: "bg-white",
-    textColor: "text-emerald-950",
-    progressColor: "bg-emerald-500",
-    borderLeftColor: "border-l-emerald-500",
+    textColor: "text-slate-900",
+    progressColor: "bg-[#DC2626]",
+    borderLeftColor: "border-l-[#DC2626]",
   },
   error: {
     icon: <CloseCircleFilled className="text-rose-500 text-lg shrink-0" />,
@@ -132,12 +132,12 @@ const TOAST_THEMES: Record<
     borderLeftColor: "border-l-amber-500",
   },
   info: {
-    icon: <InfoCircleFilled className="text-[#007A78] text-lg shrink-0" />,
-    borderColor: "border-teal-200",
+    icon: <InfoCircleFilled className="text-[#DC2626] text-lg shrink-0" />,
+    borderColor: "border-red-200",
     bgColor: "bg-white",
     textColor: "text-slate-900",
-    progressColor: "bg-[#007A78]",
-    borderLeftColor: "border-l-[#007A78]",
+    progressColor: "bg-[#DC2626]",
+    borderLeftColor: "border-l-[#DC2626]",
   },
 };
 

@@ -48,24 +48,15 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
     return matchedKey ? [matchedKey] : ["/dashboard"];
   }, [pathname]);
 
-  // Khi thanh menu thu gọn: biến đổi danh sách thành 1 hàng phẳng chỉ icon
-  const displayMenuItems = React.useMemo(() => {
-    if (!collapsed) return menuItems;
+  // Lấy chức vụ sạch không có dấu gạch chéo (/) hoặc vai trò phụ trong ngoặc (Thành viên...)
+  const displayRole = React.useMemo(() => {
+    const raw = user?.roleName ?? user?.role ?? "Cán bộ ban";
+    const base = raw.split("/")[0].trim();
+    return base.replace(/\s*\([^)]*\)/g, "").trim() || base;
+  }, [user]);
 
-    const flattened: typeof menuItems = [];
-    menuItems.forEach((item) => {
-      if (item && typeof item === "object" && "children" in item && Array.isArray(item.children)) {
-        item.children.forEach((child) => {
-          if (child) {
-            flattened.push(child);
-          }
-        });
-      } else if (item) {
-        flattened.push(item);
-      }
-    });
-    return flattened;
-  }, [collapsed, menuItems]);
+  // Menu phẳng danh sách trực tiếp
+  const displayMenuItems = menuItems;
 
   const handleNavigateToProfile = () => {
     setPopoverOpen(false);
@@ -83,7 +74,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       {/* Thẻ tóm tắt thông tin người dùng */}
       <div className="px-3 py-2.5 mb-1.5 rounded-lg bg-slate-50 border border-slate-150">
         <Flex align="center" gap={10}>
-          <Avatar variant="brand" shape="circle" size={40} className="shrink-0 font-semibold shadow-sm">
+          <Avatar variant="brand" shape="circle" size={40} className="shrink-0 font-bold shadow-sm !bg-red-700 !text-white ring-2 ring-red-600/20">
             {user?.initials ?? "HT"}
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -91,7 +82,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
               {user?.displayName ?? user?.name ?? "Người dùng"}
             </div>
             <div className="text-xs text-slate-500 truncate">
-              {user?.roleName ?? user?.role ?? "Cán bộ ban QLDA"}
+              {displayRole}
             </div>
           </div>
         </Flex>
@@ -104,13 +95,13 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
         <button
           type="button"
           onClick={handleNavigateToProfile}
-          className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer text-left group"
+          className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer text-left group"
         >
           <div className="flex items-center gap-2.5">
-            <UserOutlined className="text-base text-slate-500 group-hover:text-emerald-600 transition-colors" />
+            <UserOutlined className="text-base text-slate-500 group-hover:text-red-600 transition-colors" />
             <span className="font-medium">Thông tin cá nhân</span>
           </div>
-          <RightOutlined className="text-xs text-slate-400 group-hover:text-emerald-600 transition-colors" />
+          <RightOutlined className="text-xs text-slate-400 group-hover:text-red-600 transition-colors" />
         </button>
 
         <button
@@ -132,7 +123,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       collapsible
       collapsed={collapsed}
       onCollapse={onCollapse}
-      theme="dark"
+      theme="light"
       trigger={null}
       className={themeClassNames.sidebar.surface}
       style={{
@@ -148,7 +139,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       <Flex vertical justify="space-between" className="h-full">
         {/* Header: Thương hiệu & Nút thu gọn / mở rộng menu */}
         <div
-          className={`${themeClassNames.sidebar.dividerBottom} flex items-center h-[60px] ${
+          className={`flex items-center h-[60px] ${
             collapsed ? "justify-center px-2" : "justify-between px-4"
           }`}
         >
@@ -158,40 +149,36 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                 <Text strong className={themeClassNames.sidebar.brand}>
                   BQL ĐTXD HÀ TIÊN
                 </Text>
-                <span className="block text-[11px] uppercase tracking-wider text-slate-200 font-semibold leading-tight">
+                <span className="block text-[11px] uppercase tracking-wider text-slate-600 font-semibold leading-tight">
                   Hệ thống quản lý dự án
                 </span>
               </Flex>
-              <Tooltip title="Thu gọn thanh menu" placement="right">
                 <button
                   type="button"
                   onClick={() => onCollapse(true)}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-200 hover:text-white hover:bg-white/15 transition-colors cursor-pointer shrink-0"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
                   aria-label="Thu gọn thanh menu"
                 >
                   <MenuFoldOutlined className="text-base" />
                 </button>
-              </Tooltip>
             </>
           ) : (
-            <Tooltip title="Mở rộng thanh menu" placement="right">
-              <button
-                type="button"
-                onClick={() => onCollapse(false)}
-                className="flex items-center justify-center w-10 h-10 rounded-lg text-white hover:bg-white/20 bg-white/10 transition-all cursor-pointer"
-                aria-label="Mở rộng thanh menu"
-              >
-                <MenuUnfoldOutlined className="text-lg" />
-              </button>
-            </Tooltip>
+            <button
+              type="button"
+              onClick={() => onCollapse(false)}
+              className="flex items-center justify-center w-10 h-10 rounded-xl text-red-700 bg-red-50 hover:bg-red-100/80 border border-red-200/80 transition-all cursor-pointer shadow-2xs"
+              aria-label="Mở rộng thanh menu"
+            >
+              <MenuUnfoldOutlined className="text-lg" />
+            </button>
           )}
         </div>
 
         {/* Danh sách Menu các tính năng */}
-        <div className="flex-1 overflow-x-hidden overflow-y-auto py-1">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto py-2">
           <Menu
             mode="inline"
-            theme="dark"
+            theme="light"
             selectedKeys={selectedKeys}
             items={displayMenuItems}
             onClick={({ key }) => router.push(key)}
@@ -201,11 +188,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
         </div>
 
         {/* Footer: Thông tin người dùng với Popover menu bên phải */}
-        <div
-          className={`${themeClassNames.sidebar.dividerTop} ${
-            collapsed ? "py-3 px-2" : "py-3 px-3"
-          }`}
-        >
+        <div className={collapsed ? "py-3 px-2" : "py-3 px-3"}>
           <Popover
             content={profilePopoverContent}
             trigger="click"
@@ -214,33 +197,30 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
             onOpenChange={setPopoverOpen}
           >
             {collapsed ? (
-              <div
-                className="flex justify-center items-center w-full py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label="Tùy chọn người dùng"
-              >
-                <Tooltip
-                  title={
-                    !popoverOpen && user
-                      ? `${user.displayName ?? user.name} (${user.roleName ?? user.role})`
-                      : undefined
-                  }
-                  placement="right"
+              <Tooltip title={`${user?.displayName ?? user?.name ?? "Người dùng"} (${displayRole})`} placement="right">
+                <div
+                  className="flex justify-center items-center w-full py-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Tùy chọn người dùng"
                 >
                   <Avatar
                     variant="brand"
                     shape="circle"
                     size={38}
-                    className="font-semibold shadow-sm ring-2 ring-white/10 hover:ring-[var(--cipm-brand)] transition-all"
+                    className="font-bold shadow-sm ring-2 ring-red-600/20 hover:ring-red-600 transition-all !bg-red-700 !text-white"
                   >
                     {user?.initials ?? "HT"}
                   </Avatar>
-                </Tooltip>
-              </div>
+                </div>
+              </Tooltip>
             ) : (
               <div
-                className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer group"
+                className={`flex items-center gap-2.5 w-full p-2 rounded-xl transition-all cursor-pointer group select-none ${
+                  popoverOpen
+                    ? "bg-red-50/60 shadow-2xs"
+                    : "hover:bg-slate-100/80"
+                }`}
                 role="button"
                 tabIndex={0}
                 aria-label="Tùy chọn người dùng"
@@ -249,18 +229,23 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                   variant="brand"
                   shape="circle"
                   size={36}
-                  className="shrink-0 font-semibold ring-2 ring-white/10 group-hover:ring-[var(--cipm-brand)] transition-all"
+                  className="shrink-0 font-bold shadow-2xs ring-2 ring-red-600/20 group-hover:ring-red-600 transition-all !bg-red-700 !text-white"
                 >
                   {user?.initials ?? "HT"}
                 </Avatar>
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <Text strong ellipsis className="block !text-white text-sm leading-tight">
+                <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden">
+                  <div className="font-semibold text-slate-900 text-sm leading-tight truncate group-hover:text-red-900 transition-colors">
                     {user?.displayName ?? user?.name ?? "Người dùng"}
-                  </Text>
-                  <Text ellipsis className="block !text-slate-400 text-xs mt-0.5 leading-tight">
-                    {user?.roleName ?? user?.role ?? "Cán bộ ban"}
-                  </Text>
+                  </div>
+                  <div className="text-slate-500 font-medium text-xs leading-tight truncate mt-1">
+                    {displayRole}
+                  </div>
                 </div>
+                <RightOutlined
+                  className={`text-xs text-slate-400 group-hover:text-slate-700 transition-colors duration-200 shrink-0 ${
+                    popoverOpen ? "!text-red-700" : ""
+                  }`}
+                />
               </div>
             )}
           </Popover>

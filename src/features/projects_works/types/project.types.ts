@@ -56,9 +56,10 @@ export interface ProjectItem {
   plan2026: number;
   disbursedAmount: number;           // Để kiểm tra quy tắc 5: Đã phát sinh tài chính thì không được xóa
   
-  // Nhân sự (Chọn từ M5 sau khi Ban Giám đốc phân công)
-  managerName: string;               // Người phụ trách chính ("Chưa phân công" nếu mới tạo)
+  // Nhân sự & Phòng ban phụ trách
+  managerName: string;               // Người phụ trách chính / Chủ nhiệm DA (mặc định Giám đốc BQL)
   supervisorName: string;            // Người giám sát KT ("Chưa phân công" nếu mới tạo)
+  departments?: string[];            // Các phòng ban/tổ phụ trách (chọn nhiều phòng ban)
   
   // Thời gian
   startDate: string;                 // YYYY-MM-DD
@@ -79,6 +80,19 @@ export interface ProjectItem {
   // Trạng thái vận hành
   status: "active" | "closed";
   nature?: ProjectNature;            // "new": Dự án mới (Khởi công mới) | "transitional": Dự án cũ (Chuyển tiếp)
+
+  // Tài liệu đính kèm (không bắt buộc)
+  documents?: ProjectDocument[];
+}
+
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  fileName?: string;
+  fileSize?: string;
+  uploadedAt?: string;
+  type?: string;
+  url?: string;
 }
 
 export interface ProjectFormData {
@@ -86,11 +100,12 @@ export interface ProjectFormData {
   type: ProjectWorkType;
   location?: string;
   scale?: string;
-  fundingSource: FundingSourceType;
-  totalInvestment: number;
+  fundingSource?: FundingSourceType;
+  totalInvestment?: number;
   plan2026?: number;
   managerName?: string;
   supervisorName?: string;
+  departments?: string[];
   startDate: string;
   endDatePlanned: string;
   nature?: ProjectNature;
@@ -98,4 +113,5 @@ export interface ProjectFormData {
   actualProgress?: number;
   plannedProgress?: number;
   note?: string;
+  documents?: ProjectDocument[];
 }

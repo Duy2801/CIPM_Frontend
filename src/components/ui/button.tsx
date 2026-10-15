@@ -19,27 +19,27 @@ export const buttonVariants = cva(
       /** Semantic visual intent */
       intent: {
         default: "",
-        /** Brand Teal / Primary Action */
+        /** Brand Red / Primary Action */
         primary:
-          "!bg-[#007A78] !border-[#007A78] !text-white hover:!bg-[#006361] hover:!border-[#006361] shadow-sm font-semibold",
-        /** Brand Teal */
+          "!bg-[#DC2626] !border-[#DC2626] !text-white hover:!bg-[#B91C1C] hover:!border-[#B91C1C] shadow-sm font-semibold",
+        /** Brand Red Accent */
         brand:
-          "!bg-[#00C9A7] !border-[#00C9A7] !text-[#0A1628] hover:!bg-[#00A88C] font-semibold",
+          "!bg-[#DC2626] !border-[#DC2626] !text-white hover:!bg-[#B91C1C] font-semibold",
         /** Subtle Outline Button */
         outline:
-          "!bg-white !border-slate-300 !text-slate-700 hover:!border-[#0F4C81] hover:!text-[#0F4C81]",
+          "!bg-white !border-slate-300 !text-slate-700 hover:!border-[#DC2626] hover:!text-[#B91C1C]",
         /** Secondary / Standard Neutral Button */
         secondary:
-          "!bg-white !border-slate-300 !text-slate-700 hover:!border-[#007A78] hover:!text-[#007A78] shadow-2xs",
+          "!bg-white !border-slate-300 !text-slate-700 hover:!border-[#DC2626] hover:!text-[#B91C1C] shadow-2xs",
         /** Subtle Soft Background */
         subtle:
           "!bg-slate-100 !text-slate-700 !border-transparent hover:!bg-slate-200",
         /** Inline Clean Navigation Link */
         link:
-          "!p-0 !h-auto !bg-transparent !border-none !text-slate-500 hover:!text-[#0F4C81] hover:underline !inline-flex font-normal",
+          "!p-0 !h-auto !bg-transparent !border-none !text-slate-600 hover:!text-[#B91C1C] hover:underline !inline-flex font-normal",
         /** Highlight Text Link (e.g. Quên mật khẩu) */
         textLink:
-          "!p-0 !h-auto !bg-transparent !border-none !text-[#0F4C81] hover:!text-[#072F57] hover:underline !inline-flex font-medium",
+          "!p-0 !h-auto !bg-transparent !border-none !text-[#DC2626] hover:!text-[#B91C1C] hover:underline !inline-flex font-medium",
         /** Danger / Red */
         danger:
           "!bg-[#FF5B5B] !border-[#FF5B5B] !text-white hover:!bg-[#E03A3A]",

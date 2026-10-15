@@ -17,15 +17,15 @@ export default function FilterChip({ active, count, onClick, children, highlight
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 ${
+      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${
         active
           ? "border-[#0B2546] bg-[#0B2546] text-white"
-          : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+          : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
       }`}
     >
       {highlight && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />}
       {children}
-      <span className={active ? "text-white/80" : "text-slate-400"}>{count}</span>
+      <span className={active ? "text-white/80" : "text-slate-600 font-semibold"}>{count}</span>
     </button>
   );
 }

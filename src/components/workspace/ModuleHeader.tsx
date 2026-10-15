@@ -32,7 +32,7 @@ export default function ModuleHeader({
     <Card surface="flat" padding="none" rounded="lg" className="border-slate-200/90 bg-white shadow-xs">
       <div className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-xl text-[#007A78]">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-xl text-[#DC2626]">
             {icon}
           </div>
           <div className="min-w-0">
@@ -45,7 +45,7 @@ export default function ModuleHeader({
                 </Tag>
               )}
             </div>
-            <Text className="mt-0.5 block text-[13px] text-slate-500">{subtitle}</Text>
+            <Text className="mt-0.5 block text-[13px] text-slate-600 font-medium">{subtitle}</Text>
           </div>
         </div>
         {actions && <Flex gap="small" wrap="wrap">{actions}</Flex>}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { message } from "antd";
+import { App } from "antd";
 import { DownloadOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Input, Select } from "@/components/ui";
 import { useAuthStore } from "@/stores/auth.store";
@@ -49,6 +49,7 @@ export default function ProjectsFilterToolbar({
   canCreateProject = true,
   onOpenCreateModal,
 }: ProjectsFilterToolbarProps) {
+  const { message } = App.useApp();
   const user = useAuthStore((state) => state.user);
   const exportScope = getProjectExportScope(user);
 
@@ -149,8 +150,8 @@ export default function ProjectsFilterToolbar({
                     intent={isActive ? "primary" : "default"}
                     className={
                       isActive
-                        ? "h-8 rounded-lg border-[#007A78] bg-[#007A78] px-3.5 text-white shadow-xs font-semibold text-xs shrink-0"
-                        : "h-8 rounded-lg border border-slate-200 bg-white px-3.5 text-slate-700 shadow-xs hover:border-[#007A78]/60 hover:text-[#007A78] text-xs shrink-0"
+                        ? "h-8 rounded-lg border-[#DC2626] bg-[#DC2626] px-3.5 text-white shadow-xs font-semibold text-xs shrink-0"
+                        : "h-8 rounded-lg border border-slate-200 bg-white px-3.5 text-slate-700 shadow-xs hover:border-[#DC2626]/60 hover:text-[#DC2626] text-xs shrink-0 font-medium"
                     }
                     onClick={() => onTabChange(tab.key)}
                   >
@@ -167,7 +168,7 @@ export default function ProjectsFilterToolbar({
               <Button
                 scale="compact"
                 intent="default"
-                className="h-8 rounded-lg px-3 text-slate-700 hover:border-[#007A78]/50 hover:text-[#007A78] text-xs font-medium"
+                className="h-8 rounded-lg px-3 text-slate-700 hover:border-[#DC2626]/50 hover:text-[#DC2626] text-xs font-medium"
                 icon={<DownloadOutlined />}
                 onClick={handleExportCSV}
               >
@@ -179,7 +180,7 @@ export default function ProjectsFilterToolbar({
               <Button
                 intent="primary"
                 scale="compact"
-                className="h-8 rounded-lg border-[#007A78] bg-[#007A78] px-3.5 font-semibold text-white shadow-xs hover:bg-[#005F5D] text-xs"
+                className="h-8 rounded-lg border-[#DC2626] bg-[#DC2626] px-3.5 font-semibold text-white shadow-xs hover:bg-[#B91C1C] text-xs"
                 icon={<PlusOutlined />}
                 onClick={onOpenCreateModal}
               >
@@ -233,17 +234,28 @@ export default function ProjectsFilterToolbar({
           )}
 
           {/* Sắp xếp đa chiều */}
-          <div className="w-[180px] shrink-0">
+          <div className="w-[195px] shrink-0">
             <Select
               value={sortBy}
               onChange={(val) => onSortChange(val)}
               className="h-8.5 w-full text-xs"
               options={[
                 { value: "code_asc", label: "Mã dự án (A-Z)" },
+                { value: "code_desc", label: "Mã dự án (Z-A)" },
+                { value: "name_asc", label: "Tên dự án (A-Z)" },
+                { value: "name_desc", label: "Tên dự án (Z-A)" },
                 { value: "investment_desc", label: "Tổng vốn: Cao → Thấp" },
                 { value: "investment_asc", label: "Tổng vốn: Thấp → Cao" },
-                { value: "progress_asc", label: "Tiến độ: Chậm nhất" },
                 { value: "progress_desc", label: "Tiến độ: Cao nhất" },
+                { value: "progress_asc", label: "Tiến độ: Chậm nhất" },
+                { value: "stage_asc", label: "Giai đoạn (Theo quy trình)" },
+                { value: "stage_desc", label: "Giai đoạn (Ngược quy trình)" },
+                { value: "manager_asc", label: "Chủ nhiệm (A-Z)" },
+                { value: "manager_desc", label: "Chủ nhiệm (Z-A)" },
+                { value: "startDate_asc", label: "Bắt đầu: Cũ nhất" },
+                { value: "startDate_desc", label: "Bắt đầu: Mới nhất" },
+                { value: "endDate_asc", label: "Hoàn thành: Sớm nhất" },
+                { value: "endDate_desc", label: "Hoàn thành: Muộn nhất" },
               ]}
             />
           </div>

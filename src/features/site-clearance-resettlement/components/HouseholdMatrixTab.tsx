@@ -45,11 +45,11 @@ interface HouseholdMatrixTabProps {
 type CellState = "done" | "current" | "soon" | "overdue" | "pending" | "skipped" | "todo";
 
 const CELL_STYLES: Record<CellState, { className: string; icon?: ReactNode; label: string }> = {
-  done: { className: "bg-emerald-500 text-white border-emerald-500", icon: <CheckOutlined className="text-[10px]" />, label: "Đã xong" },
-  current: { className: "bg-sky-50 text-sky-800 border-sky-400 font-bold", label: "Đang làm" },
-  soon: { className: "bg-amber-100 text-amber-900 border-amber-500 font-bold", label: "Sắp hết hạn" },
-  overdue: { className: "bg-rose-500 text-white border-rose-500", icon: <ExclamationOutlined className="text-[10px] font-bold" />, label: "Quá hạn" },
-  pending: { className: "bg-violet-100 text-violet-800 border-violet-500", icon: <ClockCircleOutlined className="text-[10px]" />, label: "Chờ duyệt" },
+  done: { className: "bg-amber-500 text-white border-amber-500", icon: <CheckOutlined className="text-[10px]" />, label: "Đã xong" },
+  current: { className: "bg-amber-100 text-amber-900 border-amber-400 font-bold ring-1 ring-amber-300/60 shadow-2xs", label: "Đang làm" },
+  soon: { className: "bg-orange-100 text-orange-900 border-orange-400 font-bold shadow-2xs", label: "Sắp hết hạn" },
+  overdue: { className: "bg-[#DC2626] text-white border-[#DC2626] font-bold shadow-xs ring-1 ring-red-400/50", icon: <ExclamationOutlined className="text-[10px] font-black" />, label: "Quá hạn" },
+  pending: { className: "bg-purple-100 text-purple-800 border-purple-400 font-bold", icon: <ClockCircleOutlined className="text-[10px]" />, label: "Chờ duyệt" },
   skipped: {
     className: "border-slate-200 text-slate-300 bg-[repeating-linear-gradient(45deg,#f8fafc_0_3px,#fff_3px_6px)]",
     icon: <MinusOutlined className="text-[9px]" />,
@@ -132,15 +132,6 @@ export default function HouseholdMatrixTab({
     return rows.slice(start, start + PAGE_SIZE);
   }, [rows, currentPage]);
 
-  const counts = useMemo(() => {
-    const result = {} as Record<HouseholdFilter, number>;
-    FILTER_ORDER.forEach((key) => {
-      result[key] = households.filter((item) =>
-        matchesHouseholdFilter(item, key, today),
-      ).length;
-    });
-    return result;
-  }, [households, today]);
 
   return (
     <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm shadow-slate-100 overflow-hidden">
@@ -157,7 +148,7 @@ export default function HouseholdMatrixTab({
               scale="sm"
               icon={<PlusOutlined />}
               onClick={() => setCreateDrawerOpen(true)}
-              className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white text-xs font-semibold rounded-md shadow-2xs h-8 px-3"
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold rounded-md shadow-2xs h-8 px-3"
             >
               Thêm hộ dân
             </Button>
@@ -192,7 +183,7 @@ export default function HouseholdMatrixTab({
                   className="w-full text-xs"
                   options={FILTER_ORDER.map((key) => ({
                     value: key,
-                    label: `${CONCISE_FILTER_LABELS[key]} (${counts[key]})`,
+                    label: CONCISE_FILTER_LABELS[key],
                   }))}
                 />
               </div>
@@ -295,7 +286,7 @@ export default function HouseholdMatrixTab({
                       <button
                         type="button"
                         onClick={() => onOpenDetail(household)}
-                        className="cursor-pointer text-left text-[13px] font-semibold text-[#102A43] hover:text-[#007A78] hover:underline block leading-tight truncate max-w-[190px]"
+                        className="cursor-pointer text-left text-[13px] font-semibold text-[#102A43] hover:text-[#DC2626] hover:underline block leading-tight truncate max-w-[190px]"
                       >
                         {household.ownerName}
                       </button>
@@ -354,9 +345,8 @@ export default function HouseholdMatrixTab({
                               className={cn(
                                 "relative flex h-8 w-full items-center justify-center rounded-md border text-xs transition-all font-medium",
                                 style.className,
-                                isCurrent && "!bg-sky-50 !border-sky-400 !text-sky-800 font-bold",
                                 isClickable
-                                  ? "cursor-pointer hover:opacity-85 hover:scale-105"
+                                  ? "cursor-pointer hover:opacity-90 hover:scale-105"
                                   : "cursor-default opacity-60 select-none",
                               )}
                               aria-label={`Bước ${step.number}: ${style.label}`}
@@ -364,7 +354,7 @@ export default function HouseholdMatrixTab({
                               {style.icon ?? (state === "todo" ? "" : step.number)}
                               {record?.fileName && (
                                 <span
-                                  className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-white text-emerald-700 shadow-2xs border border-emerald-300"
+                                  className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-white text-amber-700 shadow-2xs border border-amber-300"
                                   title={`Có tệp đính kèm: ${record.fileName}`}
                                 >
                                   <PaperClipOutlined className="text-[7.5px]" />

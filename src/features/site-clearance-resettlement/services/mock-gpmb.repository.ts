@@ -3,6 +3,7 @@ import { GPMB_MOCK_DATA } from "../constants/gpmb-mock-data.ts";
 import type { GpmbDataset, Household, HouseholdInput, StepRecord } from "../types/gpmb.types";
 import { getCurrentStep, validateStepCompletion } from "../utils/gpmb-rules.ts";
 import type { GpmbRepository } from "./gpmb.repository.ts";
+import { getSharedProjects } from "../../../stores/project.store.ts";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
@@ -17,7 +18,20 @@ export function createMockGpmbRepository(): GpmbRepository {
 
   return {
     async getDataset() {
-      return clone(dataset);
+      const copy = clone(dataset);
+      const shared = getSharedProjects();
+      const existingIds = new Set(copy.projects.map((p) => p.id));
+      for (const sp of shared) {
+        if (!existingIds.has(sp.id)) {
+          copy.projects.push({
+            id: sp.id,
+            code: sp.code,
+            name: sp.name,
+          });
+          existingIds.add(sp.id);
+        }
+      }
+      return copy;
     },
 
     async createHousehold(input, actor) {

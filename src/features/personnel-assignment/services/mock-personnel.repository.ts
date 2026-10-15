@@ -1,17 +1,23 @@
-import { addDays, todayIso } from "../../../utils/date.ts";
-import { normalizeStageGroup } from "../constants/personnel-labels.ts";
-import { PERSONNEL_MOCK_DATA } from "../constants/personnel-mock-data.ts";
-import type { Assignment, PersonnelDataset, ProjectDocumentSubmission, Staff } from "../types/personnel.types";
-import { validateAssignment } from "../utils/personnel-rules.ts";
-import type { PersonnelRepository } from "./personnel.repository.ts";
+import { addDays, todayIso } from "../../../utils/date";
+import { normalizeStageGroup } from "../constants/personnel-labels";
+import { PERSONNEL_MOCK_DATA } from "../constants/personnel-mock-data";
+import type { Assignment, PersonnelDataset, ProjectDocumentSubmission, Staff, Team, TeamId } from "../types/personnel.types";
+import { validateAssignment } from "../utils/personnel-rules";
+import type { PersonnelRepository } from "./personnel.repository";
+import { getSharedProjects, useProjectStore } from "../../../stores/project.store";
 
 const clone = <T,>(value: T): T => structuredClone(value);
-const STORAGE_KEY = "cipm_personnel_test_flow_v3";
+const STORAGE_KEY = "cipm_personnel_test_flow_v7";
 
 function loadDataset(): PersonnelDataset {
   if (typeof window === "undefined") return clone(PERSONNEL_MOCK_DATA);
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem("cipm_personnel_test_flow_v2");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v2");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v3");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v4");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v5");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v6");
+    const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed: PersonnelDataset = JSON.parse(stored);
       if (
@@ -142,6 +148,15 @@ function loadDataset(): PersonnelDataset {
               proj.directorSubmissionNote = baseline.directorSubmissionNote;
             }
           }
+          // Dọn dẹp directorApprovalStatus cho các dự án chưa từng phân công hoặc không có tờ trình
+          if (!proj.mainExecutorId && !proj.mainSupervisorId) {
+            delete proj.directorApprovalStatus;
+            if (proj.status === "Chờ BGĐ phê duyệt") {
+              proj.status = "Chưa phân công";
+            }
+          } else if (proj.directorApprovalStatus === "PENDING" && !proj.directorSubmittedAt) {
+            delete proj.directorApprovalStatus;
+          }
         });
 
         return parsed;
@@ -156,10 +171,57 @@ function loadDataset(): PersonnelDataset {
 export function createMockPersonnelRepository(): PersonnelRepository {
   const dataset = loadDataset();
 
+  // Đảm bảo các dự án chưa phân công trong dataset không bị gán nhầm directorApprovalStatus
+  dataset.projects.forEach((proj) => {
+    if (!proj.mainExecutorId && !proj.mainSupervisorId) {
+      delete proj.directorApprovalStatus;
+      if (proj.status === "Chờ BGĐ phê duyệt") {
+        proj.status = "Chưa phân công";
+      }
+    }
+  });
+
   const persistDataset = () => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dataset));
     }
+  };
+
+  const syncSharedProjects = () => {
+    const shared = getSharedProjects();
+    const existingIds = new Set(dataset.projects.map((p) => p.id));
+    for (const sp of shared) {
+      const existing = dataset.projects.find((p) => p.id === sp.id);
+      if (!existing) {
+        dataset.projects.push({
+          id: sp.id,
+          code: sp.code,
+          name: sp.name,
+          managerName: sp.managerName || "Huỳnh Thái Hải",
+          departments: sp.departments,
+          status: "Chưa phân công",
+          startDate: sp.startDate,
+          endDate: sp.endDatePlanned || sp.startDate,
+        });
+        existingIds.add(sp.id);
+      } else {
+        if (sp.departments && (!existing.departments || existing.departments.length === 0)) {
+          existing.departments = sp.departments;
+        }
+        if (sp.managerName && !existing.managerName) {
+          existing.managerName = sp.managerName;
+        }
+      }
+    }
+  };
+
+  const findProject = (projectId: string) => {
+    let project = dataset.projects.find((p) => p.id === projectId);
+    if (!project) {
+      syncSharedProjects();
+      project = dataset.projects.find((p) => p.id === projectId);
+    }
+    return project;
   };
 
   const findAssignment = (id: string): Assignment => {
@@ -169,20 +231,74 @@ export function createMockPersonnelRepository(): PersonnelRepository {
   };
 
   const repository: PersonnelRepository = {
+    async createTeam(input: { id?: string; name: string; description?: string; leaderId?: string }): Promise<Team> {
+      syncSharedProjects();
+      if (!input.name?.trim()) {
+        throw new Error("Tên phòng ban / tổ chuyên môn không được để trống.");
+      }
+
+      const generatedCode = (
+        input.id?.trim() ||
+        input.name
+          .trim()
+          .split(/[\s–-]+/)
+          .filter(Boolean)
+          .map((w) => w[0]?.toUpperCase() || "")
+          .join("") ||
+        `PB_${Date.now()}`
+      ).toUpperCase();
+
+      const existingId = dataset.teams.find((t) => t.id.toLowerCase() === generatedCode.toLowerCase());
+      const finalId = existingId ? `${generatedCode}_${Date.now().toString().slice(-4)}` : generatedCode;
+
+      const newTeam: Team = {
+        id: finalId as TeamId,
+        name: input.name.trim(),
+        description: input.description?.trim() || "",
+        leaderId: input.leaderId || "",
+      };
+
+      dataset.teams.push(newTeam);
+
+      if (input.leaderId) {
+        const staffIndex = dataset.staff.findIndex((s) => s.id === input.leaderId);
+        if (staffIndex >= 0) {
+          dataset.staff[staffIndex] = {
+            ...dataset.staff[staffIndex],
+            teamId: finalId as TeamId,
+            title: `Tổ trưởng ${input.name.trim()}`,
+          };
+        }
+      }
+
+      persistDataset();
+      return clone(newTeam);
+    },
+
     async getDataset() {
+      syncSharedProjects();
+      dataset.projects.forEach((proj) => {
+        if (!proj.mainExecutorId && !proj.mainSupervisorId) {
+          delete proj.directorApprovalStatus;
+        }
+      });
       return clone(dataset);
     },
 
     async assignProjectLeaders(input) {
-      const project = dataset.projects.find((p) => p.id === input.projectId);
+      const project = findProject(input.projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
-      if (!input.mainExecutorId) throw new Error("Vui lòng chọn Người thực hiện chính.");
-      if (!input.mainSupervisorId) throw new Error("Vui lòng chọn Người giám sát chính.");
+      if (!input.mainExecutorId) throw new Error("Vui lòng chọn Chủ nhiệm dự án.");
 
       project.mainExecutorId = input.mainExecutorId;
-      project.mainSupervisorId = input.mainSupervisorId;
+      project.mainSupervisorId = input.mainSupervisorId || input.mainExecutorId;
+      if (input.departments && input.departments.length > 0) {
+        project.departments = input.departments;
+      }
       project.assignedAt = todayIso();
+      project.status = "Đang thi công";
       project.cndaRevoked = false;
+      delete project.directorApprovalStatus;
       if (!project.startDate) project.startDate = todayIso();
       if (!project.endDate) project.endDate = "2026-12-31";
       if (input.note !== undefined) {
@@ -198,16 +314,72 @@ export function createMockPersonnelRepository(): PersonnelRepository {
           "Ủy quyền toàn quyền phân công nhân sự, quản lý tổ công tác và đôn đốc dự án.";
       }
       if (!project.teamMembers) project.teamMembers = [];
-      [input.mainExecutorId, input.mainSupervisorId, project.actingDirectorId].filter(Boolean).forEach((id) => {
+      [input.mainExecutorId, project.mainSupervisorId, project.actingDirectorId].filter(Boolean).forEach((id) => {
         if (!project.teamMembers!.includes(id!)) {
           project.teamMembers!.push(id!);
         }
       });
+
+      // Tạo hoặc cập nhật phân công giai đoạn (PHASE_LEAD) cho các phòng ban được giao
+      if (input.stageAssignments && input.stageAssignments.length > 0) {
+        for (const sa of input.stageAssignments) {
+          if (!sa.department) continue;
+          // Tìm tổ trưởng / đại diện của phòng ban đó
+          const team = dataset.teams.find((t) => t.id === sa.department);
+          const leaderId = team?.leaderId || dataset.staff.find((s) => s.teamId === sa.department)?.id || "ST-004";
+
+          if (!project.teamMembers.includes(leaderId)) {
+            project.teamMembers.push(leaderId);
+          }
+
+          // Kiểm tra xem đã có assignment giai đoạn này của dự án chưa
+          const existingPhase = dataset.assignments.find(
+            (a) => a.projectId === project.id && a.assignmentLevel === "PHASE_LEAD" && (a.stage === sa.stageCode || a.title.includes(sa.stageTitle))
+          );
+          if (existingPhase) {
+            existingPhase.teamId = sa.department as TeamId;
+            existingPhase.assigneeId = leaderId;
+            existingPhase.teamLeaderId = leaderId;
+          } else {
+            dataset.assignments.push({
+              id: `AS-${project.id}-${sa.stageCode}`,
+              title: `Giai đoạn ${sa.stageCode}: ${sa.stageTitle}`,
+              projectId: project.id,
+              stage: sa.stageCode,
+              assigneeId: leaderId,
+              teamId: sa.department as TeamId,
+              teamLeaderId: leaderId,
+              assignedBy: "Huỳnh Thái Hải (Giám đốc)",
+              assignedAt: todayIso(),
+              dueDate: project.endDate || "2026-12-31",
+              status: "IN_PROGRESS",
+              priority: "HIGH",
+              assignmentLevel: "PHASE_LEAD",
+            });
+          }
+        }
+      }
+
+      // Đồng bộ thông tin người phụ trách / phòng ban sang useProjectStore
+      try {
+        const executor = dataset.staff.find((s) => s.id === input.mainExecutorId);
+        const supervisor = dataset.staff.find((s) => s.id === project.mainSupervisorId);
+        if (typeof window !== "undefined") {
+          useProjectStore.getState().updateProject(project.id, {
+            managerName: executor?.name || "Huỳnh Thái Hải",
+            supervisorName: supervisor?.name || "Huỳnh Thái Hải",
+            departments: project.departments,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to sync project leaders to shared store", e);
+      }
+
       return clone(project);
     },
 
     async grantActingDirector(input) {
-      const project = dataset.projects.find((p) => p.id === input.projectId);
+      const project = findProject(input.projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       if (!project.mainExecutorId) {
         throw new Error(
@@ -239,7 +411,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     },
 
     async revokeActingDirector(projectId) {
-      const project = dataset.projects.find((p) => p.id === projectId);
+      const project = findProject(projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       delete project.actingDirectorId;
       delete project.actingDirectorAssignedAt;
@@ -250,14 +422,14 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     },
 
     async updateProjectPermissions(projectId, grantedPermissions) {
-      const project = dataset.projects.find((p) => p.id === projectId);
+      const project = findProject(projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       project.grantedPermissions = [...grantedPermissions];
       return clone(project);
     },
 
     async addProjectMember(projectId, staffId) {
-      const project = dataset.projects.find((p) => p.id === projectId);
+      const project = findProject(projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       const staff = dataset.staff.find((s) => s.id === staffId);
       if (!staff) throw new Error("Không tìm thấy cán bộ.");
@@ -270,7 +442,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     },
 
     async addProjectMembers(projectId, staffIds) {
-      const project = dataset.projects.find((p) => p.id === projectId);
+      const project = findProject(projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
 
       if (!project.teamMembers) project.teamMembers = [];
@@ -283,7 +455,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     },
 
     async removeProjectMember(projectId, staffId) {
-      const project = dataset.projects.find((p) => p.id === projectId);
+      const project = findProject(projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       if (project.actingDirectorId === staffId) {
         throw new Error("Không thể xóa Quyền Chủ nhiệm dự án khỏi tổ công tác. Vui lòng thu hồi vai trò trước.");
@@ -349,7 +521,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
 
       // Tự động bổ sung người thực hiện và cán bộ phối hợp vào tổ công tác dự án nếu chưa có
       if (input.projectId && input.assigneeId) {
-        const project = dataset.projects.find((p) => p.id === input.projectId);
+        const project = findProject(input.projectId);
         if (project) {
           if (!project.teamMembers) project.teamMembers = [];
           if (!project.teamMembers.includes(input.assigneeId)) {
@@ -383,7 +555,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
 
       // Tự động bổ sung người thực hiện và cán bộ phối hợp vào tổ công tác dự án nếu chưa có
       if (input.projectId && input.assigneeId) {
-        const project = dataset.projects.find((p) => p.id === input.projectId);
+        const project = findProject(input.projectId);
         if (project) {
           if (!project.teamMembers) project.teamMembers = [];
           if (!project.teamMembers.includes(input.assigneeId)) {
@@ -459,7 +631,12 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     async acceptAssignment(id, note) {
       const assignment = findAssignment(id);
       if (assignment.status === "DONE") throw new Error("Nhiệm vụ đã hoàn thành trước đó.");
-      if (assignment.status !== "PENDING_APPROVAL" && !assignment.rejectionNote) {
+      const isPhaseReady = assignment.assignmentLevel === "PHASE_LEAD" && (() => {
+        const children = dataset.assignments.filter((item) => item.parentAssignmentId === id);
+        return children.length > 0 && children.every((item) => item.approvalStage === "PROJECT_APPROVED" || item.status === "DONE");
+      })();
+
+      if (assignment.status !== "PENDING_APPROVAL" && !assignment.rejectionNote && !isPhaseReady) {
         throw new Error("Nhiệm vụ chưa được gửi duyệt.");
       }
       if (assignment.assignmentLevel === "TASK_MEMBER" && assignment.parentAssignmentId) {
@@ -483,7 +660,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       }
       if (assignment.assignmentLevel === "PHASE_LEAD") {
         const children = dataset.assignments.filter((item) => item.parentAssignmentId === id);
-        if (!children.length || children.some((item) => item.approvalStage !== "PROJECT_APPROVED")) {
+        if (!children.length || children.some((item) => item.approvalStage !== "PROJECT_APPROVED" && item.status !== "DONE")) {
           throw new Error("CNDA cần duyệt tất cả bước con trước khi xác nhận hoàn thành giai đoạn.");
         }
         children.forEach((item) => Object.assign(item, {
@@ -513,17 +690,21 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       if (assignment.status === "DONE" && !assignment.parentAssignmentId) {
         throw new Error("Giai đoạn đã hoàn thành toàn bộ, không thể hoàn tác.");
       }
-      assignment.approvalStage = undefined;
+      if (assignment.approvalStage === "PROJECT_APPROVED") {
+        assignment.approvalStage = "LEAD_APPROVED";
+      } else {
+        assignment.approvalStage = undefined;
+        if (assignment.submissions) {
+          assignment.submissions.forEach((s) => {
+            s.leadApprovalStatus = "PENDING_LEAD";
+            s.leadApprovedAt = undefined;
+            s.leadApprovedBy = undefined;
+            s.leadFeedbackNote = undefined;
+          });
+        }
+      }
       assignment.status = "PENDING_APPROVAL";
       assignment.rejectionNote = undefined;
-      if (assignment.submissions) {
-        assignment.submissions.forEach((s) => {
-          s.leadApprovalStatus = "PENDING_LEAD";
-          s.leadApprovedAt = undefined;
-          s.leadApprovedBy = undefined;
-          s.leadFeedbackNote = undefined;
-        });
-      }
       return clone(assignment);
     },
 
@@ -793,7 +974,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     },
 
     async submitProjectToDirector(params) {
-      const project = dataset.projects.find((p) => p.id === params.projectId);
+      const project = findProject(params.projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       project.directorApprovalStatus = "PENDING";
       project.directorSubmittedAt = todayIso();
@@ -805,7 +986,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     },
 
     async reviewProjectDirector(params) {
-      const project = dataset.projects.find((p) => p.id === params.projectId);
+      const project = findProject(params.projectId);
       if (!project) throw new Error("Không tìm thấy dự án.");
       if (params.approved) {
         project.directorApprovalStatus = "APPROVED";

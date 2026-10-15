@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   CheckCircleFilled,
+  DownloadOutlined,
   ExclamationCircleFilled,
   FileTextOutlined,
   InfoCircleOutlined,
@@ -14,6 +15,7 @@ import { formatDateVi, todayIso } from "@/utils/date";
 import { GPMB_STEPS, LAND_TYPE_LABELS } from "../constants/gpmb-steps";
 import type { Household, StepCompletionInput } from "../types/gpmb.types";
 import { getCurrentStep, getStepDefinition } from "../utils/gpmb-rules";
+import { downloadGpmbDocument } from "../utils/gpmb-download";
 import { SpecialStatusTag } from "./HouseholdBadges";
 
 interface StepUpdateModalProps {
@@ -108,9 +110,9 @@ export default function StepUpdateModal({
 
       {/* 2. Khối biểu mẫu cập nhật bước hiện tại */}
       {current > 0 && (
-        <section className="mt-4 rounded-xl border border-teal-200 bg-teal-50/40 p-4">
+        <section className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="w-6 h-6 rounded-md bg-[#007A78] text-white flex items-center justify-center font-bold text-xs shrink-0">
+            <span className="w-6 h-6 rounded-md bg-[#DC2626] text-white flex items-center justify-center font-bold text-xs shrink-0">
               {current}
             </span>
             <span className="text-sm font-bold text-[#102A43]">
@@ -118,7 +120,7 @@ export default function StepUpdateModal({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mb-3 bg-white/90 p-3 rounded-lg border border-teal-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mb-3 bg-white/90 p-3 rounded-lg border border-slate-200">
             <div>
               <span className="text-slate-400 block text-[11px]">Sản phẩm cần có</span>
               <span className="font-medium text-slate-700">{definition?.output}</span>
@@ -132,9 +134,34 @@ export default function StepUpdateModal({
             {definition?.forms && (
               <div className="sm:col-span-2">
                 <span className="text-slate-400 block text-[11px]">Biểu mẫu bắt buộc</span>
-                <span className="font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block mt-0.5">
-                  {definition.forms}
-                </span>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 inline-block text-xs">
+                    📄 {definition.forms}
+                  </span>
+                  <Button
+                    scale="xs"
+                    intent="secondary"
+                    icon={<DownloadOutlined />}
+                    onClick={() => {
+                      const forms = definition.forms!;
+                      downloadGpmbDocument({
+                        fileName: `Bieu_mau_buoc_${current}_${forms.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`,
+                        title: `BIỂU MẪU QUY ĐỊNH BƯỚC ${current}: ${forms}`,
+                        details: [
+                          `Tên bước: ${definition.title}`,
+                          `Biểu mẫu áp dụng: ${forms}`,
+                          `Sản phẩm cần có: ${definition.output}`,
+                          `Thời hạn pháp lý: ${definition.legalDays ? `${definition.legalDays} ngày ${definition.mandatory ? "(bắt buộc)" : ""}` : "Không quy định"}`,
+                          `Căn cứ pháp lý: Luật Đất đai 2024, Nghị định 88/2024/NĐ-CP.`,
+                          `Áp dụng cho hộ dân: ${household.ownerName} (${household.code})`,
+                        ],
+                      });
+                    }}
+                    className="!bg-slate-100 !border-slate-300 !text-slate-700 hover:!bg-slate-200 text-xs font-semibold shadow-2xs"
+                  >
+                    Tải biểu mẫu
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -201,8 +228,8 @@ export default function StepUpdateModal({
               className="mb-3"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#007A78] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                  <UploadOutlined className="text-teal-700 text-sm" />
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
+                  <UploadOutlined className="text-slate-500 text-sm" />
                   <span>Chọn tệp đính kèm</span>
                   <input
                     type="file"
@@ -218,8 +245,8 @@ export default function StepUpdateModal({
                 </label>
 
                 {selectedFileName ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium">
-                    <FileTextOutlined className="text-teal-600" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-xs text-slate-800 font-medium">
+                    <FileTextOutlined className="text-slate-500" />
                     <span className="truncate max-w-[240px]">{selectedFileName}</span>
                     <button
                       type="button"
@@ -258,7 +285,7 @@ export default function StepUpdateModal({
                 scale="sm"
                 htmlType="submit"
                 loading={submitting}
-                className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white text-xs font-semibold h-8 px-5 rounded-lg shadow-xs"
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold h-8 px-5 rounded-lg shadow-xs"
               >
                 {needsApproval ? "Gửi đề xuất duyệt" : `Hoàn thành bước ${current}`}
               </Button>
@@ -289,7 +316,7 @@ export default function StepUpdateModal({
               const stepDef = GPMB_STEPS[record.step - 1];
               return (
                 <li key={record.step} className="flex items-start gap-2.5 text-xs">
-                  <CheckCircleFilled className="mt-0.5 text-emerald-600 text-sm shrink-0" />
+                  <CheckCircleFilled className="mt-0.5 text-slate-500 text-sm shrink-0" />
                   <div>
                     <span className="font-semibold text-slate-800">
                       Bước {record.step}: {stepDef?.title}
@@ -299,7 +326,7 @@ export default function StepUpdateModal({
                       {record.by && ` · Thực hiện: ${record.by}`}
                       {record.approvedBy && ` · Duyệt: ${record.approvedBy}`}
                       {record.fileName && (
-                        <span className="ml-1 text-teal-700 font-medium">
+                        <span className="ml-1 text-slate-700 font-medium">
                           <PaperClipOutlined /> {record.fileName}
                         </span>
                       )}

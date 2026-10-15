@@ -18,10 +18,10 @@ const { radius, fontSize, fontWeight } = tokens;
    SHARED TOKEN BASE — Dùng chung cho cả 2 theme
    ═══════════════════════════════════════════════════════════ */
 const sharedToken: ThemeConfig["token"] = {
-  /* ── Brand chính: Teal ────────────────────────────────── */
-  colorPrimary:           semantic.teal,
-  colorPrimaryHover:      semantic.tealLight,
-  colorPrimaryActive:     semantic.tealDark,
+  /* ── Brand chính: Đỏ tươi thanh lịch (#DC2626) ──────────── */
+  colorPrimary:           "#DC2626",
+  colorPrimaryHover:      "#EF4444",
+  colorPrimaryActive:     "#B91C1C",
 
   /* ── Semantic Status ──────────────────────────────────── */
   colorSuccess:           semantic.green,
@@ -135,6 +135,7 @@ export const antdDarkTheme: ThemeConfig = {
     Table: {
       headerBg:           darkSurface.surface2,
       headerColor:        darkSurface.textMuted,
+      headerSplitColor:   "transparent",
       rowHoverBg:         darkSurface.surface3,
       borderColor:        darkSurface.border,
       headerSortActiveBg: darkSurface.surface3,
@@ -212,16 +213,20 @@ export const antdLightTheme: ThemeConfig = {
 
     /* ── Menu (Sidebar) ──────────────────────────────────── */
     Menu: {
-      itemBorderRadius:   radius.md,
-      itemMarginInline:   4,
-      itemSelectedBg:     semantic.tealBg,
-      itemSelectedColor:  semantic.tealDark,
+      itemBorderRadius:   10,
+      itemMarginInline:   8,
+      itemSelectedBg:     "#DC2626",
+      itemSelectedColor:  "#FFFFFF",
+      itemColor:          "#334155",
+      itemHoverBg:        "#F8FAFC",
+      itemHoverColor:     "#0F172A",
     },
 
     /* ── Table ───────────────────────────────────────────── */
     Table: {
       headerBg:           lightSurface.surface2,
       headerColor:        lightSurface.textMuted,
+      headerSplitColor:   "transparent",
       rowHoverBg:         lightSurface.surface,
       borderColor:        lightSurface.border,
     },
@@ -246,7 +251,7 @@ export const antdLightTheme: ThemeConfig = {
 
     /* ── Tooltip ─────────────────────────────────────────── */
     Tooltip: {
-      colorBgSpotlight:   "#0F172A",
+      colorBgSpotlight:   "#1E293B",
       colorTextLightSolid: "#FFFFFF",
     },
   },
@@ -254,6 +259,6 @@ export const antdLightTheme: ThemeConfig = {
 
 /**
  * DEFAULT EXPORT — theme mặc định của dự án
- * Đổi sang antdLightTheme nếu muốn giao diện sáng
+ * Giao diện sáng tối giản (Minimalist Light Theme)
  */
-export const antdTheme = antdDarkTheme;
+export const antdTheme = antdLightTheme;

@@ -7,7 +7,6 @@ import {
   DeleteOutlined,
   FolderAddOutlined,
   InfoCircleOutlined,
-  LockOutlined,
   PlusOutlined,
   SaveOutlined,
   SettingOutlined,
@@ -21,6 +20,8 @@ interface StepConfigModalProps {
   open: boolean;
   steps: ProcedureStep[];
   currentProcedureId?: string;
+  departmentTitle?: string;
+  projectName?: string;
   onClose: () => void;
   onSaveConfig: (updatedSteps: ProcedureStep[], profileId?: string) => void;
 }
@@ -31,6 +32,10 @@ import {
   saveCustomProfiles,
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
+import {
+  getDepartmentStaff,
+  DEPARTMENT_PROCEDURE_TEMPLATES,
+} from "../constants/procedure-department-templates";
 
 // Danh mục đơn vị phụ trách chuẩn hóa để người dùng chọn
 const RESPONSIBLE_UNIT_OPTIONS = [
@@ -136,6 +141,8 @@ export default function StepConfigModal({
   open,
   steps,
   currentProcedureId,
+  departmentTitle,
+  projectName,
   onClose,
   onSaveConfig,
 }: StepConfigModalProps) {
@@ -145,18 +152,35 @@ export default function StepConfigModal({
 
   // Quản lý quy trình (kịch bản)
   const [customProfiles, setCustomProfiles] = useState<CustomProcedureProfile[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState<string>(currentProcedureId || "standard-16");
+  const [selectedProfileId, setSelectedProfileId] = useState<string>(
+    currentProcedureId || (steps.length > 0 ? "standard-16" : "")
+  );
 
   // Modal 1: Tạo quy trình mới
   const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const [createProfileError, setCreateProfileError] = useState("");
 
+  // Danh sách cán bộ thuộc phòng ban của Lead (nếu mở cho phòng ban)
+  const staffList = useMemo(() => {
+    return departmentTitle ? getDepartmentStaff(departmentTitle) : [];
+  }, [departmentTitle]);
+
+  // Cập nhật thông tin của bất kỳ bước nào trong danh sách
+  const handleUpdateStep = (stepId: string, updates: Partial<ProcedureStep>) => {
+    setLocalSteps((prev) => {
+      const updated = prev.map((s) => (s.id === stepId ? { ...s, ...updates } : s));
+      syncToCurrentProfile(updated);
+      return updated;
+    });
+  };
+
   // Inline thêm bước chính (Cha) trực tiếp trong danh sách
   const [isAddingParentInline, setIsAddingParentInline] = useState(false);
   const [inlineParentCode, setInlineParentCode] = useState<string>("");
   const [inlineParentName, setInlineParentName] = useState<string>("");
   const [inlineParentUnit, setInlineParentUnit] = useState<string>("Chủ đầu tư");
+  const [inlineParentAssignee, setInlineParentAssignee] = useState<string>("");
   const [inlineParentMinDays, setInlineParentMinDays] = useState<number>(5);
   const [inlineParentMaxDays, setInlineParentMaxDays] = useState<number>(10);
   const [inlineParentType, setInlineParentType] = useState<"MANDATORY" | "CONDITIONAL">("MANDATORY");
@@ -167,6 +191,7 @@ export default function StepConfigModal({
   const [inlineChildCode, setInlineChildCode] = useState<string>("");
   const [inlineChildName, setInlineChildName] = useState<string>("");
   const [inlineChildUnit, setInlineChildUnit] = useState<string>("Chủ đầu tư");
+  const [inlineChildAssignee, setInlineChildAssignee] = useState<string>("");
   const [inlineChildMinDays, setInlineChildMinDays] = useState<number>(3);
   const [inlineChildMaxDays, setInlineChildMaxDays] = useState<number>(7);
   const [inlineChildType, setInlineChildType] = useState<"MANDATORY" | "CONDITIONAL">("MANDATORY");
@@ -175,16 +200,28 @@ export default function StepConfigModal({
   // Theo dõi các bước mới thêm trong session này (chưa lưu cấu hình)
   const [newlyAddedStepIds, setNewlyAddedStepIds] = useState<Set<string>>(new Set());
 
+  // Danh mục đơn vị phụ trách có thể bao gồm phòng ban hiện tại
+  const unitOptions = useMemo(() => {
+    if (departmentTitle && !RESPONSIBLE_UNIT_OPTIONS.some((o) => o.value === departmentTitle)) {
+      return [{ value: departmentTitle, label: departmentTitle }, ...RESPONSIBLE_UNIT_OPTIONS];
+    }
+    return RESPONSIBLE_UNIT_OPTIONS;
+  }, [departmentTitle]);
+
   // Tải custom profiles khi mở modal
   useEffect(() => {
     if (open) {
       const loaded = loadCustomProfiles();
       setCustomProfiles(loaded);
       setLocalSteps(steps);
-      setSelectedProfileId(currentProcedureId || "standard-16");
+      setSelectedProfileId(currentProcedureId || (steps.length > 0 ? "standard-16" : ""));
       setNewlyAddedStepIds(new Set()); // Reset danh sách bước mới khi mở modal
+      if (departmentTitle) {
+        setInlineParentUnit(departmentTitle);
+        setInlineChildUnit(departmentTitle);
+      }
     }
-  }, [open, steps, currentProcedureId]);
+  }, [open, steps, currentProcedureId, departmentTitle]);
 
   const masterStepsMap = useMemo(() => {
     const map = new Map<string, (typeof MASTER_PROCEDURE_STEPS)[number]>();
@@ -277,7 +314,7 @@ export default function StepConfigModal({
     setSelectedProfileId(profileId);
     const builtin = BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === profileId);
     if (builtin) {
-      if (profileId === currentProcedureId) {
+      if (profileId === currentProcedureId && steps.length > 0) {
         setLocalSteps(steps);
       } else {
         setLocalSteps(builtin.createSteps());
@@ -336,7 +373,7 @@ export default function StepConfigModal({
   // Sao chép 16 bước chuẩn hóa vào quy trình hiện tại
   const handleLoadMasterSteps = () => {
     const masterSteps: ProcedureStep[] = MASTER_PROCEDURE_STEPS.map((m) => ({
-      id: `step-${Date.now()}-${m.code}`,
+      id: `dept-step-${Date.now()}-${m.code}`,
       order: m.order,
       code: m.code,
       groupCode: m.groupCode,
@@ -368,7 +405,8 @@ export default function StepConfigModal({
     setIsAddingParentInline(true);
     setInlineParentCode(getNextParentCode(localSteps));
     setInlineParentName("");
-    setInlineParentUnit("Chủ đầu tư");
+    setInlineParentUnit(departmentTitle || "Chủ đầu tư");
+    setInlineParentAssignee("");
     setInlineParentMinDays(5);
     setInlineParentMaxDays(10);
     setInlineParentType("MANDATORY");
@@ -388,15 +426,21 @@ export default function StepConfigModal({
     const durText = minD === maxD ? `${minD} ngày` : `${minD}–${maxD} ngày`;
     const defaultPlanned = Math.round((minD + maxD) / 2);
     const finalCode = inlineParentCode.trim() || getNextParentCode(localSteps);
+    const assigneeStaff = staffList.find((s) => s.name === inlineParentAssignee);
     const newStep: ProcedureStep = {
-      id: `step-${Date.now()}-${finalCode}`,
+      id: `dept-step-${Date.now()}-${finalCode}`,
       order: localSteps.length + 1,
       code: finalCode,
       groupCode: finalCode,
       groupTitle: inlineParentName.trim(),
       name: inlineParentName.trim(),
       type: inlineParentType,
-      responsibleUnit: inlineParentUnit || "Chủ đầu tư",
+      responsibleUnit: inlineParentUnit || departmentTitle || "Chủ đầu tư",
+      department: departmentTitle || undefined,
+      assignedTo: inlineParentAssignee || undefined,
+      assignedToId: assigneeStaff?.id,
+      assignedBy: inlineParentAssignee && departmentTitle ? `Lead ${departmentTitle}` : undefined,
+      assignedAt: inlineParentAssignee ? new Date().toISOString().slice(0, 10) : undefined,
       durationMargin: durText,
       durationDaysMin: minD,
       durationDaysMax: maxD,
@@ -413,11 +457,13 @@ export default function StepConfigModal({
     if (keepOpen) {
       setInlineParentName("");
       setInlineParentError("");
+      setInlineParentAssignee("");
       setInlineParentCode(getNextParentCode(updated));
     } else {
       setIsAddingParentInline(false);
       setInlineParentName("");
       setInlineParentError("");
+      setInlineParentAssignee("");
     }
   };
 
@@ -431,7 +477,8 @@ export default function StepConfigModal({
     setActiveParentForSub(parentCode);
     setInlineChildCode(getNextSubCode(parentCode, localSteps));
     setInlineChildName("");
-    setInlineChildUnit(parentObj?.responsibleUnit || "Chủ đầu tư");
+    setInlineChildUnit(parentObj?.responsibleUnit || departmentTitle || "Chủ đầu tư");
+    setInlineChildAssignee("");
     setInlineChildMinDays(3);
     setInlineChildMaxDays(7);
     setInlineChildType("MANDATORY");
@@ -453,16 +500,22 @@ export default function StepConfigModal({
     const finalCode = inlineChildCode.trim() || getNextSubCode(activeParentForSub, localSteps);
 
     const parentObj = localSteps.find((p) => p.code === activeParentForSub);
+    const assigneeStaff = staffList.find((s) => s.name === inlineChildAssignee);
 
     const newStep: ProcedureStep = {
-      id: `step-${Date.now()}-${finalCode}`,
+      id: `dept-step-${Date.now()}-${finalCode}`,
       order: localSteps.length + 1,
       code: finalCode,
       groupCode: activeParentForSub,
       groupTitle: parentObj?.name || "Quy trình thực hiện",
       name: inlineChildName.trim(),
       type: inlineChildType,
-      responsibleUnit: inlineChildUnit || "Chủ đầu tư",
+      responsibleUnit: inlineChildUnit || departmentTitle || "Chủ đầu tư",
+      department: departmentTitle || undefined,
+      assignedTo: inlineChildAssignee || undefined,
+      assignedToId: assigneeStaff?.id,
+      assignedBy: inlineChildAssignee && departmentTitle ? `Lead ${departmentTitle}` : undefined,
+      assignedAt: inlineChildAssignee ? new Date().toISOString().slice(0, 10) : undefined,
       durationMargin: durText,
       durationDaysMin: minD,
       durationDaysMax: maxD,
@@ -481,11 +534,13 @@ export default function StepConfigModal({
     if (keepOpen) {
       setInlineChildName("");
       setInlineChildError("");
+      setInlineChildAssignee("");
       setInlineChildCode(getNextSubCode(activeParentForSub, updated));
     } else {
       setActiveParentForSub(null);
       setInlineChildName("");
       setInlineChildError("");
+      setInlineChildAssignee("");
     }
   };
 
@@ -514,7 +569,7 @@ export default function StepConfigModal({
   // Đặt lại mặc định
   const handleReset = () => {
     setLocalSteps(steps);
-    setSelectedProfileId(currentProcedureId || "standard-16");
+    setSelectedProfileId(currentProcedureId || (steps.length > 0 ? "standard-16" : ""));
     setActiveParentForSub(null);
     setIsAddingParentInline(false);
   };
@@ -564,115 +619,152 @@ export default function StepConfigModal({
     if (!activeParentForSub) return null;
 
     return (
-      <div className="flex items-center gap-3 px-3.5 py-2 bg-teal-50/70 border-y border-teal-300 border-l-[3px] border-l-[#007A78] shadow-2xs transition-all">
-        {/* Mã bước */}
-        <div className="w-16 shrink-0 text-center flex items-center justify-center gap-0.5">
-          <span className="text-[#007A78] font-mono text-xs select-none">└</span>
-          <Input
-            value={inlineChildCode}
-            onChange={(e) => setInlineChildCode(e.target.value)}
-            className="h-7 w-12 text-center font-mono font-bold text-[11px] bg-white border-teal-300 p-0.5"
-            placeholder="Mã"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveInlineChild(false);
-              if (e.key === "Escape") setActiveParentForSub(null);
-            }}
-          />
-        </div>
+      <div className="flex flex-col gap-1 px-3.5 py-2 bg-red-50/70 border-y border-red-200 border-l-[3px] border-l-[#DC2626] shadow-2xs transition-all">
+        <div className="flex items-center gap-3 w-full">
+          {/* Mã bước */}
+          <div className="w-16 shrink-0 text-center flex items-center justify-center gap-0.5">
+            <span className="text-[#DC2626] font-mono text-xs select-none">└</span>
+            <Input
+              value={inlineChildCode}
+              onChange={(e) => setInlineChildCode(e.target.value)}
+              className="h-7 w-12 text-center font-mono font-bold text-[11px] bg-white border-red-200 p-0.5"
+              placeholder="Mã"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveInlineChild(false);
+                if (e.key === "Escape") setActiveParentForSub(null);
+              }}
+            />
+          </div>
 
-        {/* Tên bước con */}
-        <div className="min-w-0 flex-1 pr-2">
-          <Input
-            value={inlineChildName}
-            onChange={(e) => {
-              setInlineChildName(e.target.value);
-              if (inlineChildError) setInlineChildError("");
-            }}
-            placeholder={`Nhập tên bước con thuộc [${activeParentForSub}] (nhấn Enter để lưu)...`}
-            autoFocus
-            className={`h-7 text-xs bg-white w-full ${inlineChildError ? "border-rose-500 ring-1 ring-rose-200" : "border-teal-400 focus:border-[#007A78]"
+          {/* Tên bước con */}
+          <div className="min-w-0 flex-1 pr-2">
+            <Input
+              value={inlineChildName}
+              onChange={(e) => {
+                setInlineChildName(e.target.value);
+                if (inlineChildError) setInlineChildError("");
+              }}
+              placeholder={`Nhập tên bước con thuộc [${activeParentForSub}] (nhấn Enter để lưu)...`}
+              autoFocus
+              className={`h-7 text-xs bg-white w-full ${
+                inlineChildError ? "border-rose-500 ring-1 ring-rose-200" : "border-red-300 focus:border-[#DC2626]"
               }`}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveInlineChild(false);
-              if (e.key === "Escape") setActiveParentForSub(null);
-            }}
-          />
-          {inlineChildError && (
-            <p className="text-[10px] text-rose-500 mt-0.5 font-medium">{inlineChildError}</p>
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveInlineChild(false);
+                if (e.key === "Escape") setActiveParentForSub(null);
+              }}
+            />
+          </div>
+
+          {/* Người thực hiện nếu cấu hình theo phòng ban của Lead */}
+          {departmentTitle && (
+            <div className="w-48 shrink-0">
+              <Select
+                value={inlineChildAssignee || undefined}
+                onChange={setInlineChildAssignee}
+                size="small"
+                className="w-full text-xs"
+                placeholder="— Phân công —"
+                allowClear
+                options={staffList.map((st) => ({
+                  value: st.name,
+                  label: `${st.name} (${st.title})`,
+                }))}
+              />
+            </div>
           )}
-        </div>
 
-        {/* Đơn vị thực hiện */}
-        <div className="w-44 shrink-0 hidden md:block">
-          <Select
-            value={inlineChildUnit}
-            onChange={setInlineChildUnit}
-            size="small"
-            className="w-full text-xs"
-            options={RESPONSIBLE_UNIT_OPTIONS}
-          />
-        </div>
+          {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
+          {!departmentTitle && (
+            <div className="w-44 shrink-0 hidden md:block">
+              <Select
+                value={inlineChildUnit}
+                onChange={setInlineChildUnit}
+                size="small"
+                className="w-full text-xs"
+                options={unitOptions}
+              />
+            </div>
+          )}
 
-        {/* Thời gian */}
-        <div className="w-44 shrink-0 hidden sm:block text-center">
-          <div className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={inlineChildMinDays}
-              onChange={(e) => setInlineChildMinDays(Math.max(1, Number(e.target.value) || 1))}
-              className="w-12 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#007A78] focus:ring-1 focus:ring-[#007A78] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
+          {/* Thời gian */}
+          <div className="w-40 shrink-0 hidden sm:block text-center">
+            <div className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={inlineChildMinDays}
+                onChange={(e) => setInlineChildMinDays(Math.max(1, Number(e.target.value) || 1))}
+                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
+              />
+              <span className="text-slate-400 font-bold shrink-0">–</span>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={inlineChildMaxDays}
+                onChange={(e) => setInlineChildMaxDays(Math.max(1, Number(e.target.value) || 1))}
+                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
+              />
+              <span className="text-xs text-slate-600 font-medium shrink-0">ngày</span>
+            </div>
+          </div>
+
+          {/* Phân loại */}
+          <div className="w-28 shrink-0 flex items-center justify-center">
+            <Select
+              value={inlineChildType}
+              onChange={setInlineChildType}
+              size="small"
+              className="w-24 text-xs"
+              options={[
+                { value: "MANDATORY", label: "Bắt buộc" },
+                { value: "CONDITIONAL", label: "Điều kiện" },
+              ]}
             />
-            <span className="text-slate-400 font-bold shrink-0">–</span>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={inlineChildMaxDays}
-              onChange={(e) => setInlineChildMaxDays(Math.max(1, Number(e.target.value) || 1))}
-              className="w-12 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#007A78] focus:ring-1 focus:ring-[#007A78] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
-            />
-            <span className="text-xs text-slate-600 font-medium shrink-0">ngày</span>
+          </div>
+
+          {/* Áp dụng */}
+          <div className="w-20 shrink-0 flex items-center justify-center text-xs text-slate-300 select-none font-medium">
+            —
+          </div>
+
+          {/* Thao tác */}
+          <div className="w-24 shrink-0 flex items-center justify-center">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleSaveInlineChild(false)}
+                className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-md bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-colors shadow-2xs cursor-pointer text-xs font-semibold"
+                title="Lưu bước con (Enter)"
+              >
+                <CheckOutlined className="text-[11px]" />
+                <span>Lưu</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveParentForSub(null)}
+                className="flex h-7 px-2 items-center justify-center rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors cursor-pointer text-xs font-medium"
+                title="Đóng (Esc)"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Phân loại */}
-        <div className="w-32 shrink-0 flex items-center justify-center">
-          <Select
-            value={inlineChildType}
-            onChange={setInlineChildType}
-            size="small"
-            className="w-28 text-xs"
-            options={[
-              { value: "MANDATORY", label: "Bắt buộc" },
-              { value: "CONDITIONAL", label: "Điều kiện" },
-            ]}
-          />
-        </div>
-
-        {/* Thao tác */}
-        <div className="w-44 shrink-0 flex items-center justify-center">
-          <div className="w-[132px] flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleSaveInlineChild(false)}
-              className="flex-1 flex h-7 items-center justify-center gap-1.5 rounded-md bg-[#007A78] text-white hover:bg-[#006664] transition-colors shadow-2xs cursor-pointer text-xs font-semibold"
-              title="Lưu bước con (Enter)"
-            >
-              <CheckOutlined className="text-[11px]" />
-              <span>Lưu</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveParentForSub(null)}
-              className="flex-1 flex h-7 items-center justify-center rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors cursor-pointer text-xs font-medium"
-              title="Đóng (Esc)"
-            >
-              Đóng
-            </button>
+        {/* Thông báo lỗi nằm riêng ở dòng dưới, thẳng hàng với ô nhập tên, không làm lệch hàng controls */}
+        {inlineChildError && (
+          <div className="flex items-center gap-3 w-full">
+            <div className="w-16 shrink-0" />
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-[11px] text-rose-500 font-medium m-0 pt-0.5 leading-normal">
+                {inlineChildError}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -681,123 +773,158 @@ export default function StepConfigModal({
   const renderInlineParentRow = () => {
     if (!isAddingParentInline) return null;
     return (
-      <div className="flex items-center gap-3 px-3.5 py-2 bg-indigo-50/60 border-y border-indigo-300 border-l-[3px] border-l-indigo-500 shadow-2xs">
-        {/* Mã bước */}
-        <div className="w-16 shrink-0 text-center">
-          <Input
-            value={inlineParentCode}
-            onChange={(e) => setInlineParentCode(e.target.value)}
-            className="h-7 w-14 text-center font-mono font-bold text-[11px] bg-white border-indigo-300 p-0.5"
-            placeholder="Mã"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveInlineParent(false);
-              if (e.key === "Escape") setIsAddingParentInline(false);
-            }}
-          />
-        </div>
+      <div className="flex flex-col gap-1 px-3.5 py-2 bg-indigo-50/60 border-y border-indigo-300 border-l-[3px] border-l-indigo-500 shadow-2xs">
+        <div className="flex items-center gap-3 w-full">
+          {/* Mã bước */}
+          <div className="w-16 shrink-0 text-center">
+            <Input
+              value={inlineParentCode}
+              onChange={(e) => setInlineParentCode(e.target.value)}
+              className="h-7 w-14 text-center font-mono font-bold text-[11px] bg-white border-indigo-300 p-0.5"
+              placeholder="Mã"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveInlineParent(false);
+                if (e.key === "Escape") setIsAddingParentInline(false);
+              }}
+            />
+          </div>
 
-        {/* Tên bước chính */}
-        <div className="min-w-0 flex-1 pr-2">
-          <Input
-            value={inlineParentName}
-            onChange={(e) => {
-              setInlineParentName(e.target.value);
-              if (inlineParentError) setInlineParentError("");
-            }}
-            placeholder="Nhập tên bước chính (nhấn Enter để lưu)..."
-            autoFocus
-            className={`h-7 text-xs bg-white w-full font-semibold ${
-              inlineParentError ? "border-rose-500 ring-1 ring-rose-200" : "border-indigo-400 focus:border-indigo-600"
-            }`}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveInlineParent(false);
-              if (e.key === "Escape") setIsAddingParentInline(false);
-            }}
-          />
-          {inlineParentError && (
-            <p className="text-[10px] text-rose-500 mt-0.5 font-medium">{inlineParentError}</p>
+          {/* Tên bước chính */}
+          <div className="min-w-0 flex-1 pr-2">
+            <Input
+              value={inlineParentName}
+              onChange={(e) => {
+                setInlineParentName(e.target.value);
+                if (inlineParentError) setInlineParentError("");
+              }}
+              placeholder="Nhập tên bước chính (nhấn Enter để lưu)..."
+              autoFocus
+              className={`h-7 text-xs bg-white w-full font-semibold ${
+                inlineParentError ? "border-rose-500 ring-1 ring-rose-200" : "border-indigo-400 focus:border-indigo-600"
+              }`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveInlineParent(false);
+                if (e.key === "Escape") setIsAddingParentInline(false);
+              }}
+            />
+          </div>
+
+          {/* Người thực hiện nếu cấu hình theo phòng ban của Lead */}
+          {departmentTitle && (
+            <div className="w-48 shrink-0">
+              <Select
+                value={inlineParentAssignee || undefined}
+                onChange={setInlineParentAssignee}
+                size="small"
+                className="w-full text-xs"
+                placeholder="— Phân công —"
+                allowClear
+                options={staffList.map((st) => ({
+                  value: st.name,
+                  label: `${st.name} (${st.title})`,
+                }))}
+              />
+            </div>
           )}
-        </div>
 
-        {/* Đơn vị thực hiện */}
-        <div className="w-44 shrink-0 hidden md:block">
-          <Select
-            value={inlineParentUnit}
-            onChange={setInlineParentUnit}
-            size="small"
-            className="w-full text-xs"
-            options={RESPONSIBLE_UNIT_OPTIONS}
-          />
-        </div>
+          {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
+          {!departmentTitle && (
+            <div className="w-44 shrink-0 hidden md:block">
+              <Select
+                value={inlineParentUnit}
+                onChange={setInlineParentUnit}
+                size="small"
+                className="w-full text-xs"
+                options={unitOptions}
+              />
+            </div>
+          )}
 
-        {/* Thời gian */}
-        <div className="w-44 shrink-0 hidden sm:block text-center">
-          <div className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={inlineParentMinDays}
-              onChange={(e) => setInlineParentMinDays(Math.max(1, Number(e.target.value) || 1))}
-              className="w-12 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
+          {/* Thời gian */}
+          <div className="w-40 shrink-0 hidden sm:block text-center">
+            <div className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={inlineParentMinDays}
+                onChange={(e) => setInlineParentMinDays(Math.max(1, Number(e.target.value) || 1))}
+                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
+              />
+              <span className="text-slate-400 font-bold shrink-0">–</span>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={inlineParentMaxDays}
+                onChange={(e) => setInlineParentMaxDays(Math.max(1, Number(e.target.value) || 1))}
+                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
+              />
+              <span className="text-xs text-slate-600 font-medium shrink-0">ngày</span>
+            </div>
+          </div>
+
+          {/* Phân loại */}
+          <div className="w-28 shrink-0 flex items-center justify-center">
+            <Select
+              value={inlineParentType}
+              onChange={setInlineParentType}
+              size="small"
+              className="w-24 text-xs"
+              options={[
+                { value: "MANDATORY", label: "Bắt buộc" },
+                { value: "CONDITIONAL", label: "Điều kiện" },
+              ]}
             />
-            <span className="text-slate-400 font-bold shrink-0">–</span>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={inlineParentMaxDays}
-              onChange={(e) => setInlineParentMaxDays(Math.max(1, Number(e.target.value) || 1))}
-              className="w-12 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
-            />
-            <span className="text-xs text-slate-600 font-medium shrink-0">ngày</span>
+          </div>
+
+          {/* Áp dụng */}
+          <div className="w-20 shrink-0 flex items-center justify-center text-xs text-slate-300 select-none font-medium">
+            —
+          </div>
+
+          {/* Thao tác */}
+          <div className="w-24 shrink-0 flex items-center justify-center">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleSaveInlineParent(false)}
+                className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-md bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-colors shadow-2xs cursor-pointer text-xs font-semibold"
+                title="Lưu bước chính (Enter)"
+              >
+                <CheckOutlined className="text-[11px]" />
+                <span>Lưu</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddingParentInline(false)}
+                className="flex h-7 px-2 items-center justify-center rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors cursor-pointer text-xs font-medium"
+                title="Đóng (Esc)"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Phân loại */}
-        <div className="w-32 shrink-0 flex items-center justify-center">
-          <Select
-            value={inlineParentType}
-            onChange={setInlineParentType}
-            size="small"
-            className="w-28 text-xs"
-            options={[
-              { value: "MANDATORY", label: "Bắt buộc" },
-              { value: "CONDITIONAL", label: "Điều kiện" },
-            ]}
-          />
-        </div>
-
-        {/* Thao tác */}
-        <div className="w-44 shrink-0 flex items-center justify-center">
-          <div className="w-[132px] flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleSaveInlineParent(false)}
-              className="flex-1 flex h-7 items-center justify-center gap-1.5 rounded-md bg-[#007A78] text-white hover:bg-[#006664] transition-colors shadow-2xs cursor-pointer text-xs font-semibold"
-              title="Lưu bước chính (Enter)"
-            >
-              <CheckOutlined className="text-[11px]" />
-              <span>Lưu</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAddingParentInline(false)}
-              className="flex-1 flex h-7 items-center justify-center rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors cursor-pointer text-xs font-medium"
-              title="Đóng (Esc)"
-            >
-              Đóng
-            </button>
+        {/* Thông báo lỗi nằm riêng ở dòng dưới, thẳng hàng với ô nhập tên, không làm lệch hàng controls */}
+        {inlineParentError && (
+          <div className="flex items-center gap-3 w-full">
+            <div className="w-16 shrink-0" />
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-[11px] text-rose-500 font-medium m-0 pt-0.5 leading-normal">
+                {inlineParentError}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
 
   const activeProfile =
     customProfiles.find((p) => p.id === selectedProfileId) ||
-    BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === selectedProfileId) ||
-    BUILTIN_PROCEDURE_TEMPLATES[0];
+    BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === selectedProfileId);
 
   const profileSelectOptions = useMemo(() => {
     const builtinGroup = {
@@ -831,20 +958,28 @@ export default function StepConfigModal({
         open={open}
         onCancel={onClose}
         destroyOnHidden
-        width={1180}
+        width={1200}
         centered
         title={
           <div className="flex items-center justify-between pr-6 w-full">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 text-[#007A78]">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[#DC2626]">
                 <SettingOutlined className="text-base" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">
-                  Cấu hình Quy trình Thủ tục Dự án
+                  {departmentTitle ? (
+                    <>
+                      Thêm Quy trình Thủ tục — <span className="text-[#DC2626]">{departmentTitle}</span>
+                    </>
+                  ) : (
+                    "Cấu hình Quy trình Thủ tục Dự án"
+                  )}
                 </h3>
                 <p className="text-xs font-normal text-slate-500 mt-0.5">
-                  Tùy chỉnh hoặc thêm mới quy trình, thêm bước cha và bước con phù hợp với dự án
+                  {projectName
+                    ? `Dự án: ${projectName} — Tùy chỉnh quy trình, thêm bước chính và bước con phù hợp`
+                    : "Tùy chỉnh hoặc thêm mới quy trình, thêm bước cha và bước con phù hợp với dự án"}
                 </p>
               </div>
             </div>
@@ -862,7 +997,7 @@ export default function StepConfigModal({
                 intent="primary"
                 scale="compact"
                 icon={<SaveOutlined />}
-                className="bg-[#007A78] border-[#007A78] text-white"
+                className="bg-[#DC2626] border-[#DC2626] text-white"
                 onClick={handleSave}
               >
                 Lưu cấu hình ({stats.totalActiveSteps} bước)
@@ -879,66 +1014,79 @@ export default function StepConfigModal({
           <div className="flex flex-col gap-2.5 bg-slate-50/90 p-3 rounded-lg border border-slate-200/80 shrink-0">
             {/* Dòng 1: Quản lý Quy trình & Thao tác chính */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Trái: Chọn quy trình + Thêm quy trình mới */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 shrink-0">
-                  <BranchesOutlined className="text-[#007A78] text-sm" />
-                  <span>Quy trình:</span>
+              {/* Trái: Nếu là phòng ban thì hiện nhãn phòng ban, nếu không thì hiện chọn quy trình */}
+              {departmentTitle ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-[#DC2626] font-bold text-xs shadow-2xs">
+                    <BranchesOutlined className="text-sm" />
+                    <span>Quy trình chuyên môn: {departmentTitle}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                    Lead tự thiết lập các bước và giao việc cho thành viên
+                  </span>
                 </div>
-                <Select
-                  value={selectedProfileId}
-                  onChange={handleSelectProfile}
-                  className="w-72 sm:w-80 text-xs"
-                  size="small"
-                  popupMatchSelectWidth={380}
-                  options={profileSelectOptions}
-                  optionRender={(option) => {
-                    const data = option.data as {
-                      value: string;
-                      label: string;
-                      name?: string;
-                      stepCount?: number;
-                      isCustom?: boolean;
-                    };
-                    return (
-                      <div className="flex items-center justify-between w-full py-0.5">
-                        <span
-                          className="truncate pr-2 font-medium text-slate-800 text-xs"
-                          title={data?.name || data?.label}
-                        >
-                          {data?.label}
-                        </span>
-                        {data?.isCustom && (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Tag intent="warning" scale="sm">
-                              Tùy chỉnh
-                            </Tag>
-                            <Tooltip title="Xóa quy trình này">
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteProfile(data.value, e)}
-                                className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
-                              >
-                                <DeleteOutlined className="text-[11px]" />
-                              </button>
-                            </Tooltip>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }}
-                />
+              ) : (
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 shrink-0">
+                    <BranchesOutlined className="text-[#DC2626] text-sm" />
+                    <span>Quy trình:</span>
+                  </div>
+                  <Select
+                    value={selectedProfileId || undefined}
+                    placeholder="-- Chọn quy trình áp dụng --"
+                    onChange={handleSelectProfile}
+                    className="w-72 sm:w-80 text-xs"
+                    size="small"
+                    popupMatchSelectWidth={380}
+                    options={profileSelectOptions}
+                    optionRender={(option) => {
+                      const data = option.data as {
+                        value: string;
+                        label: string;
+                        name?: string;
+                        stepCount?: number;
+                        isCustom?: boolean;
+                      };
+                      return (
+                        <div className="flex items-center justify-between w-full py-0.5">
+                          <span
+                            className="truncate pr-2 font-medium text-slate-800 text-xs"
+                            title={data?.name || data?.label}
+                          >
+                            {data?.label}
+                          </span>
+                          {data?.isCustom && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Tag intent="warning" scale="sm">
+                                Tùy chỉnh
+                              </Tag>
+                              <Tooltip title="Xóa quy trình này">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteProfile(data.value, e)}
+                                  className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
+                                >
+                                  <DeleteOutlined className="text-[11px]" />
+                                </button>
+                              </Tooltip>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
+                  />
 
-                <Button
-                  intent="outline"
-                  scale="compact"
-                  icon={<FolderAddOutlined className="text-[#007A78]" />}
-                  onClick={handleOpenCreateProfile}
-                  className="h-8 text-xs font-semibold text-[#007A78] border-teal-300 hover:bg-teal-50 shrink-0"
-                >
-                  Tạo quy trình mới
-                </Button>
-              </div>
+                  <Button
+                    intent="outline"
+                    scale="compact"
+                    icon={<FolderAddOutlined className="text-[#DC2626]" />}
+                    onClick={handleOpenCreateProfile}
+                    className="h-8 text-xs font-semibold text-[#DC2626] border-red-200 hover:bg-red-50 shrink-0"
+                  >
+                    Tạo quy trình mới
+                  </Button>
+                </div>
+              )}
 
               {/* Phải: Thêm bước chính */}
               <Button
@@ -946,7 +1094,7 @@ export default function StepConfigModal({
                 scale="compact"
                 icon={<PlusOutlined />}
                 onClick={handleOpenAddParentStep}
-                className="h-8 text-xs font-semibold bg-[#007A78] border-[#007A78] text-white hover:bg-[#006664] shadow-2xs shrink-0"
+                className="h-8 text-xs font-semibold bg-[#DC2626] border-[#DC2626] text-white hover:bg-[#B91C1C] shadow-2xs shrink-0"
               >
                 Thêm bước chính
               </Button>
@@ -1017,40 +1165,84 @@ export default function StepConfigModal({
             <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-100/80 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 shrink-0">
               <div className="w-16 shrink-0 text-center">Mã bước</div>
               <div className="min-w-0 flex-1">Tên bước / Bước con</div>
-              <div className="w-44 shrink-0 hidden md:block">Đơn vị thực hiện</div>
-              <div className="w-44 shrink-0 hidden sm:block text-center">Thời gian</div>
-              <div className="w-32 shrink-0 text-center">Loại</div>
-              <div className="w-44 shrink-0 text-center">Áp dụng & Thao tác</div>
+              {departmentTitle && (
+                <div className="w-48 shrink-0 text-center text-slate-700">Người thực hiện</div>
+              )}
+              {!departmentTitle && (
+                <div className="w-44 shrink-0 hidden md:block">Đơn vị thực hiện</div>
+              )}
+              <div className="w-40 shrink-0 hidden sm:block text-center">Thời gian</div>
+              <div className="w-28 shrink-0 text-center">Loại</div>
+              <div className="w-20 shrink-0 text-center">Áp dụng</div>
+              <div className="w-24 shrink-0 text-center">Thao tác</div>
             </div>
 
             {/* Danh sách các hàng */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 [scrollbar-width:thin] min-h-0">
               {filteredSteps.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50/30">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-[#007A78] mb-3 border border-teal-100 shadow-2xs">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-[#DC2626] mb-3 border border-red-100 shadow-2xs">
                     <FolderAddOutlined className="text-2xl" />
                   </div>
                   <h4 className="text-sm font-bold text-slate-800 mb-1">
-                    {localSteps.length === 0
-                      ? `Quy trình "${activeProfile?.name || "Tự tạo"}" hiện chưa có bước nào`
+                    {departmentTitle
+                      ? `Quy trình chuyên môn của ${departmentTitle} chưa có bước nào`
+                      : localSteps.length === 0
+                      ? activeProfile
+                        ? `Quy trình "${activeProfile.name}" hiện chưa có bước nào`
+                        : "Dự án hiện chưa có bước thủ tục nào"
                       : "Không tìm thấy bước thủ tục phù hợp với từ khóa"}
                   </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto mb-5 leading-relaxed">
-                    {localSteps.length === 0
-                      ? "Bạn có thể bắt đầu bằng việc thêm bước chính đầu tiên cho quy trình này."
+                    {departmentTitle
+                      ? `Là Lead (Tổ trưởng) ${departmentTitle}, bạn hãy thêm các bước quy trình chuyên môn (bước chính I, II... và bước con I.1, I.2...) và phân công cho thành viên trong tổ.`
+                      : localSteps.length === 0
+                      ? "Bạn có thể áp dụng ngay quy trình mẫu chuẩn có sẵn hoặc thêm bước chính thủ công bên dưới:"
                       : "Hãy thử kiểm tra lại từ khóa tìm kiếm hoặc chuyển sang tab bộ lọc khác."}
                   </p>
                   {localSteps.length === 0 && (
-                    <div className="flex items-center justify-center">
-                      <Button
-                        intent="primary"
-                        scale="compact"
-                        icon={<PlusOutlined />}
-                        onClick={handleOpenAddParentStep}
-                        className="bg-[#007A78] border-[#007A78] text-white font-semibold h-8 px-4 shadow-2xs"
-                      >
-                        Thêm bước chính đầu tiên
-                      </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-2.5">
+                      {departmentTitle ? (
+                        <Button
+                          intent="primary"
+                          scale="compact"
+                          icon={<PlusOutlined />}
+                          onClick={handleOpenAddParentStep}
+                          className="bg-[#DC2626] border-[#DC2626] text-white font-semibold h-8.5 px-5 shadow-2xs hover:bg-[#B91C1C]"
+                        >
+                          Thêm bước chính đầu tiên
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            intent="primary"
+                            scale="compact"
+                            icon={<BranchesOutlined />}
+                            onClick={() => handleSelectProfile("standard-16")}
+                            className="bg-[#DC2626] border-[#DC2626] text-white font-semibold h-8.5 px-4 shadow-2xs hover:bg-[#006664]"
+                          >
+                            Áp dụng Quy trình chuẩn (16 bước)
+                          </Button>
+                          <Button
+                            intent="outline"
+                            scale="compact"
+                            icon={<BranchesOutlined />}
+                            onClick={() => handleSelectProfile("bcktkt-11")}
+                            className="font-semibold h-8.5 px-4 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]"
+                          >
+                            Quy trình BCKTKT (11 bước)
+                          </Button>
+                          <Button
+                            intent="outline"
+                            scale="compact"
+                            icon={<PlusOutlined />}
+                            onClick={handleOpenAddParentStep}
+                            className="font-semibold h-8.5 px-4 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]"
+                          >
+                            Thêm bước chính thủ công
+                          </Button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1073,10 +1265,10 @@ export default function StepConfigModal({
                         className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${!isEnabled
                           ? "bg-slate-50/70 opacity-60"
                           : isSubStep
-                            ? "bg-slate-50/30 hover:bg-teal-50/20 border-l-[3px] border-l-teal-400/80"
+                            ? "bg-slate-50/30 hover:bg-red-50/20 border-l-[3px] border-l-red-300/80"
                             : isCurrentParentActive
-                              ? "bg-teal-50/60 hover:bg-teal-50/80 cursor-pointer border-l-[3px] border-l-[#007A78]"
-                              : "hover:bg-teal-50/30 cursor-pointer"
+                              ? "bg-red-50/60 hover:bg-red-50/80 cursor-pointer border-l-[3px] border-l-[#DC2626]"
+                              : "hover:bg-red-50/30 cursor-pointer"
                           }`}
                         title={!isSubStep ? "Nhấn vào bước chính này để thêm bước con bên dưới" : undefined}
                       >
@@ -1084,8 +1276,8 @@ export default function StepConfigModal({
                         <div className="w-16 shrink-0 text-center">
                           {isSubStep ? (
                             <div className="flex items-center justify-center gap-0.5">
-                              <span className="text-teal-600 font-mono text-xs select-none">└</span>
-                              <span className="inline-block min-w-8 rounded border border-teal-200 bg-teal-50 px-1 py-0.5 text-center text-[11px] font-bold font-mono text-teal-800 shadow-2xs">
+                              <span className="text-[#DC2626] font-mono text-xs select-none">└</span>
+                              <span className="inline-block min-w-8 rounded border border-red-200 bg-red-50 px-1 py-0.5 text-center text-[11px] font-bold font-mono text-red-800 shadow-2xs">
                                 {step.code}
                               </span>
                             </div>
@@ -1112,7 +1304,7 @@ export default function StepConfigModal({
                               </Tooltip>
                             )}
                             {isCurrentParentActive && (
-                              <span className="text-[10px] font-semibold text-[#007A78] bg-teal-100/80 px-1.5 py-0.2 rounded shrink-0">
+                              <span className="text-[10px] font-semibold text-[#DC2626] bg-red-100/80 px-1.5 py-0.2 rounded shrink-0">
                                 Đang thêm bước con
                               </span>
                             )}
@@ -1120,26 +1312,58 @@ export default function StepConfigModal({
 
                           {/* Hiện phụ đơn vị & thời gian trên màn hình nhỏ */}
                           <div className="flex flex-wrap gap-x-3 text-[11px] text-slate-400 md:hidden mt-0.5">
-                            <span>{step.responsibleUnit}</span>
-                            <span>•</span>
-                            <span className="text-[#007A78] font-medium">{step.durationMargin}</span>
+                            {!departmentTitle && (
+                              <>
+                                <span>{step.responsibleUnit}</span>
+                                <span>•</span>
+                              </>
+                            )}
+                            <span className="text-[#DC2626] font-medium">{step.durationMargin}</span>
                           </div>
                         </div>
 
-                        {/* Đơn vị thực hiện */}
-                        <div className="w-44 shrink-0 hidden md:block text-xs text-slate-700 truncate" title={step.responsibleUnit}>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium max-w-full truncate">
-                            {step.responsibleUnit}
-                          </span>
-                        </div>
+                        {/* Người thực hiện nếu cấu hình theo phòng ban của Lead */}
+                        {departmentTitle && (
+                          <div className="w-48 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Select
+                              value={step.assignedTo || undefined}
+                              placeholder="— Chọn cán bộ —"
+                              size="small"
+                              className="w-full text-xs"
+                              allowClear
+                              onChange={(val) => {
+                                const staffObj = staffList.find((s) => s.name === val);
+                                handleUpdateStep(step.id, {
+                                  assignedTo: (val as string) || undefined,
+                                  assignedToId: staffObj?.id,
+                                  assignedBy: `Lead ${departmentTitle}`,
+                                  assignedAt: val ? new Date().toISOString().slice(0, 10) : undefined,
+                                });
+                              }}
+                              options={staffList.map((st) => ({
+                                value: st.name,
+                                label: `${st.name} (${st.title})`,
+                              }))}
+                            />
+                          </div>
+                        )}
+
+                        {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
+                        {!departmentTitle && (
+                          <div className="w-44 shrink-0 hidden md:block text-xs text-slate-700 truncate" title={step.responsibleUnit}>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium max-w-full truncate">
+                              {step.responsibleUnit}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Thời gian */}
-                        <div className="w-44 shrink-0 hidden sm:block text-xs font-semibold text-slate-700 text-center">
+                        <div className="w-40 shrink-0 hidden sm:block text-xs font-semibold text-slate-700 text-center">
                           {step.durationMargin}
                         </div>
 
                         {/* Phân loại */}
-                        <div className="w-32 shrink-0 flex items-center justify-center">
+                        <div className="w-28 shrink-0 flex items-center justify-center">
                           {isMandatory ? (
                             <Tag intent="brand" scale="sm">
                               Bắt buộc
@@ -1151,85 +1375,89 @@ export default function StepConfigModal({
                           )}
                         </div>
 
-                        {/* Thao tác: Bật/Tắt, Thêm bước con (chỉ cha), Xóa bước */}
+                        {/* Áp dụng: Bật/Tắt (cho bước điều kiện) */}
                         <div
-                          className="w-44 shrink-0 flex items-center justify-center gap-2"
+                          className="w-20 shrink-0 flex items-center justify-center"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {/* 1. Cột Bật/Tắt hoặc Badge Bắt buộc (cố định width 96px để căn thẳng tắp) */}
-                          <div className="w-[96px] h-7 shrink-0 flex items-center justify-center">
-                            {isMandatory ? (
-                              <span className="inline-flex w-full h-full items-center justify-center gap-1.5 text-[11px] font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/80 rounded-md shadow-2xs select-none">
-                                <LockOutlined className="text-[10px]" /> Bắt buộc
-                              </span>
-                            ) : (
-                              <div className="flex w-full h-full items-center justify-center gap-2">
-                                <span
-                                  className={`w-12 text-right text-[11px] font-medium select-none ${
-                                    isEnabled ? "text-[#007A78]" : "text-slate-400"
-                                  }`}
-                                >
-                                  {isEnabled ? "Áp dụng" : "Tắt"}
-                                </span>
-                                <Switch
-                                  checked={isEnabled}
-                                  onChange={(checked) => handleToggle(step.id, checked)}
-                                  size="small"
-                                  className={isEnabled ? "bg-[#007A78]" : "bg-slate-300"}
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* 2. Cột Nút thêm quy trình con (Chỉ bước cha mới có, bước con để trống giữ chỗ) */}
-                          <div className="w-7 h-7 shrink-0 flex items-center justify-center">
-                            {!isSubStep && (
-                              <Tooltip
-                                title={
-                                  isCurrentParentActive
-                                    ? "Đang mở thêm quy trình con (nhấn để đóng)"
-                                    : "Thêm quy trình con"
-                                }
+                          {!isMandatory ? (
+                            <div className="flex h-7 items-center justify-center gap-2">
+                              <Switch
+                                checked={isEnabled}
+                                onChange={(checked) => handleToggle(step.id, checked)}
+                                size="small"
+                                className={isEnabled ? "bg-[#DC2626]" : "bg-slate-300"}
+                              />
+                              <span
+                                className={`w-7 text-left text-xs font-medium select-none ${
+                                  isEnabled ? "text-slate-700" : "text-slate-400"
+                                }`}
                               >
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleParentRowClick(step.code);
-                                  }}
-                                  className={`flex h-7 w-7 items-center justify-center rounded-md border transition-all cursor-pointer shadow-2xs ${
-                                    isCurrentParentActive
-                                      ? "border-[#007A78] bg-[#007A78] text-white ring-2 ring-teal-200"
-                                      : "border-teal-300 bg-teal-50 text-[#007A78] hover:border-[#007A78] hover:bg-[#007A78] hover:text-white"
-                                  }`}
-                                  aria-label="Thêm quy trình con"
-                                >
-                                  <PlusOutlined className="text-xs font-bold" />
-                                </button>
-                              </Tooltip>
-                            )}
-                          </div>
-
-                          {/* 3. Nút xóa bước — hiện khi trong profile tự tạo HOẶC bước vừa thêm chưa lưu */}
-                          {(selectedProfileId.startsWith("custom_") || newlyAddedStepIds.has(step.id)) && (
-                            <div className="w-7 h-7 shrink-0 flex items-center justify-center">
-                              <Tooltip title={newlyAddedStepIds.has(step.id) ? "Xóa bước vừa thêm (chưa lưu)" : "Xóa bước này khỏi quy trình"}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemoveStep(step.id);
-                                  }}
-                                  className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer ${
-                                    newlyAddedStepIds.has(step.id)
-                                      ? "text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200"
-                                      : "text-slate-400 hover:text-rose-600 hover:bg-slate-100"
-                                  }`}
-                                >
-                                  <DeleteOutlined className="text-xs" />
-                                </button>
-                              </Tooltip>
+                                {isEnabled ? "Bật" : "Tắt"}
+                              </span>
                             </div>
+                          ) : (
+                            <Tooltip title="Bước bắt buộc (mặc định luôn áp dụng)">
+                              <span className="text-xs text-slate-300 select-none font-medium">—</span>
+                            </Tooltip>
+                          )}
+                        </div>
+
+                        {/* Thao tác: Thêm bước con (chỉ cha), Xóa bước */}
+                        <div
+                          className="w-24 shrink-0 flex items-center justify-center gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* 1. Nút thêm quy trình con (Chỉ bước cha mới có) */}
+                          {!isSubStep && (
+                            <Tooltip
+                              title={
+                                isCurrentParentActive
+                                  ? "Đang mở thêm quy trình con (nhấn để đóng)"
+                                  : "Thêm quy trình con"
+                              }
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleParentRowClick(step.code);
+                                }}
+                                className={`flex h-7 w-7 items-center justify-center rounded-md border transition-all cursor-pointer shadow-2xs ${
+                                  isCurrentParentActive
+                                    ? "border-[#DC2626] bg-[#DC2626] text-white ring-2 ring-red-200"
+                                    : "border-red-200 bg-red-50 text-[#DC2626] hover:border-[#DC2626] hover:bg-[#DC2626] hover:text-white"
+                                }`}
+                                aria-label="Thêm quy trình con"
+                              >
+                                <PlusOutlined className="text-xs font-bold" />
+                              </button>
+                            </Tooltip>
+                          )}
+
+                          {/* 2. Nút xóa bước — hiện khi trong profile tự tạo HOẶC bước vừa thêm chưa lưu */}
+                          {(selectedProfileId.startsWith("custom_") || newlyAddedStepIds.has(step.id)) && (
+                            <Tooltip title={newlyAddedStepIds.has(step.id) ? "Xóa bước vừa thêm (chưa lưu)" : "Xóa bước này khỏi quy trình"}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveStep(step.id);
+                                }}
+                                className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer ${
+                                  newlyAddedStepIds.has(step.id)
+                                    ? "text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200"
+                                    : "text-slate-400 hover:text-rose-600 hover:bg-slate-100"
+                                }`}
+                              >
+                                <DeleteOutlined className="text-xs" />
+                              </button>
+                            </Tooltip>
+                          )}
+
+                          {/* Nếu là bước con và không có nút xóa, hiển thị dấu gạch ngang mờ */}
+                          {isSubStep && !(selectedProfileId.startsWith("custom_") || newlyAddedStepIds.has(step.id)) && (
+                            <span className="text-xs text-slate-300 select-none font-medium">—</span>
                           )}
                         </div>
                       </div>
@@ -1256,7 +1484,7 @@ export default function StepConfigModal({
         zIndex={1350}
         title={
           <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-            <FolderAddOutlined className="text-[#007A78] text-base" />
+            <FolderAddOutlined className="text-[#DC2626] text-base" />
             <span>Tạo Quy trình Thủ tục Mới</span>
           </div>
         }
@@ -1266,7 +1494,7 @@ export default function StepConfigModal({
             intent="primary"
             scale="compact"
             icon={<CheckOutlined />}
-            className="bg-[#007A78] border-[#007A78] text-white"
+            className="bg-[#DC2626] border-[#DC2626] text-white"
             onClick={handleConfirmCreateProfile}
           >
             Tạo quy trình

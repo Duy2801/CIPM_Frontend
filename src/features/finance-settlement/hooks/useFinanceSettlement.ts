@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "@/components/ui";
 import { useAuth } from "@/features/auth";
 import type {
   CapitalPlanAdjustmentInput,
@@ -135,10 +136,12 @@ export function useFinanceSettlement() {
       setFeedback(null);
       await action();
       await refresh();
-      setFeedback({ type: "success", text: successText });
+      toast.success(successText);
       return true;
     } catch (error) {
-      setFeedback({ type: "error", text: error instanceof Error ? error.message : "Không thể hoàn tất thao tác." });
+      const errorMsg = error instanceof Error ? error.message : "Không thể hoàn tất thao tác.";
+      setFeedback({ type: "error", text: errorMsg });
+      toast.error(errorMsg);
       return false;
     }
   }, [refresh]);

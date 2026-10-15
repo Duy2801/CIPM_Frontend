@@ -125,7 +125,7 @@ export default function WarrantyDetailDrawer({
                 onClose();
                 onEdit(warranty);
               }}
-              className="!border-teal-200 !text-teal-700 hover:!border-teal-400 hover:!bg-teal-50"
+              className="!border-red-200 !text-[#DC2626] hover:!border-red-400 hover:!bg-red-50 font-medium"
             >
               Cập nhật hồ sơ
             </Button>
@@ -158,7 +158,7 @@ export default function WarrantyDetailDrawer({
           percent={countdown.elapsedPercent}
           showInfo={false}
           size="small"
-          strokeColor="#007A78"
+          strokeColor="#DC2626"
           aria-label="Thời gian bảo hành đã qua"
           className="mt-2.5"
         />
@@ -204,7 +204,7 @@ export default function WarrantyDetailDrawer({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <strong className="text-[#007A78] font-mono">{incident.code}</strong>
+                    <strong className="text-[#DC2626] font-mono">{incident.code}</strong>
                     <span className="text-slate-800 font-semibold truncate">{incident.description}</span>
                   </div>
                   <div className="text-slate-500 mt-0.5">

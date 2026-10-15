@@ -119,7 +119,7 @@ export default function ProjectProgressTab({
             Giám sát: <strong className="text-slate-800">{project.supervisorName}</strong>
           </div>
           <div>
-            Kế hoạch: <strong className="text-slate-800">{project.plannedProgress}%</strong>
+            Kế hoạch: <strong className="text-amber-700 font-semibold">{project.plannedProgress}%</strong>
           </div>
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function ProjectProgressTab({
                 setProgressErrorMsg("");
               }}
               disabled={!progressPerm.allowed}
-              className="font-mono font-bold text-[#007A78] text-sm"
+              className="font-mono font-bold text-[#DC2626] text-sm"
             />
           </Flex>
         </div>
@@ -205,14 +205,14 @@ export default function ProjectProgressTab({
             className={`border transition-colors ${
               !actualEndDate.trim()
                 ? "bg-amber-50/80 border-amber-300"
-                : "bg-emerald-50 border-emerald-200"
+                : "bg-slate-50 border-slate-200"
             }`}
           >
             <Flex vertical gap={6}>
               <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
-                <Flex align="center" gap={6} className={!actualEndDate.trim() ? "text-amber-900 font-semibold" : "text-emerald-800 font-semibold"}>
-                  <CheckCircleFilled className={!actualEndDate.trim() ? "text-amber-600" : "text-emerald-600"} />
-                  <Text strong className={`text-xs ${!actualEndDate.trim() ? "text-amber-900" : "text-emerald-800"}`}>
+                <Flex align="center" gap={6} className={!actualEndDate.trim() ? "text-amber-900 font-semibold" : "text-slate-800 font-semibold"}>
+                  <CheckCircleFilled className={!actualEndDate.trim() ? "text-amber-600" : "text-slate-600"} />
+                  <Text strong className={`text-xs ${!actualEndDate.trim() ? "text-amber-900" : "text-slate-800"}`}>
                     Dự án đạt 100% — Bắt buộc nhập ngày hoàn thành thực tế: <span className="text-rose-500 font-bold">*</span>
                   </Text>
                 </Flex>
@@ -225,7 +225,7 @@ export default function ProjectProgressTab({
                   }}
                   disabled={!progressPerm.allowed}
                   className={`w-full sm:w-[170px] text-xs font-mono font-semibold ${
-                    !actualEndDate.trim() ? "border-amber-400 bg-white" : "border-emerald-400"
+                    !actualEndDate.trim() ? "border-amber-400 bg-white" : "border-slate-300"
                   }`}
                 />
               </Flex>
@@ -278,7 +278,7 @@ export default function ProjectProgressTab({
                 <span className="font-mono">{hist.updatedAt}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-[#007A78] text-[11px]">
+                <span className="font-mono font-bold text-[#DC2626] text-[11px]">
                   {hist.oldProgress}% → {hist.newProgress}%
                 </span>
                 {hist.stageRecorded && (
@@ -294,7 +294,7 @@ export default function ProjectProgressTab({
               <div className="text-slate-600 line-clamp-2 mt-0.5">{hist.note}</div>
               {hist.actualEndDateRecorded && (
                 <div className="mt-1">
-                  <Tag intent="success" scale="sm">
+                  <Tag intent="brand" scale="sm">
                     Ngày xong: {hist.actualEndDateRecorded}
                   </Tag>
                 </div>
@@ -310,7 +310,7 @@ export default function ProjectProgressTab({
         <Button
           intent="primary"
           scale="sm"
-          className="bg-[#007A78] border-[#007A78] hover:bg-[#006361] text-white disabled:bg-slate-200 disabled:border-slate-200 disabled:text-slate-400"
+          className="bg-[#DC2626] border-[#DC2626] hover:bg-[#B91C1C] text-white disabled:bg-slate-200 disabled:border-slate-200 disabled:text-slate-400"
           disabled={!progressPerm.allowed}
           onClick={handleSaveProgressSubmit}
         >

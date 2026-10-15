@@ -41,9 +41,9 @@ export default function BiddingManagementScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {controller.feedback && !modalOpen && (
+      {controller.feedback?.type === "error" && !modalOpen && (
         <FeedbackBar
-          type={controller.feedback.type}
+          type="error"
           text={controller.feedback.text}
           onClose={controller.clearFeedback}
         />

@@ -134,7 +134,7 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
       status: true,
       statusCode: 200,
       data: authData,
-      message: `Dang nhap thanh cong voi vai tro ${mockAccount.roleName}`,
+      message: `Đăng nhập thành công với vai trò ${mockAccount.roleName}`,
     };
   }
 
@@ -167,7 +167,7 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
         status: true,
         statusCode: 200,
         data: authData,
-        message: `Dang nhap thu nghiem thanh cong: ${mockAccount.roleName}`,
+        message: `Đăng nhập thử nghiệm thành công: ${mockAccount.roleName}`,
       };
     }
 
@@ -187,7 +187,7 @@ export async function logout(): Promise<void> {
   clearAuthSession();
 
   if (typeof window !== "undefined") {
-    window.location.href = "/auth/login";
+    window.location.href = "/login";
   }
 }
 

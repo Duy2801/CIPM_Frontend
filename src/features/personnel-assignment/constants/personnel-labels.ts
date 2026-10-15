@@ -57,12 +57,12 @@ export const SYSTEM_ROLE_META: Record<string, { label: string; description: stri
 
 export const PROCEDURE_STAGE_GROUPS = [
   { value: "I", label: "Giai đoạn I", fullName: "Chuẩn bị Dự án & Chủ trương", color: "blue", tagColor: "#0284c7" },
-  { value: "II", label: "Giai đoạn II", fullName: "Nhiệm vụ & Khảo sát BCNCKT / BCKTKT", color: "cyan", tagColor: "#0891b2" },
-  { value: "III", label: "Giai đoạn III", fullName: "Đấu thầu Tư vấn Lập dự án", color: "purple", tagColor: "#7c3aed" },
-  { value: "IV", label: "Giai đoạn IV", fullName: "Lập & Thẩm tra Hồ sơ BCNCKT / BCKTKT", color: "geekblue", tagColor: "#2563eb" },
-  { value: "V", label: "Giai đoạn V", fullName: "Thẩm định & Phê duyệt Dự án", color: "orange", tagColor: "#ea580c" },
-  { value: "VI", label: "Giai đoạn VI", fullName: "Lựa chọn Nhà thầu & Thi công Xây lắp", color: "volcano", tagColor: "#d4380d" },
-  { value: "VII", label: "Giai đoạn VII", fullName: "Quyết toán & Bảo hành Công trình", color: "green", tagColor: "#16a34a" },
+  { value: "II", label: "Giai đoạn II", fullName: "Nhiệm vụ & Khảo sát BCNCKT / BCKTKT", color: "blue", tagColor: "#0284c7" },
+  { value: "III", label: "Giai đoạn III", fullName: "Đấu thầu Tư vấn Lập dự án", color: "blue", tagColor: "#0284c7" },
+  { value: "IV", label: "Giai đoạn IV", fullName: "Lập & Thẩm tra Hồ sơ BCNCKT / BCKTKT", color: "blue", tagColor: "#0284c7" },
+  { value: "V", label: "Giai đoạn V", fullName: "Thẩm định & Phê duyệt Dự án", color: "blue", tagColor: "#0284c7" },
+  { value: "VI", label: "Giai đoạn VI", fullName: "Lựa chọn Nhà thầu & Thi công Xây lắp", color: "blue", tagColor: "#0284c7" },
+  { value: "VII", label: "Giai đoạn VII", fullName: "Quyết toán & Bảo hành Công trình", color: "blue", tagColor: "#0284c7" },
 ] as const;
 
 export const PROJECT_STAGES = PROCEDURE_STAGE_GROUPS;
@@ -70,21 +70,21 @@ export const PROJECT_STAGES = PROCEDURE_STAGE_GROUPS;
 export const PROJECT_STAGE_META: Record<string, { label: string; fullName: string; tagColor: string; color: string }> = {
   // 7 nhóm thủ tục XDCB chuẩn (I - VII)
   I: { label: "Giai đoạn I", fullName: "Chuẩn bị Dự án & Chủ trương", tagColor: "#0284c7", color: "blue" },
-  II: { label: "Giai đoạn II", fullName: "Nhiệm vụ & Khảo sát BCNCKT / BCKTKT", tagColor: "#0891b2", color: "cyan" },
-  III: { label: "Giai đoạn III", fullName: "Đấu thầu Tư vấn Lập dự án", tagColor: "#7c3aed", color: "purple" },
-  IV: { label: "Giai đoạn IV", fullName: "Lập & Thẩm tra Hồ sơ BCNCKT / BCKTKT", tagColor: "#2563eb", color: "geekblue" },
-  V: { label: "Giai đoạn V", fullName: "Thẩm định & Phê duyệt Dự án", tagColor: "#ea580c", color: "orange" },
-  VI: { label: "Giai đoạn VI", fullName: "Lựa chọn Nhà thầu & Thi công Xây lắp", tagColor: "#d4380d", color: "volcano" },
-  VII: { label: "Giai đoạn VII", fullName: "Quyết toán & Bảo hành Công trình", tagColor: "#16a34a", color: "green" },
+  II: { label: "Giai đoạn II", fullName: "Nhiệm vụ & Khảo sát BCNCKT / BCKTKT", tagColor: "#0284c7", color: "blue" },
+  III: { label: "Giai đoạn III", fullName: "Đấu thầu Tư vấn Lập dự án", tagColor: "#0284c7", color: "blue" },
+  IV: { label: "Giai đoạn IV", fullName: "Lập & Thẩm tra Hồ sơ BCNCKT / BCKTKT", tagColor: "#0284c7", color: "blue" },
+  V: { label: "Giai đoạn V", fullName: "Thẩm định & Phê duyệt Dự án", tagColor: "#0284c7", color: "blue" },
+  VI: { label: "Giai đoạn VI", fullName: "Lựa chọn Nhà thầu & Thi công Xây lắp", tagColor: "#0284c7", color: "blue" },
+  VII: { label: "Giai đoạn VII", fullName: "Quyết toán & Bảo hành Công trình", tagColor: "#0284c7", color: "blue" },
 
   // Giữ lại các key cũ để tương thích với mock data
   PREPARATION: { label: "Giai đoạn I", fullName: "Chuẩn bị đầu tư / Lập dự án", tagColor: "#0284c7", color: "blue" },
-  DESIGN: { label: "Giai đoạn II", fullName: "Khảo sát & Thiết kế BVTC", tagColor: "#0891b2", color: "cyan" },
-  COMPENSATION: { label: "Bồi thường GPMB", fullName: "Bồi thường, hỗ trợ & TĐC", tagColor: "#ea580c", color: "orange" },
-  BIDDING: { label: "Giai đoạn III", fullName: "Lựa chọn nhà thầu (Đấu thầu)", tagColor: "#7c3aed", color: "purple" },
-  CONSTRUCTION: { label: "Giai đoạn VI", fullName: "Thi công xây lắp công trình", tagColor: "#2563eb", color: "geekblue" },
-  INSPECTION: { label: "Giai đoạn VI", fullName: "Nghiệm thu & Bàn giao", tagColor: "#d97706", color: "gold" },
-  SETTLEMENT: { label: "Giai đoạn VII", fullName: "Quyết toán vốn & Bảo hành", tagColor: "#16a34a", color: "green" },
+  DESIGN: { label: "Giai đoạn II", fullName: "Khảo sát & Thiết kế BVTC", tagColor: "#0284c7", color: "blue" },
+  COMPENSATION: { label: "Bồi thường GPMB", fullName: "Bồi thường, hỗ trợ & TĐC", tagColor: "#0284c7", color: "blue" },
+  BIDDING: { label: "Giai đoạn III", fullName: "Lựa chọn nhà thầu (Đấu thầu)", tagColor: "#0284c7", color: "blue" },
+  CONSTRUCTION: { label: "Giai đoạn VI", fullName: "Thi công xây lắp công trình", tagColor: "#0284c7", color: "blue" },
+  INSPECTION: { label: "Giai đoạn VI", fullName: "Nghiệm thu & Bàn giao", tagColor: "#0284c7", color: "blue" },
+  SETTLEMENT: { label: "Giai đoạn VII", fullName: "Quyết toán vốn & Bảo hành", tagColor: "#0284c7", color: "blue" },
 };
 
 export function normalizeStageGroup(stage?: string, stepCode?: string): string {
@@ -131,7 +131,7 @@ export const ASSIGNMENT_FILTER_LABELS: Record<AssignmentFilter, string> = {
 };
 
 export const PERSONNEL_TAB_LABELS: Record<PersonnelTabKey, string> = {
-  assignments: "Phân công dự án",
+  assignments: "Nhiệm vụ của tôi",
   "project-tasks": "Giao việc dự án (CNDA)",
   "team-tasks": "Giao việc tổ & Phê duyệt",
   "project-team": "Nhân sự dự án",

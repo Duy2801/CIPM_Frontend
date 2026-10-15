@@ -98,12 +98,12 @@ export default function StaffTasksDrawer({
       }
       title={
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B2546] to-[#174674] text-sm font-bold text-white shadow-xs">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-sm font-bold text-white shadow-xs">
             {getInitials(staff.name)}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-bold text-[#102A43] truncate">
+              <span className="text-base font-bold text-slate-900 truncate">
                 {staff.name}
               </span>
               <Tag intent="brand" scale="sm" className="m-0 font-medium">
@@ -126,7 +126,7 @@ export default function StaffTasksDrawer({
               onClick={() => setFilterMode("ACTIVE")}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                 filterMode === "ACTIVE"
-                  ? "bg-[#0B2546] text-white"
+                  ? "bg-[#DC2626] text-white"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -137,7 +137,7 @@ export default function StaffTasksDrawer({
               onClick={() => setFilterMode("DONE")}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                 filterMode === "DONE"
-                  ? "bg-[#0B2546] text-white"
+                  ? "bg-[#DC2626] text-white"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -148,7 +148,7 @@ export default function StaffTasksDrawer({
               onClick={() => setFilterMode("ALL")}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                 filterMode === "ALL"
-                  ? "bg-[#0B2546] text-white"
+                  ? "bg-[#DC2626] text-white"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -255,7 +255,7 @@ export default function StaffTasksDrawer({
                           onClick={async () => {
                             await controller.requestCompletion(task.id);
                           }}
-                          className="!h-6 !text-[11px] !bg-[#007A78] hover:!bg-[#006361] !text-white"
+                          className="!h-6 !text-[11px] !bg-[#DC2626] hover:!bg-[#B91C1C] !text-white"
                         >
                           Gửi duyệt nghiệm thu
                         </Button>

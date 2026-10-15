@@ -3,6 +3,8 @@
 import { Tooltip } from "@/components/ui";
 import type { WorkspaceStep } from "./workspace.types";
 
+export type StepTrackTone = "amber" | "blue" | "brand" | "emerald";
+
 interface StepTrackProps {
   steps: readonly WorkspaceStep[];
   completed: number[];
@@ -11,6 +13,8 @@ interface StepTrackProps {
   skipped?: number[];
   /** Bước hiện tại đang ở trạng thái xấu (quá hạn, bị trả lại) */
   currentTone?: "normal" | "danger";
+  /** Tông màu chủ đạo: 'amber' (mặc định - Vàng/Gold), 'brand' (Đỏ), 'blue' (Xanh dương), 'emerald' (Xanh lá) */
+  colorTone?: StepTrackTone;
   /** Chỉ hiện số thứ tự, tên bước nằm trong tooltip (dùng khi quy trình dài) */
   compact?: boolean;
   ariaLabel: string;
@@ -25,6 +29,7 @@ export default function StepTrack({
   current,
   skipped = [],
   currentTone = "normal",
+  colorTone = "amber",
   compact,
   ariaLabel,
   onStepClick,
@@ -39,18 +44,48 @@ export default function StepTrack({
         const done = completed.includes(step.number);
         const isSkipped = skipped.includes(step.number);
         const isCurrent = step.number === current;
-        const barClass = done
-          ? "bg-emerald-500"
-          : isCurrent
-            ? currentTone === "danger" ? "bg-rose-500" : "bg-teal-600"
-            : isSkipped
-              ? "bg-[repeating-linear-gradient(45deg,#e2e8f0_0_3px,transparent_3px_6px)]"
-              : "bg-slate-200";
-        const textClass = done
-          ? "text-emerald-700"
-          : isCurrent
-            ? currentTone === "danger" ? "font-semibold text-rose-700" : "font-semibold text-teal-800"
-            : "text-slate-400";
+
+        let barClass = "bg-slate-200";
+        let textClass = "text-slate-400";
+
+        if (done) {
+          if (colorTone === "brand") {
+            barClass = "bg-[#DC2626]";
+            textClass = "text-[#DC2626] font-medium";
+          } else if (colorTone === "emerald") {
+            barClass = "bg-emerald-500";
+            textClass = "text-emerald-700 font-medium";
+          } else if (colorTone === "blue") {
+            barClass = "bg-[#2563EB]";
+            textClass = "text-[#2563EB] font-medium";
+          } else {
+            // "amber" (mặc định) - Vàng / Gold hoàn thành
+            barClass = "bg-amber-500";
+            textClass = "text-amber-700 font-semibold";
+          }
+        } else if (isCurrent) {
+          if (currentTone === "danger") {
+            barClass = "bg-rose-500";
+            textClass = "font-bold text-rose-600";
+          } else if (colorTone === "brand") {
+            barClass = "bg-[#991B1B]";
+            textClass = "font-bold text-[#991B1B]";
+          } else if (colorTone === "emerald") {
+            barClass = "bg-emerald-600";
+            textClass = "font-bold text-emerald-800";
+          } else if (colorTone === "blue") {
+            barClass = "bg-[#0B2546]";
+            textClass = "font-bold text-[#0B2546]";
+          } else {
+            // "amber" - Bước đang thực hiện: màu vàng đậm nổi bật
+            barClass = "bg-amber-600";
+            textClass = "font-bold text-amber-900";
+          }
+        } else if (isSkipped) {
+          barClass = "bg-[repeating-linear-gradient(45deg,#e2e8f0_0_3px,transparent_3px_6px)]";
+          textClass = "text-slate-400 line-through";
+        }
+
         const stateText = done ? "đã xong" : isCurrent ? "đang thực hiện" : isSkipped ? "không áp dụng" : "chưa tới";
 
         return (

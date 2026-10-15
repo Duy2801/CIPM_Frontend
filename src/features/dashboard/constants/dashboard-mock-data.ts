@@ -167,6 +167,39 @@ export const mockUrgentTasks: UrgentTask[] = [
   },
 ];
 
+/**
+ * Chuyển chuỗi thời gian tương đối (VD: "14:15 hôm nay", "08:30 2 ngày trước")
+ * thành ngày cụ thể dạng dd/MM/yyyy + giờ HH:mm.
+ */
+export function resolveActivityTime(relativeTime: string): { date: string; timeOfDay: string } {
+  const now = new Date();
+  const parts = relativeTime.split(" ");
+  const timeOfDay = parts[0]; // "14:15"
+
+  let daysAgo = 0;
+  const rest = parts.slice(1).join(" ");
+
+  if (rest === "hôm nay") {
+    daysAgo = 0;
+  } else if (rest === "hôm qua") {
+    daysAgo = 1;
+  } else if (rest.includes("tuần trước")) {
+    const weeks = parseInt(rest, 10) || 1;
+    daysAgo = weeks * 7;
+  } else if (rest.includes("ngày trước")) {
+    daysAgo = parseInt(rest, 10) || 0;
+  }
+
+  const target = new Date(now);
+  target.setDate(target.getDate() - daysAgo);
+
+  const day = String(target.getDate()).padStart(2, "0");
+  const month = String(target.getMonth() + 1).padStart(2, "0");
+  const year = target.getFullYear();
+
+  return { date: `${day}/${month}/${year}`, timeOfDay };
+}
+
 const rawMockActivities: ActivityItem[] = [
   {
     id: "ACT-01",

@@ -284,7 +284,7 @@ export default function GrantActingDirectorModal({
                     <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-600">
                       <span>Khối lượng hiện tại: <strong>{getWorkload(mainExecutor.id, data.assignments)} nhiệm vụ</strong></span>
                       <span>·</span>
-                      <span className="text-emerald-700 font-medium">Tài khoản đang hoạt động</span>
+                      <span className="text-red-700 font-medium">Tài khoản đang hoạt động</span>
                     </div>
                   </div>
                 </div>

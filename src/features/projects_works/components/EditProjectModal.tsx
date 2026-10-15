@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { SaveOutlined } from "@ant-design/icons";
-import { Button, Flex, Input, Modal, Select, Text } from "@/components/ui";
+import { Button, Flex, Input, MoneyInput, Modal, Select, Text } from "@/components/ui";
+import { parseMoney } from "@/utils/format-money";
 import {
   FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
@@ -134,14 +135,6 @@ export default function EditProjectModal({
       setErrorMsg("Vui lòng chọn loại công trình (*).");
       return;
     }
-    if (!formData.fundingSource) {
-      setErrorMsg("Vui lòng chọn nguồn vốn (*).");
-      return;
-    }
-    if (formData.totalInvestment === "" || Number(formData.totalInvestment) <= 0) {
-      setErrorMsg("Vui lòng nhập tổng mức đầu tư lớn hơn 0 (*).");
-      return;
-    }
     if (!formData.managerName) {
       setErrorMsg("Vui lòng chọn người phụ trách chính (*).");
       return;
@@ -165,7 +158,7 @@ export default function EditProjectModal({
       location: project.location,
       scale: project.scale,
       fundingSource: (formData.fundingSource as FundingSourceType) || project.fundingSource,
-      totalInvestment: Number(formData.totalInvestment),
+      totalInvestment: formData.totalInvestment === "" ? (project.totalInvestment ?? 0) : Number(formData.totalInvestment),
       plan2026: formData.plan2026 === "" ? 0 : Number(formData.plan2026),
       managerName: formData.managerName,
       supervisorName: project.supervisorName,
@@ -200,7 +193,7 @@ export default function EditProjectModal({
           key="save"
           intent="primary"
           scale="sm"
-          className="bg-[#007A78] hover:bg-[#006563] text-white"
+          className="bg-[#DC2626] hover:bg-[#006563] text-white"
           onClick={handleSubmit}
         >
           <SaveOutlined className="mr-1" />
@@ -228,27 +221,28 @@ export default function EditProjectModal({
           />
         </Flex>
 
-        {/* LOẠI CÔNG TRÌNH & NGUỒN VỐN */}
+        {/* LOẠI CÔNG TRÌNH */}
+        <Flex vertical gap={4}>
+          <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
+            LOẠI CÔNG TRÌNH <span className="text-rose-500">*</span>
+          </Text>
+          <Select
+            placeholder="— Chọn loại công trình —"
+            value={formData.type || undefined}
+            onChange={(val) => {
+              setFormData({ ...formData, type: val as ProjectWorkType });
+              setErrorMsg("");
+            }}
+            className="w-full text-xs"
+            options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
+          />
+        </Flex>
+
+        {/* NGUỒN VỐN & TỔNG MỨC ĐẦU TƯ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Flex vertical gap={4}>
             <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              LOẠI CÔNG TRÌNH <span className="text-rose-500">*</span>
-            </Text>
-            <Select
-              placeholder="— Chọn loại công trình —"
-              value={formData.type || undefined}
-              onChange={(val) => {
-                setFormData({ ...formData, type: val as ProjectWorkType });
-                setErrorMsg("");
-              }}
-              className="w-full text-xs"
-              options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
-            />
-          </Flex>
-
-          <Flex vertical gap={4}>
-            <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              NGUỒN VỐN <span className="text-rose-500">*</span>
+              NGUỒN VỐN
             </Text>
             <Select
               placeholder="— Chọn nguồn vốn —"
@@ -261,70 +255,51 @@ export default function EditProjectModal({
               options={fundingSourceOptions}
             />
           </Flex>
-        </div>
 
-        {/* TỔNG MỨC ĐẦU TƯ & KẾ HOẠCH VỐN 2026 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Flex vertical gap={4}>
             <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              TỔNG MỨC ĐẦU TƯ (TỶ ĐỒNG) <span className="text-rose-500">*</span>
+              TỔNG MỨC ĐẦU TƯ (TỶ VNĐ)
             </Text>
             <Input
               type="number"
-              min={0}
-              step={0.01}
-              placeholder="VD: 8.4"
-              value={formData.totalInvestment}
+              step="0.01"
+              min="0"
+              placeholder="VD: 100"
+              value={formData.totalInvestment === "" ? "" : formData.totalInvestment}
               onChange={(e) => {
-                setFormData({
-                  ...formData,
-                  totalInvestment: e.target.value === "" ? "" : Number(e.target.value),
-                });
+                const val = e.target.value === "" ? "" : Number(e.target.value);
+                setFormData({ ...formData, totalInvestment: val });
                 setErrorMsg("");
               }}
-              className="font-mono text-xs"
-            />
-          </Flex>
-
-          <Flex vertical gap={4}>
-            <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              KẾ HOẠCH VỐN {currentFiscalYear} (TỶ ĐỒNG)
-            </Text>
-            <Input
-              type="number"
-              min={0}
-              step={0.01}
-              placeholder="VD: 5.0"
-              value={formData.plan2026}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  plan2026: e.target.value === "" ? "" : Number(e.target.value),
-                })
-              }
-              className="font-mono text-xs"
+              className="text-xs font-mono"
             />
           </Flex>
         </div>
 
-        {/* NGƯỜI PHỤ TRÁCH CHÍNH & NGÀY BẮT ĐẦU */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Flex vertical gap={4}>
+        {/* CHỦ NHIỆM DỰ ÁN (1 HÀNG RIÊNG BIỆT) */}
+        <Flex vertical gap={4} className="w-full">
+          <div className="flex items-center justify-between">
             <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-              NGƯỜI PHỤ TRÁCH CHÍNH <span className="text-rose-500">*</span>
+              CHỦ NHIỆM DỰ ÁN <span className="text-rose-500">*</span>
             </Text>
-            <Select
-              placeholder="— Chọn người phụ trách —"
-              value={formData.managerName || undefined}
-              onChange={(val) => {
-                setFormData({ ...formData, managerName: val });
-                setErrorMsg("");
-              }}
-              className="w-full text-xs"
-              options={personnelOptions}
-            />
-          </Flex>
+            <span className="text-[10px] text-[#DC2626] bg-red-50 px-2 py-0.5 rounded border border-red-200 font-medium">
+              Mặc định Giám đốc BQL
+            </span>
+          </div>
+          <Select
+            placeholder="— Chọn chủ nhiệm dự án —"
+            value={formData.managerName || undefined}
+            onChange={(val) => {
+              setFormData({ ...formData, managerName: val });
+              setErrorMsg("");
+            }}
+            className="w-full text-xs"
+            options={personnelOptions}
+          />
+        </Flex>
 
+        {/* THỜI GIAN TRIỂN KHAI (NGÀY BẮT ĐẦU & NGÀY KẾT THÚC KẾ HOẠCH) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Flex vertical gap={4}>
             <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
               NGÀY BẮT ĐẦU <span className="text-rose-500">*</span>
@@ -339,10 +314,7 @@ export default function EditProjectModal({
               className="font-mono text-xs"
             />
           </Flex>
-        </div>
 
-        {/* NGÀY KẾT THÚC KẾ HOẠCH */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Flex vertical gap={4}>
             <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
               NGÀY KẾT THÚC KẾ HOẠCH <span className="text-rose-500">*</span>
@@ -357,7 +329,6 @@ export default function EditProjectModal({
               className="font-mono text-xs"
             />
           </Flex>
-          <div className="hidden sm:block" />
         </div>
 
         {/* TIẾN ĐỘ & TRẠNG THÁI */}
@@ -454,19 +425,7 @@ export default function EditProjectModal({
           </div>
         </div>
 
-        {/* GHI CHÚ */}
-        <Flex vertical gap={4} className="pt-1">
-          <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
-            GHI CHÚ
-          </Text>
-          <textarea
-            rows={3}
-            placeholder="Mô tả chi tiết, lưu ý đặc biệt..."
-            value={formData.note}
-            onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-            className="w-full p-2.5 rounded-lg border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#007A78] focus:ring-1 focus:ring-[#007A78] transition-all resize-y"
-          />
-        </Flex>
+
 
         {/* Thông báo lỗi validation */}
         {errorMsg && (

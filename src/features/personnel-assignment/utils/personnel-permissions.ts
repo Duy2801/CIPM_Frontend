@@ -30,8 +30,8 @@ const ROLE_PROFILES: Record<string, PersonnelRoleProfile> = {
     canUrgeMembers: true,
     canManageAccounts: true,
     canManageOrganization: true,
-    defaultTab: "assignments",
-    scopeDescription: "Phân công dự án (chỉ định Chủ nhiệm dự án & Giám sát chính), cấp quyền chủ dự án, quản lý cơ cấu tổ chức và tài khoản hệ thống.",
+    defaultTab: "organization",
+    scopeDescription: "Quản lý cơ cấu tổ chức, phân công nhân sự và tài khoản hệ thống.",
     allowedDuties: [
       "Phân công Người thực hiện chính (Chủ nhiệm dự án) & Người giám sát chính cho toàn bộ dự án",
       "Cấp và thu hồi vai trò Quyền Chủ nhiệm dự án (chỉ cấp cho Người thực hiện chính)",
@@ -56,8 +56,8 @@ const ROLE_PROFILES: Record<string, PersonnelRoleProfile> = {
     canUrgeMembers: true,
     canManageAccounts: false,
     canManageOrganization: true,
-    defaultTab: "assignments",
-    scopeDescription: "Phân công dự án (chỉ định Chủ nhiệm dự án & Giám sát chính) và cấp/thu hồi vai trò Quyền CNDA trong các dự án phụ trách.",
+    defaultTab: "organization",
+    scopeDescription: "Quản lý cơ cấu tổ chức và các dự án phụ trách.",
     allowedDuties: [
       "Phân công Người thực hiện chính (Chủ nhiệm dự án) & Người giám sát chính cho dự án phụ trách",
       "Cấp và thu hồi vai trò Quyền Chủ nhiệm dự án (chỉ cấp cho Người thực hiện chính)",
@@ -81,7 +81,7 @@ const ROLE_PROFILES: Record<string, PersonnelRoleProfile> = {
     canUrgeMembers: true,
     canManageAccounts: false,
     canManageOrganization: false,
-    defaultTab: "project-tasks",
+    defaultTab: "project-team",
     scopeDescription: "Được Ban Giám đốc ủy quyền chủ dự án: Toàn quyền phân công nhiệm vụ nhân viên, quản lý thành viên tổ công tác và đôn đốc tiến độ dự án phụ trách.",
     allowedDuties: [
       "Phân công nhiệm vụ nhân viên theo các giai đoạn thực hiện dự án phụ trách",
@@ -249,7 +249,7 @@ export function getPersonnelRolePermissions(
       canManageOrganization: false,
       isProjectLeader: false,
       memberProjectIds,
-      defaultTab: "team-tasks",
+      defaultTab: "project-team",
       scopeDescription: `Tổ trưởng ${leadingTeam?.name}: Nhận giai đoạn từ Chủ nhiệm dự án, giao việc chi tiết cho cán bộ thành viên trong tổ và duyệt nghiệm thu kết quả.`,
       allowedDuties: [
         `Nhận giai đoạn và bước quy trình do Chủ nhiệm dự án giao cho ${leadingTeam?.name}`,
@@ -278,7 +278,7 @@ export function getPersonnelRolePermissions(
     canManageOrganization: false,
     isProjectLeader: false,
     memberProjectIds,
-    defaultTab: "assignments",
+    defaultTab: "project-team",
     scopeDescription: "Theo dõi nhiệm vụ được giao theo giai đoạn, phối hợp cùng tổ công tác và gửi xác nhận hoàn thành công việc kèm hồ sơ.",
     allowedDuties: [
       "Xem nhiệm vụ được phân công và giai đoạn thực hiện của bản thân",

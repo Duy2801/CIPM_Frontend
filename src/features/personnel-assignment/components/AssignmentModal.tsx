@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -657,7 +657,7 @@ export default function AssignmentModal({
         <dl className="m-0 mb-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div>
             <dt className="text-xs font-medium text-slate-500">Chủ nhiệm dự án (Chính)</dt>
-            <dd className="m-0 mt-0.5 text-[13px] font-semibold text-teal-800">
+            <dd className="m-0 mt-0.5 text-[13px] font-semibold text-emerald-800">
               {data.staff.find((s) => s.id === currentProject.mainExecutorId)?.name ?? "Chưa phân công"}
             </dd>
           </div>
@@ -682,12 +682,12 @@ export default function AssignmentModal({
           </p>
         </div>
       ) : (
-        <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50/70 p-3.5 text-xs text-teal-950 leading-relaxed">
-          <div className="flex items-center gap-1.5 font-bold text-teal-900">
-            <TeamOutlined className="text-[#007A78]" />
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-red-950 leading-relaxed">
+          <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+            <TeamOutlined className="text-[#DC2626]" />
             <span>Tổ trưởng phân công nhiệm vụ cho Thành viên</span>
           </div>
-          <p className="mt-1 text-teal-900/90 m-0">
+          <p className="mt-1 text-emerald-900/90 m-0">
             Tổ trưởng phân công các nhiệm vụ chi tiết theo từng bước quy trình cho <strong>Cán bộ thành viên trong tổ</strong> của mình. Tổ trưởng sẽ trực tiếp theo dõi, đôn đốc và <strong>duyệt chấp nhận / từ chối hồ sơ</strong> khi thành viên hoàn thành.
           </p>
         </div>
@@ -932,7 +932,7 @@ export default function AssignmentModal({
             </Form.Item>
           </div>
         ) : (
-          <div className="rounded-xl border border-teal-200 bg-teal-50/40 p-4 mb-4">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 mb-4">
             {/* Nếu là Admin/CNDA giao việc thành viên mà chưa xác định được tổ: cho phép lọc theo phòng ban */}
             {!targetMemberTeamId && (!isTeamLeader || !leadingTeamId) && (
               <div className="mb-3">
@@ -960,7 +960,7 @@ export default function AssignmentModal({
               name="assigneeId"
               label={
                 <span className="flex items-center gap-1.5 font-bold text-slate-900">
-                  <UserOutlined className="text-[#007A78]" />
+                  <UserOutlined className="text-[#DC2626]" />
                   <span>
                     {targetMemberTeam
                       ? `Cán bộ thành viên phụ trách (${targetMemberTeam.name})`

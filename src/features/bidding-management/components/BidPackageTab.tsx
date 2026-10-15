@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   DownloadOutlined,
-  ExclamationCircleOutlined,
   PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
@@ -80,14 +79,6 @@ export default function BidPackageTab({
   const [currentPage, setCurrentPage] = useState(1);
   const { packages, today, permissions, data } = controller;
 
-  const counts = useMemo(() => {
-    const result = {} as Record<PackageFilter, number>;
-    FILTER_ORDER.forEach((key) => {
-      result[key] = packages.filter((pkg) => matchesPackageFilter(pkg, key, today)).length;
-    });
-    return result;
-  }, [packages, today]);
-
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return packages
@@ -119,12 +110,12 @@ export default function BidPackageTab({
           <button
             type="button"
             onClick={() => onOpenDetail(row)}
-            className="text-sm font-bold text-[#102A43] hover:text-[#007A78] hover:underline text-left cursor-pointer leading-snug"
+            className="text-sm font-bold text-[#102A43] hover:text-[#DC2626] hover:underline text-left cursor-pointer leading-snug"
           >
             {row.name}
           </button>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-            <span className="font-bold text-[#007A78]">{row.code}</span>
+            <span className="font-semibold text-slate-700 font-mono">{row.code}</span>
             <span>·</span>
             <span>{row.method}</span>
           </div>
@@ -169,14 +160,6 @@ export default function BidPackageTab({
               compact
               ariaLabel={`Tiến độ gói thầu ${row.code}`}
             />
-            {row.rejection && !row.submission && (
-              <div className="mt-1 flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-xs text-rose-700">
-                <ExclamationCircleOutlined className="shrink-0 text-[11px]" />
-                <span className="truncate" title={row.rejection.reason}>
-                  Bị trả lại: {row.rejection.reason}
-                </span>
-              </div>
-            )}
           </div>
         );
       },
@@ -243,7 +226,7 @@ export default function BidPackageTab({
                 scale="sm"
                 icon={<PlusOutlined />}
                 onClick={onCreatePackage}
-                className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white text-xs font-semibold rounded-lg shadow-sm h-8 px-3.5"
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold rounded-lg shadow-sm h-8 px-3.5"
               >
                 Tạo gói thầu
               </Button>
@@ -277,7 +260,7 @@ export default function BidPackageTab({
                 className="w-48 sm:w-52 h-8 text-xs [&_.ant-select-selector]:!rounded-lg"
                 options={FILTER_ORDER.map((key) => ({
                   value: key,
-                  label: `${PACKAGE_FILTER_SELECT_LABELS[key]} (${counts[key]})`,
+                  label: PACKAGE_FILTER_SELECT_LABELS[key],
                 }))}
                 onChange={(val) => {
                   onFilterChange(val as PackageFilter);
@@ -332,7 +315,7 @@ export default function BidPackageTab({
           if (row.submission && permissions.canApprove) return `${base} [&>td]:!bg-violet-50/50`;
           return base;
         }}
-        className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-3 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-3 [&_.ant-table-tbody>tr:hover>td]:!bg-teal-50/30"
+        className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-3 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-3 [&_.ant-table-tbody>tr:hover>td]:!bg-slate-50/80"
         locale={{
           emptyText: (
             <div className="py-10 text-center text-slate-500">

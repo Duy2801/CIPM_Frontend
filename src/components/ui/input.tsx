@@ -17,11 +17,11 @@ export const inputVariants = cva("transition-all duration-200", {
     intent: {
       default: "",
       /** Clean white input with subtle border */
-      clean: "!bg-white !border-slate-300 hover:!border-blue-600 focus:!border-blue-600 shadow-none",
+      clean: "!bg-white !border-slate-300 hover:!border-red-600 focus:!border-red-600 shadow-none",
       /** Search bar trong topbar — subtle background */
       search: themeClassNames.primitive.inputSearch,
       /** Dark surface input */
-      dark: "!bg-[#0A1628]/90 !border-white/15 !text-white hover:!border-[#00C9A7] focus:!border-[#00C9A7]",
+      dark: "!bg-[#0A1628]/90 !border-white/15 !text-white hover:!border-[#DC2626] focus:!border-[#DC2626]",
     },
     scale: {
       default: "",

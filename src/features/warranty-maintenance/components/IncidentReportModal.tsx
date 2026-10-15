@@ -83,7 +83,7 @@ export default function IncidentReportModal({
             intent="primary"
             onClick={() => form.submit()}
             loading={submitting}
-            className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white"
+            className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white"
           >
             Ghi nhận và gửi nhà thầu
           </Button>
@@ -192,7 +192,7 @@ export default function IncidentReportModal({
             <input
               type="file"
               accept=".pdf,.png,.jpg,.jpeg"
-              className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-teal-50 file:px-3 file:py-1 file:text-[13px] file:font-medium file:text-teal-700 hover:border-teal-400"
+              className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-[13px] file:font-medium file:text-slate-700 hover:border-slate-400"
             />
           </Form.Item>
         </section>

@@ -85,7 +85,7 @@ apiClient.interceptors.response.use(
               Cookies.remove('refresh_token');
               Cookies.remove('user_info');
               if (window.location.pathname !== '/auth/login' && window.location.pathname !== '/login') {
-                window.location.href = '/auth/login';
+                window.location.href = '/login';
               }
             }
             return Promise.reject(error);
@@ -130,7 +130,7 @@ apiClient.interceptors.response.use(
             Cookies.remove('refresh_token');
             Cookies.remove('user_info');
             if (window.location.pathname !== '/auth/login' && window.location.pathname !== '/login') {
-              window.location.href = '/auth/login';
+              window.location.href = '/login';
             }
             return Promise.reject(refreshError);
           } finally {

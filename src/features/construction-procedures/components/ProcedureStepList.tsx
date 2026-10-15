@@ -3,16 +3,23 @@
 import { useMemo, useState } from "react";
 import {
   CheckCircleFilled,
+  CheckOutlined,
   ClockCircleFilled,
+  CloseOutlined,
+  FolderAddOutlined,
+  PlusOutlined,
   RightOutlined,
+  SafetyCertificateOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
-import { Card, Tag, Text } from "@/components/ui";
+import { Button, Card, Input, Modal, Tag, Text, toast } from "@/components/ui";
 import { getStepAlertLevel } from "../utils/procedure-rules";
 import ProcedureStepCard from "./ProcedureStepCard";
 import type {
   ProcedureFilterStatus,
   ProcedureStep,
   ProcedureViewMode,
+  StageApprovalStatus,
 } from "../types/procedure.types";
 
 interface ProcedureStepListProps {
@@ -22,11 +29,27 @@ interface ProcedureStepListProps {
   viewMode: ProcedureViewMode;
   onStartStep: (stepId: string) => void;
   onOpenCompleteModal: (step: ProcedureStep) => void;
+  onConfirmCompleteStep?: (stepId: string) => void;
   onOpenSkipModal: (step: ProcedureStep) => void;
   onOpenDocsModal: (step: ProcedureStep) => void;
   onOpenDetailStep?: (step: ProcedureStep) => void;
   highlightedStepId?: string | null;
   canUpdateProcedure?: boolean;
+  canConfigureProcedure?: boolean;
+  onOpenStepConfig?: () => void;
+  onOpenAddDeptProcedure?: () => void;
+  isLeadOfDept?: boolean;
+  userDepartment?: string;
+  isDirector?: boolean;
+  isDeptCompletedByLead?: boolean;
+  onAssignMember?: (stepId: string, memberName: string) => void;
+  onApproveStep?: (stepId: string) => void;
+  onRejectStep?: (stepId: string, reason: string) => void;
+  onLeadApproveStage?: (stageCode: string, stageTitle: string) => void;
+  onLeadRejectStage?: (stageCode: string, stageTitle: string, reason: string) => void;
+  onDirectorApproveStage?: (stageCode: string, stageTitle: string) => void;
+  onDirectorRejectStage?: (stageCode: string, stageTitle: string) => void;
+  stageApprovals?: Record<string, StageApprovalStatus>;
 }
 
 export default function ProcedureStepList({
@@ -36,11 +59,27 @@ export default function ProcedureStepList({
   viewMode,
   onStartStep,
   onOpenCompleteModal,
+  onConfirmCompleteStep,
   onOpenSkipModal,
   onOpenDocsModal,
   onOpenDetailStep,
   highlightedStepId,
   canUpdateProcedure = true,
+  canConfigureProcedure = false,
+  onOpenStepConfig,
+  onOpenAddDeptProcedure,
+  isLeadOfDept = false,
+  userDepartment,
+  isDirector = false,
+  isDeptCompletedByLead = false,
+  onAssignMember,
+  onApproveStep,
+  onRejectStep,
+  onLeadApproveStage,
+  onLeadRejectStage,
+  onDirectorApproveStage,
+  onDirectorRejectStage,
+  stageApprovals,
 }: ProcedureStepListProps) {
   // Lọc theo search và status
   const filteredSteps = useMemo(() => {
@@ -70,20 +109,23 @@ export default function ProcedureStepList({
     });
   }, [steps, searchTerm, statusFilter]);
 
-  // Cấu trúc phân cấp 7 Nhóm lớn (I đến VII)
-  const groupCodes = ["I", "II", "III", "IV", "V", "VI", "VII"];
+  // Cấu trúc phân cấp động theo các nhóm/phòng ban
+  const dynamicGroupCodes = useMemo(() => {
+    return Array.from(new Set(steps.map((s) => s.groupCode || "CHUNG")));
+  }, [steps]);
+
   const groupedSteps = useMemo(() => {
-    return groupCodes
+    return dynamicGroupCodes
       .map((code) => {
-        const groupSteps = filteredSteps.filter((s) => s.groupCode === code);
+        const groupSteps = filteredSteps.filter((s) => (s.groupCode || "CHUNG") === code);
         const title =
           groupSteps[0]?.groupTitle ||
-          steps.find((s) => s.groupCode === code)?.groupTitle ||
-          `Nhóm ${code}`;
+          steps.find((s) => (s.groupCode || "CHUNG") === code)?.groupTitle ||
+          `Giai đoạn ${code}`;
         return { code, title, steps: groupSteps };
       })
       .filter((g) => g.steps.length > 0);
-  }, [filteredSteps, steps]);
+  }, [filteredSteps, steps, dynamicGroupCodes]);
 
   // Nhóm đang được chọn xem (mặc định mở nhóm đang thực hiện, hoặc nhóm đầu tiên)
   const [activeGroupCode, setActiveGroupCode] = useState<string>(() => {
@@ -93,20 +135,76 @@ export default function ProcedureStepList({
       (s) => s.isEnabled && s.status !== "COMPLETED" && s.status !== "SKIPPED"
     );
     if (notCompleted) return notCompleted.groupCode;
-    return "I";
+    return steps[0]?.groupCode || "I";
   });
 
   const [showAllStages, setShowAllStages] = useState<boolean>(false);
 
+
   // Khi tìm kiếm có từ khóa, tự động mở toàn bộ kết quả
   const isSearching = searchTerm.trim().length > 0 || statusFilter !== "ALL";
+
+  // Trường hợp dự án chưa được thiết lập quy trình (bước thực hiện = 0)
+  if (steps.length === 0) {
+    return (
+      <Card
+        surface="workspace"
+        padding="comfortable"
+        rounded="lg"
+        className="border border-dashed border-slate-300 bg-white py-14 px-6 text-center shadow-xs"
+      >
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-[#DC2626] shadow-sm mb-4">
+          <FolderAddOutlined className="text-3xl" />
+        </div>
+        <h3 className="text-base font-bold text-slate-800 mb-1.5">
+          Dự án chưa có quy trình thủ tục nào
+        </h3>
+        <p className="text-xs text-slate-500 max-w-lg mx-auto mb-6 leading-relaxed">
+          {isLeadOfDept
+            ? `Quy trình thủ tục của dự án sẽ do Tổ trưởng thiết lập. Bạn có thể nhấn nút bên dưới để thêm quy trình chuyên môn của ${userDepartment || "phòng ban mình"} vào dự án.`
+            : isDirector
+            ? "Quy trình thủ tục sẽ do các Tổ trưởng phòng ban được phân công vào dự án chủ động thiết lập. Ban Giám đốc có thể sử dụng bộ lọc phòng ban ở trên để xem quy trình ngay khi các Tổ trưởng hoàn tất việc thêm."
+            : "Quy trình thủ tục của dự án sẽ do các Tổ trưởng/Trưởng phòng ban được phân công chủ động thiết lập và phân công nhiệm vụ cho từng cán bộ."}
+        </p>
+        {isLeadOfDept && onOpenAddDeptProcedure && (
+          <div className="flex items-center justify-center gap-3">
+            <Button
+              intent="primary"
+              scale="compact"
+              icon={<PlusOutlined />}
+              onClick={onOpenAddDeptProcedure}
+              className="!bg-[#DC2626] !border-[#DC2626] text-white font-semibold h-9 px-5 shadow-2xs hover:!bg-[#B91C1C]"
+            >
+              Thêm quy trình
+            </Button>
+          </div>
+        )}
+      </Card>
+    );
+  }
 
   if (filteredSteps.length === 0) {
     return (
       <Card surface="workspace" padding="comfortable" rounded="lg" className="border text-center py-12">
-        <Text className="text-sm text-slate-500">
-          Không tìm thấy bước thủ tục nào phù hợp với điều kiện tìm kiếm.
+        <Text className="text-sm font-semibold text-slate-700 block mb-1">
+          Phòng ban này chưa có bước quy trình thủ tục nào được thêm vào dự án.
         </Text>
+        <Text className="text-xs text-slate-400 block mb-4">
+          Tổ trưởng phòng ban sẽ chủ động thiết lập quy trình chuyên môn khi triển khai dự án.
+        </Text>
+        {(isLeadOfDept || canConfigureProcedure) && onOpenAddDeptProcedure && (
+          <div className="flex justify-center">
+            <Button
+              intent="primary"
+              scale="compact"
+              icon={<PlusOutlined />}
+              onClick={onOpenAddDeptProcedure}
+              className="!bg-[#DC2626] !border-[#DC2626] text-white font-semibold h-9 px-5 shadow-2xs hover:!bg-[#B91C1C]"
+            >
+              Thêm quy trình cho phòng ban này
+            </Button>
+          </div>
+        )}
       </Card>
     );
   }
@@ -124,7 +222,7 @@ export default function ProcedureStepList({
             <button
               type="button"
               onClick={() => setShowAllStages(false)}
-              className="text-xs text-[#007A78] hover:underline font-medium cursor-pointer"
+              className="text-xs text-[#DC2626] hover:underline font-medium cursor-pointer"
             >
               Chuyển sang chế độ chọn từng giai đoạn
             </button>
@@ -142,18 +240,19 @@ export default function ProcedureStepList({
           const isGroupCompleted =
             totalActiveInGroup > 0 &&
             completedInGroup + skippedInGroup === totalActiveInGroup;
+          const stageApproval = stageApprovals?.[group.code] || stageApprovals?.[group.title];
 
           return (
             <div
               key={group.code}
-              className={`rounded-xl border p-3.5 flex flex-col gap-3 transition-all ${isGroupCompleted ? "border-emerald-200/90 bg-emerald-50/15" : "border-slate-200 bg-white"
-                }`}
+              className={`rounded-xl border p-3.5 flex flex-col gap-3 transition-all ${
+                isGroupCompleted ? "border-red-200/90 bg-red-50/20" : "border-slate-200 bg-white"
+              }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <span
-                    className={`flex h-6 min-w-6 items-center justify-center rounded text-xs font-bold font-mono text-white ${isGroupCompleted ? "bg-emerald-600" : "bg-[#007A78]"
-                      }`}
+                    className="flex h-6 min-w-6 items-center justify-center rounded text-xs font-bold font-mono text-white bg-[#DC2626]"
                   >
                     {group.code}
                   </span>
@@ -162,10 +261,60 @@ export default function ProcedureStepList({
                   </span>
                 </div>
                 {isGroupCompleted ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                    <CheckCircleFilled className="text-xs text-emerald-600" />
-                    Đã hoàn thành ({completedInGroup + skippedInGroup}/{totalActiveInGroup} bước)
-                  </span>
+                  stageApproval?.status === "APPROVED" ? (
+                    <Tag
+                      className="!border-red-200 !bg-red-50 !text-[#DC2626] font-semibold text-xs"
+                      icon={<SafetyCertificateOutlined className="text-[#DC2626]" />}
+                    >
+                      Ban Giám đốc đã nghiệm thu
+                    </Tag>
+                  ) : stageApproval?.status === "REJECTED" ? (
+                    <div className="flex items-center gap-2">
+                      <Tag
+                        className="!border-rose-300 !bg-rose-50 !text-rose-700 font-semibold text-xs"
+                        icon={<CloseOutlined className="text-rose-600" />}
+                      >
+                        BGĐ yêu cầu rà soát lại
+                      </Tag>
+                      {isDirector && (
+                        <Button
+                          intent="primary"
+                          scale="compact"
+                          icon={<CheckOutlined />}
+                          className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-7 px-2.5"
+                          onClick={() => onDirectorApproveStage?.(group.code, group.title)}
+                        >
+                          Duyệt lại
+                        </Button>
+                      )}
+                    </div>
+                  ) : isDirector ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        intent="primary"
+                        scale="compact"
+                        icon={<CheckOutlined />}
+                        className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-7 px-2.5"
+                        onClick={() => onDirectorApproveStage?.(group.code, group.title)}
+                      >
+                        Duyệt giai đoạn
+                      </Button>
+                      <Button
+                        intent="outline"
+                        scale="compact"
+                        icon={<CloseOutlined />}
+                        className="!border-rose-300 !text-rose-700 hover:!bg-rose-50 text-xs font-semibold h-7 px-2"
+                        onClick={() => onDirectorRejectStage?.(group.code, group.title)}
+                      >
+                        Từ chối
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200">
+                      <CheckCircleFilled className="text-xs text-[#DC2626]" />
+                      Đã hoàn thành ({completedInGroup + skippedInGroup}/{totalActiveInGroup} bước)
+                    </span>
+                  )
                 ) : (
                   <span className="text-xs text-slate-600 font-medium">
                     Tiến độ: {completedInGroup + skippedInGroup}/{totalActiveInGroup} bước
@@ -186,6 +335,9 @@ export default function ProcedureStepList({
                       onOpenDetail={onOpenDetailStep}
                       highlight={highlightedStepId === step.id}
                       canUpdateProcedure={canUpdateProcedure}
+                      onAssignMember={onAssignMember}
+                      onApproveStep={onApproveStep}
+                      onRejectStep={onRejectStep}
                     />
                   </section>
                 ))}
@@ -228,7 +380,7 @@ export default function ProcedureStepList({
             <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
               7 Giai đoạn quy trình
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[11px] font-semibold text-[#007A78]">
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[11px] font-semibold text-[#DC2626]">
               {totalFinishedStages}/7 hoàn thành
             </span>
           </div>
@@ -236,7 +388,7 @@ export default function ProcedureStepList({
           <button
             type="button"
             onClick={() => setShowAllStages(true)}
-            className="text-[11px] text-[#007A78] hover:underline font-medium cursor-pointer"
+            className="text-[11px] text-[#DC2626] hover:underline font-medium cursor-pointer"
           >
             Mở xem tất cả
           </button>
@@ -255,23 +407,30 @@ export default function ProcedureStepList({
             const isCompleted = total > 0 && completed + skipped === total;
             const hasInProg = group.steps.some((s) => s.isEnabled && s.status === "IN_PROGRESS");
             const isSelected = activeGroupCode === group.code;
+            const itemStageApproval = stageApprovals?.[group.code] || stageApprovals?.[group.title];
 
             return (
               <div
                 key={group.code}
                 onClick={() => setActiveGroupCode(group.code)}
-                className={`p-2.5 rounded-lg border transition-all cursor-pointer ${isSelected
-                  ? "border-[#007A78] bg-teal-50/40 ring-1 ring-[#007A78] shadow-xs"
-                  : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70"
-                  }`}
+                className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
+                  isSelected
+                    ? "border-[#DC2626] bg-red-50/50 ring-1 ring-[#DC2626] shadow-xs"
+                    : isCompleted
+                    ? "border-red-200/80 bg-white hover:border-red-300 hover:bg-red-50/30"
+                    : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70"
+                }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className={`flex h-5 min-w-5 items-center justify-center rounded text-[11px] font-bold font-mono shrink-0 ${isSelected
-                        ? "bg-[#007A78] text-white"
-                        : "bg-slate-100 text-slate-700 border border-slate-200"
-                        }`}
+                      className={`flex h-5 min-w-5 items-center justify-center rounded text-[11px] font-bold font-mono shrink-0 ${
+                        isSelected
+                          ? "bg-[#DC2626] text-white"
+                          : isCompleted
+                          ? "bg-red-100 text-[#DC2626] border border-red-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
+                      }`}
                     >
                       {group.code}
                     </span>
@@ -281,20 +440,31 @@ export default function ProcedureStepList({
                   </div>
 
                   <RightOutlined
-                    className={`text-[10px] shrink-0 transition-transform ${isSelected ? "text-[#007A78] translate-x-0.5" : "text-slate-300"
-                      }`}
+                    className={`text-[10px] shrink-0 transition-transform ${
+                      isSelected ? "text-[#DC2626] translate-x-0.5" : "text-slate-300"
+                    }`}
                   />
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] mt-1.5 pl-7">
-                  {isCompleted ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
-                      <CheckCircleFilled className="text-[11px] text-emerald-600" />
-                      Hoàn thành ({completed + skipped}/{total})
+                  {itemStageApproval?.status === "APPROVED" ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-red-700">
+                      <CheckCircleFilled className="text-[11px] text-[#DC2626]" />
+                      Đã nghiệm thu
+                    </span>
+                  ) : itemStageApproval?.status === "REJECTED" ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-rose-700">
+                      <CloseOutlined className="text-[11px] text-rose-600" />
+                      Cần rà soát
+                    </span>
+                  ) : isCompleted ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-red-700">
+                      <CheckCircleFilled className="text-[11px] text-[#DC2626]" />
+                      Hoàn thành
                     </span>
                   ) : hasInProg ? (
                     <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                      <ClockCircleFilled className="text-[11px] text-[#007A78]" />
+                      <ClockCircleFilled className="text-[11px] text-[#DC2626]" />
                       Đang thực hiện ({completed + skipped}/{total})
                     </span>
                   ) : (
@@ -304,8 +474,9 @@ export default function ProcedureStepList({
                   )}
 
                   <span
-                    className={`text-[11px] font-semibold ${isSelected ? "text-[#007A78]" : "text-slate-400"
-                      }`}
+                    className={`text-[11px] font-semibold ${
+                      isSelected ? "text-[#DC2626]" : "text-slate-400"
+                    }`}
                   >
                     {isSelected ? "Đang chọn" : ""}
                   </span>
@@ -321,7 +492,9 @@ export default function ProcedureStepList({
         {/* Header giai đoạn đang chọn */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="flex h-7 min-w-7 items-center justify-center rounded-lg bg-[#007A78] text-sm font-bold font-mono text-white shadow-xs">
+            <span
+              className="flex h-7 min-w-7 items-center justify-center rounded-lg text-sm font-bold font-mono text-white shadow-xs bg-[#DC2626]"
+            >
               {activeGroup.code}
             </span>
             <div className="min-w-0">
@@ -339,15 +512,132 @@ export default function ProcedureStepList({
           </div>
 
           <div className="shrink-0">
-            {activeIsCompleted ? (
-              <Tag intent="success" icon={<CheckCircleFilled />}>
-                Giai đoạn đã hoàn thành 100%
-              </Tag>
-            ) : (
-              <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                Tiến độ: <strong className="text-[#007A78]">{activeCompletedInGroup + activeSkippedInGroup}/{activeTotalInGroup}</strong> bước
-              </span>
-            )}
+            {(() => {
+              const activeStageApproval =
+                stageApprovals?.[activeGroup.code] || stageApprovals?.[activeGroup.title];
+
+              if (!activeIsCompleted) {
+                const hasSubmittedSteps = activeGroup.steps.some(
+                  (s) => s.isEnabled && s.submissionStatus === "SUBMITTED"
+                );
+                if (isLeadOfDept && hasSubmittedSteps) {
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        intent="primary"
+                        scale="compact"
+                        icon={<CheckOutlined />}
+                        className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-8 px-3"
+                        onClick={() => onLeadApproveStage?.(activeGroup.code, activeGroup.title)}
+                      >
+                        Xác nhận hoàn thành
+                      </Button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <span className="inline-block rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                    Tiến độ: <strong className="text-[#DC2626]">{activeCompletedInGroup + activeSkippedInGroup}/{activeTotalInGroup}</strong> bước
+                  </span>
+                );
+              }
+
+              if (activeStageApproval?.status === "APPROVED") {
+                return (
+                  <Tag
+                    className="!border-red-200 !bg-red-50 !text-[#DC2626] font-semibold text-xs"
+                    icon={<SafetyCertificateOutlined className="text-[#DC2626]" />}
+                  >
+                    Ban Giám đốc đã nghiệm thu
+                  </Tag>
+                );
+              }
+
+              if (activeStageApproval?.status === "REJECTED") {
+                return (
+                  <div className="flex items-center gap-2">
+                    <Tag
+                      className="!border-rose-300 !bg-rose-50 !text-rose-700 font-semibold text-xs"
+                      icon={<CloseOutlined className="text-rose-600" />}
+                    >
+                      BGĐ yêu cầu rà soát lại
+                    </Tag>
+                    {isDirector && (
+                      <Button
+                        intent="primary"
+                        scale="compact"
+                        icon={<CheckOutlined />}
+                        className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-8 px-3"
+                        onClick={() => onDirectorApproveStage?.(activeGroup.code, activeGroup.title)}
+                      >
+                        Duyệt lại
+                      </Button>
+                    )}
+                  </div>
+                );
+              }
+
+              if (isDirector) {
+                return (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      intent="primary"
+                      scale="compact"
+                      icon={<CheckOutlined />}
+                      className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-8 px-3"
+                      onClick={() => onDirectorApproveStage?.(activeGroup.code, activeGroup.title)}
+                    >
+                      Duyệt giai đoạn
+                    </Button>
+                    <Button
+                      intent="outline"
+                      scale="compact"
+                      icon={<CloseOutlined />}
+                      className="!border-rose-300 !text-rose-700 hover:!bg-rose-50 text-xs font-semibold h-8 px-2.5"
+                      onClick={() => onDirectorRejectStage?.(activeGroup.code, activeGroup.title)}
+                    >
+                      Từ chối
+                    </Button>
+                  </div>
+                );
+              }
+
+              if (isLeadOfDept) {
+                if (isDeptCompletedByLead) {
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Tag
+                        className="!bg-red-50 !text-red-700 !border-red-200 text-xs px-2.5 py-1 font-semibold flex items-center gap-1"
+                        icon={<CheckCircleFilled className="text-[#DC2626]" />}
+                      >
+                        Đã xác nhận hoàn thành
+                      </Tag>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      intent="primary"
+                      scale="compact"
+                      icon={<CheckOutlined />}
+                      className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-8 px-3"
+                      onClick={() => onLeadApproveStage?.(activeGroup.code, activeGroup.title)}
+                    >
+                      Xác nhận hoàn thành
+                    </Button>
+                  </div>
+                );
+              }
+
+              return (
+                <Tag className="!border-red-200 !bg-red-50 !text-[#DC2626] font-semibold" icon={<CheckCircleFilled className="text-[#DC2626]" />}>
+                  Giai đoạn đã hoàn thành 100%
+                </Tag>
+              );
+            })()}
           </div>
         </div>
 
@@ -360,16 +650,22 @@ export default function ProcedureStepList({
                 allSteps={steps}
                 onStartStep={onStartStep}
                 onOpenCompleteModal={onOpenCompleteModal}
+                onConfirmCompleteStep={onConfirmCompleteStep}
                 onOpenSkipModal={onOpenSkipModal}
                 onOpenDocsModal={onOpenDocsModal}
                 onOpenDetail={onOpenDetailStep}
                 highlight={highlightedStepId === step.id}
                 canUpdateProcedure={canUpdateProcedure}
+                onAssignMember={onAssignMember}
+                onApproveStep={onApproveStep}
+                onRejectStep={onRejectStep}
               />
             </section>
           ))}
         </div>
       </div>
+
+
     </div>
   );
 }

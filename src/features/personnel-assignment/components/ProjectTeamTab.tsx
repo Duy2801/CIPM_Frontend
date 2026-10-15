@@ -246,7 +246,7 @@ export default function ProjectTeamTab({ controller, onCreateTask }: ProjectTeam
             title={
               <Flex justify="between" align="center">
                 <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <ProjectOutlined className="text-teal-600" />
+                  <ProjectOutlined className="text-[#DC2626]" />
                   Danh mục Dự án
                 </span>
                 {isLeadership && (
@@ -292,17 +292,17 @@ export default function ProjectTeamTab({ controller, onCreateTask }: ProjectTeam
                       onClick={() => setSelectedProjectId(proj.id)}
                       className={`p-2.5 rounded-lg cursor-pointer transition-all border ${
                         isSelected
-                          ? "bg-teal-50/80 border-teal-300 shadow-2xs"
+                          ? "bg-red-50/70 border-red-200 shadow-2xs ring-1 ring-red-100"
                           : "hover:bg-slate-50 border-transparent"
                       }`}
                     >
                       <div className="flex justify-between items-start gap-2">
-                        <span className="font-mono text-xs font-semibold text-slate-600">
+                        <span className={`font-mono text-xs font-semibold ${isSelected ? "text-[#DC2626]" : "text-slate-600"}`}>
                           {proj.code}
                         </span>
                         <div className="flex items-center gap-1">
                           {isMyProject && (
-                            <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded">
+                            <span className="text-[10px] bg-red-100 text-red-800 font-bold px-1.5 py-0.2 rounded">
                               Phụ trách
                             </span>
                           )}
@@ -351,40 +351,50 @@ export default function ProjectTeamTab({ controller, onCreateTask }: ProjectTeam
             padding="compact"
             className="shadow-sm h-full min-h-[720px] !flex-1 !flex flex-col [&_.ant-card-body]:!flex-1 [&_.ant-card-body]:!flex [&_.ant-card-body]:!flex-col"
           >
-            {/* Thanh thông tin dự án */}
-            <div className="pb-3 border-b border-slate-100">
-              <div className="flex justify-between items-start gap-4 flex-wrap">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-teal-700 font-semibold">{activeProject.code}</span>
-                    <Tag className="!text-[10px] !m-0 !px-1.5">{activeProject.status || "Đang thi công"}</Tag>
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900 m-0 mt-0.5 leading-tight">
-                    {activeProject.name}
-                  </h3>
-                  <div className="text-xs text-slate-500 mt-1 flex items-center gap-2.5 flex-wrap">
-                    <span>Người thực hiện chính: <strong className="text-slate-800">{mainExecutorStaff?.name || "—"}</strong></span>
-                    <span>·</span>
-                    <span>Người giám sát: <strong className="text-slate-800">{mainSupervisorStaff?.name || "—"}</strong></span>
+            {!activeProject ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <ProjectOutlined className="text-4xl text-slate-300 mb-2" />
+                <p className="text-sm font-semibold text-slate-600">Chưa có dự án nào được chọn</p>
+                <p className="text-xs text-slate-400">Vui lòng chọn hoặc tạo dự án mới để xem sơ đồ nhân sự thực hiện.</p>
+              </div>
+            ) : (
+              <>
+                {/* Thanh thông tin dự án */}
+                <div className="pb-3 border-b border-slate-100">
+                  <div className="flex justify-between items-start gap-4 flex-wrap">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-[#DC2626] font-bold">{activeProject.code}</span>
+                        <Tag className="!text-[10px] !m-0 !px-1.5">{activeProject.status || "Đang thi công"}</Tag>
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900 m-0 mt-0.5 leading-tight">
+                        {activeProject.name}
+                      </h3>
+                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-2.5 flex-wrap">
+                        <span>Người thực hiện chính: <strong className="text-slate-800">{mainExecutorStaff?.name || "—"}</strong></span>
+                        <span>·</span>
+                        <span>Người giám sát: <strong className="text-slate-800">{mainSupervisorStaff?.name || "—"}</strong></span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Hiển thị trực tiếp Cây sơ đồ nhân sự thực hiện */}
-            <div className="pt-2 flex-1 min-h-[620px] flex flex-col">
-              <ProjectPersonnelOrgChart
-                project={activeProject}
-                data={data}
-                currentStaffId={currentStaffId}
-                onOpenTaskDetail={(assignment) => setDetailAssignment(assignment)}
-                onCreateTask={
-                  onCreateTask
-                    ? (pId, initLevel, dStage, pAssId, tId) => onCreateTask(pId)
-                    : undefined
-                }
-              />
-            </div>
+                {/* Hiển thị trực tiếp Cây sơ đồ nhân sự thực hiện */}
+                <div className="pt-2 flex-1 min-h-[620px] flex flex-col">
+                  <ProjectPersonnelOrgChart
+                    project={activeProject}
+                    data={data}
+                    currentStaffId={currentStaffId}
+                    onOpenTaskDetail={(assignment) => setDetailAssignment(assignment)}
+                    onCreateTask={
+                      onCreateTask
+                        ? (pId, initLevel, dStage, pAssId, tId) => onCreateTask(pId)
+                        : undefined
+                    }
+                  />
+                </div>
+              </>
+            )}
           </Card>
         </Col>
       </Row>
@@ -406,7 +416,7 @@ export default function ProjectTeamTab({ controller, onCreateTask }: ProjectTeam
 
 
       {/* 5. Modal Giao việc giai đoạn */}
-      {taskModalOpen && (
+      {taskModalOpen && activeProject && (
         <AssignmentModal
           data={data}
           defaultProjectId={activeProject.id}

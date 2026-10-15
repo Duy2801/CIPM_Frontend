@@ -10,22 +10,18 @@ interface FeedbackBarProps {
 }
 
 export default function FeedbackBar({ type, text, onClose }: FeedbackBarProps) {
-  const isSuccess = type === "success";
+  // Đã có toast notification thông báo kết quả, ẩn thanh banner xanh thành công
+  if (type === "success") return null;
+
   return (
     <aside
-      role={isSuccess ? "status" : "alert"}
-      className={`rounded-xl border px-4 py-2.5 ${
-        isSuccess ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"
-      }`}
+      role="alert"
+      className="rounded-xl border px-4 py-2.5 border-rose-200 bg-rose-50"
     >
       <Flex align="center" justify="space-between" gap="small">
         <Flex align="center" gap="small">
-          {isSuccess ? (
-            <CheckCircleFilled className="text-emerald-600" />
-          ) : (
-            <ExclamationCircleFilled className="text-rose-600" />
-          )}
-          <Text strong className={`text-[13px] ${isSuccess ? "text-emerald-900" : "text-rose-900"}`}>
+          <ExclamationCircleFilled className="text-rose-600" />
+          <Text strong className="text-[13px] text-rose-900">
             {text}
           </Text>
         </Flex>

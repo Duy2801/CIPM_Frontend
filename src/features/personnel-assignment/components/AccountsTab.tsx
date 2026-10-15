@@ -5,6 +5,7 @@ import {
   LockOutlined,
   SearchOutlined,
   UnlockOutlined,
+  UserAddOutlined,
 } from "@ant-design/icons";
 import { App } from "antd";
 import {
@@ -23,6 +24,7 @@ import { SectionIntro } from "@/components/workspace";
 import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
 import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { Staff } from "../types/personnel.types";
+import StaffModal from "./StaffModal";
 
 interface AccountsTabProps {
   controller: PersonnelController;
@@ -36,6 +38,7 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
   const { data, staff, permissions } = controller;
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
 
   const confirmUnlock = (person: Staff) => {
     modal.confirm({
@@ -149,9 +152,12 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
       render: (_, row) => (
         <div className="flex flex-col items-center justify-center w-full">
           <Tag
-            intent={row.accountActive ? "success" : "danger"}
             scale="md"
-            className="m-0 !w-[116px] !inline-flex !items-center !justify-center !text-center"
+            className={`m-0 !w-[116px] !inline-flex !items-center !justify-center !text-center !rounded-full font-semibold ${
+              row.accountActive
+                ? "!bg-amber-50 !text-amber-800 !border-amber-300"
+                : "!bg-slate-100 !text-slate-600 !border-slate-300"
+            }`}
           >
             <span className="w-full text-center">
               {row.accountActive ? "Đang hoạt động" : "Đang khóa"}
@@ -204,7 +210,8 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
   }
 
   return (
-    <Card
+    <>
+      <Card
       surface="flat"
       padding="none"
       rounded="lg"
@@ -215,6 +222,18 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
         description="Quản lý trạng thái tài khoản và quyền truy cập các phân hệ của toàn bộ cán bộ."
         countLabel={`${staff.length} tài khoản`}
         readOnly={!permissions.canManageAccounts}
+        actions={
+          permissions.canManageAccounts && (
+            <Button
+              intent="primary"
+              icon={<UserAddOutlined />}
+              className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
+              onClick={() => setStaffModalOpen(true)}
+            >
+              Thêm tài khoản
+            </Button>
+          )
+        }
       />
 
       <div className="p-4 sm:p-5">
@@ -274,5 +293,15 @@ export default function AccountsTab({ controller, onLockAccount }: AccountsTabPr
         />
       </div>
     </Card>
+
+    {staffModalOpen && (
+      <StaffModal
+        data={controller.data}
+        errorText={controller.feedback?.type === "error" ? controller.feedback.text : undefined}
+        onClose={() => setStaffModalOpen(false)}
+        onCreate={controller.createStaff}
+      />
+    )}
+  </>
   );
 }

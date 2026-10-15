@@ -121,7 +121,7 @@ export default function AiReportGeneratorTab({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#007A78] text-white text-xs">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#DC2626] text-white text-xs">
                 <RobotOutlined />
               </span>
               <span>Cấu hình AI kết xuất báo cáo lời tự động</span>
@@ -187,7 +187,7 @@ export default function AiReportGeneratorTab({
                 icon={isGenerating ? <LoadingOutlined /> : <ThunderboltOutlined />}
                 disabled={isGenerating}
                 onClick={handleGenerate}
-                className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white h-8 text-xs font-semibold rounded-lg shadow-xs"
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-8 text-xs font-semibold rounded-lg shadow-xs"
               >
                 {isGenerating ? "AI đang tổng hợp..." : "AI Tổng hợp báo cáo"}
               </Button>
@@ -198,27 +198,27 @@ export default function AiReportGeneratorTab({
         {/* Nguồn dữ liệu đã kết nối */}
         <div className="mt-3 pt-3 border-t border-slate-200/80 flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-            <DatabaseOutlined className="text-teal-700" />
+            <DatabaseOutlined className="text-[#DC2626]" />
             Nguồn dữ liệu thực tế tích hợp:
           </span>
           <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200 shadow-2xs">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             M2 Tiến độ thi công (4 dự án)
           </span>
           <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200 shadow-2xs">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             M4 Giải ngân KBNN (126.8 tỷ - 58.7%)
           </span>
           <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200 shadow-2xs">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             M6 Bồi thường GPMB (Bàn giao 84.8%)
           </span>
           <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200 shadow-2xs">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             M7 Đấu thầu (4 gói thầu)
           </span>
           <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200 shadow-2xs">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             M8 Bảo hành & Bảo lãnh
           </span>
         </div>
@@ -265,7 +265,7 @@ export default function AiReportGeneratorTab({
               intent="primary"
               icon={<FilePdfOutlined />}
               onClick={handleExportPdf}
-              className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white text-xs font-semibold h-8 shadow-xs"
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold h-8 shadow-xs"
             >
               Tải tệp văn bản
             </Button>
@@ -274,15 +274,15 @@ export default function AiReportGeneratorTab({
 
         {/* Thanh công cụ Prompt AI tinh chỉnh nhanh */}
         <div className="border-b border-slate-200/80 bg-white px-4 py-2 flex flex-wrap items-center gap-2">
-          <span className="text-[11.5px] font-bold text-teal-800 flex items-center gap-1">
-            <RobotOutlined />
+          <span className="text-[11.5px] font-bold text-slate-800 flex items-center gap-1">
+            <RobotOutlined className="text-[#DC2626]" />
             Tinh chỉnh AI nhanh:
           </span>
           <button
             type="button"
             onClick={() => handleApplyAiPrompt("FORMAL")}
             disabled={isGenerating}
-            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-teal-500 hover:bg-teal-50/70 transition-colors"
+            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-red-400 hover:bg-red-50/70 transition-colors"
           >
             ✨ Chuẩn hóa thể thức hành chính
           </button>
@@ -290,7 +290,7 @@ export default function AiReportGeneratorTab({
             type="button"
             onClick={() => handleApplyAiPrompt("CONCISE")}
             disabled={isGenerating}
-            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-teal-500 hover:bg-teal-50/70 transition-colors"
+            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-red-400 hover:bg-red-50/70 transition-colors"
           >
             ✂️ Rút gọn còn 1 trang tóm tắt
           </button>
@@ -298,7 +298,7 @@ export default function AiReportGeneratorTab({
             type="button"
             onClick={() => handleApplyAiPrompt("FOCUS_GPMB")}
             disabled={isGenerating}
-            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-teal-500 hover:bg-teal-50/70 transition-colors"
+            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-red-400 hover:bg-red-50/70 transition-colors"
           >
             ⚠️ Nhấn mạnh điểm nghẽn GPMB
           </button>
@@ -306,7 +306,7 @@ export default function AiReportGeneratorTab({
             type="button"
             onClick={() => handleApplyAiPrompt("RECOMMENDATIONS")}
             disabled={isGenerating}
-            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-teal-500 hover:bg-teal-50/70 transition-colors"
+            className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-red-400 hover:bg-red-50/70 transition-colors"
           >
             📋 Bổ sung đề xuất chỉ đạo Sở/KBNN
           </button>
@@ -333,10 +333,10 @@ export default function AiReportGeneratorTab({
         {/* Footer */}
         <div className="border-t border-slate-200 bg-white px-4 py-2.5 flex items-center justify-between text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
-            <CheckCircleOutlined className="text-emerald-600" />
+            <CheckCircleOutlined className="text-[#DC2626]" />
             Khung mẫu tuân thủ thể thức văn bản hành chính Nghị định 30/2020/NĐ-CP
           </span>
-          <span className="font-medium text-teal-800">
+          <span className="font-medium text-slate-700">
             Trích xuất từ 5 phân hệ thực tế: M2, M4, M6, M7, M8
           </span>
         </div>

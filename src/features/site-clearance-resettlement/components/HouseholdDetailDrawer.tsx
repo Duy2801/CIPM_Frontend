@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   CheckCircleFilled,
   ClockCircleOutlined,
+  DownloadOutlined,
   EditOutlined,
   EnvironmentOutlined,
   ExclamationCircleFilled,
@@ -22,6 +23,7 @@ import { GPMB_STEPS, LAND_TYPE_LABELS } from "../constants/gpmb-steps";
 import type { SiteClearanceController } from "../hooks/useSiteClearance";
 import type { Household, StepRecord } from "../types/gpmb.types";
 import { getCurrentStep, getLegalStatus, isStepApplicable } from "../utils/gpmb-rules";
+import { downloadGpmbDocument } from "../utils/gpmb-download";
 import HouseholdActions from "./HouseholdActions";
 import { LegalDeadlineTag, SpecialStatusTag } from "./HouseholdBadges";
 
@@ -141,7 +143,7 @@ export default function HouseholdDetailDrawer({
               </span>
               <SpecialStatusTag status={household.specialStatus} />
               {current === null && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                   Đã hoàn tất 16 bước
                 </span>
               )}
@@ -174,7 +176,7 @@ export default function HouseholdDetailDrawer({
               Chọn bước xem chi tiết (1–16)
             </span>
             <span className="text-[11px] text-slate-500">
-              Đã xong: <span className="font-bold text-emerald-600">{household.records.length}</span>/16 bước
+              Đã xong: <span className="font-bold text-amber-600">{household.records.length}</span>/16 bước
             </span>
           </div>
 
@@ -191,17 +193,21 @@ export default function HouseholdDetailDrawer({
                   onClick={() => setActiveStepNumber(s.number)}
                   className={cn(
                     "relative flex h-8 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition-all cursor-pointer",
-                    rec && "bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600",
-                    isCurr && !rec && "bg-sky-50 text-sky-800 border-sky-400 font-bold ring-1 ring-sky-300",
+                    rec && "bg-amber-500 text-white border-amber-500 hover:bg-amber-600",
+                    isCurr && !rec && (
+                      getLegalStatus(household, today).state === "OVERDUE"
+                        ? "bg-rose-50 text-rose-700 border-rose-300 font-bold ring-1 ring-rose-200"
+                        : "bg-amber-100 text-amber-900 border-amber-400 font-bold ring-1 ring-amber-300"
+                    ),
                     !rec && !isCurr && "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100",
-                    isSel && "!ring-2 !ring-[#007A78] !ring-offset-1 font-bold shadow-xs scale-105"
+                    isSel && "!ring-2 !ring-[#DC2626] !ring-offset-2 font-bold shadow-xs scale-105"
                   )}
                   title={`Bước ${s.number}: ${s.title}${rec ? " (Đã xong)" : isCurr ? " (Đang làm)" : ""}`}
                 >
                   <span>B{s.number}</span>
                   {rec?.fileName && (
                     <span
-                      className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-white text-emerald-700 shadow-2xs border border-emerald-300"
+                      className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-white text-amber-700 shadow-2xs border border-amber-300"
                       title="Có tệp đính kèm"
                     >
                       <PaperClipOutlined className="text-[7.5px]" />
@@ -214,7 +220,7 @@ export default function HouseholdDetailDrawer({
         </div>
 
         {/* KHỐI 3: CHI TIẾT ĐẦY ĐỦ CỦA BƯỚC ĐANG CHỌN */}
-        <section className="mt-4 rounded-xl border border-teal-200/90 bg-white p-4 shadow-2xs space-y-4">
+        <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-4">
           {/* Tiêu đề bước */}
           <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
@@ -222,9 +228,9 @@ export default function HouseholdDetailDrawer({
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0",
                   activeRecord
-                    ? "bg-emerald-600 text-white"
+                    ? "bg-amber-500 text-white"
                     : isCurrentActive
-                    ? "bg-[#007A78] text-white"
+                    ? "bg-[#DC2626] text-white"
                     : "bg-slate-200 text-slate-600"
                 )}
               >
@@ -243,12 +249,12 @@ export default function HouseholdDetailDrawer({
             {/* Trạng thái bước */}
             <div>
               {activeRecord ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
-                  <CheckCircleFilled className="text-emerald-600 text-xs" /> Đã hoàn thành
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
+                  <CheckCircleFilled className="text-amber-600 text-xs" /> Đã hoàn thành
                 </span>
               ) : isCurrentActive ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-50 text-sky-700 text-xs font-semibold border border-sky-200">
-                  <ClockCircleOutlined className="text-sky-600 text-xs" /> Đang thực hiện
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200">
+                  <ClockCircleOutlined className="text-blue-600 text-xs" /> Đang thực hiện
                 </span>
               ) : !isApplicableActive ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-500 text-xs font-medium">
@@ -281,25 +287,51 @@ export default function HouseholdDetailDrawer({
             {activeStepDef.forms && (
               <div className="sm:col-span-2 pt-1 border-t border-slate-200/60">
                 <span className="text-slate-400 block text-[11px] font-medium">Biểu mẫu bắt buộc theo quy định</span>
-                <span className="font-semibold text-[#007A78] bg-teal-50 px-2.5 py-1 rounded border border-teal-200 inline-block mt-1">
-                  📄 {activeStepDef.forms}
-                </span>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 inline-block text-xs">
+                    📄 {activeStepDef.forms}
+                  </span>
+                  <Button
+                    scale="xs"
+                    intent="secondary"
+                    icon={<DownloadOutlined />}
+                    onClick={() => {
+                      const forms = activeStepDef.forms!;
+                      downloadGpmbDocument({
+                        fileName: `Bieu_mau_buoc_${activeStepDef.number}_${forms.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`,
+                        title: `BIỂU MẪU QUY ĐỊNH BƯỚC ${activeStepDef.number}: ${forms}`,
+                        details: [
+                          `Tên bước: ${activeStepDef.title}`,
+                          `Biểu mẫu áp dụng: ${forms}`,
+                          `Sản phẩm đầu ra yêu cầu: ${activeStepDef.output}`,
+                          `Thời hạn pháp lý: ${activeStepDef.legalDays ? `${activeStepDef.legalDays} ngày ${activeStepDef.mandatory ? "(bắt buộc)" : ""}` : "Không quy định"}`,
+                          `Căn cứ pháp lý: Luật Đất đai 2024, Nghị định 88/2024/NĐ-CP.`,
+                          `Áp dụng cho hộ dân: ${household.ownerName} (${household.code})`,
+                          `Dự án: ${project?.name || "Dự án GPMB"}`,
+                        ],
+                      });
+                    }}
+                    className="!bg-white !border-slate-300 !text-slate-700 hover:!border-[#DC2626] hover:!text-[#DC2626] text-xs font-semibold shadow-2xs"
+                  >
+                    Tải biểu mẫu
+                  </Button>
+                </div>
               </div>
             )}
           </div>
 
           {/* NỘI DUNG NẾU BƯỚC ĐÃ HOÀN THÀNH */}
           {activeRecord && (
-            <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/30 p-3.5 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-emerald-100">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3.5 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                   Thông tin thực hiện & Hồ sơ lưu trữ
                 </span>
                 {permissions.canEdit && (
                   <Button
                     scale="xs"
                     intent="secondary"
-                    className="!text-[#007A78] !bg-white hover:!bg-teal-50 font-semibold"
+                    className="!text-[#DC2626] !bg-white hover:!bg-slate-100 font-semibold"
                     onClick={() => handleOpenSupplement(activeRecord)}
                   >
                     {activeRecord.fileName ? "✎ Cập nhật tệp đính kèm" : "+ Bổ sung tệp đính kèm"}
@@ -337,47 +369,119 @@ export default function HouseholdDetailDrawer({
               </dl>
 
               {/* TỆP ĐÍNH KÈM CỦA BƯỚC */}
-              <div className="pt-2 border-t border-emerald-100/70">
+              <div className="pt-2 border-t border-slate-200">
                 <span className="text-[11px] font-semibold text-slate-600 block mb-1.5">
                   Tài liệu đính kèm của bước:
                 </span>
                 {activeRecord.fileName ? (
-                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white border border-teal-200 shadow-2xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-7 h-7 rounded bg-teal-100 text-[#007A78] flex items-center justify-center shrink-0">
-                        <FileTextOutlined className="text-sm" />
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs hover:border-[#DC2626] transition-colors">
+                    <div
+                      className="flex items-center gap-2 min-w-0 cursor-pointer flex-1"
+                      onClick={() =>
+                        downloadGpmbDocument({
+                          fileName: activeRecord.fileName!,
+                          title: `BƯỚC ${activeStepDef.number}: ${activeStepDef.title}`,
+                          details: [
+                            `Chủ hộ: ${household.ownerName} (${household.code})`,
+                            `Số CCCD: ${household.idNumber || "—"}`,
+                            `Địa chỉ: ${household.address}`,
+                            `Số văn bản: ${activeRecord.documentNo}`,
+                            `Ngày hoàn thành: ${formatDateVi(activeRecord.completedAt)}`,
+                            `Cán bộ thực hiện: ${activeRecord.by}`,
+                            activeRecord.approvedBy ? `Lãnh đạo duyệt: ${activeRecord.approvedBy}` : "",
+                            `Dự án: ${project?.name || "Dự án GPMB"}`,
+                          ].filter(Boolean),
+                        })
+                      }
+                      title="Bấm để tải về tài liệu này"
+                    >
+                      <span className="w-8 h-8 rounded-lg bg-slate-100 text-[#DC2626] flex items-center justify-center shrink-0">
+                        <FileTextOutlined className="text-base" />
                       </span>
                       <div className="min-w-0">
-                        <span className="text-xs font-mono font-semibold text-slate-800 truncate block">
+                        <span className="text-xs font-mono font-bold text-slate-800 truncate block hover:text-[#DC2626] hover:underline">
                           {activeRecord.fileName}
                         </span>
-                        <span className="text-[10px] text-teal-600 block">
-                          Đã lưu trữ hồ sơ GPMB
+                        <span className="text-[10px] text-slate-500 block">
+                          Đã lưu trữ hồ sơ GPMB · Bấm để tải về
                         </span>
                       </div>
                     </div>
-                    {permissions.canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenSupplement(activeRecord)}
-                        className="text-xs font-semibold text-[#007A78] hover:underline cursor-pointer shrink-0"
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        scale="xs"
+                        intent="primary"
+                        icon={<DownloadOutlined />}
+                        onClick={() =>
+                          downloadGpmbDocument({
+                            fileName: activeRecord.fileName!,
+                            title: `BƯỚC ${activeStepDef.number}: ${activeStepDef.title}`,
+                            details: [
+                              `Chủ hộ: ${household.ownerName} (${household.code})`,
+                              `Số CCCD: ${household.idNumber || "—"}`,
+                              `Địa chỉ: ${household.address}`,
+                              `Số văn bản: ${activeRecord.documentNo}`,
+                              `Ngày hoàn thành: ${formatDateVi(activeRecord.completedAt)}`,
+                              `Cán bộ thực hiện: ${activeRecord.by}`,
+                              activeRecord.approvedBy ? `Lãnh đạo duyệt: ${activeRecord.approvedBy}` : "",
+                              `Dự án: ${project?.name || "Dự án GPMB"}`,
+                            ].filter(Boolean),
+                          })
+                        }
+                        className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-white font-medium text-xs shadow-2xs"
                       >
-                        Thay tệp khác
-                      </button>
-                    )}
+                        Tải về
+                      </Button>
+                      {permissions.canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSupplement(activeRecord)}
+                          className="text-xs font-semibold text-slate-500 hover:text-[#DC2626] hover:underline cursor-pointer px-1.5 py-1"
+                        >
+                          Thay tệp
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-800">
-                    <span>Chưa có tệp scan đính kèm cho bước này</span>
-                    {permissions.canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenSupplement(activeRecord)}
-                        className="font-bold text-[#007A78] hover:underline cursor-pointer ml-2"
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileDoneOutlined className="text-amber-600 shrink-0" />
+                      <span className="truncate">Chưa có tệp scan đính kèm</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        scale="xs"
+                        intent="secondary"
+                        icon={<DownloadOutlined />}
+                        onClick={() =>
+                          downloadGpmbDocument({
+                            fileName: `Trich_luc_buoc_${activeStepDef.number}_${household.code}.pdf`,
+                            title: `TRÍCH LỤC HỒ SƠ BƯỚC ${activeStepDef.number}: ${activeStepDef.title}`,
+                            details: [
+                              `Chủ hộ: ${household.ownerName} (${household.code})`,
+                              `Số văn bản: ${activeRecord.documentNo}`,
+                              `Ngày hoàn thành: ${formatDateVi(activeRecord.completedAt)}`,
+                              `Cán bộ thực hiện: ${activeRecord.by}`,
+                              activeRecord.approvedBy ? `Lãnh đạo duyệt: ${activeRecord.approvedBy}` : "",
+                              `Dự án: ${project?.name || "Dự án GPMB"}`,
+                            ].filter(Boolean),
+                          })
+                        }
+                        className="!bg-white !border-amber-300 text-amber-900 hover:!bg-amber-100 text-xs font-medium shadow-2xs"
                       >
-                        + Tải tệp lên ngay
-                      </button>
-                    )}
+                        Tải trích lục
+                      </Button>
+                      {permissions.canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSupplement(activeRecord)}
+                          className="font-bold text-[#DC2626] hover:underline cursor-pointer ml-1"
+                        >
+                          + Tải tệp lên
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -417,8 +521,31 @@ export default function HouseholdDetailDrawer({
                     Đã đề xuất ngày {formatDateVi(household.proposal.proposedAt)}, số văn bản {household.proposal.documentNo} – đang chờ duyệt.
                   </div>
                   {household.proposal.fileName && (
-                    <div className="mt-1 flex items-center gap-1 font-mono text-violet-900 font-semibold">
-                      <PaperClipOutlined /> {household.proposal.fileName}
+                    <div className="mt-2 flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-violet-200 shadow-2xs">
+                      <div className="flex items-center gap-1.5 font-mono text-violet-900 font-semibold text-xs truncate">
+                        <PaperClipOutlined className="text-violet-600 shrink-0" />
+                        <span className="truncate">{household.proposal.fileName}</span>
+                      </div>
+                      <Button
+                        scale="xs"
+                        intent="secondary"
+                        icon={<DownloadOutlined />}
+                        onClick={() =>
+                          downloadGpmbDocument({
+                            fileName: household.proposal!.fileName!,
+                            title: `TỜ TRÌNH ĐỀ XUẤT BƯỚC ${current}: ${household.proposal!.documentNo}`,
+                            details: [
+                              `Chủ hộ: ${household.ownerName} (${household.code})`,
+                              `Số văn bản tờ trình: ${household.proposal!.documentNo}`,
+                              `Ngày đề xuất: ${formatDateVi(household.proposal!.proposedAt)}`,
+                              `Dự án: ${project?.name || "Dự án GPMB"}`,
+                            ],
+                          })
+                        }
+                        className="!text-violet-700 !bg-violet-50 hover:!bg-violet-100 font-medium text-xs shrink-0 shadow-2xs"
+                      >
+                        Tải về
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -456,7 +583,7 @@ export default function HouseholdDetailDrawer({
           open={Boolean(editingRecord)}
           title={
             <div className="flex items-center gap-2">
-              <span className="rounded bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
+              <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-bold text-white">
                 Bước {editingRecord.step}
               </span>
               <span className="font-bold text-[#102A43]">
@@ -497,7 +624,7 @@ export default function HouseholdDetailDrawer({
             {editingStepDef.forms && (
               <div className="mt-0.5">
                 <span className="text-slate-400">Biểu mẫu quy định:</span>{" "}
-                <span className="font-semibold text-teal-800">{editingStepDef.forms}</span>
+                <span className="font-semibold text-slate-700">{editingStepDef.forms}</span>
               </div>
             )}
           </div>
@@ -527,8 +654,8 @@ export default function HouseholdDetailDrawer({
               className="mb-3"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#007A78] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                  <UploadOutlined className="text-teal-700 text-sm" />
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
+                  <UploadOutlined className="text-slate-500 text-sm" />
                   <span>Chọn tệp đính kèm</span>
                   <input
                     type="file"
@@ -544,8 +671,8 @@ export default function HouseholdDetailDrawer({
                 </label>
 
                 {selectedFileName ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium">
-                    <FileTextOutlined className="text-teal-600" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-xs text-slate-800 font-medium">
+                    <FileTextOutlined className="text-slate-500" />
                     <span className="truncate max-w-[220px] font-mono">{selectedFileName}</span>
                     <button
                       type="button"

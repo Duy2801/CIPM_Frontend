@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ReactNode } from "react";
 import { BulbOutlined, EyeOutlined } from "@ant-design/icons";
@@ -44,7 +44,7 @@ export default function SectionIntro({
           </Flex>
           <Text className="mt-1 block text-[13px] leading-5 text-slate-500">{description}</Text>
           {guide && (
-            <Text className="mt-1.5 flex items-start gap-1.5 text-[13px] leading-5 text-teal-800">
+            <Text className="mt-1.5 flex items-start gap-1.5 text-[13px] leading-5 text-emerald-800">
               <BulbOutlined className="mt-1 shrink-0" />
               <span>{guide}</span>
             </Text>

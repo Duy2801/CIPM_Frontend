@@ -292,7 +292,7 @@ export default function UrgeMemberModal({
                 key={idx}
                 type="button"
                 onClick={() => applyTemplate(tpl)}
-                className="cursor-pointer rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-800 transition-colors text-left"
+                className="cursor-pointer rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800 transition-colors text-left"
               >
                 Mẫu {idx + 1}: {tpl.slice(0, 42)}...
               </button>

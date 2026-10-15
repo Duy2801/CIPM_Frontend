@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   AlertOutlined,
@@ -162,8 +162,8 @@ export default function FinanceKpiSection({
         progress: Math.min(100, ratio),
         note: <span className={ratioStatus.className}>{ratioStatus.text}</span>,
         icon: <RiseOutlined />,
-        iconClass: "bg-teal-50 text-[#007A78]",
-        valueClass: "text-[#007A78]",
+        iconClass: "bg-emerald-50 text-[#DC2626]",
+        valueClass: "text-[#DC2626]",
       },
     ];
   } else if (roleCode === "ADMIN") {
@@ -174,14 +174,14 @@ export default function FinanceKpiSection({
         label: "Chờ Giám đốc ký duyệt C2",
         value: pendingDirector,
         note: pendingDirector > 0 ? (
-          <span className="font-semibold text-teal-800">Đã qua KTT thẩm tra, sẵn sàng ký KBNN</span>
+          <span className="font-semibold text-emerald-800">Đã qua KTT thẩm tra, sẵn sàng ký KBNN</span>
         ) : (
           <span className="text-slate-500">Không có hồ sơ chờ ký duyệt</span>
         ),
         icon: <ExclamationCircleOutlined />,
-        iconClass: pendingDirector > 0 ? "bg-teal-100 text-teal-800" : "bg-slate-100 text-slate-400",
-        valueClass: pendingDirector > 0 ? "text-[#007A78]" : "text-slate-400",
-        highlightBorder: pendingDirector > 0 ? "!border-teal-300 bg-teal-50/15" : undefined,
+        iconClass: pendingDirector > 0 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-400",
+        valueClass: pendingDirector > 0 ? "text-[#DC2626]" : "text-slate-400",
+        highlightBorder: pendingDirector > 0 ? "!border-emerald-300 bg-emerald-50/15" : undefined,
         onClick: pendingDirector > 0 && onFilterClick ? () => onFilterClick("PENDING_DIRECTOR") : undefined,
       },
       {
@@ -191,8 +191,8 @@ export default function FinanceKpiSection({
         progress: Math.min(100, ratio),
         note: <span className={ratioStatus.className}>{ratioStatus.text}</span>,
         icon: <RiseOutlined />,
-        iconClass: "bg-teal-50 text-[#007A78]",
-        valueClass: "text-[#007A78]",
+        iconClass: "bg-emerald-50 text-[#DC2626]",
+        valueClass: "text-[#DC2626]",
       },
       {
         key: "disbursed",
@@ -241,8 +241,8 @@ export default function FinanceKpiSection({
         progress: Math.min(100, ratio),
         note: <span className={ratioStatus.className}>{ratioStatus.text}</span>,
         icon: <RiseOutlined />,
-        iconClass: "bg-teal-50 text-[#007A78]",
-        valueClass: "text-[#007A78]",
+        iconClass: "bg-emerald-50 text-[#DC2626]",
+        valueClass: "text-[#DC2626]",
       },
       {
         key: "pending",
@@ -264,7 +264,7 @@ export default function FinanceKpiSection({
             surface="flat"
             padding="compact"
             className={`h-full border-slate-200 transition-all rounded-xl ${item.highlightBorder ?? ""} ${
-              item.onClick ? "cursor-pointer hover:border-teal-400 hover:shadow-xs" : ""
+              item.onClick ? "cursor-pointer hover:border-emerald-400 hover:shadow-xs" : ""
             }`}
             onClick={item.onClick}
           >
@@ -293,7 +293,7 @@ export default function FinanceKpiSection({
                     percent={item.progress}
                     showInfo={false}
                     size="small"
-                    strokeColor="#007A78"
+                    strokeColor="#DC2626"
                     className="m-0 w-full"
                     aria-label={`Tỷ lệ giải ngân ${item.value}`}
                   />

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { usePathname } from "next/navigation";
@@ -93,7 +93,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     <Layout className={themeClassNames.app.shell}>
       {/* Thanh chạy tiến trình mỏng phía trên cùng khi làm mới dữ liệu */}
       {isRefreshing && (
-        <div className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#007A78] via-[#00B4D8] to-[#007A78] z-[9999] animate-loading-bar pointer-events-none" />
+        <div className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-600 via-emerald-400 to-red-600 z-[9999] animate-loading-bar pointer-events-none" />
       )}
 
       {/* Hiệu ứng loading mượt mà làm mờ nhẹ nền khi nhấn nút Làm mới */}
@@ -101,15 +101,15 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         <div className="fixed inset-0 z-[1200] flex flex-col items-center justify-center bg-slate-900/15 backdrop-blur-[2px] transition-all duration-300 pointer-events-none">
           <div className="flex flex-col items-center gap-3 bg-white/95 dark:bg-slate-800/95 px-7 py-5 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700/80 pointer-events-auto animate-in fade-in zoom-in-95 duration-200">
             <div className="relative flex items-center justify-center w-12 h-12">
-              <div className="absolute inset-0 rounded-full border-2 border-teal-500/20" />
-              <div className="absolute inset-0 rounded-full border-2 border-[#007A78] border-t-transparent animate-spin" />
-              <span className="text-[11px] font-bold text-[#007A78]">HT</span>
+              <div className="absolute inset-0 rounded-full border-2 border-red-500/20" />
+              <div className="absolute inset-0 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+              <span className="text-[11px] font-bold text-red-600">HT</span>
             </div>
             <div className="text-center">
               <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                 Đang làm mới dữ liệu...
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <div className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
                 Đang đồng bộ lại toàn bộ dữ liệu mới nhất
               </div>
             </div>

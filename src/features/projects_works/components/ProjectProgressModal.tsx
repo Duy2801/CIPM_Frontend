@@ -99,7 +99,7 @@ export default function ProjectProgressModal({
     <Modal
       title={
         <Flex align="center" gap={8}>
-          <ThunderboltOutlined className="text-[#007A78] text-base" />
+          <ThunderboltOutlined className="text-[#DC2626] text-base" />
           <Text strong className="text-slate-900 text-sm sm:text-base">
             Cập nhật tiến độ tuần: {project.code}
           </Text>
@@ -121,7 +121,7 @@ export default function ProjectProgressModal({
           key="save"
           intent="primary"
           scale="compact"
-          className="bg-[#007A78] border-[#007A78] text-white"
+          className="bg-[#DC2626] border-[#DC2626] text-white"
           disabled={!isAllowedToUpdate}
           onClick={handleSubmit}
         >
@@ -156,7 +156,7 @@ export default function ProjectProgressModal({
                     Giám sát: <strong className="text-slate-800">{project.supervisorName}</strong>
                   </Text>
                   <Text className="text-xs text-slate-600">
-                    Kế hoạch: <strong className="text-slate-800">{project.plannedProgress}%</strong>
+                    Kế hoạch: <strong className="text-amber-700 font-semibold">{project.plannedProgress}%</strong>
                   </Text>
                 </div>
               </Flex>
@@ -197,7 +197,7 @@ export default function ProjectProgressModal({
                         setErrorMsg("");
                       }}
                       disabled={!isAllowedToUpdate}
-                      className="font-mono font-bold text-[#007A78] text-sm"
+                      className="font-mono font-bold text-[#DC2626] text-sm"
                     />
                   </Flex>
                 </div>
@@ -264,11 +264,11 @@ export default function ProjectProgressModal({
                 </div>
 
                 {newProgress === 100 && (
-                  <Card surface="flat" padding="compact" rounded="sm" className="bg-emerald-50 border-emerald-200">
+                  <Card surface="flat" padding="compact" rounded="sm" className="bg-slate-50 border-slate-200">
                     <Flex align="center" gap={10} wrap="wrap">
-                      <Flex align="center" gap={6} className="text-emerald-800 font-semibold">
-                        <CheckCircleFilled />
-                        <Text strong className="text-xs text-emerald-800">
+                      <Flex align="center" gap={6} className="text-slate-800 font-semibold">
+                        <CheckCircleFilled className="text-slate-600" />
+                        <Text strong className="text-xs text-slate-800">
                           Nhập ngày hoàn thành thực tế
                         </Text>
                       </Flex>
@@ -334,7 +334,7 @@ export default function ProjectProgressModal({
                     <Flex align="center" gap={6} className="text-xs">
                       <Text className="text-slate-500 font-mono text-xs">{hist.oldProgress}%</Text>
                       <Text strong className="text-slate-400 text-xs">→</Text>
-                      <Text strong className="text-[#007A78] font-mono text-xs">{hist.newProgress}%</Text>
+                      <Text strong className="text-[#DC2626] font-mono text-xs">{hist.newProgress}%</Text>
                       {hist.stageRecorded && (
                         <span
                           className={`text-[10px] px-1.5 py-0.2 rounded font-medium border ${
@@ -349,7 +349,7 @@ export default function ProjectProgressModal({
                       {hist.note}
                     </Text>
                     {hist.actualEndDateRecorded && (
-                      <Tag intent="success" scale="sm">
+                      <Tag intent="brand" scale="sm">
                         Hoàn thành: {hist.actualEndDateRecorded}
                       </Tag>
                     )}

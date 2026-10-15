@@ -68,8 +68,8 @@ export default function ProcedureHeaderKpi({
       value: `${completionRate}%`,
       note: `${completedCount}/${activeStepsCount} bước hoàn thành`,
       icon: <CheckCircleFilled />,
-      iconClass: "bg-emerald-50 text-emerald-700",
-      valueClass: "text-emerald-700",
+      iconClass: "bg-red-50 text-[#DC2626]",
+      valueClass: "text-[#DC2626]",
       progress: completionRate,
     },
   ];
@@ -89,7 +89,7 @@ export default function ProcedureHeaderKpi({
                   <Text className="block text-[11px] text-slate-500">{item.note}</Text>
                 ) : (
                   <span className="block">
-                    <Progress percent={item.progress} showInfo={false} size="small" strokeColor="#007A78" />
+                    <Progress percent={item.progress} showInfo={false} size="small" strokeColor="#DC2626" />
                     <Text className="block text-[10px] text-slate-500">{item.note}</Text>
                   </span>
                 )}

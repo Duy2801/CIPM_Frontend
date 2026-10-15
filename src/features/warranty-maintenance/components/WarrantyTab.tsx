@@ -12,7 +12,7 @@ import {
   SearchOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { message } from "antd";
+import { App } from "antd";
 import {
   Button,
   Card,
@@ -58,18 +58,11 @@ export default function WarrantyTab({
   onOpenCreate,
   onOpenEdit,
 }: WarrantyTabProps) {
+  const { message } = App.useApp();
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const { warranties, incidents, today, permissions, data } = controller;
-
-  const counts = useMemo(() => {
-    const result = {} as Record<WarrantyFilter, number>;
-    FILTER_ORDER.forEach((key) => {
-      result[key] = warranties.filter((item) => matchesWarrantyFilter(item, key, incidents, today)).length;
-    });
-    return result;
-  }, [incidents, today, warranties]);
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -102,7 +95,7 @@ export default function WarrantyTab({
   const confirmReturn = (warranty: WarrantyRecord) => {
     Modal.confirm({
       title: "Hoàn trả bảo lãnh bảo hành?",
-      icon: <BankOutlined className="text-emerald-600" />,
+      icon: <BankOutlined className="text-[#DC2626]" />,
       content: (
         <Flex vertical gap={4} className="pt-1 text-[13px] text-slate-600">
           <span>Công trình: <strong>{warranty.workName}</strong></span>
@@ -199,9 +192,9 @@ export default function WarrantyTab({
   const statusOptions = useMemo(() => [
     ...FILTER_ORDER.map((key) => ({
       value: key,
-      label: `${WARRANTY_FILTER_LABELS[key]} (${counts[key]})`,
+      label: WARRANTY_FILTER_LABELS[key],
     })),
-  ], [counts]);
+  ], []);
 
   const columns: ColumnsType<WarrantyRecord> = [
     {
@@ -218,7 +211,7 @@ export default function WarrantyTab({
             <button
               type="button"
               onClick={() => onOpenDetail(row)}
-              className="mt-0.5 block text-left text-sm font-semibold leading-snug text-slate-900 hover:text-teal-700 hover:underline cursor-pointer"
+              className="mt-0.5 block text-left text-sm font-semibold leading-snug text-slate-900 hover:text-[#DC2626] hover:underline cursor-pointer"
             >
               {row.workName}
             </button>
@@ -237,31 +230,18 @@ export default function WarrantyTab({
       width: "28%",
       render: (_, row) => {
         const countdown = getCountdown(row, today);
-        const isUrgent = countdown.daysLeft >= 0 && countdown.daysLeft <= 30;
-        const isWatch = countdown.daysLeft > 30 && countdown.daysLeft <= 90;
         const isExpired = countdown.daysLeft < 0;
 
         return (
           <div className="py-0.5">
             <div className="flex items-center gap-2">
-              {isUrgent && (
-                <span className="inline-flex items-center rounded bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
-                  Còn {countdown.daysLeft} ngày
-                </span>
-              )}
-              {isWatch && (
-                <span className="inline-flex items-center rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                  Còn {countdown.daysLeft} ngày
-                </span>
-              )}
-              {!isUrgent && !isWatch && !isExpired && (
-                <span className="text-xs font-medium text-slate-700">
-                  Còn {countdown.daysLeft} ngày
-                </span>
-              )}
-              {isExpired && (
+              {isExpired ? (
                 <span className="text-xs text-slate-400">
                   Đã hết hạn
+                </span>
+              ) : (
+                <span className="text-xs font-medium text-slate-700">
+                  Còn {countdown.daysLeft} ngày
                 </span>
               )}
             </div>
@@ -285,7 +265,7 @@ export default function WarrantyTab({
               <span className="text-slate-500">Đang giữ bảo lãnh</span>
             )}
             {row.bondStatus === "RETURNED" && (
-              <span className="font-medium text-emerald-600">
+              <span className="font-medium text-blue-600">
                 Đã hoàn trả {row.bondClosedAt ? `(${formatDateVi(row.bondClosedAt)})` : ""}
               </span>
             )}
@@ -339,7 +319,7 @@ export default function WarrantyTab({
                   scale="sm"
                   icon={<EditOutlined />}
                   onClick={() => onOpenEdit(row)}
-                  className="h-7 w-7 !p-0 text-teal-600 hover:!text-teal-800 hover:!bg-teal-50"
+                  className="h-7 w-7 !p-0 text-[#DC2626] hover:!text-[#B91C1C] hover:!bg-red-50"
                 />
               </Tooltip>
             )}
@@ -363,7 +343,7 @@ export default function WarrantyTab({
                     icon={<CheckOutlined />}
                     disabled={Boolean(blocker)}
                     onClick={() => confirmReturn(row)}
-                    className="h-7 w-7 !p-0 text-emerald-600 hover:!text-emerald-700 hover:!bg-emerald-50 disabled:!text-slate-300"
+                    className="h-7 w-7 !p-0 text-blue-600 hover:!text-blue-800 hover:!bg-blue-50 disabled:!text-slate-300"
                   />
                 </Tooltip>
                 <Tooltip title="Thu hồi bảo lãnh (vi phạm)">
@@ -387,7 +367,7 @@ export default function WarrantyTab({
     <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm shadow-slate-100 overflow-hidden">
       <SectionIntro
         title="Thời hạn bảo hành công trình"
-        description="Thời hạn tính từ ngày nghiệm thu hoàn thành. Xanh: còn > 90 ngày; Vàng: còn ≤ 90 ngày; Đỏ: còn ≤ 30 ngày."
+        description="Thời hạn tính từ ngày nghiệm thu hoàn thành. Còn > 90 ngày (bình thường); Vàng: còn ≤ 90 ngày; Đỏ: còn ≤ 30 ngày."
         countLabel={`${rows.length} công trình`}
         readOnly={permissions.isReadOnly}
         guide="Chỉ hoàn trả bảo lãnh khi đã hết hạn bảo hành và mọi sự cố đã được khắc phục hoàn tất."
@@ -399,7 +379,7 @@ export default function WarrantyTab({
                 scale="sm"
                 icon={<DownloadOutlined />}
                 onClick={handleExportCSV}
-                className="h-8 text-xs font-medium rounded-lg border-slate-200 text-slate-700 hover:text-teal-700 hover:border-teal-600 shadow-sm"
+                className="h-8 text-xs font-medium rounded-lg border-slate-200 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626] shadow-sm"
               >
                 Xuất Excel
               </Button>
@@ -410,7 +390,7 @@ export default function WarrantyTab({
                 scale="sm"
                 icon={<PlusOutlined />}
                 onClick={onOpenCreate}
-                className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white h-8 text-xs font-semibold rounded-lg shadow-sm"
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-8 text-xs font-semibold rounded-lg shadow-sm"
               >
                 Thêm bảo hành
               </Button>
@@ -488,7 +468,7 @@ export default function WarrantyTab({
           },
           className: "cursor-pointer",
         })}
-        className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-3 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-3 [&_.ant-table-tbody>tr:hover>td]:!bg-teal-50/30"
+        className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-3 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-thead>tr>th::before]:!hidden [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-tbody>tr>td]:py-3 [&_.ant-table-tbody>tr:hover>td]:!bg-slate-50/80"
         locale={{
           emptyText: (
             <div className="py-10 text-center text-slate-500">

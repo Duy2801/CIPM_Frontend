@@ -103,9 +103,9 @@ export default function FinanceSettlementScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {controller.feedback && (
+      {controller.feedback?.type === "error" && (
         <FeedbackBar
-          type={controller.feedback.type}
+          type="error"
           text={controller.feedback.text}
           onClose={controller.clearFeedback}
         />
@@ -123,7 +123,7 @@ export default function FinanceSettlementScreen() {
                 onClick={() => setActiveTab(item.key)}
                 className={`relative flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
                   isActive
-                    ? "bg-[#007A78] text-white shadow-sm font-bold"
+                    ? "bg-[#DC2626] text-white shadow-sm font-bold"
                     : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                 }`}
               >

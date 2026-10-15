@@ -3,6 +3,7 @@ import { BIDDING_MOCK_DATA } from "../constants/bidding-mock-data.ts";
 import type { BidPackage, BiddingDataset, BidStepRecord } from "../types/bidding.types";
 import { getCurrentBidStep, validateBidStep } from "../utils/bidding-rules.ts";
 import type { BiddingRepository } from "./bidding.repository.ts";
+import { getSharedProjects } from "@/stores/project.store";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
@@ -17,7 +18,20 @@ export function createMockBiddingRepository(): BiddingRepository {
 
   return {
     async getDataset() {
-      return clone(dataset);
+      const copy = clone(dataset);
+      const shared = getSharedProjects();
+      const existingIds = new Set(copy.projects.map((p) => p.id));
+      for (const sp of shared) {
+        if (!existingIds.has(sp.id)) {
+          copy.projects.push({
+            id: sp.id,
+            code: sp.code,
+            name: sp.name,
+          });
+          existingIds.add(sp.id);
+        }
+      }
+      return copy;
     },
 
     async createPackage(input) {

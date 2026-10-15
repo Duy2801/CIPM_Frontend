@@ -376,16 +376,16 @@ export default function BidPackageDetailDrawer({
                 className={`rounded-xl border p-3 text-xs transition-all cursor-pointer group hover:shadow-xs ${
                   record
                     ? isExpanded
-                      ? "border-emerald-400 bg-emerald-50/30 shadow-2xs"
-                      : "border-emerald-200 bg-white hover:border-emerald-300"
+                      ? "border-amber-400 bg-amber-50/40 shadow-2xs"
+                      : "border-amber-200 bg-white hover:border-amber-300"
                     : isPending
                     ? isExpanded
                       ? "border-violet-400 bg-violet-50 shadow-2xs"
                       : "border-violet-300 bg-violet-50/60 hover:border-violet-400"
                     : isCurrent
                     ? isExpanded
-                      ? "border-sky-400 bg-sky-50 shadow-2xs"
-                      : "border-sky-300 bg-sky-50/70 hover:border-sky-400"
+                      ? "border-amber-400 bg-amber-50 shadow-2xs"
+                      : "border-amber-300 bg-amber-50/70 hover:border-amber-400"
                     : isExpanded
                     ? "border-slate-300 bg-white shadow-2xs"
                     : "border-slate-200/80 bg-slate-50/50 opacity-80 hover:opacity-100 hover:border-slate-300"
@@ -394,23 +394,23 @@ export default function BidPackageDetailDrawer({
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 shrink-0 text-base">
                     {record ? (
-                      <CheckCircleFilled className="text-emerald-600" />
+                      <CheckCircleFilled className="text-amber-500" />
                     ) : isPending ? (
                       <ClockCircleOutlined className="text-violet-600" />
                     ) : (
-                      <ClockCircleOutlined className={isCurrent ? "text-sky-600" : "text-slate-300"} />
+                      <ClockCircleOutlined className={isCurrent ? "text-amber-600" : "text-slate-300"} />
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className={`font-bold text-[13px] ${record || isCurrent ? "text-slate-900 group-hover:text-teal-800" : "text-slate-500"}`}>
+                      <span className={`font-bold text-[13px] ${record || isCurrent ? "text-slate-900 group-hover:text-amber-700" : "text-slate-500"}`}>
                         {step.number}. {step.title}
                       </span>
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         {record && (
-                          <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                             Đã xong
                           </span>
                         )}
@@ -420,7 +420,7 @@ export default function BidPackageDetailDrawer({
                           </span>
                         )}
                         {isCurrent && !isPending && (
-                          <span className="text-[11px] font-semibold text-sky-800 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-full">
+                          <span className="text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full">
                             Đang làm
                           </span>
                         )}
@@ -431,7 +431,7 @@ export default function BidPackageDetailDrawer({
                         )}
                         <DownOutlined
                           className={`text-[10px] text-slate-400 transition-transform ml-1 ${
-                            isExpanded ? "rotate-180 text-teal-700 font-bold" : "group-hover:text-teal-700"
+                            isExpanded ? "rotate-180 text-amber-700 font-bold" : "group-hover:text-amber-700"
                           }`}
                         />
                       </div>
@@ -441,7 +441,7 @@ export default function BidPackageDetailDrawer({
                       {record ? (
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-700">
                           <span className="inline-flex items-center gap-1 font-semibold text-slate-900">
-                            <CalendarOutlined className="text-emerald-700" />
+                            <CalendarOutlined className="text-amber-600" />
                             Hoàn thành ngày {formatDateVi(record.completedAt)}
                           </span>
                           <span className="text-slate-300">·</span>
@@ -455,7 +455,7 @@ export default function BidPackageDetailDrawer({
                             </>
                           )}
                           {!isExpanded && record.fileName && (
-                            <span className="text-[11px] text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200/80 font-medium ml-1">
+                            <span className="text-[11px] text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/80 font-medium ml-1">
                               📎 1 tệp đính kèm
                             </span>
                           )}
@@ -510,7 +510,7 @@ export default function BidPackageDetailDrawer({
                                 <span>·</span>
                                 <span>Tài liệu PDF điện tử</span>
                                 <span>·</span>
-                                <span className="text-emerald-700 font-medium flex items-center gap-1">
+                                <span className="text-amber-700 font-medium flex items-center gap-1">
                                   <SafetyCertificateOutlined /> Đã ký số
                                 </span>
                               </div>
@@ -536,7 +536,7 @@ export default function BidPackageDetailDrawer({
                                 ].filter(Boolean)
                               );
                             }}
-                            className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] text-white font-medium text-xs shrink-0 shadow-2xs"
+                            className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-white font-medium text-xs shrink-0 shadow-2xs"
                           >
                             Tải về máy
                           </Button>
@@ -633,7 +633,7 @@ export default function BidPackageDetailDrawer({
                                 e.stopPropagation();
                                 confirmApprove();
                               }}
-                              className="!bg-emerald-600 !border-emerald-600 hover:!bg-emerald-700 text-white font-medium"
+                              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-white font-medium"
                             >
                               Phê duyệt bước {step.number}
                             </Button>
@@ -668,7 +668,7 @@ export default function BidPackageDetailDrawer({
                                 e.stopPropagation();
                                 onUpdateStep(pkg);
                               }}
-                              className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] text-white font-medium"
+                              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-white font-medium"
                             >
                               Cập nhật & Đính kèm tài liệu bước {step.number}
                             </Button>

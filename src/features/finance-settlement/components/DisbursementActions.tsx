@@ -68,14 +68,28 @@ export default function DisbursementActions({
 
   if (canApproveThis) {
     const isChiefLevel = disbursement.status === "PENDING_CHIEF";
+    const isCompact = size === "compact";
     return (
-      <Flex gap={8} wrap={false} align="center" justify="center" className="whitespace-nowrap">
+      <Flex
+        vertical={isCompact}
+        gap={isCompact ? 6 : 8}
+        wrap={!isCompact}
+        align="center"
+        justify="center"
+        className={isCompact ? "w-full max-w-[130px] mx-auto py-1" : "whitespace-nowrap"}
+      >
         <Button
           intent="primary"
           scale={scale}
           icon={isChiefLevel ? <CheckOutlined /> : <CheckCircleOutlined />}
           onClick={confirmApprove}
-          className={!isChiefLevel ? "bg-[#007A78] border-[#007A78] text-white" : "bg-amber-600 border-amber-600 text-white"}
+          className={`${
+            isCompact ? "w-full justify-center text-xs h-7.5 px-2" : ""
+          } ${
+            !isChiefLevel
+              ? "bg-[#DC2626] border-[#DC2626] text-white hover:bg-red-700"
+              : "bg-amber-600 border-amber-600 text-white hover:bg-amber-700"
+          }`}
         >
           {isChiefLevel ? "Duyệt cấp 1" : "Ký duyệt KBNN"}
         </Button>
@@ -85,7 +99,9 @@ export default function DisbursementActions({
             scale={scale}
             icon={<CloseOutlined />}
             onClick={() => onReject(disbursement)}
-            className="!border-rose-200 !text-rose-700 hover:!border-rose-400"
+            className={`${
+              isCompact ? "w-full justify-center text-xs h-7.5 px-2" : ""
+            } !border-rose-200 !text-rose-700 hover:!border-rose-400 hover:bg-rose-50`}
           >
             Trả lại
           </Button>
@@ -96,7 +112,13 @@ export default function DisbursementActions({
 
   if (disbursement.status === "REJECTED" && rolePermissions.canCreateDisbursement) {
     return (
-      <Button intent="danger" scale={scale} icon={<EditOutlined />} onClick={() => onEdit(disbursement)}>
+      <Button
+        intent="danger"
+        scale={scale}
+        icon={<EditOutlined />}
+        onClick={() => onEdit(disbursement)}
+        className={size === "compact" ? "w-full max-w-[130px] justify-center text-xs h-7.5" : ""}
+      >
         Sửa &amp; trình lại
       </Button>
     );

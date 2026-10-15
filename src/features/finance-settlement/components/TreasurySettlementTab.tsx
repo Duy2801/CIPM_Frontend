@@ -59,7 +59,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
               className="group block text-left w-full cursor-pointer"
             >
               <Text
-                className="block text-xs font-bold leading-snug text-[#102A43] group-hover:text-[#007A78] transition-colors line-clamp-2"
+                className="block text-xs font-bold leading-snug text-[#102A43] group-hover:text-[#DC2626] transition-colors line-clamp-2"
                 title={project?.name}
               >
                 {project?.name}
@@ -108,7 +108,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
         const diff = settlement.approvedSettlementAmount - settlement.disbursedAmount;
         if (diff === 0) {
           return (
-            <Tag intent="success" scale="sm" className="m-0 font-semibold">
+            <Tag scale="sm" className="m-0 font-semibold !bg-slate-100 !text-slate-700 !border !border-slate-200">
               Khớp
             </Tag>
           );
@@ -133,7 +133,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
         return (
           <div className="py-0.5 flex flex-col items-center">
             <div className="flex items-center justify-center gap-1 text-[11.5px] mb-0.5 leading-none">
-              <span className="font-bold text-[#007A78]">{settlement.completedSteps.length}/5 bước</span>
+              <span className="font-bold text-[#DC2626]">{settlement.completedSteps.length}/5 bước</span>
               {nextStepMeta && (
                 <span className="text-[10px] text-slate-400 truncate max-w-[85px]" title={nextStepMeta.title}>
                   · B{nextStep}
@@ -144,7 +144,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
               percent={percent}
               showInfo={false}
               size="small"
-              strokeColor="#007A78"
+              strokeColor="#DC2626"
               className="m-0 w-full max-w-[100px] [&_.ant-progress-inner]:!h-1.5"
             />
           </div>
@@ -160,7 +160,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
         const settled = settlement.status === "SETTLED";
         return (
           <Tag
-            intent={settled ? "success" : settlement.status === "IN_PROGRESS" ? "info" : "muted"}
+            intent={settled ? "brand" : settlement.status === "IN_PROGRESS" ? "info" : "muted"}
             scale="sm"
             className="m-0 font-medium"
           >
@@ -186,7 +186,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
                 scale="xs"
                 icon={<RightOutlined className="text-xs" />}
                 onClick={() => setSelectedId(settlement.id)}
-                className="bg-[#007A78] hover:bg-[#006664] text-white text-xs font-semibold px-2 py-0.5 rounded shadow-xs whitespace-nowrap"
+                className="bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-semibold px-2 py-0.5 rounded shadow-xs whitespace-nowrap"
                 title={`Thực hiện bước ${nextStep}`}
               >
                 Bước {nextStep}
@@ -197,7 +197,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
                 scale="xs"
                 icon={<EyeOutlined className="text-xs" />}
                 onClick={() => setSelectedId(settlement.id)}
-                className="text-xs font-semibold text-[#007A78] hover:text-[#005f5d] px-1.5 py-0.5 rounded hover:bg-teal-50 transition-colors whitespace-nowrap"
+                className="text-xs font-semibold text-[#DC2626] hover:text-[#B91C1C] px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors whitespace-nowrap"
                 title="Xem chi tiết hồ sơ tất toán"
               >
                 Chi tiết
@@ -247,7 +247,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
             }
             setSelectedId(record.id);
           },
-          className: "cursor-pointer hover:bg-teal-50/20 transition-colors",
+          className: "cursor-pointer hover:bg-slate-50/80 transition-colors",
         })}
         pagination={{
           pageSize: 5,
@@ -270,7 +270,7 @@ export default function TreasurySettlementTab({ controller }: TreasurySettlement
                 <Button
                   intent="textLink"
                   scale="xs"
-                  className="mt-2 text-xs font-semibold text-[#007A78]"
+                  className="mt-2 text-xs font-semibold text-[#DC2626]"
                   onClick={() => setSearch("")}
                 >
                   Xóa tìm kiếm

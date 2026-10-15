@@ -10,7 +10,7 @@ export const CATEGORY_LABELS: Record<LegalDocumentCategory, string> = {
 };
 
 export const STATUS_META = {
-  EFFECTIVE: { label: "Còn hiệu lực", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  EFFECTIVE: { label: "Còn hiệu lực", badge: "bg-red-50 text-[#DC2626] border-red-200" },
   EXPIRED: { label: "Hết hiệu lực", badge: "bg-slate-100 text-slate-500 border-slate-200" },
   PARTIAL: { label: "Hết hiệu lực một phần", badge: "bg-amber-50 text-amber-700 border-amber-200" },
 };

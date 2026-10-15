@@ -48,6 +48,19 @@ export const Modal: React.FC<ModalProps> & {
   zIndex = 1300,
   ...props
 }) => {
+  React.useEffect(() => {
+    if (props.open) {
+      const prevHtmlOverflow = document.documentElement.style.overflow;
+      const prevBodyOverflow = document.body.style.overflow;
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.style.overflow = prevHtmlOverflow;
+        document.body.style.overflow = prevBodyOverflow;
+      };
+    }
+  }, [props.open]);
+
   return (
     <AntModal
       centered={centered}

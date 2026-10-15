@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { message } from "antd";
+import { App } from "antd";
 import { DEFAULT_LIST_PAGE_SIZE, Modal } from "@/components/ui";
-import { INITIAL_PROJECTS_MOCK } from "../constants/projects-mock-data";
+import { useProjectStore } from "@/stores/project.store";
 import type {
   ProjectFormData,
   ProjectItem,
@@ -20,8 +20,10 @@ import ProjectActionConfirmModal, { type ProjectActionType } from "./ProjectActi
 import { isBoardOfDirectors } from "../utils/project-permissions";
 
 export default function ProjectsWorksScreen() {
+  const { message } = App.useApp();
   const { user } = useAuth();
-  const [projects, setProjects] = useState<ProjectItem[]>(INITIAL_PROJECTS_MOCK);
+  const projects = useProjectStore((s) => s.projects);
+  const setProjects = useProjectStore((s) => s.setProjects);
   const [activeTab, setActiveTab] = useState<ProjectStatusFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedType, setSelectedType] = useState<ProjectWorkType | "ALL">("ALL");
@@ -92,6 +94,17 @@ export default function ProjectsWorksScreen() {
       );
     }
 
+const STAGE_ORDER: Record<string, number> = {
+  PREPARATION: 1,
+  DESIGN: 2,
+  BIDDING: 3,
+  CONSTRUCTION: 4,
+  COMPENSATION: 5,
+  INSPECTION: 6,
+  SETTLEMENT: 7,
+  COMPLETED: 8,
+};
+
     // 5. Sắp xếp đa chiều
     result.sort((a, b) => {
       switch (sortBy) {
@@ -103,9 +116,31 @@ export default function ProjectsWorksScreen() {
           return a.actualProgress - b.actualProgress;
         case "progress_desc":
           return b.actualProgress - a.actualProgress;
+        case "code_desc":
+          return b.code.localeCompare(a.code, "vi");
+        case "name_asc":
+          return a.name.localeCompare(b.name, "vi");
+        case "name_desc":
+          return b.name.localeCompare(a.name, "vi");
+        case "stage_asc":
+          return (STAGE_ORDER[a.currentStage] || 0) - (STAGE_ORDER[b.currentStage] || 0);
+        case "stage_desc":
+          return (STAGE_ORDER[b.currentStage] || 0) - (STAGE_ORDER[a.currentStage] || 0);
+        case "manager_asc":
+          return (a.managerName || "").localeCompare(b.managerName || "", "vi");
+        case "manager_desc":
+          return (b.managerName || "").localeCompare(a.managerName || "", "vi");
+        case "startDate_asc":
+          return (a.startDate || "").localeCompare(b.startDate || "");
+        case "startDate_desc":
+          return (b.startDate || "").localeCompare(a.startDate || "");
+        case "endDate_asc":
+          return (a.endDatePlanned || "").localeCompare(b.endDatePlanned || "");
+        case "endDate_desc":
+          return (b.endDatePlanned || "").localeCompare(a.endDatePlanned || "");
         case "code_asc":
         default:
-          return a.code.localeCompare(b.code);
+          return a.code.localeCompare(b.code, "vi");
       }
     });
 
@@ -137,6 +172,11 @@ export default function ProjectsWorksScreen() {
 
   const handleStatusFilterChange = (status: "ALL" | "active" | "closed") => {
     setStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (newSort: string) => {
+    setSortBy(newSort);
     setCurrentPage(1);
   };
 
@@ -189,12 +229,14 @@ export default function ProjectsWorksScreen() {
       type: data.type,
       location: data.location || "TP. Hà Tiên",
       scale: data.scale?.trim() || "",
-      fundingSource: data.fundingSource,
-      totalInvestment: data.totalInvestment,
+      fundingSource: data.fundingSource ?? "Ngân sách thành phố",
+      totalInvestment: data.totalInvestment ?? 0,
       plan2026: data.plan2026 ?? 0,
       disbursedAmount: 0.0,
       managerName: data.managerName || "Chưa phân công",
       supervisorName: data.supervisorName || "Nguyễn Văn An",
+      departments: data.departments || ["Tổ Giám sát – Kỹ thuật"],
+      documents: data.documents || [],
       startDate: data.startDate,
       endDatePlanned: data.endDatePlanned,
       currentStage: data.currentStage || "PREPARATION",
@@ -256,11 +298,13 @@ export default function ProjectsWorksScreen() {
           type: data.type,
           location: data.location ?? project.location,
           scale: data.scale ?? project.scale,
-          fundingSource: data.fundingSource,
-          totalInvestment: data.totalInvestment,
+          fundingSource: data.fundingSource ?? project.fundingSource,
+          totalInvestment: data.totalInvestment !== undefined ? data.totalInvestment : project.totalInvestment,
           plan2026: data.plan2026 !== undefined ? data.plan2026 : project.plan2026,
           managerName: data.managerName ?? project.managerName,
           supervisorName: data.supervisorName ?? project.supervisorName,
+          departments: data.departments ?? project.departments,
+          documents: data.documents !== undefined ? data.documents : project.documents,
           startDate: data.startDate,
           endDatePlanned: data.endDatePlanned,
           currentStage: newStage,
@@ -376,7 +420,7 @@ export default function ProjectsWorksScreen() {
         statusFilter={statusFilter}
         onStatusFilterChange={handleStatusFilterChange}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={handleSortChange}
         totalFilteredCount={total}
         filteredProjects={filteredProjects}
         canCreateProject={isBoardOfDirectors(user)}
@@ -389,6 +433,8 @@ export default function ProjectsWorksScreen() {
         currentPage={currentPage}
         pageSize={pageSize}
         total={total}
+        sortBy={sortBy}
+        onSortChange={handleSortChange}
         onPageChange={(page) => setCurrentPage(page)}
         onViewDetail={(prj, mode = "view") => {
           setDetailProjectId(prj.id);

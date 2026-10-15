@@ -37,7 +37,7 @@ export default function HouseholdActions({
     const step = getStepDefinition(proposal.step);
     Modal.confirm({
       title: `Duyệt bước ${proposal.step} cho hộ ${household.ownerName}?`,
-      icon: <CheckOutlined className="text-emerald-600" />,
+      icon: <CheckOutlined className="text-slate-600" />,
       content: (
         <Flex vertical gap={4} className="pt-1 text-[13px] text-slate-600">
           <span>Bước: <strong>{step?.title}</strong></span>
@@ -60,7 +60,7 @@ export default function HouseholdActions({
         <button
           type="button"
           onClick={confirmApprove}
-          className="inline-flex items-center gap-1 h-7 px-2 rounded text-[11px] font-medium bg-[#007A78] text-white hover:bg-[#006361] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1 h-7 px-2 rounded text-[11px] font-medium bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-colors cursor-pointer"
         >
           <CheckOutlined className="text-[10px]" />
           Duyệt B{proposal.step}
@@ -97,7 +97,7 @@ export default function HouseholdActions({
           "inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
           household.rejection
             ? "bg-rose-600 text-white hover:bg-rose-700"
-            : "bg-[#007A78] text-white hover:bg-[#006361]",
+            : "bg-[#DC2626] text-white hover:bg-[#B91C1C]",
         )}
       >
         {definition?.requiresApproval ? (
@@ -117,7 +117,7 @@ export default function HouseholdActions({
 
   // 4. Đã hoàn tất cả 16 bước
   if (!current) {
-    return <span className="text-[11px] font-medium text-emerald-700">Đã bàn giao đất</span>;
+    return <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Đã bàn giao đất</span>;
   }
 
   // 5. Nút mở chi tiết (khi chỉ có quyền xem)
@@ -126,7 +126,7 @@ export default function HouseholdActions({
       <button
         type="button"
         onClick={() => onOpenDetail(household)}
-        className="text-[11.5px] font-medium text-slate-500 hover:text-[#007A78] hover:underline cursor-pointer"
+        className="text-[11.5px] font-medium text-slate-500 hover:text-[#DC2626] hover:underline cursor-pointer"
       >
         Chi tiết
       </button>

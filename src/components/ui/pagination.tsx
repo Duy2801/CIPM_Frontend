@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/utils/cn";
 
 export const paginationVariants = cva(
-  "flex items-center select-none text-xs [&_.ant-pagination-item]:!rounded-md [&_.ant-pagination-item]:!border-slate-200 [&_.ant-pagination-item-active]:!border-[#007A78] [&_.ant-pagination-item-active]:!bg-[#007A78] [&_.ant-pagination-item-active_a]:!text-white [&_.ant-pagination-prev]:!rounded-md [&_.ant-pagination-next]:!rounded-md",
+  "flex items-center select-none text-xs [&_.ant-pagination-item]:!rounded-md [&_.ant-pagination-item]:!border-slate-200 [&_.ant-pagination-item-active]:!border-[#DC2626] [&_.ant-pagination-item-active]:!bg-[#DC2626] [&_.ant-pagination-item-active_a]:!text-white [&_.ant-pagination-prev]:!rounded-md [&_.ant-pagination-next]:!rounded-md",
   {
     variants: {
       scale: {

@@ -8,10 +8,11 @@ import {
   PaperClipOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Form, Input, Text } from "@/components/ui";
+import { Button, Drawer, Form, Input, MoneyInput, Text } from "@/components/ui";
 import { todayIso } from "@/utils/date";
 import type { BidPackage, BidStepInput } from "../types/bidding.types";
 import { getBidStepDefinition, getCurrentBidStep } from "../utils/bidding-rules";
+import { parseMoney } from "@/utils/format-money";
 
 interface BidStepModalProps {
   pkg: BidPackage;
@@ -47,7 +48,7 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
         completedAt: values.completedAt,
         bidDeadline: values.bidDeadline,
         winner: values.winner?.trim(),
-        winningPrice: values.winningPrice ? Number(values.winningPrice) : undefined,
+        winningPrice: values.winningPrice ? parseMoney(values.winningPrice) : undefined,
         fileName: selectedFile?.name || values.fileName,
         fileSize: selectedFile?.size || values.fileSize,
       };
@@ -69,7 +70,7 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
             intent="primary"
             onClick={() => form.submit()}
             loading={submitting}
-            className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white font-semibold"
+            className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white font-semibold"
           >
             {needsApproval ? "Gửi tờ trình" : `Hoàn thành bước ${current}`}
           </Button>
@@ -143,8 +144,8 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
         >
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#007A78] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
-                <UploadOutlined className="text-teal-700 text-sm" />
+              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#DC2626] text-xs font-medium text-slate-700 transition-colors shadow-2xs">
+                <UploadOutlined className="text-blue-600 text-sm" />
                 <span>Chọn tệp đính kèm</span>
                 <input
                   type="file"
@@ -164,10 +165,10 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
               </label>
 
               {selectedFile ? (
-                <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium">
-                  <FileTextOutlined className="text-teal-600 text-sm" />
+                <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-blue-50 border border-blue-200 text-xs text-blue-800 font-medium">
+                  <FileTextOutlined className="text-blue-600 text-sm" />
                   <span className="truncate max-w-[260px] font-mono">{selectedFile.name}</span>
-                  <span className="text-[11px] text-teal-600">({selectedFile.size})</span>
+                  <span className="text-[11px] text-blue-600">({selectedFile.size})</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -218,14 +219,21 @@ export default function BidStepModal({ pkg, errorText, onClose, onComplete, onSu
             </Form.Item>
             <Form.Item
               name="winningPrice"
-              label="Giá trúng thầu (tỷ đồng)"
-              extra={`Không vượt giá gói thầu ${new Intl.NumberFormat("vi-VN").format(pkg.estimatedPrice)} tỷ`}
+              label="Giá trúng thầu"
+              extra={`Không vượt giá gói thầu ${new Intl.NumberFormat("vi-VN").format(pkg.estimatedPrice)}`}
               rules={[
                 { required: true, message: "Vui lòng nhập giá trúng thầu." },
-                { pattern: /^\d+(\.\d{1,3})?$/, message: "Số dương, tối đa 3 chữ số thập phân." },
+                () => ({
+                  validator: (_, val) => {
+                    const num = parseMoney(val);
+                    if (!num || num <= 0) return Promise.reject(new Error("Số dương hợp lệ."));
+                    if (num > pkg.estimatedPrice) return Promise.reject(new Error("Không được vượt giá gói thầu."));
+                    return Promise.resolve();
+                  },
+                }),
               ]}
             >
-              <Input inputMode="decimal" suffix="tỷ" placeholder="Ví dụ: 35.080" />
+              <MoneyInput placeholder="Ví dụ: 100.000.000" />
             </Form.Item>
           </div>
         )}

@@ -13,14 +13,14 @@ const TONE_CLASSES: Record<
     stroke: "#102A43",
   },
   brand: {
-    icon: "bg-teal-50 text-[#007A78]",
-    value: "text-[#007A78]",
-    stroke: "#007A78",
+    icon: "bg-red-50 text-[#DC2626]",
+    value: "text-[#DC2626]",
+    stroke: "#DC2626",
   },
   success: {
-    icon: "bg-emerald-50 text-emerald-700",
-    value: "text-emerald-700",
-    stroke: "#059669",
+    icon: "bg-blue-50 text-blue-700",
+    value: "text-blue-700",
+    stroke: "#2563EB",
   },
   warning: {
     icon: "bg-amber-50 text-amber-700",
@@ -76,7 +76,7 @@ export default function KpiCardGrid({ items }: KpiCardGridProps) {
           >
             <div>
               <div className="flex items-start justify-between gap-2.5">
-                <Text className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 leading-snug line-clamp-2 min-h-[30px]">
+                <Text className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 leading-snug line-clamp-2 min-h-[30px]">
                   {item.label}
                 </Text>
                 <span
@@ -110,7 +110,7 @@ export default function KpiCardGrid({ items }: KpiCardGridProps) {
               )}
               {item.note && (
                 <Text
-                  className="block text-xs leading-normal text-slate-500 truncate"
+                  className="block text-xs leading-normal text-slate-600 font-medium truncate"
                   title={typeof item.note === "string" ? item.note : undefined}
                 >
                   {item.note}

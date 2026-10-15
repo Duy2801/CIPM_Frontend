@@ -166,8 +166,8 @@ export default function IncidentDetailDrawer({
           </Text>
           <span className="text-xs font-medium text-slate-500">
             {incident.status === "FIXED" ? (
-              <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                <CheckCircleFilled /> Đã hoàn tất nghiệm thu
+              <span className="text-slate-800 font-semibold flex items-center gap-1">
+                <CheckCircleFilled className="text-slate-600" /> Đã hoàn tất nghiệm thu
               </span>
             ) : incident.status === "FIXING" ? (
               <span className="text-sky-700 font-semibold flex items-center gap-1">
@@ -182,13 +182,13 @@ export default function IncidentDetailDrawer({
         </Flex>
 
         {incident.status === "FIXED" ? (
-          <div className="rounded-lg bg-emerald-50/70 border border-emerald-200 p-3 text-xs text-emerald-900 space-y-1">
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-800 space-y-1">
             <div className="flex justify-between">
-              <span className="text-emerald-700">Ngày nghiệm thu hoàn thành:</span>
+              <span className="text-slate-500">Ngày nghiệm thu hoàn thành:</span>
               <strong>{formatDateVi(incident.fixedDate!)}</strong>
             </div>
             <div className="flex justify-between">
-              <span className="text-emerald-700">Biên bản nghiệm thu số:</span>
+              <span className="text-slate-500">Biên bản nghiệm thu số:</span>
               <strong className="font-mono">{incident.acceptanceDocument}</strong>
             </div>
           </div>

@@ -11,15 +11,136 @@ import type {
 } from "../types/finance.types";
 import { canCompleteSettlementStep } from "../utils/finance-rules.ts";
 import type { FinanceRepository, SettlementStepPayload } from "./finance.repository.ts";
+import { getSharedProjects, useProjectStore } from "@/stores/project.store";
+import type { ProjectItem } from "@/features/projects_works/types/project.types";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
+const FINANCE_STORAGE_KEY = "cipm_finance_settlement_store_v1";
+
+function loadFinanceStorage(): FinanceDataset {
+  if (typeof window === "undefined") return clone(FINANCE_MOCK_DATA);
+  try {
+    const raw = window.localStorage.getItem(FINANCE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+        contracts: Array.isArray(parsed.contracts) ? parsed.contracts : [],
+        treasuryAccounts: Array.isArray(parsed.treasuryAccounts) ? parsed.treasuryAccounts : [],
+        capitalPlans: Array.isArray(parsed.capitalPlans) ? parsed.capitalPlans : [],
+        disbursements: Array.isArray(parsed.disbursements) ? parsed.disbursements : [],
+        settlements: Array.isArray(parsed.settlements) ? parsed.settlements : [],
+      };
+    }
+  } catch (e) {
+    console.error("Failed to load finance data from localStorage", e);
+  }
+  return clone(FINANCE_MOCK_DATA);
+}
+
+function saveFinanceStorage(data: FinanceDataset) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error("Failed to save finance data to localStorage", e);
+  }
+}
+
+function syncProjectToStore(projectId: string, capitalPlans: CapitalPlan[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const store = useProjectStore.getState();
+    const target = store.projects.find((p) => p.id === projectId || p.code === projectId);
+    if (!target) return;
+
+    const prjPlans = capitalPlans.filter(
+      (p) => p.projectId === target.id || p.projectId === target.code
+    );
+    const totalAllocated = prjPlans.reduce(
+      (sum, p) => sum + (p.initialAmount || 0) + (p.adjustmentAmount || 0),
+      0
+    );
+    const plan2026 = prjPlans
+      .filter((p) => p.year === 2026)
+      .reduce((sum, p) => sum + (p.initialAmount || 0) + (p.adjustmentAmount || 0), 0);
+
+    const updates: Partial<ProjectItem> = {};
+    if (totalAllocated > 0) {
+      if (target.totalInvestment === 0 || totalAllocated > target.totalInvestment) {
+        updates.totalInvestment = totalAllocated;
+      }
+    }
+    if (plan2026 > 0 && target.plan2026 !== plan2026) {
+      updates.plan2026 = plan2026;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      store.updateProject(target.id, updates);
+    }
+  } catch (e) {
+    console.error("Failed to sync project to store", e);
+  }
+}
+
+function syncAllProjectsToStore(capitalPlans: CapitalPlan[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const store = useProjectStore.getState();
+    for (const prj of store.projects) {
+      syncProjectToStore(prj.id, capitalPlans);
+    }
+  } catch (e) {
+    console.error("Failed to sync all projects to store", e);
+  }
+}
+
 export function createMockFinanceRepository(): FinanceRepository {
-  const dataset = clone(FINANCE_MOCK_DATA);
+  let dataset = loadFinanceStorage();
 
   return {
     async getDataset(): Promise<FinanceDataset> {
-      return clone(dataset);
+      const stored = loadFinanceStorage();
+      if (stored.capitalPlans.length > 0 || stored.disbursements.length > 0 || stored.settlements.length > 0) {
+        dataset = stored;
+      }
+
+      const copy = clone(dataset);
+      const shared = getSharedProjects();
+      const existingIds = new Set(copy.projects.map((p) => p.id));
+      for (const sp of shared) {
+        const prjPlans = dataset.capitalPlans.filter(
+          (p) => p.projectId === sp.id || p.projectId === sp.code
+        );
+        const totalAllocated = prjPlans.reduce(
+          (sum, p) => sum + (p.initialAmount || 0) + (p.adjustmentAmount || 0),
+          0
+        );
+        const effectiveInvestment = totalAllocated > 0
+          ? Math.max(sp.totalInvestment || 0, totalAllocated)
+          : (sp.totalInvestment || 0);
+
+        if (!existingIds.has(sp.id)) {
+          copy.projects.push({
+            id: sp.id,
+            code: sp.code,
+            name: sp.name,
+            totalInvestment: effectiveInvestment,
+            status: "Đang thực hiện",
+          });
+          existingIds.add(sp.id);
+        } else {
+          const p = copy.projects.find((item) => item.id === sp.id);
+          if (p) {
+            p.totalInvestment = effectiveInvestment;
+          }
+        }
+      }
+
+      syncAllProjectsToStore(dataset.capitalPlans);
+
+      return copy;
     },
 
     async createCapitalPlan(input: CapitalPlanInput): Promise<CapitalPlan> {
@@ -35,6 +156,8 @@ export function createMockFinanceRepository(): FinanceRepository {
         updatedAt: new Date().toISOString().slice(0, 10),
       };
       dataset.capitalPlans = [plan, ...dataset.capitalPlans];
+      syncProjectToStore(input.projectId, dataset.capitalPlans);
+      saveFinanceStorage(dataset);
       return clone(plan);
     },
 
@@ -50,6 +173,8 @@ export function createMockFinanceRepository(): FinanceRepository {
         approvalFileName: input.approvalFileName,
         updatedAt: new Date().toISOString().slice(0, 10),
       });
+      syncProjectToStore(plan.projectId, dataset.capitalPlans);
+      saveFinanceStorage(dataset);
       return clone(plan);
     },
 
@@ -68,6 +193,7 @@ export function createMockFinanceRepository(): FinanceRepository {
         createdAt: new Date().toISOString().slice(0, 10),
       };
       dataset.disbursements = [disbursement, ...dataset.disbursements];
+      saveFinanceStorage(dataset);
       return clone(disbursement);
     },
 
@@ -88,6 +214,7 @@ export function createMockFinanceRepository(): FinanceRepository {
         note: "Đã cập nhật/bổ sung chứng từ và trình lại hồ sơ cho Kế toán trưởng",
       });
 
+      saveFinanceStorage(dataset);
       return clone(item);
     },
 
@@ -120,6 +247,7 @@ export function createMockFinanceRepository(): FinanceRepository {
 
       item.approvals.push(event);
       item.status = isChiefApproval ? "PENDING_DIRECTOR" : "APPROVED";
+      saveFinanceStorage(dataset);
       return clone(item);
     },
 
@@ -146,6 +274,7 @@ export function createMockFinanceRepository(): FinanceRepository {
         note: reason,
       });
 
+      saveFinanceStorage(dataset);
       return clone(item);
     },
 
@@ -178,6 +307,7 @@ export function createMockFinanceRepository(): FinanceRepository {
         const project = dataset.projects.find((item) => item.id === settlement.projectId);
         if (project) project.status = "Đã tất toán";
       }
+      saveFinanceStorage(dataset);
       return clone(settlement);
     },
   };

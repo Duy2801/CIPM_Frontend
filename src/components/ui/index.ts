@@ -52,6 +52,8 @@ export type { FlexProps } from "./flex";
 /* ── Data Entry ──────────────────────────────────────────── */
 export { Input, inputVariants } from "./input";
 export type { InputProps } from "./input";
+export { MoneyInput } from "./money-input";
+export type { MoneyInputProps } from "./money-input";
 export { Select, selectVariants } from "./select";
 export type { SelectProps } from "./select";
 export { Checkbox, checkboxVariants } from "./checkbox";

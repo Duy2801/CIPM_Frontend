@@ -8,7 +8,7 @@ export const switchVariants = cva("", {
   variants: {
     intent: {
       default: "",
-      brand: "!bg-[#007A78]",
+      brand: "!bg-[#DC2626]",
     },
     size: {
       default: "",

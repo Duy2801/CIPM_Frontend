@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { message } from "antd";
+import { App } from "antd";
 import {
   DownloadOutlined,
   ExclamationCircleOutlined,
@@ -80,6 +80,7 @@ export default function HouseholdTab({
   onUpdateStep,
   onReject,
 }: HouseholdTabProps) {
+  const { message } = App.useApp();
   const [search, setSearch] = useState("");
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const { households, today, permissions } = controller;
@@ -175,7 +176,7 @@ export default function HouseholdTab({
               percent={percent}
               showInfo={false}
               size="small"
-              strokeColor="#059669"
+              strokeColor="#F59E0B"
               railColor="#E2E8F0"
               className="!m-0 !h-1.5"
             />
@@ -207,9 +208,8 @@ export default function HouseholdTab({
             {isSpecial && <SpecialStatusTag status={row.specialStatus} />}
             {!hasDeadlineAlert && !isSpecial && (
               <Tag
-                intent="success"
                 scale="sm"
-                className="m-0 font-medium text-xs"
+                className="m-0 font-semibold text-xs !border-amber-300 !bg-amber-50 !text-amber-800"
               >
                 Đúng tiến độ
               </Tag>
@@ -236,15 +236,6 @@ export default function HouseholdTab({
     },
   ];
 
-  const counts = useMemo(() => {
-    const result = {} as Record<HouseholdFilter, number>;
-    FILTER_ORDER.forEach((key) => {
-      result[key] = households.filter((item) =>
-        matchesHouseholdFilter(item, key, today),
-      ).length;
-    });
-    return result;
-  }, [households, today]);
 
   const handleExportCSV = () => {
     if (!permissions.canExport) {
@@ -319,7 +310,7 @@ export default function HouseholdTab({
                 intent="default"
                 icon={<DownloadOutlined />}
                 onClick={handleExportCSV}
-                className="text-xs h-8 border-slate-200 text-slate-700 hover:text-teal-700 hover:border-teal-600 shadow-sm"
+                className="text-xs h-8 border-slate-200 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]/50 shadow-sm"
               >
                 Xuất Excel
               </Button>
@@ -329,7 +320,7 @@ export default function HouseholdTab({
                 intent="primary"
                 icon={<PlusOutlined />}
                 onClick={() => setCreateDrawerOpen(true)}
-                className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white text-xs h-8 shadow-sm"
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs h-8 shadow-sm"
               >
                 Thêm hộ dân
               </Button>
@@ -356,7 +347,7 @@ export default function HouseholdTab({
                 className="w-full text-xs"
                 options={FILTER_ORDER.map((key) => ({
                   value: key,
-                  label: `${CONCISE_FILTER_LABELS[key]} (${counts[key]})`,
+                  label: CONCISE_FILTER_LABELS[key],
                 }))}
               />
             </div>

@@ -4,13 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ApartmentOutlined,
-  CrownOutlined,
   LockOutlined,
   SafetyCertificateOutlined,
-  ScheduleOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Flex, Spin, Tabs, Text, Title } from "@/components/ui";
+import { Button, Card, Flex, Spin, Text, Title } from "@/components/ui";
 import {
   ModuleTabLabel,
   ReasonModal,
@@ -19,7 +17,6 @@ import { PERSONNEL_TAB_LABELS } from "../constants/personnel-labels";
 import { usePersonnelAssignment } from "../hooks/usePersonnelAssignment";
 import type {
   Assignment,
-  AssignmentFilter,
   PersonnelProject,
   PersonnelTabKey,
   TeamId,
@@ -27,7 +24,6 @@ import type {
 import AccountsTab from "./AccountsTab";
 import AssignmentDetailDrawer from "./AssignmentDetailDrawer";
 import AssignmentModal from "./AssignmentModal";
-import AssignmentTab from "./AssignmentTab";
 import OrganizationTab from "./OrganizationTab";
 import ProjectLeadershipModal from "./ProjectLeadershipModal";
 import ProjectTeamTab from "./ProjectTeamTab";
@@ -50,8 +46,6 @@ export default function PersonnelAssignmentScreen() {
   const { permissions } = controller;
 
   const [activeTab, setActiveTab] = useState<PersonnelTabKey | null>(null);
-  const [filter, setFilter] = useState<AssignmentFilter>("ALL");
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>();
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [leadershipModalOpen, setLeadershipModalOpen] = useState(false);
   const [leadershipProject, setLeadershipProject] = useState<PersonnelProject | undefined>();
@@ -135,110 +129,21 @@ export default function PersonnelAssignmentScreen() {
   const isLead = Boolean(permissions.isTeamLeader || permissions.isProjectLeader);
 
   const defaultTabKey: PersonnelTabKey =
-    permissions.isTeamLeader
-      ? "team-tasks"
-      : permissions.isProjectLeader
-      ? "project-tasks"
-      : permissions.defaultTab;
-  const currentTab = activeTab ?? defaultTabKey;
+    permissions.canManageOrganization && !permissions.isMember
+      ? "organization"
+      : "project-team";
 
-  const assignmentTabTitle =
-    permissions.canAssignProjectLeaders && !permissions.canAssignStaffTasks
-      ? "Phân công dự án"
-      : "Nhiệm vụ của tôi";
+  const currentTab = activeTab ?? defaultTabKey;
 
   const projectTeamTabTitle = permissions.isMember || hasMultipleRoles || permissions.isTeamLeader
     ? "Tổ công tác & Dự án tham gia"
     : PERSONNEL_TAB_LABELS["project-team"];
 
-  const tabItems = [
-    {
-      key: "assignments" as const,
-      label: (
-        <ModuleTabLabel
-          icon={<ScheduleOutlined />}
-          text={assignmentTabTitle}
-        />
-      ),
-      children: (
-        <AssignmentTab
-          controller={controller}
-          filter={filter}
-          onFilterChange={setFilter}
-          selectedProjectId={selectedProjectId}
-          onSelectProjectChange={setSelectedProjectId}
-          onAssignLeadership={handleOpenLeadershipModal}
-          onCreate={(defaultProjectId, initialLevel, defaultStage, parentAssignmentId, initialTeamId) =>
-            openModal({ mode: "create", defaultProjectId, initialLevel, defaultStage, parentAssignmentId, initialTeamId })
-          }
-          onEdit={(assignment) => openModal({ mode: "edit", assignment })}
-          onOpenDetail={(assignment) => setDetailAssignmentId(assignment.id)}
-          viewScope={
-            permissions.canAssignProjectLeaders && !permissions.canAssignStaffTasks
-              ? undefined
-              : "MY_TASKS"
-          }
-        />
-      ),
-    },
-    ...(permissions.isProjectLeader
-      ? [
-          {
-            key: "project-tasks" as const,
-            label: (
-              <ModuleTabLabel
-                icon={<CrownOutlined />}
-                text="Giao việc dự án (CNDA)"
-              />
-            ),
-            children: (
-              <AssignmentTab
-                controller={controller}
-                filter={filter}
-                onFilterChange={setFilter}
-                selectedProjectId={selectedProjectId}
-                onSelectProjectChange={setSelectedProjectId}
-                onAssignLeadership={handleOpenLeadershipModal}
-                onCreate={(defaultProjectId, initialLevel, defaultStage, parentAssignmentId, initialTeamId) =>
-                  openModal({ mode: "create", defaultProjectId, initialLevel, defaultStage, parentAssignmentId, initialTeamId })
-                }
-                onEdit={(assignment) => openModal({ mode: "edit", assignment })}
-                onOpenDetail={(assignment) => setDetailAssignmentId(assignment.id)}
-                viewScope="PROJECT_LEAD"
-              />
-            ),
-          },
-        ]
-      : []),
-    ...(permissions.isTeamLeader
-      ? [
-          {
-            key: "team-tasks" as const,
-            label: (
-              <ModuleTabLabel
-                icon={<TeamOutlined />}
-                text="Giao việc tổ & Phê duyệt"
-              />
-            ),
-            children: (
-              <AssignmentTab
-                controller={controller}
-                filter={filter}
-                onFilterChange={setFilter}
-                selectedProjectId={selectedProjectId}
-                onSelectProjectChange={setSelectedProjectId}
-                onAssignLeadership={handleOpenLeadershipModal}
-                onCreate={(defaultProjectId, initialLevel, defaultStage, parentAssignmentId, initialTeamId) =>
-                  openModal({ mode: "create", defaultProjectId, initialLevel, defaultStage, parentAssignmentId, initialTeamId })
-                }
-                onEdit={(assignment) => openModal({ mode: "edit", assignment })}
-                onOpenDetail={(assignment) => setDetailAssignmentId(assignment.id)}
-                viewScope="TEAM_LEAD"
-              />
-            ),
-          },
-        ]
-      : []),
+  const tabItems: Array<{
+    key: PersonnelTabKey;
+    label: React.ReactNode;
+    children: React.ReactNode;
+  }> = [
     {
       key: "project-team" as const,
       label: (
@@ -291,13 +196,17 @@ export default function PersonnelAssignmentScreen() {
       : []),
   ];
 
+  const resolvedCurrentTab = tabItems.some((item) => item.key === currentTab)
+    ? currentTab
+    : tabItems[0]?.key || "project-team";
+
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
 
       <section id="personnel-tabs" className="scroll-mt-4">
         <div className="mb-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-2xs">
           {tabItems.map((item) => {
-            const isActive = currentTab === item.key;
+            const isActive = resolvedCurrentTab === item.key;
             return (
               <button
                 key={item.key}
@@ -305,19 +214,13 @@ export default function PersonnelAssignmentScreen() {
                 onClick={() => setActiveTab(item.key as PersonnelTabKey)}
                 className={`relative flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
                   isActive
-                    ? "bg-[#007A78] text-white shadow-sm font-bold"
+                    ? "bg-[#DC2626] text-white shadow-sm font-bold"
                     : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                 }`}
               >
                 <span className={`text-base leading-none transition-colors ${isActive ? "text-white" : "text-slate-500"}`}>
-                  {item.key === "assignments" ? (
-                    <ScheduleOutlined />
-                  ) : item.key === "project-tasks" ? (
-                    <CrownOutlined />
-                  ) : item.key === "team-tasks" ? (
+                  {item.key === "project-team" ? (
                     <TeamOutlined />
-                  ) : item.key === "project-team" ? (
-                    <ApartmentOutlined />
                   ) : item.key === "organization" ? (
                     <ApartmentOutlined />
                   ) : (
@@ -325,13 +228,7 @@ export default function PersonnelAssignmentScreen() {
                   )}
                 </span>
                 <span className="whitespace-nowrap tracking-wide">
-                  {item.key === "assignments"
-                    ? assignmentTabTitle
-                    : item.key === "project-tasks"
-                    ? "Giao việc dự án (CNDA)"
-                    : item.key === "team-tasks"
-                    ? "Giao việc tổ & Phê duyệt"
-                    : item.key === "project-team"
+                  {item.key === "project-team"
                     ? projectTeamTabTitle
                     : item.key === "organization"
                     ? PERSONNEL_TAB_LABELS.organization
@@ -344,7 +241,7 @@ export default function PersonnelAssignmentScreen() {
 
         {/* Nội dung tab đang hiển thị */}
         <div>
-          {tabItems.find((item) => item.key === currentTab)?.children}
+          {tabItems.find((item) => item.key === resolvedCurrentTab)?.children}
         </div>
       </section>
 

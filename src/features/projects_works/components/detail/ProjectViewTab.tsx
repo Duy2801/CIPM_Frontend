@@ -3,8 +3,12 @@
 import React from "react";
 import {
   CloseOutlined,
+  DownloadOutlined,
   EditOutlined,
+  FileTextOutlined,
   HistoryOutlined,
+  PaperClipOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { Button, Flex, Progress, Tag, Text } from "@/components/ui";
 import type { AuthUser } from "@/types/auth";
@@ -46,10 +50,10 @@ export default function ProjectViewTab({
     { label: "Loại dự án", value: project.type },
     { label: "Địa bàn xây dựng", value: project.location || "TP. Hà Tiên" },
     { label: "Nguồn vốn", value: project.fundingSource },
-    { label: "Tổng mức đầu tư", value: `${project.totalInvestment.toFixed(2)} tỷ` },
+    { label: "Tổng mức đầu tư", value: `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(project.totalInvestment || 0)} tỷ` },
     {
       label: `Kế hoạch vốn ${currentFiscalYear}`,
-      value: project.plan2026 > 0 ? `${project.plan2026.toFixed(2)} tỷ` : "Chưa giao kế hoạch",
+      value: project.plan2026 > 0 ? `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(project.plan2026)} tỷ` : "Chưa giao kế hoạch",
     },
     { label: "Cơ quan quản lý", value: "Ban QLDA ĐTXD Hà Tiên" },
     {
@@ -85,6 +89,36 @@ export default function ProjectViewTab({
             </dd>
           </div>
         ))}
+
+        {/* Phòng ban được giao / phối hợp thực hiện */}
+        <div className="col-span-2 pt-2.5 mt-1 border-t border-slate-200">
+          <dt className="text-xs text-slate-500 font-medium mb-1.5 flex items-center gap-1.5">
+            <TeamOutlined className="text-blue-600 text-xs" />
+            <span className="font-semibold text-slate-700">Phòng ban được giao phụ trách:</span>
+            {project.departments && project.departments.length > 0 && (
+              <span className="text-[11px] text-slate-400 font-normal">
+                ({project.departments.length} phòng ban)
+              </span>
+            )}
+          </dt>
+          <dd className="m-0 flex flex-wrap gap-1.5">
+            {project.departments && project.departments.length > 0 ? (
+              project.departments.map((dept) => (
+                <span
+                  key={dept}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-white text-slate-800 border border-slate-200 shadow-2xs hover:border-blue-300 transition-colors"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  {dept}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-slate-400 italic">
+                Chưa phân công phòng ban phụ trách
+              </span>
+            )}
+          </dd>
+        </div>
       </dl>
 
       {/* Mục tiêu / Quy mô tóm tắt nếu có */}
@@ -100,9 +134,14 @@ export default function ProjectViewTab({
         <Flex align="center" justify="space-between" gap="small">
           <Text className="text-[13px] font-semibold text-slate-800">Tiến độ thực hiện dự án</Text>
           <Tag
+            className={
+              health.status === "normal"
+                ? "!border-amber-300 !bg-amber-50 !text-amber-800 font-semibold"
+                : undefined
+            }
             intent={
               health.status === "normal"
-                ? "success"
+                ? undefined
                 : health.status === "warning"
                   ? "warning"
                   : "danger"
@@ -122,20 +161,14 @@ export default function ProjectViewTab({
               </strong>
             </span>
             <span>
-              Kế hoạch: <span className="font-mono text-slate-500">{project.plannedProgress}%</span>
+              Kế hoạch: <span className="font-mono text-amber-700 font-semibold">{project.plannedProgress}%</span>
             </span>
           </Flex>
           <Progress
             percent={project.actualProgress}
             showInfo={false}
             size="small"
-            strokeColor={
-              health.status === "normal"
-                ? "#007A78"
-                : health.status === "warning"
-                  ? "#D97706"
-                  : "#DC2626"
-            }
+            strokeColor="#DC2626"
           />
         </div>
 
@@ -175,7 +208,7 @@ export default function ProjectViewTab({
                     {hist.updatedAt}
                   </Text>
                 </Flex>
-                <div className="text-xs font-mono font-bold text-[#007A78] mb-1">
+                <div className="text-xs font-mono font-bold text-[#DC2626] mb-1">
                   {hist.oldProgress}% → {hist.newProgress}%
                 </div>
                 <Text className="block text-xs text-slate-600 leading-relaxed">
@@ -183,7 +216,7 @@ export default function ProjectViewTab({
                 </Text>
                 {hist.actualEndDateRecorded && (
                   <div className="mt-1.5">
-                    <Tag intent="success" scale="sm">
+                    <Tag intent="brand" scale="sm">
                       Hoàn thành thực tế: {hist.actualEndDateRecorded}
                     </Tag>
                   </div>
@@ -193,6 +226,55 @@ export default function ProjectViewTab({
           )}
         </div>
       </section>
+
+      {/* Khối Tài liệu đính kèm dự án */}
+      <section className="rounded-xl border border-slate-200 p-4">
+        <Flex align="center" justify="space-between" className="mb-3">
+          <Flex align="center" gap={6}>
+            <FileTextOutlined className="text-slate-500" />
+            <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
+              Tài liệu đính kèm ({(project.documents ?? []).length})
+            </Text>
+          </Flex>
+          <span className="text-[10.5px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+            Hồ sơ pháp lý & kỹ thuật
+          </span>
+        </Flex>
+
+        {(project.documents ?? []).length === 0 ? (
+          <div className="py-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-lg bg-slate-50/40">
+            Chưa có tài liệu đính kèm cho dự án này
+          </div>
+        ) : (
+          <div className="space-y-1.5 max-h-[220px] overflow-y-auto [scrollbar-width:thin] pr-1">
+            {(project.documents ?? []).map((doc, idx) => (
+              <div
+                key={doc.id || idx}
+                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex h-7 w-7 items-center justify-center rounded bg-red-50 text-[#DC2626] border border-red-200 shrink-0">
+                    <FileTextOutlined className="text-xs" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-slate-800 truncate" title={doc.fileName || doc.name}>
+                      {doc.fileName || doc.name}
+                    </div>
+                    <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                      {doc.fileSize && <span>{doc.fileSize}</span>}
+                      {doc.uploadedAt && <span>· Ngày tải: {doc.uploadedAt}</span>}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0 ml-2">
+                  <PaperClipOutlined className="mr-1 text-[10px]" />
+                  Đính kèm
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       </div>
 
       {/* Footer thao tác của màn hình Chi tiết (Cố định ở đáy, nút chức năng đứng TRƯỚC, Đóng đứng SAU) */}
@@ -201,7 +283,7 @@ export default function ProjectViewTab({
           <Button
             intent="primary"
             scale="sm"
-            className="bg-[#007A78] border-[#007A78] hover:bg-[#006361] text-white disabled:opacity-50"
+            className="bg-[#DC2626] border-[#DC2626] hover:bg-[#B91C1C] text-white disabled:opacity-50"
             disabled={project.status === "closed"}
             title={project.status === "closed" ? "Dự án đã đóng, không thể sửa thông tin" : undefined}
             onClick={onEditClick}

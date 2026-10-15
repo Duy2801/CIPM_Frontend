@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import {
@@ -74,7 +74,7 @@ export default function DocumentManagerModal({
               {docs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="p-3 rounded-xl border border-slate-200 bg-white hover:border-[#007A78]/50 hover:shadow-2xs transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs"
+                  className="p-3 rounded-xl border border-slate-200 bg-white hover:border-[#DC2626]/50 hover:shadow-2xs transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs"
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 text-base mt-0.5">

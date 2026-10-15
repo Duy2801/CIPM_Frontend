@@ -9,7 +9,8 @@ import {
   PlusCircleOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Drawer, Flex, Form, Input, Select, Text, useWatch } from "@/components/ui";
+import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, Text, useWatch } from "@/components/ui";
+import { parseMoney } from "@/utils/format-money";
 import type {
   Contract,
   Disbursement,
@@ -84,7 +85,7 @@ export default function DisbursementModal({
 
   const projectId = useWatch("projectId", form);
   const contractId = useWatch("contractId", form);
-  const amount = Number(useWatch("amount", form)) || 0;
+  const amount = parseMoney(useWatch("amount", form)) || 0;
 
   const availableContracts = useMemo(
     () => contracts.filter((item) => item.projectId === projectId),
@@ -127,7 +128,7 @@ export default function DisbursementModal({
       projectId: values.projectId,
       payee: values.payee,
       content: values.content,
-      amount: Number(values.amount),
+      amount: parseMoney(values.amount),
       contractId: values.contractId,
       approvalDate: values.approvalDate,
       dueDate: values.dueDate,
@@ -159,7 +160,7 @@ export default function DisbursementModal({
       destroyOnClose
       title={
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 text-[#007A78]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-[#DC2626]">
             {isEditing ? (
               <FormOutlined className="text-base" />
             ) : (
@@ -184,7 +185,7 @@ export default function DisbursementModal({
             key="submit"
             intent="primary"
             scale="compact"
-            className="border-[#007A78] bg-[#007A78] text-white"
+            className="border-[#DC2626] bg-[#DC2626] text-white"
             loading={submitting}
             onClick={() => form.submit()}
           >
@@ -264,14 +265,16 @@ export default function DisbursementModal({
                 {/* 4. Số tiền (Bắt buộc, > 0, 3 chữ số thập phân, không vượt HĐ) */}
                 <Form.Item
                   name="amount"
-                  label={<FieldLabel required>Số tiền (tỷ đồng)</FieldLabel>}
-                  extra="Đơn vị tỷ đồng, 3 chữ số thập phân (> 0, không vượt HĐ còn lại)"
+                  label={<FieldLabel required>Số tiền</FieldLabel>}
+                  extra="Nhập số tiền giải ngân (> 0, không vượt HĐ còn lại)"
                   rules={[
                     { required: true, message: "Vui lòng nhập số tiền." },
-                    { pattern: /^(?!0(\.0{1,3})?$)\d+(\.\d{1,3})?$/, message: "Số tiền phải > 0 và tối đa 3 chữ số thập phân." },
                     () => ({
                       validator: (_, val?: string) => {
-                        const num = Number(val);
+                        const num = parseMoney(val);
+                        if (!num || num <= 0) {
+                          return Promise.reject(new Error("Số tiền phải > 0."));
+                        }
                         if (selectedContract && num > remaining) {
                           return Promise.reject(new Error(`Số tiền vượt giá trị HĐ còn lại (${formatVndBillions(remaining)}).`));
                         }
@@ -280,7 +283,7 @@ export default function DisbursementModal({
                     }),
                   ]}
                 >
-                  <Input inputMode="decimal" className="font-mono text-xs" placeholder="Ví dụ: 12.850" suffix="tỷ" />
+                  <MoneyInput className="font-mono text-xs" placeholder="Ví dụ: 100.000.000" />
                 </Form.Item>
 
                 {/* 5. Số HĐ liên kết (Khuyến nghị) */}
@@ -311,7 +314,7 @@ export default function DisbursementModal({
                   className={`block rounded-lg border px-3 py-2 text-xs mb-3 ${
                     usageAfter?.isWarning
                       ? "border-amber-200 bg-amber-50 text-amber-900"
-                      : "border-teal-100 bg-teal-50/60 text-teal-900"
+                      : "border-emerald-100 bg-emerald-50/60 text-emerald-900"
                   }`}
                 >
                   Hợp đồng {selectedContract.code}: giá trị <strong>{formatVndBillions(selectedContract.value)}</strong>
@@ -389,7 +392,7 @@ export default function DisbursementModal({
                 <input
                   type="file"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-                  className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-teal-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-teal-700 hover:border-teal-400"
+                  className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-emerald-700 hover:border-emerald-400"
                 />
               </Form.Item>
               {isEditing && editingDisbursement?.evidence[0] && (

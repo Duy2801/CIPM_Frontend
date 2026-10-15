@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { message } from "antd";
+import { App } from "antd";
 import { Drawer, Flex, Spin, Tag } from "@/components/ui";
 import { useAuth } from "@/features/auth";
 import {
@@ -50,6 +50,7 @@ export default function ProjectDetailModal({
   onReopenProject,
   onDeleteProject,
 }: ProjectDetailModalProps) {
+  const { message } = App.useApp();
   const { user } = useAuth();
 
   // Tab điều hướng: "view" (chi tiết), "progress" (cập nhật tiến độ tuần), "edit" (cập nhật thông tin DA)
@@ -105,11 +106,14 @@ export default function ProjectDetailModal({
             <Flex align="center" gap={8} className="flex-wrap">
               <span className="text-base font-bold text-[#102A43]">{project.code}</span>
               {project.status === "closed" ? (
-                <Tag intent="danger" scale="sm">
+                <Tag intent="muted" scale="sm">
                   Đã đóng
                 </Tag>
               ) : (
-                <Tag intent="success" scale="sm">
+                <Tag
+                  scale="sm"
+                  className="!rounded-full !bg-amber-50 !text-amber-800 !border-amber-300 font-semibold"
+                >
                   Đang hoạt động
                 </Tag>
               )}

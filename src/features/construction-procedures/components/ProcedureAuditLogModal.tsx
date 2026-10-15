@@ -92,7 +92,7 @@ export default function ProcedureAuditLogModal({
     switch (action) {
       case "COMPLETE_STEP":
         return (
-          <Tag intent="success" scale="sm">
+          <Tag className="!border-red-200 !bg-red-50 !text-[#DC2626] font-medium" scale="sm">
             {cleanLabel}
           </Tag>
         );
@@ -211,7 +211,7 @@ export default function ProcedureAuditLogModal({
                 setSearchTerm("");
                 setSelectedActionType("ALL");
               }}
-              className="text-xs text-[#007A78] hover:underline font-medium cursor-pointer"
+              className="text-xs text-[#DC2626] hover:underline font-medium cursor-pointer"
             >
               Xóa bộ lọc
             </button>
@@ -247,7 +247,7 @@ export default function ProcedureAuditLogModal({
                         isSkip
                           ? "bg-amber-50/25 hover:bg-amber-50/45"
                           : isComplete
-                          ? "bg-emerald-50/20 hover:bg-emerald-50/35"
+                          ? "bg-red-50/20 hover:bg-red-50/35"
                           : "hover:bg-slate-50/80"
                       }`}
                     >
@@ -295,8 +295,8 @@ export default function ProcedureAuditLogModal({
 
                         {/* Đính kèm văn bản tham chiếu */}
                         {log.documentReference && !log.reason && (
-                          <div className="mt-1.5 inline-flex items-center gap-1 rounded bg-teal-50 border border-teal-200 px-2 py-0.5 text-[11px] text-teal-800 font-medium">
-                            <FileTextOutlined className="text-xs text-teal-600" />
+                          <div className="mt-1.5 inline-flex items-center gap-1 rounded bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] text-red-800 font-medium">
+                            <FileTextOutlined className="text-xs text-[#DC2626]" />
                             <span>Văn bản: <strong>{log.documentReference}</strong></span>
                           </div>
                         )}

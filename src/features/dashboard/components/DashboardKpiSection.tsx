@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { Card, Flex, Text } from "@/components/ui";
@@ -10,103 +10,104 @@ interface DashboardKpiSectionProps {
 
 export default function DashboardKpiSection({ data }: DashboardKpiSectionProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 w-full">
-      {/* 1. Tổng dự án — Xanh teal */}
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 w-full">
+      {/* 1. Tổng dự án */}
       <Card
         surface="workspace"
         padding="compact"
         rounded="lg"
-        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs"
+        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs p-4 sm:p-5 rounded-2xl"
       >
-        <Flex vertical gap={6} className="w-full">
-          <span className="text-3xl sm:text-4xl font-bold font-sans tracking-tight text-[#00897B]">
+        <Flex vertical align="center" gap={6} className="w-full text-center">
+          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-slate-900 whitespace-nowrap">
             {data.totalProjects}
           </span>
-          <Text className="text-xs sm:text-sm text-slate-500 font-medium">
+          <Text className="text-xs sm:text-sm text-slate-700 font-semibold text-center">
             Tổng dự án
           </Text>
-          <span className="text-xs font-semibold text-[#00897B] flex items-center gap-1 mt-0.5">
-            ▲ Đang quản lý
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80 w-fit mt-0.5">
+            Đang quản lý
           </span>
         </Flex>
       </Card>
 
-      {/* 2. Giải ngân 2026 — Vàng gold */}
+      {/* 2. Giải ngân 2026 */}
       <Card
         surface="workspace"
         padding="compact"
         rounded="lg"
-        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs"
+        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs p-4 sm:p-5 rounded-2xl"
       >
-        <Flex vertical gap={6} className="w-full">
-          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-[#D97706] truncate">
-            {data.disbursedAmount} tỷ
+        <Flex vertical align="center" gap={6} className="w-full text-center">
+          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-slate-900 whitespace-nowrap inline-flex items-baseline justify-center gap-1">
+            {data.disbursedAmount}
+            <span className="text-sm sm:text-base font-semibold text-slate-600">tỷ</span>
           </span>
-          <Text className="text-xs sm:text-sm text-slate-500 font-medium">
+          <Text className="text-xs sm:text-sm text-slate-700 font-semibold text-center">
             Giải ngân 2026
           </Text>
-          <span className="text-xs font-semibold text-[#D97706] flex items-center gap-1 mt-0.5">
-            ▲ {data.disbursementRate}% kế hoạch
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80 w-fit mt-0.5">
+            {data.disbursementRate}% kế hoạch
           </span>
         </Flex>
       </Card>
 
-      {/* 3. Chậm tiến độ — Đỏ cảnh báo */}
+      {/* 3. Chậm tiến độ */}
       <Card
         surface="workspace"
         padding="compact"
         rounded="lg"
-        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs"
+        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs p-4 sm:p-5 rounded-2xl"
       >
-        <Flex vertical gap={6} className="w-full">
-          <span className="text-3xl sm:text-4xl font-bold font-sans tracking-tight text-[#DC2626]">
+        <Flex vertical align="center" gap={6} className="w-full text-center">
+          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-slate-900 whitespace-nowrap">
             0{data.delayedProjects}
           </span>
-          <Text className="text-xs sm:text-sm text-slate-500 font-medium">
+          <Text className="text-xs sm:text-sm text-slate-700 font-semibold text-center">
             Chậm tiến độ
           </Text>
-          <span className="text-xs font-semibold text-[#DC2626] flex items-center gap-1 mt-0.5">
-            ▼ Cần xử lý
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80 w-fit mt-0.5">
+            Cần xử lý
           </span>
         </Flex>
       </Card>
 
-      {/* 4. Hoàn thành — Xanh lá */}
+      {/* 4. Hoàn thành */}
       <Card
         surface="workspace"
         padding="compact"
         rounded="lg"
-        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs"
+        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs p-4 sm:p-5 rounded-2xl"
       >
-        <Flex vertical gap={6} className="w-full">
-          <span className="text-3xl sm:text-4xl font-bold font-sans tracking-tight text-[#059669]">
+        <Flex vertical align="center" gap={6} className="w-full text-center">
+          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-slate-900 whitespace-nowrap">
             {data.completedProjects}
           </span>
-          <Text className="text-xs sm:text-sm text-slate-500 font-medium">
+          <Text className="text-xs sm:text-sm text-slate-700 font-semibold text-center">
             Hoàn thành
           </Text>
-          <span className="text-xs font-semibold text-[#059669] flex items-center gap-1 mt-0.5">
-            ▲ Đã nghiệm thu
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80 w-fit mt-0.5">
+            Đã nghiệm thu
           </span>
         </Flex>
       </Card>
 
-      {/* 5. Giải phóng mặt bằng — Xanh dương */}
+      {/* 5. Hộ dân GPMB */}
       <Card
         surface="workspace"
         padding="compact"
         rounded="lg"
-        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs col-span-2 sm:col-span-1"
+        className="border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs col-span-2 sm:col-span-1 p-4 sm:p-5 rounded-2xl"
       >
-        <Flex vertical gap={6} className="w-full">
-          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-[#2563EB]">
+        <Flex vertical align="center" gap={6} className="w-full text-center">
+          <span className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-slate-900 whitespace-nowrap">
             {data.gpmbRate}
           </span>
-          <Text className="text-xs sm:text-sm text-slate-500 font-medium">
+          <Text className="text-xs sm:text-sm text-slate-700 font-semibold text-center">
             Hộ dân GPMB
           </Text>
-          <span className="text-xs font-semibold text-[#2563EB] flex items-center gap-1 mt-0.5">
-            ▲ Đã bàn giao
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80 w-fit mt-0.5">
+            Đã bàn giao
           </span>
         </Flex>
       </Card>

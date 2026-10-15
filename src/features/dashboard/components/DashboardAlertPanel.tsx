@@ -20,24 +20,24 @@ interface DashboardAlertPanelProps {
 type FilterCategory = "all" | "danger" | "warning" | "info" | "success";
 
 const badgeColorStyles: Record<string, string> = {
-  danger: "text-[#DC2626] font-semibold text-[11px]",
-  warning: "text-[#D97706] font-semibold text-[11px]",
-  info: "text-[#2563EB] font-semibold text-[11px]",
-  success: "text-[#059669] font-semibold text-[11px]",
+  danger: "bg-red-50 text-red-700 border border-red-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
+  warning: "bg-slate-100 text-slate-800 border border-slate-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
+  info: "bg-red-50 text-red-700 border border-red-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
+  success: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
 };
 
 const dotColorStyles: Record<string, string> = {
-  danger: "bg-[#DC2626]",
-  warning: "bg-[#D97706]",
-  info: "bg-[#2563EB]",
-  success: "bg-[#059669]",
+  danger: "bg-red-600",
+  warning: "bg-slate-500",
+  info: "bg-red-600",
+  success: "bg-emerald-600",
 };
 
 const buttonVariantStyles: Record<string, string> = {
-  danger: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white",
-  warning: "!bg-[#D97706] !border-[#D97706] hover:!bg-[#B45309] !text-white",
-  info: "!bg-[#2563EB] !border-[#2563EB] hover:!bg-[#1D4ED8] !text-white",
-  brand: "!bg-[#007A78] !border-[#007A78] hover:!bg-[#005F5D] !text-white",
+  danger: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
+  warning: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
+  info: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
+  brand: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
 };
 
 export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps) {
@@ -105,27 +105,27 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
       surface="workspace"
       padding="comfortable"
       rounded="lg"
-      className="w-full border border-slate-200/80 shadow-xs flex flex-col justify-between"
+      className="w-full border border-slate-200/80 bg-white shadow-xs flex flex-col justify-between rounded-2xl p-5"
     >
-      <Flex vertical gap={12} className="w-full">
+      <Flex vertical gap={14} className="w-full">
         {/* 1. Header: Tiêu đề & Tổng số vấn đề */}
-        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+        <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2 min-w-0">
-            <ThunderboltFilled className="text-[#DC2626] text-base shrink-0" />
+            <ThunderboltFilled className="text-red-600 text-base shrink-0" />
             <span className="text-sm font-bold text-slate-900 uppercase tracking-tight whitespace-nowrap">
               VIỆC CẦN XỬ LÝ NGAY
             </span>
           </div>
 
-          <span className="text-[10.5px] font-bold text-[#BE123C] bg-[#FFF1F2] border border-[#FECDD3] px-2.5 py-0.5 rounded-full shrink-0">
+          <span className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200/80 px-2.5 py-0.5 rounded-full shrink-0">
             {filteredTasks.length} {filteredTasks.length === tasks.length ? "VẤN ĐỀ" : `/ ${tasks.length} VẤN ĐỀ`}
           </span>
         </div>
 
-        {/* 2. Dòng Bộ lọc theo Trạng thái (Xuống dòng riêng biệt, thoáng đẹp) */}
+        {/* 2. Dòng Bộ lọc theo Trạng thái */}
         <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium shrink-0">
-            <FilterOutlined className="text-[#007A78] text-xs" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium shrink-0">
+            <FilterOutlined className="text-slate-400 text-xs" />
             <span>Lọc trạng thái:</span>
           </div>
           <Select
@@ -163,7 +163,7 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
               <Button
                 scale="compact"
                 variant="text"
-                className="text-xs text-[#007A78] hover:underline mt-1"
+                className="text-xs text-red-600 hover:underline mt-1"
                 onClick={() => setActiveFilter("all")}
               >
                 Hiển thị tất cả {tasks.length} vấn đề
@@ -196,7 +196,7 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
 
                   {/* Footer: Department & Action Button */}
                   <Flex align="center" justify="space-between" className="pt-2 pl-3.5 mt-1 border-t border-slate-100">
-                    <span className="text-[11px] text-slate-500 font-medium">
+                    <span className="text-[11px] text-slate-600 font-medium">
                       {task.department}
                     </span>
 
@@ -204,7 +204,7 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
                       <Link href={task.targetUrl}>
                         <Button
                           scale="xs"
-                          className={`!px-3 !py-1 !text-xs !font-medium !rounded-md ${buttonVariantStyles[task.actionColor]}`}
+                          className="!px-3.5 !py-1.5 !text-xs !font-semibold !rounded-lg !bg-red-600 hover:!bg-red-700 !text-white !border-transparent shadow-2xs transition-colors"
                         >
                           {task.actionText}
                         </Button>

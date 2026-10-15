@@ -46,7 +46,7 @@ function AdjustmentValue({ value, isParent }: { value: number; isParent?: boolea
     <div className="flex flex-col items-center">
       <span
         className={`text-xs ${isParent ? "font-bold" : "font-semibold"} ${
-          isPositive ? "text-emerald-700" : "text-rose-600"
+          isPositive ? "text-amber-700" : "text-rose-600"
         }`}
       >
         {isPositive ? "+" : ""}
@@ -62,7 +62,7 @@ function AdjustmentValue({ value, isParent }: { value: number; isParent?: boolea
       )}
       {isPositive && isParent && (
         <span
-          className="mt-0.5 inline-block rounded bg-emerald-50 px-1.5 py-0.2 text-[10px] font-medium text-emerald-700 border border-emerald-200/60"
+          className="mt-0.5 inline-block rounded bg-amber-50 px-1.5 py-0.2 text-[10px] font-medium text-amber-800 border border-amber-200/70"
           title="Dự án hấp thụ vốn tốt, được bổ sung vốn điều chuyển trong năm"
         >
           Bổ sung vốn
@@ -212,7 +212,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
             className="group block text-left w-full cursor-pointer"
           >
             <Text
-              className="block text-xs font-bold leading-snug text-[#102A43] group-hover:text-[#007A78] transition-colors line-clamp-2"
+              className="block text-xs font-bold leading-snug text-[#102A43] group-hover:text-[#DC2626] transition-colors line-clamp-2"
               title={row.project?.name}
             >
               {row.project?.name}
@@ -263,7 +263,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
         return (
           <div className="py-0.5 flex flex-col items-center">
             <div className="flex items-center justify-center gap-1 text-[11.5px] mb-0.5 leading-none">
-              <span className="font-bold text-[#007A78]">
+              <span className="font-bold text-[#DC2626]">
                 {formatVndBillions(row.disbursed)}
               </span>
               <span className="text-slate-500 font-medium text-[10.5px]">({percent}%)</span>
@@ -272,7 +272,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
               percent={percent}
               showInfo={false}
               size="small"
-              strokeColor="#007A78"
+              strokeColor="#DC2626"
               className="m-0 w-full max-w-[100px] [&_.ant-progress-inner]:!h-1.5"
             />
           </div>
@@ -311,7 +311,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
                 openCreateForProject(row.key);
               }
             }}
-            className="text-xs font-semibold text-[#007A78] hover:text-[#005f5d] px-2.5 py-1 rounded-md hover:bg-teal-50 transition-colors whitespace-nowrap border border-teal-200/60 bg-teal-50/30"
+            className="text-xs font-semibold text-[#DC2626] hover:text-[#B91C1C] px-2.5 py-1 rounded-md hover:bg-emerald-50 transition-colors whitespace-nowrap border border-emerald-200/60 bg-emerald-50/30"
             title="Điều chỉnh tăng, giảm hoặc bổ sung kế hoạch vốn cho dự án này"
           >
             Điều chỉnh vốn
@@ -351,7 +351,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
                   scale="sm"
                   icon={<FileAddOutlined />}
                   onClick={() => openCreateForProject()}
-                  className="bg-[#007A78] hover:bg-[#006664] text-white font-semibold shadow-xs"
+                  className="bg-[#DC2626] hover:bg-[#006664] text-white font-semibold shadow-xs"
                 >
                   Nhập kế hoạch vốn
                 </Button>
@@ -388,7 +388,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
               }
               setDetailProjectId(record.key);
             },
-            className: "cursor-pointer hover:bg-teal-50/20 transition-colors",
+            className: "cursor-pointer hover:bg-emerald-50/20 transition-colors",
           })}
           pagination={{
             pageSize: 5,
@@ -411,7 +411,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
                   <Button
                     intent="textLink"
                     scale="xs"
-                    className="mt-2 text-xs font-semibold text-[#007A78]"
+                    className="mt-2 text-xs font-semibold text-[#DC2626]"
                     onClick={() => setSearch("")}
                   >
                     Xóa tìm kiếm

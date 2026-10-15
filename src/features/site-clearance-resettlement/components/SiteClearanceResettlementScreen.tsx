@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Spin } from "@/components/ui";
 import {
-  FeedbackBar,
   ReasonModal,
 } from "@/components/workspace";
 import { useSiteClearance } from "../hooks/useSiteClearance";
@@ -55,13 +54,6 @@ export default function SiteClearanceResettlementScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {controller.feedback && !stepTarget && (
-        <FeedbackBar
-          type={controller.feedback.type}
-          text={controller.feedback.text}
-          onClose={controller.clearFeedback}
-        />
-      )}
 
       {/* Trang sử dụng trực tiếp ma trận 16 bước tích hợp toàn bộ thanh lọc, tìm kiếm, phân trang và thao tác */}
       <section id="gpmb-matrix" className="scroll-mt-4">

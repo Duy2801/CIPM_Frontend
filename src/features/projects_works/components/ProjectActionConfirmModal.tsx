@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { WarningOutlined, LockOutlined, DeleteOutlined, CheckCircleOutlined } from "@ant-design/icons";
@@ -37,14 +37,14 @@ export default function ProjectActionConfirmModal({
   let iconBg = "bg-amber-100";
   let title = "Đóng dự án";
   let confirmText = "Chuyển sang Đóng";
-  let confirmClass = "bg-[#007A78] hover:bg-[#005F5D]";
+  let confirmClass = "bg-[#DC2626] hover:bg-[#B91C1C]";
 
   if (isClose) {
-    icon = <LockOutlined className="text-lg text-[#007A78]" />;
-    iconBg = "bg-teal-100";
+    icon = <LockOutlined className="text-lg text-[#DC2626]" />;
+    iconBg = "bg-emerald-100";
     title = "Xác nhận đóng dự án";
     confirmText = "Đóng dự án";
-    confirmClass = "bg-[#007A78] hover:bg-[#005F5D]";
+    confirmClass = "bg-[#DC2626] hover:bg-[#B91C1C]";
   } else if (isDelete) {
     icon = <DeleteOutlined className="text-lg text-rose-600" />;
     iconBg = "bg-rose-100";
@@ -56,7 +56,7 @@ export default function ProjectActionConfirmModal({
     iconBg = "bg-emerald-100";
     title = "Mở lại dự án hoạt động";
     confirmText = "Mở lại";
-    confirmClass = "bg-[#007A78] hover:bg-[#005F5D]";
+    confirmClass = "bg-[#DC2626] hover:bg-[#B91C1C]";
   }
 
   return (

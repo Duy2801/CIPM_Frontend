@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   CheckCircleOutlined,
@@ -153,7 +153,7 @@ export default function CapitalPlanDetailDrawer({
           scale="xs"
           icon={<EditOutlined className="text-xs" />}
           onClick={() => onAdjustPlan(plan)}
-          className="text-xs font-medium text-[#007A78] hover:text-[#005f5d] px-1.5 py-0.5 rounded hover:bg-teal-50"
+          className="text-xs font-medium text-[#DC2626] hover:text-[#B91C1C] px-1.5 py-0.5 rounded hover:bg-emerald-50"
           title="Điều chỉnh tăng/giảm nguồn vốn này"
         >
           Điều chỉnh
@@ -189,7 +189,7 @@ export default function CapitalPlanDetailDrawer({
                 scale="sm"
                 icon={<PlusCircleOutlined />}
                 onClick={() => onAddPlan(project.id)}
-                className="bg-[#007A78] hover:bg-[#006664] text-white font-medium"
+                className="bg-[#DC2626] hover:bg-[#006664] text-white font-medium"
               >
                 Thêm nguồn vốn mới
               </Button>
@@ -232,21 +232,21 @@ export default function CapitalPlanDetailDrawer({
             </div>
             <div className="rounded-lg border border-slate-200 bg-white p-3">
               <span className="block text-[11px] text-slate-500">Còn lại chưa GN</span>
-              <span className="text-sm font-bold text-[#007A78]">{formatVndBillions(totalRemaining)}</span>
+              <span className="text-sm font-bold text-[#DC2626]">{formatVndBillions(totalRemaining)}</span>
             </div>
           </div>
 
           <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3.5">
             <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="font-semibold text-slate-700">Tiến độ giải ngân</span>
-              <span className="font-bold text-[#007A78]">
+              <span className="font-bold text-[#DC2626]">
                 {formatVndBillions(totalDisbursed)} / {formatVndBillions(totalCurrent)} ({overallPercent}%)
               </span>
             </div>
             <Progress
               percent={overallPercent}
               status={overallPercent >= 100 ? "success" : "active"}
-              strokeColor="#007A78"
+              strokeColor="#DC2626"
             />
           </div>
         </section>
@@ -266,7 +266,7 @@ export default function CapitalPlanDetailDrawer({
                 scale="xs"
                 icon={<PlusCircleOutlined className="text-xs" />}
                 onClick={() => onAddPlan(project.id)}
-                className="text-xs font-semibold text-[#007A78]"
+                className="text-xs font-semibold text-[#DC2626]"
               >
                 + Thêm nguồn
               </Button>

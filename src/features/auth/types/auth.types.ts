@@ -53,6 +53,8 @@ export interface MockRoleAccount {
   roleCode: RoleCode;
   roleName: string;
   department: string;
+  isLead?: boolean;
+  aliases?: string[];
   user: User;
   credentials: {
     username: string;

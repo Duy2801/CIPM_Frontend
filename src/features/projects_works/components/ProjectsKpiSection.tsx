@@ -9,53 +9,55 @@ interface ProjectsKpiSectionProps {
 }
 
 export default function ProjectsKpiSection({ projects }: ProjectsKpiSectionProps) {
-  // Tính toán nhanh chỉ số từ danh sách
-  const totalProjects = 48; // Toàn cơ quan
-  const underConstruction = projects.filter((p) => p.currentStage === "CONSTRUCTION").length || 18;
-  const totalInvested = projects.reduce((acc, p) => acc + p.totalInvestment, 0) + 400; // Tổng quy mô
-  const delayedProjects = 5;
-  const completedProjects = 12;
+  // Tính toán chỉ số thực tế từ danh sách dự án
+  const totalProjects = projects.length;
+  const underConstruction = projects.filter((p) => p.currentStage === "CONSTRUCTION").length;
+  const totalInvested = projects.reduce((acc, p) => acc + (p.totalInvestment || 0), 0);
+  const plan2026Total = projects.reduce((acc, p) => acc + (p.plan2026 || 0), 0);
+  const newProjectsCount = projects.filter((p) => p.nature === "new" || p.actualProgress === 0).length;
+  const delayedProjects = projects.filter((p) => (p.actualProgress ?? 0) < (p.plannedProgress ?? 0)).length;
+  const completedProjects = projects.filter((p) => p.currentStage === "SETTLEMENT" || (p.actualProgress ?? 0) >= 100).length;
 
   const kpis = [
     {
       id: "total",
       value: `${totalProjects}`,
       label: "Tổng số dự án",
-      color: "#00897B",
-      subtext: "▲ 16 dự án khởi công mới",
-      subtextColor: "text-[#00897B]",
+      color: "#DC2626",
+      subtext: totalProjects > 0 ? `▲ ${newProjectsCount} dự án khởi công mới` : "Chưa có dự án",
+      subtextColor: totalProjects > 0 ? "text-red-700 font-semibold" : "text-slate-400 font-normal",
     },
     {
       id: "construction",
       value: `${underConstruction}`,
       label: "Đang thi công",
       color: "#D97706",
-      subtext: "Chiếm 37.5% tổng dự án",
-      subtextColor: "text-[#D97706]",
+      subtext: totalProjects > 0 ? `Chiếm ${((underConstruction / totalProjects) * 100).toFixed(1)}% tổng dự án` : "0% tổng dự án",
+      subtextColor: underConstruction > 0 ? "text-amber-700 font-semibold" : "text-slate-400 font-normal",
     },
     {
       id: "investment",
       value: `${totalInvested.toFixed(1)} tỷ`,
       label: "Tổng mức đầu tư",
-      color: "#2563EB",
-      subtext: "Kế hoạch 2026: 383.5 tỷ",
-      subtextColor: "text-[#2563EB]",
+      color: "#B91C1C",
+      subtext: `Kế hoạch 2026: ${plan2026Total.toFixed(1)} tỷ`,
+      subtextColor: totalInvested > 0 ? "text-red-700 font-semibold" : "text-slate-400 font-normal",
     },
     {
       id: "delayed",
       value: `${delayedProjects}`,
       label: "Chậm tiến độ",
       color: "#DC2626",
-      subtext: "▼ 2 dự án mức khẩn cấp",
-      subtextColor: "text-[#DC2626]",
+      subtext: delayedProjects > 0 ? `▼ ${delayedProjects} dự án chậm tiến độ` : "Tiến độ đảm bảo",
+      subtextColor: delayedProjects > 0 ? "text-rose-700 font-semibold" : "text-emerald-700 font-medium",
     },
     {
       id: "completed",
       value: `${completedProjects}`,
       label: "Đã hoàn thành",
-      color: "#059669",
-      subtext: "▲ 100% đạt chuẩn nghiệm thu",
-      subtextColor: "text-[#059669]",
+      color: "#DC2626",
+      subtext: completedProjects > 0 ? `▲ ${completedProjects} dự án nghiệm thu` : "Chưa có dự án hoàn thành",
+      subtextColor: completedProjects > 0 ? "text-red-700 font-semibold" : "text-slate-400 font-normal",
     },
   ];
 

@@ -10,12 +10,13 @@ import {
   SafetyCertificateOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Input, Progress, Switch, Tag, Text } from "@/components/ui";
+import { Button, Drawer, Input, MoneyInput, Progress, Switch, Tag, Text } from "@/components/ui";
 import { SETTLEMENT_STEPS } from "../constants/finance-labels";
 import type { SettlementStepPayload } from "../services/finance.repository";
 import type { FinanceProject, FinanceRolePermissions, SettlementRecord } from "../types/finance.types";
 import { canActOnSettlementStep } from "../utils/finance-permissions";
 import { formatVndBillions } from "../utils/finance-rules";
+import { parseMoney } from "@/utils/format-money";
 
 interface SettlementWorkflowModalProps {
   open: boolean;
@@ -28,8 +29,8 @@ interface SettlementWorkflowModalProps {
 
 function CheckLine({ ok, okText, failText }: { ok: boolean; okText: string; failText: string }) {
   return (
-    <li className={`flex items-center gap-1.5 text-xs ${ok ? "text-emerald-700" : "text-rose-700"}`}>
-      {ok ? <CheckCircleFilled /> : <CloseCircleFilled />}
+    <li className={`flex items-center gap-1.5 text-xs ${ok ? "text-slate-700 font-medium" : "text-rose-700 font-medium"}`}>
+      {ok ? <CheckCircleFilled className="text-slate-500" /> : <CloseCircleFilled />}
       {ok ? okText : failText}
     </li>
   );
@@ -84,7 +85,7 @@ export default function SettlementWorkflowModal({
       open={open}
       title={
         <span className="flex items-center gap-2">
-          <BankOutlined className="text-[#007A78]" />
+          <BankOutlined className="text-[#DC2626]" />
           <span className="text-base font-bold text-[#102A43]">Hồ sơ tất toán tài khoản KBNN</span>
         </span>
       }
@@ -98,34 +99,34 @@ export default function SettlementWorkflowModal({
         </div>
       }
     >
-      <header className="mb-4 rounded-xl bg-gradient-to-r from-[#0B2546] to-[#134E4A] p-4 text-white">
-        <Text className="block text-xs font-semibold !text-teal-300">{project?.code}</Text>
+      <header className="mb-4 rounded-xl bg-gradient-to-r from-[#0B2546] to-[#1E293B] p-4 text-white">
+        <Text className="block text-xs font-semibold !text-slate-300">{project?.code}</Text>
         <Text className="mt-0.5 block text-base font-bold !text-white">{project?.name}</Text>
         <section className="mt-3 grid grid-cols-2 gap-3 border-t border-white/10 pt-3 md:grid-cols-4">
           <div>
-            <Text className="block text-[11px] !text-teal-200">Tổng giải ngân</Text>
+            <Text className="block text-[11px] !text-slate-300">Tổng giải ngân</Text>
             <Text className="text-sm font-bold !text-white">{formatVndBillions(settlement.disbursedAmount)}</Text>
           </div>
           <div>
-            <Text className="block text-[11px] !text-teal-200">Quyết toán duyệt</Text>
+            <Text className="block text-[11px] !text-slate-300">Quyết toán duyệt</Text>
             <Text className="text-sm font-bold !text-white">{formatVndBillions(currentApproved)}</Text>
           </div>
           <div>
-            <Text className="block text-[11px] !text-teal-200">Chênh lệch</Text>
-            <Text className={`text-sm font-bold ${amountsMatch ? "!text-emerald-300" : "!text-rose-300"}`}>
+            <Text className="block text-[11px] !text-slate-300">Chênh lệch</Text>
+            <Text className={`text-sm font-bold ${amountsMatch ? "!text-slate-100" : "!text-rose-300"}`}>
               {amountsMatch ? "Khớp" : formatVndBillions(difference)}
             </Text>
           </div>
           <div>
-            <Text className="block text-[11px] !text-teal-200">Tiến độ ({settlement.completedSteps.length}/5)</Text>
-            <Progress percent={percent} size="small" strokeColor="#22C7A9" railColor="#334A68" />
+            <Text className="block text-[11px] !text-slate-300">Tiến độ ({settlement.completedSteps.length}/5)</Text>
+            <Progress percent={percent} size="small" strokeColor="#DC2626" railColor="#334A68" />
           </div>
         </section>
       </header>
 
       {settled && (
-        <aside className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-          <CheckCircleFilled /> Dự án đã hoàn tất tất toán và được đóng mã trên hệ thống.
+        <aside className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+          <CheckCircleFilled className="text-slate-500" /> Dự án đã hoàn tất tất toán và được đóng mã trên hệ thống.
         </aside>
       )}
 
@@ -141,9 +142,9 @@ export default function SettlementWorkflowModal({
               key={step.number}
               className={`rounded-xl border p-4 ${
                 completed
-                  ? "border-emerald-200 bg-emerald-50/50"
+                  ? "border-slate-200 bg-slate-50/70"
                   : isActive
-                    ? "border-teal-300 bg-white shadow-xs"
+                    ? "border-rose-200 bg-white shadow-xs"
                     : "border-slate-200 bg-slate-50/50 opacity-70"
               }`}
             >
@@ -151,9 +152,9 @@ export default function SettlementWorkflowModal({
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                     completed
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-slate-700 text-white"
                       : isActive
-                        ? "border border-teal-200 bg-teal-50 text-teal-700"
+                        ? "border border-rose-200 bg-rose-50 text-[#DC2626]"
                         : "bg-slate-100 text-slate-400"
                   }`}
                 >
@@ -174,15 +175,13 @@ export default function SettlementWorkflowModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                            Giá trị quyết toán được duyệt (tỷ VNĐ)
+                            Giá trị quyết toán được duyệt
                           </label>
-                          <Input
-                            type="number"
-                            step="0.01"
+                          <MoneyInput
                             disabled={!canAct}
                             value={settlementAmount || ""}
-                            onChange={(e) => setSettlementAmount(Number(e.target.value))}
-                            placeholder="Nhập giá trị theo QĐ (VD: 31.2)"
+                            onChange={(e) => setSettlementAmount(parseMoney(e.target.value))}
+                            placeholder="Nhập giá trị theo QĐ"
                             className="text-xs"
                           />
                         </div>
@@ -194,7 +193,7 @@ export default function SettlementWorkflowModal({
                             <Input
                               readOnly
                               value={decisionFile}
-                              prefix={<FileDoneOutlined className="text-teal-600" />}
+                              prefix={<FileDoneOutlined className="text-slate-500" />}
                               placeholder="Chưa đính kèm file QĐ"
                               className="text-xs"
                             />

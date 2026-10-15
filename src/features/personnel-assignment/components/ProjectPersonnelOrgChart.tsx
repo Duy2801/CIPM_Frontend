@@ -170,8 +170,23 @@ export default function ProjectPersonnelOrgChart({
   // 1. Quản lý dự án (Project Manager / CNDA / Quyền CNDA)
   const cndaStaffId = project.actingDirectorId || project.mainExecutorId;
   const cndaStaff = useMemo(() => {
-    return data.staff.find((s) => s.id === cndaStaffId);
-  }, [cndaStaffId, data.staff]);
+    if (cndaStaffId) {
+      const found = data.staff.find((s) => s.id === cndaStaffId);
+      if (found) return found;
+    }
+    if (project.managerName) {
+      const foundByName = data.staff.find(
+        (s) => s.name.trim().toLowerCase() === project.managerName?.trim().toLowerCase()
+      );
+      if (foundByName) return foundByName;
+    }
+    // Fallback: Ban Giám đốc (Huỳnh Thái Hải) hoặc cán bộ đầu tiên
+    return (
+      data.staff.find((s) => s.id === "ST-001") ||
+      data.staff.find((s) => s.name.includes("Hải")) ||
+      directorStaff
+    );
+  }, [cndaStaffId, project.managerName, data.staff, directorStaff]);
 
   const isCndaActing = Boolean(project.actingDirectorId && project.actingDirectorId === cndaStaffId);
 
@@ -185,111 +200,129 @@ export default function ProjectPersonnelOrgChart({
     return data.assignments.filter((a) => a.projectId === project.id);
   }, [project.id, data.assignments]);
 
-  // 4. Xây dựng danh sách Giai đoạn & Lead tổ (Level 2) và Thành viên do Lead chọn (Level 3)
+  // 4. Xây dựng danh sách Lead tổ theo các phòng ban được giao (Level 2/3) và Thành viên do Lead phân công (Level 4)
   const phaseLeadNodes = useMemo<PhaseLeadNode[]>(() => {
-    // Thu thập các giai đoạn xuất hiện trong dự án
-    const phaseAssignments = projectAssignments.filter(
-      (a) => a.assignmentLevel === "PHASE_LEAD" || a.assignedByRole === "PROJECT_LEAD"
-    );
+    // Helper tìm team tương ứng theo tên hoặc mã phòng ban
+    const findTeamForDept = (deptName: string): Team | undefined => {
+      const norm = deptName.trim().toLowerCase();
+      return data.teams.find((t) => {
+        const tId = t.id.toLowerCase();
+        const tName = t.name.toLowerCase();
+        return (
+          tId === norm ||
+          tName === norm ||
+          norm.includes(tId) ||
+          norm.includes(tName) ||
+          tName.includes(norm) ||
+          (norm.includes("giám sát") && tId === "GSKT") ||
+          (norm.includes("kế hoạch") && tId === "KHKT") ||
+          (norm.includes("đấu thầu") && tId === "DT") ||
+          (norm.includes("bồi thường") && tId === "BT") ||
+          (norm.includes("gpmb") && tId === "BT") ||
+          (norm.includes("hành chính") && tId === "HCTH")
+        );
+      });
+    };
 
-    // Tập hợp các stage keys
-    const stageKeyMap = new Map<string, { phaseAssignment?: Assignment; tasks: Assignment[] }>();
+    // Metadata mặc định theo từng tổ chuyên môn
+    const TEAM_META: Record<string, { stageKey: string; tagColor: string; color: string; order: number }> = {
+      KHKT: { stageKey: "I", tagColor: "#8b5cf6", color: "purple", order: 1 },
+      DT: { stageKey: "V", tagColor: "#f59e0b", color: "amber", order: 2 },
+      BT: { stageKey: "IV", tagColor: "#10b981", color: "emerald", order: 3 },
+      GSKT: { stageKey: "VI", tagColor: "#0284c7", color: "blue", order: 4 },
+      HCTH: { stageKey: "VII", tagColor: "#ec4899", color: "pink", order: 5 },
+    };
 
-    // Đưa các phase lead assignments vào trước
-    phaseAssignments.forEach((pa) => {
-      const stageKey = normalizeStageGroup(pa.stage, pa.stepCode) || "VI";
-      if (!stageKeyMap.has(stageKey)) {
-        stageKeyMap.set(stageKey, { phaseAssignment: pa, tasks: [] });
-      } else {
-        const existing = stageKeyMap.get(stageKey)!;
-        if (!existing.phaseAssignment) existing.phaseAssignment = pa;
+    // Danh sách phòng ban được giao cho dự án này (nếu chưa có thì lấy mặc định)
+    const assignedDeptNames: string[] =
+      project.departments && project.departments.length > 0
+        ? project.departments
+        : ["Tổ Giám sát – Kỹ thuật", "Tổ Kế hoạch – Kỹ thuật"];
+
+    // Tập hợp các Teams đại diện cho các phòng ban được giao
+    const assignedTeams: Team[] = [];
+    const seenTeamIds = new Set<string>();
+
+    assignedDeptNames.forEach((dName) => {
+      const team = findTeamForDept(dName);
+      if (team && !seenTeamIds.has(team.id)) {
+        assignedTeams.push(team);
+        seenTeamIds.add(team.id);
       }
     });
 
-    // Gom các tasks chi tiết vào các stage tương ứng
+    // Nếu có nhiệm vụ thuộc team khác trong projectAssignments, cũng bổ sung team đó
     projectAssignments.forEach((a) => {
-      // Bỏ qua chính phase assignment nếu đã xếp
-      const stageKey = normalizeStageGroup(a.stage, a.stepCode) || "VI";
-      if (!stageKeyMap.has(stageKey)) {
-        stageKeyMap.set(stageKey, { phaseAssignment: undefined, tasks: [a] });
-      } else {
-        const item = stageKeyMap.get(stageKey)!;
-        if (item.phaseAssignment?.id !== a.id) {
-          item.tasks.push(a);
+      if (a.teamId && !seenTeamIds.has(a.teamId)) {
+        const team = data.teams.find((t) => t.id === a.teamId);
+        if (team) {
+          assignedTeams.push(team);
+          seenTeamIds.add(team.id);
         }
       }
     });
 
     const result: PhaseLeadNode[] = [];
 
-    stageKeyMap.forEach(({ phaseAssignment, tasks }, stageKey) => {
-      const meta = PROJECT_STAGE_META[stageKey] || {
-        label: `Giai đoạn ${stageKey}`,
-        fullName: phaseAssignment?.stepName || phaseAssignment?.title || "Giai đoạn thực hiện",
+    // Duyệt từng tổ phòng ban được giao dự án: Đại diện phòng ban ở đây là Lead tổ
+    assignedTeams.forEach((team) => {
+      const meta = TEAM_META[team.id] || {
+        stageKey: team.id,
         tagColor: "#0284c7",
         color: "blue",
+        order: 9,
       };
 
-      // Xác định Tổ chuyên môn phụ trách giai đoạn
-      let teamId: TeamId | undefined = phaseAssignment?.teamId;
-      if (!teamId && tasks.length > 0) {
-        teamId = tasks.find((t) => t.teamId)?.teamId;
-      }
-      if (!teamId) {
-        // Dự đoán theo giai đoạn: IV -> Bồi thường, VI -> GSKT, VII -> HCTH/GSKT
-        teamId = stageKey === "IV" ? "BT" : stageKey === "VII" ? "HCTH" : "GSKT";
-      }
-
-      const team = data.teams.find((t) => t.id === teamId);
-
-      // Xác định Lead tổ phụ trách giai đoạn
-      let leadStaffId = phaseAssignment?.teamLeaderId || phaseAssignment?.assigneeId;
-      if (!leadStaffId && team?.leaderId) {
-        leadStaffId = team.leaderId;
-      }
-      // Nếu không có, tìm người có title Tổ trưởng trong team
-      if (!leadStaffId && team) {
-        const found = data.staff.find(
+      // Xác định Lead của tổ này
+      let leadStaff = data.staff.find((s) => s.id === team.leaderId);
+      if (!leadStaff) {
+        leadStaff = data.staff.find(
           (s) => s.teamId === team.id && s.title.toLowerCase().includes("tổ trưởng")
         );
-        if (found) leadStaffId = found.id;
       }
-      // Fallback supervisor
-      if (!leadStaffId && supervisorStaff?.title.toLowerCase().includes("tổ trưởng")) {
-        leadStaffId = supervisorStaff.id;
+      if (!leadStaff) {
+        leadStaff = data.staff.find((s) => s.teamId === team.id);
       }
 
-      const leadStaff = data.staff.find((s) => s.id === leadStaffId);
+      // Thu thập các nhiệm vụ / bước thuộc tổ này trong dự án
+      const deptTasks = projectAssignments.filter((a) => {
+        if (a.teamId === team.id) return true;
+        if (leadStaff && (a.teamLeaderId === leadStaff.id || a.assigneeId === leadStaff.id)) return true;
+        const normStage = normalizeStageGroup(a.stage, a.stepCode);
+        if (meta.stageKey === normStage) return true;
+        return false;
+      });
 
-      // Xây dựng danh sách cán bộ thực hiện do Lead phân công trong giai đoạn này (Level 3 - mỗi nhiệm vụ đúng 01 cán bộ)
+      // Tìm phân công giai đoạn cấp cao nếu có
+      const phaseAssignment = deptTasks.find(
+        (a) => a.assignmentLevel === "PHASE_LEAD" || a.assignedByRole === "PROJECT_LEAD"
+      );
+
+      // Thu thập thành viên thuộc tổ này trong dự án:
+      // 1. Cán bộ đã được giao nhiệm vụ chi tiết
+      // 2. Cán bộ đã được thêm vào tổ công tác dự án (project.teamMembers) thuộc tổ này
       const memberMap = new Map<string, { role: "ASSIGNEE" | "MEMBER"; tasks: Assignment[] }>();
 
-      // Duyệt qua tất cả tasks trong giai đoạn này (Lead giao cho đúng 01 người thực hiện duy nhất)
-      tasks.forEach((t) => {
-        if (t.assigneeId) {
+      deptTasks.forEach((t) => {
+        if (t.assigneeId && (!leadStaff || t.assigneeId !== leadStaff.id)) {
           if (!memberMap.has(t.assigneeId)) {
             memberMap.set(t.assigneeId, { role: "ASSIGNEE", tasks: [t] });
           } else {
             const m = memberMap.get(t.assigneeId)!;
-            m.role = "ASSIGNEE";
             m.tasks.push(t);
           }
         }
       });
 
-      // Nếu có cán bộ trong teamMembers thuộc cùng tổ mà chưa có việc, cũng đưa vào nếu là giai đoạn chính
-      (project.teamMembers || []).forEach((tmId) => {
-        const staffObj = data.staff.find((s) => s.id === tmId);
-        if (
-          staffObj &&
-          staffObj.teamId === teamId &&
-          staffObj.id !== leadStaffId &&
-          staffObj.id !== cndaStaffId &&
-          !memberMap.has(tmId)
-        ) {
-          // Chỉ thêm vào nếu giai đoạn này là giai đoạn chủ đạo
-          if (tasks.length === 0 || stageKeyMap.size === 1) {
-            memberMap.set(tmId, { role: "MEMBER", tasks: [] });
+      // Bổ sung các cán bộ được thêm vào tổ công tác (project.teamMembers) thuộc tổ này
+      const projectTeamMemberIds = project.teamMembers || [];
+      projectTeamMemberIds.forEach((mId) => {
+        if (!leadStaff || mId !== leadStaff.id) {
+          const staffObj = data.staff.find((s) => s.id === mId);
+          if (staffObj && staffObj.teamId === team.id) {
+            if (!memberMap.has(mId)) {
+              memberMap.set(mId, { role: "MEMBER", tasks: [] });
+            }
           }
         }
       });
@@ -300,7 +333,7 @@ export default function ProjectPersonnelOrgChart({
         if (staffObj) {
           memberNodes.push({
             staff: staffObj,
-            team: data.teams.find((t) => t.id === staffObj.teamId),
+            team: data.teams.find((t) => t.id === staffObj.teamId) || team,
             roleType: role,
             tasks: memberTasks,
             isMe: staffObj.id === currentStaffId,
@@ -308,48 +341,49 @@ export default function ProjectPersonnelOrgChart({
         }
       });
 
-      // Sắp xếp: Bạn lên đầu, có việc lên trước
+      // Sắp xếp: Bạn lên đầu, nhiều việc hơn lên trước, sau đó theo tên
       memberNodes.sort((a, b) => {
         if (a.isMe && !b.isMe) return -1;
         if (!a.isMe && b.isMe) return 1;
-        if (a.roleType === "ASSIGNEE" && b.roleType !== "ASSIGNEE") return -1;
-        if (a.roleType !== "ASSIGNEE" && b.roleType === "ASSIGNEE") return 1;
-        return b.tasks.length - a.tasks.length;
+        if (b.tasks.length !== a.tasks.length) {
+          return b.tasks.length - a.tasks.length;
+        }
+        return a.staff.name.localeCompare(b.staff.name, "vi");
       });
 
       const isLeadMe = Boolean(leadStaff && leadStaff.id === currentStaffId);
 
       result.push({
-        stageKey,
-        stageName: meta.fullName,
-        stageLabel: meta.label,
+        stageKey: meta.stageKey,
+        stageName: team.description || team.name,
+        stageLabel: team.name,
         stageColor: meta.color,
         stageTagColor: meta.tagColor,
         team,
         leadStaff,
         phaseAssignment,
         members: memberNodes,
-        allTasks: tasks,
+        allTasks: deptTasks,
         isLeadMe,
       });
     });
 
-    // Sắp xếp theo thứ tự La Mã I -> VII
-    const romanOrder = ["I", "II", "III", "IV", "V", "VI", "VII"];
+    // Sắp xếp các tổ phòng ban theo thứ tự quy trình chuẩn (KHKT -> Đấu thầu -> Bồi thường -> GSKT -> HCTH)
     result.sort((a, b) => {
-      const idxA = romanOrder.indexOf(a.stageKey);
-      const idxB = romanOrder.indexOf(b.stageKey);
-      return (idxA >= 0 ? idxA : 99) - (idxB >= 0 ? idxB : 99);
+      const orderA = TEAM_META[a.team?.id || ""]?.order ?? 99;
+      const orderB = TEAM_META[b.team?.id || ""]?.order ?? 99;
+      return orderA - orderB;
     });
 
     return result;
   }, [
     projectAssignments,
-    project,
+    project.departments,
+    project.teamMembers,
+    project.id,
     data.teams,
     data.staff,
     supervisorStaff,
-    cndaStaffId,
     currentStaffId,
   ]);
 
@@ -489,26 +523,26 @@ export default function ProjectPersonnelOrgChart({
                    ════════════════════════════════════════════════════════════════ */}
                 <div className="flex flex-col gap-2.5 justify-center shrink-0">
                   {/* Node Chủ nhiệm dự án (CNDA) */}
-                  <div className="w-[230px] min-w-[230px] min-h-[62px] flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border-2 border-teal-300 shadow-xs hover:border-teal-500 transition-all">
-                    <div className="w-9 h-9 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  <div className="w-[230px] min-w-[230px] min-h-[62px] flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border-2 border-red-200 shadow-xs hover:border-[#DC2626] transition-all">
+                    <div className="w-9 h-9 rounded-lg bg-[#DC2626] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
                       <ApartmentOutlined />
                     </div>
                     <div className="text-left min-w-0 flex-1">
                       <div className="flex items-center gap-1">
-                        <span className="font-bold text-xs text-slate-900 truncate" title={cndaStaff?.name}>
-                          {cndaStaff?.name || "Chưa giao CNDA"}
+                        <span className="font-bold text-xs text-slate-900 truncate" title={cndaStaff?.name || project.managerName}>
+                          {cndaStaff?.name || project.managerName || "Huỳnh Thái Hải"}
                         </span>
-                        <Tag color="cyan" className="!text-[9px] !m-0 !px-1 font-bold shrink-0">
+                        <Tag className="!text-[9px] !m-0 !px-1 font-bold shrink-0 !bg-red-50 !text-[#DC2626] !border-red-200">
                           {isCndaActing ? "Quyền CNDA" : "CNDA"}
                         </Tag>
                         {cndaStaff?.id === currentStaffId && (
-                          <Tag color="success" className="!text-[9px] !m-0 !px-1 font-bold shrink-0">
+                          <Tag className="!text-[9px] !m-0 !px-1 font-bold shrink-0 !bg-slate-100 !text-slate-700 !border-slate-200">
                             Bạn
                           </Tag>
                         )}
                       </div>
-                      <div className="text-[11px] text-teal-800 font-medium mt-0.5 truncate">
-                        Chủ nhiệm DA · {phaseLeadNodes.length} giai đoạn
+                      <div className="text-[11px] text-slate-600 font-medium mt-0.5 truncate">
+                        Chủ nhiệm DA · {phaseLeadNodes.length} phòng ban phụ trách
                       </div>
                     </div>
                   </div>
@@ -534,7 +568,7 @@ export default function ProjectPersonnelOrgChart({
 
                 {/* Đường nối ngang từ CNDA sang các nhánh Giai đoạn */}
                 <div className="w-8 h-[2px] bg-slate-300 shrink-0 relative">
-                  <div className="w-2 h-2 rounded-full bg-teal-600 absolute -top-[3px] -right-1 ring-2 ring-white" />
+                  <div className="w-2 h-2 rounded-full bg-[#DC2626] absolute -top-[3px] -right-1 ring-2 ring-white" />
                 </div>
 
               {/* ════════════════════════════════════════════════════════════════
@@ -657,7 +691,7 @@ export default function ProjectPersonnelOrgChart({
                                   <div
                                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs shadow-2xs shrink-0 ${
                                       memberNode.isMe
-                                        ? "bg-teal-50 border-teal-300 ring-1 ring-teal-200"
+                                        ? "bg-blue-50 border-blue-200 ring-1 ring-blue-100"
                                         : "bg-white border-slate-200 hover:border-slate-300"
                                     }`}
                                   >
@@ -665,7 +699,7 @@ export default function ProjectPersonnelOrgChart({
                                       size={22}
                                       className={`shrink-0 font-bold text-[9px] ${
                                         memberNode.isMe
-                                          ? "!bg-teal-700 !text-white"
+                                          ? "!bg-blue-600 !text-white"
                                           : "!bg-slate-700 !text-white"
                                       }`}
                                     >
@@ -678,16 +712,22 @@ export default function ProjectPersonnelOrgChart({
                                           {memberNode.staff.name}
                                         </span>
                                         {memberNode.isMe && (
-                                          <Tag color="success" className="!text-[8px] !m-0 !px-1 font-bold">
+                                          <Tag className="!text-[8px] !m-0 !px-1 font-bold !bg-slate-100 !text-slate-700 !border-slate-200">
                                             Bạn
                                           </Tag>
                                         )}
                                       </div>
                                     </div>
 
-                                    <Tag color="cyan" className="!text-[8px] !m-0 !px-1 font-semibold">
-                                      {memberNode.tasks.length} việc
-                                    </Tag>
+                                    {memberNode.tasks.length > 0 ? (
+                                      <Tag className="!text-[8px] !m-0 !px-1 font-semibold !bg-slate-100 !text-slate-700 !border-slate-200">
+                                        {memberNode.tasks.length} việc
+                                      </Tag>
+                                    ) : (
+                                      <Tag className="!text-[8px] !m-0 !px-1 font-medium !bg-slate-50 !text-slate-500 !border-slate-200">
+                                        Thành viên
+                                      </Tag>
+                                    )}
                                   </div>
 
                                   {/* ────────────────────────────────────────────────
@@ -701,7 +741,7 @@ export default function ProjectPersonnelOrgChart({
                                           <div
                                             key={task.id}
                                             onClick={() => onOpenTaskDetail?.(task)}
-                                            className="task-leaf-node flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white hover:bg-teal-50/70 border border-slate-200 hover:border-teal-300 cursor-pointer text-[11px] transition-all shadow-2xs shrink-0 group max-w-[260px]"
+                                            className="task-leaf-node flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 cursor-pointer text-[11px] transition-all shadow-2xs shrink-0 group max-w-[260px]"
                                             title={`Bấm để xem: ${task.title}`}
                                           >
                                             <div
@@ -713,7 +753,7 @@ export default function ProjectPersonnelOrgChart({
                                                   : "bg-blue-500"
                                               }`}
                                             />
-                                            <span className="font-medium text-slate-700 group-hover:text-teal-900 truncate">
+                                            <span className="font-medium text-slate-700 group-hover:text-blue-900 truncate">
                                               {task.title}
                                             </span>
                                             <Tag
@@ -808,26 +848,26 @@ export default function ProjectPersonnelOrgChart({
                    ──────────────────────────────────────────────────────────── */}
                 <div className="flex items-center justify-center gap-3 shrink-0">
                   {/* Node Chủ nhiệm dự án (CNDA) */}
-                  <div className="w-[230px] min-w-[230px] min-h-[62px] flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border-2 border-teal-300 shadow-xs hover:border-teal-500 transition-all">
-                    <div className="w-9 h-9 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  <div className="w-[230px] min-w-[230px] min-h-[62px] flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border-2 border-red-200 shadow-xs hover:border-[#DC2626] transition-all">
+                    <div className="w-9 h-9 rounded-lg bg-[#DC2626] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
                       <ApartmentOutlined />
                     </div>
                     <div className="text-left min-w-0 flex-1">
                       <div className="flex items-center gap-1">
-                        <span className="font-bold text-xs text-slate-900 truncate" title={cndaStaff?.name}>
-                          {cndaStaff?.name || "Chưa giao CNDA"}
+                        <span className="font-bold text-xs text-slate-900 truncate" title={cndaStaff?.name || project.managerName}>
+                          {cndaStaff?.name || project.managerName || "Huỳnh Thái Hải"}
                         </span>
-                        <Tag color="cyan" className="!text-[9px] !m-0 !px-1 font-bold shrink-0">
+                        <Tag className="!text-[9px] !m-0 !px-1 font-bold shrink-0 !bg-red-50 !text-[#DC2626] !border-red-200">
                           {isCndaActing ? "Quyền CNDA" : "CNDA"}
                         </Tag>
                         {cndaStaff?.id === currentStaffId && (
-                          <Tag color="success" className="!text-[9px] !m-0 !px-1 font-bold shrink-0">
+                          <Tag className="!text-[9px] !m-0 !px-1 font-bold shrink-0 !bg-slate-100 !text-slate-700 !border-slate-200">
                             Bạn
                           </Tag>
                         )}
                       </div>
-                      <div className="text-[11px] text-teal-800 font-medium mt-0.5 truncate">
-                        Chủ nhiệm DA · {phaseLeadNodes.length} giai đoạn
+                      <div className="text-[11px] text-slate-600 font-medium mt-0.5 truncate">
+                        Chủ nhiệm DA · {phaseLeadNodes.length} phòng ban phụ trách
                       </div>
                     </div>
                   </div>
@@ -859,7 +899,7 @@ export default function ProjectPersonnelOrgChart({
 
                 {/* Đường nối dọc từ CNDA xuống các nhánh Giai đoạn */}
                 <div className="w-[2px] h-6 bg-slate-300 relative shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-teal-600 absolute -bottom-1 -left-[3px] ring-2 ring-white" />
+                  <div className="w-2 h-2 rounded-full bg-[#DC2626] absolute -bottom-1 -left-[3px] ring-2 ring-white" />
                 </div>
 
                 {/* ────────────────────────────────────────────────────────────
@@ -955,14 +995,14 @@ export default function ProjectPersonnelOrgChart({
                                     <div
                                       className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs shadow-2xs w-full ${
                                         memberNode.isMe
-                                          ? "bg-teal-50 border-teal-300 ring-1 ring-teal-200"
+                                          ? "bg-blue-50 border-blue-200 ring-1 ring-blue-100"
                                           : "bg-white border-slate-200"
                                       }`}
                                     >
                                       <Avatar
                                         size={20}
                                         className={`shrink-0 font-bold text-[9px] ${
-                                          memberNode.isMe ? "!bg-teal-700 !text-white" : "!bg-slate-700 !text-white"
+                                          memberNode.isMe ? "!bg-blue-600 !text-white" : "!bg-slate-700 !text-white"
                                         }`}
                                       >
                                         {getInitials(memberNode.staff.name)}
@@ -971,13 +1011,19 @@ export default function ProjectPersonnelOrgChart({
                                         {memberNode.staff.name}
                                       </span>
                                       {memberNode.isMe && (
-                                        <Tag color="success" className="!text-[8px] !m-0 !px-1 font-bold">
+                                        <Tag className="!text-[8px] !m-0 !px-1 font-bold !bg-slate-100 !text-slate-700 !border-slate-200">
                                           Bạn
                                         </Tag>
                                       )}
-                                      <Tag color="cyan" className="!text-[8px] !m-0 !px-1 font-semibold">
-                                        {memberNode.tasks.length} việc
-                                      </Tag>
+                                      {memberNode.tasks.length > 0 ? (
+                                        <Tag className="!text-[8px] !m-0 !px-1 font-semibold !bg-slate-100 !text-slate-700 !border-slate-200">
+                                          {memberNode.tasks.length} việc
+                                        </Tag>
+                                      ) : (
+                                        <Tag className="!text-[8px] !m-0 !px-1 font-medium !bg-slate-50 !text-slate-500 !border-slate-200">
+                                          Thành viên
+                                        </Tag>
+                                      )}
                                     </div>
 
                                     {/* Danh sách nhiệm vụ */}
@@ -987,7 +1033,7 @@ export default function ProjectPersonnelOrgChart({
                                           <div
                                             key={task.id}
                                             onClick={() => onOpenTaskDetail?.(task)}
-                                            className="task-leaf-node flex items-center justify-between gap-1.5 px-2 py-1 rounded bg-white hover:bg-teal-50/80 border border-slate-200 hover:border-teal-300 cursor-pointer text-[10px] transition-all shadow-2xs group w-full"
+                                            className="task-leaf-node flex items-center justify-between gap-1.5 px-2 py-1 rounded bg-white hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 cursor-pointer text-[10px] transition-all shadow-2xs group w-full"
                                             title={`Bấm để xem: ${task.title}`}
                                           >
                                             <div className="flex items-center gap-1 min-w-0">
@@ -1000,7 +1046,7 @@ export default function ProjectPersonnelOrgChart({
                                                     : "bg-blue-500"
                                                 }`}
                                               />
-                                              <span className="font-medium text-slate-700 group-hover:text-teal-900 truncate">
+                                              <span className="font-medium text-slate-700 group-hover:text-blue-900 truncate">
                                                 {task.title}
                                               </span>
                                             </div>
@@ -1067,7 +1113,7 @@ export default function ProjectPersonnelOrgChart({
                 <button
                   type="button"
                   onClick={handleResetZoom}
-                  className="text-[11px] font-semibold text-slate-700 hover:text-teal-700 px-1.5 py-0.5 rounded hover:bg-slate-100 cursor-pointer transition-colors min-w-[38px] text-center"
+                  className="text-[11px] font-semibold text-slate-700 hover:text-[#DC2626] px-1.5 py-0.5 rounded hover:bg-slate-100 cursor-pointer transition-colors min-w-[38px] text-center"
                   title="Đặt lại tỉ lệ 100%"
                 >
                   {Math.round(zoom * 100)}%
@@ -1101,7 +1147,7 @@ export default function ProjectPersonnelOrgChart({
                   }}
                   className={`px-2 py-0.5 rounded font-semibold cursor-pointer transition-all ${
                     orientation === "horizontal"
-                      ? "bg-white text-teal-800 shadow-2xs"
+                      ? "bg-white text-[#DC2626] shadow-2xs"
                       : "text-slate-500 hover:text-slate-700"
                   }`}
                   title="Sơ đồ cây theo chiều ngang (Trái sang Phải)"
@@ -1116,7 +1162,7 @@ export default function ProjectPersonnelOrgChart({
                   }}
                   className={`px-2 py-0.5 rounded font-semibold cursor-pointer transition-all ${
                     orientation === "vertical"
-                      ? "bg-white text-teal-800 shadow-2xs"
+                      ? "bg-white text-[#DC2626] shadow-2xs"
                       : "text-slate-500 hover:text-slate-700"
                   }`}
                   title="Sơ đồ cây theo chiều dọc (Trên xuống Dưới)"

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { ExclamationCircleFilled, PlusCircleOutlined } from "@ant-design/icons";
-import { Button, Col, Drawer, Form, Input, Row, Select, Text } from "@/components/ui";
+import { Button, Col, Drawer, Form, Input, MoneyInput, Row, Select, Text } from "@/components/ui";
 import { BID_STEPS, PACKAGE_TYPES, SELECTION_METHODS } from "../constants/bidding-steps";
+import { parseMoney } from "@/utils/format-money";
 import type { BidProject, CreatePackageInput, PackageType, SelectionMethod } from "../types/bidding.types";
 
 interface CreatePackageModalProps {
@@ -48,10 +49,10 @@ export default function CreatePackageModal({
         projectId: values.projectId,
         type: values.type,
         method: values.method,
-        estimatedPrice: Number(values.estimatedPrice),
+        estimatedPrice: parseMoney(values.estimatedPrice),
         currentStep: Number(values.currentStep) || 1,
         winner: values.winner?.trim() || undefined,
-        winningPrice: values.winningPrice ? Number(values.winningPrice) : undefined,
+        winningPrice: values.winningPrice ? parseMoney(values.winningPrice) : undefined,
         bidDeadline: values.bidDeadline?.trim() || undefined,
         note: values.note?.trim() || undefined,
       });
@@ -75,7 +76,7 @@ export default function CreatePackageModal({
             intent="primary"
             onClick={() => form.submit()}
             loading={submitting}
-            className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white font-semibold"
+            className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white font-semibold"
           >
             Lưu gói thầu
           </Button>
@@ -86,7 +87,7 @@ export default function CreatePackageModal({
       }
       title={
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#007A78] text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DC2626] text-white">
             <PlusCircleOutlined className="text-base" />
           </span>
           <div>
@@ -127,7 +128,7 @@ export default function CreatePackageModal({
         {/* Tên gói thầu */}
         <Form.Item
           name="name"
-          label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Tên gói thầu *</span>}
+          label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Tên gói thầu</span>}
           rules={[{ required: true, whitespace: true, message: "Vui lòng nhập tên gói thầu." }]}
         >
           <Input placeholder="Ví dụ: TV Thiết kế BCKTKT Rạch Đùng GĐ2" />
@@ -138,7 +139,7 @@ export default function CreatePackageModal({
           <Col xs={24} sm={12}>
             <Form.Item
               name="projectId"
-              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Dự án *</span>}
+              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Dự án</span>}
               rules={[{ required: true, message: "Vui lòng chọn dự án." }]}
             >
               <Select
@@ -155,7 +156,7 @@ export default function CreatePackageModal({
           <Col xs={24} sm={12}>
             <Form.Item
               name="method"
-              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Hình thức lựa chọn NT *</span>}
+              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Hình thức lựa chọn NT</span>}
               rules={[{ required: true, message: "Vui lòng chọn hình thức lựa chọn nhà thầu." }]}
             >
               <Select
@@ -173,13 +174,19 @@ export default function CreatePackageModal({
           <Col xs={24} sm={12}>
             <Form.Item
               name="estimatedPrice"
-              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Giá gói thầu (tỷ đồng) *</span>}
+              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Giá gói thầu</span>}
               rules={[
                 { required: true, message: "Vui lòng nhập giá gói thầu." },
-                { pattern: /^\d+(\.\d{1,3})?$/, message: "Nhập số dương, tối đa 3 chữ số thập phân." },
+                () => ({
+                  validator: (_, val) => {
+                    const num = parseMoney(val);
+                    if (!num || num <= 0) return Promise.reject(new Error("Giá gói thầu phải lớn hơn 0."));
+                    return Promise.resolve();
+                  },
+                }),
               ]}
             >
-              <Input inputMode="decimal" suffix="tỷ" placeholder="Ví dụ: 0.12" />
+              <MoneyInput placeholder="Ví dụ: 100.000.000" />
             </Form.Item>
           </Col>
 
@@ -225,9 +232,9 @@ export default function CreatePackageModal({
           <Col xs={24} sm={12}>
             <Form.Item
               name="winningPrice"
-              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Giá trúng thầu (tỷ đồng)</span>}
+              label={<span className="font-semibold text-xs text-slate-700 uppercase tracking-wide">Giá trúng thầu</span>}
             >
-              <Input inputMode="decimal" suffix="tỷ" placeholder="Điền sau khi có kết quả" />
+              <Input inputMode="decimal"placeholder="Điền sau khi có kết quả" />
             </Form.Item>
           </Col>
 

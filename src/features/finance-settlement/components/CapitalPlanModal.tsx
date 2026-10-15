@@ -3,8 +3,9 @@
 import type { ChangeEvent, ReactNode } from "react";
 import { EditOutlined, InfoCircleOutlined, PaperClipOutlined, PlusCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
-import { Button, Card, Drawer, Flex, Form, Input, Select, Text } from "@/components/ui";
+import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, Text } from "@/components/ui";
 import { CAPITAL_SOURCES } from "../constants/finance-labels";
+import { parseMoney } from "@/utils/format-money";
 import type {
   CapitalPlan,
   CapitalPlanAdjustmentInput,
@@ -86,7 +87,7 @@ export default function CapitalPlanModal({
 
   const submit = async (values: FormValues) => {
     setSubmitting(true);
-    const amount = Number(values.amount);
+    const amount = parseMoney(values.amount);
     const planYear = values.year ? Number(values.year) : year;
     try {
       const success = adjustingPlan
@@ -121,7 +122,7 @@ export default function CapitalPlanModal({
       destroyOnClose
       title={
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 text-[#007A78]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[#DC2626]">
             {isAdjustment ? (
               <EditOutlined className="text-base" />
             ) : (
@@ -146,7 +147,7 @@ export default function CapitalPlanModal({
             key="submit"
             intent="primary"
             scale="compact"
-            className="border-[#007A78] bg-[#007A78] text-white"
+            className="border-[#DC2626] bg-[#DC2626] text-white"
             loading={submitting}
             onClick={() => form.submit()}
           >
@@ -241,21 +242,25 @@ export default function CapitalPlanModal({
               </Text>
               <Form.Item
                 name="amount"
-                label={<FieldLabel required>{isAdjustment ? "Giá trị điều chỉnh (tỷ đồng)" : "Kế hoạch vốn (tỷ đồng)"}</FieldLabel>}
+                label={<FieldLabel required>{isAdjustment ? "Giá trị điều chỉnh" : "Kế hoạch vốn"}</FieldLabel>}
                 className="!mb-0"
                 rules={[
                   { required: true, message: "Nhập số tiền." },
-                  {
-                    pattern: isAdjustment ? /^-?\d+(\.\d{1,3})?$/ : /^\d+(\.\d{1,3})?$/,
-                    message: "Tối đa 3 chữ số thập phân.",
-                  },
+                  () => ({
+                    validator: (_, val) => {
+                      const num = parseMoney(val);
+                      if (isNaN(num) || (!isAdjustment && num <= 0) || (isAdjustment && num === 0)) {
+                        return Promise.reject(new Error("Vui lòng nhập số tiền hợp lệ (> 0)."));
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
                 ]}
               >
-                <Input
-                  inputMode="decimal"
+                <MoneyInput
+                  allowNegative={isAdjustment}
                   className="font-mono text-xs"
-                  placeholder={isAdjustment ? "Ví dụ: 5.500 hoặc -2.000" : "Ví dụ: 25.500"}
-                  suffix="tỷ đồng"
+                  placeholder={isAdjustment ? "Ví dụ: 5.000.000 hoặc -2.000.000" : "Ví dụ: 100.000.000"}
                 />
               </Form.Item>
             </Card>
@@ -285,7 +290,7 @@ export default function CapitalPlanModal({
                   <input
                     type="file"
                     accept=".pdf,.doc,.docx"
-                    className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-teal-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-teal-700 hover:border-teal-400"
+                    className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-emerald-700 hover:border-emerald-400"
                   />
                 </Form.Item>
               </Card>
@@ -316,7 +321,7 @@ export default function CapitalPlanModal({
                   <input
                     type="file"
                     accept=".pdf,.doc,.docx"
-                    className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-teal-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-teal-700 hover:border-teal-400"
+                    className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-emerald-50 file:px-3 file:py-1 file:text-xs file:font-medium file:text-emerald-700 hover:border-emerald-400"
                   />
                 </Form.Item>
                 {adjustingPlan?.approvalFileName && (

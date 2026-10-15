@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import {
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui";
 import { daysBetween, formatDateVi } from "@/utils/date";
 import AssignmentModal from "./AssignmentModal";
+import SubmitToCndaModal from "./SubmitToCndaModal";
 import {
   PROJECT_STAGE_META,
 } from "../constants/personnel-labels";
@@ -103,25 +104,41 @@ export default function AssignmentDetailDrawer({
       (liveAssignment.teamId === myLeadingTeamId || assignee?.teamId === myLeadingTeamId)
   );
 
+  const isPhase = liveAssignment.assignmentLevel === "PHASE_LEAD";
+  const childAssignments = isPhase
+    ? data.assignments.filter((item) => item.parentAssignmentId === liveAssignment.id)
+    : [];
+
+  const allChildrenApproved = childAssignments.length > 0 &&
+    childAssignments.every((item) => item.approvalStage === "PROJECT_APPROVED" || item.status === "DONE");
+
+  const pendingCndaChildrenCount = childAssignments.filter((item) => item.approvalStage === "LEAD_APPROVED").length;
+
+  const isPendingApproval = liveAssignment.status === "PENDING_APPROVAL";
+
+  const canCompletePhaseByCnda = isLeadOnThisProject &&
+    isPhase &&
+    liveAssignment.status !== "DONE" &&
+    (allChildrenApproved || (childAssignments.length === 0 && isPendingApproval));
+
   const canManageThisTask =
-    (isLeadOnThisProject && !isMyTask) ||
-    (isTaskInMyTeam && !isMyTask && liveAssignment.assignmentLevel !== "PHASE_LEAD");
+    isLeadOnThisProject ||
+    (isTaskInMyTeam && !isMyTask && !isPhase);
 
   const canEditThisTask =
     liveAssignment.status !== "DONE" &&
-    ((liveAssignment.assignmentLevel === "PHASE_LEAD" && isLeadOnThisProject) ||
+    ((isPhase && isLeadOnThisProject) ||
       (liveAssignment.assignmentLevel === "TASK_MEMBER" && (isLeadOnThisProject || isTaskInMyTeam)));
 
-  const isPendingApproval = liveAssignment.status === "PENDING_APPROVAL";
-  const childAssignments = liveAssignment.assignmentLevel === "PHASE_LEAD"
-    ? data.assignments.filter((item) => item.parentAssignmentId === liveAssignment.id)
-    : [];
-  const canSubmitPhase = liveAssignment.assignmentLevel !== "PHASE_LEAD" ||
+  const canSubmitPhase = !isPhase ||
     (childAssignments.length > 0 && childAssignments.every((item) => item.approvalStage === "PROJECT_APPROVED"));
-  const canReview = canManageThisTask && isPendingApproval && (
-    liveAssignment.assignmentLevel !== "TASK_MEMBER" || !liveAssignment.parentAssignmentId ||
-    (isLeadOnThisProject && liveAssignment.approvalStage === "LEAD_APPROVED") ||
-    (isTaskInMyTeam && !isLeadOnThisProject && !liveAssignment.approvalStage)
+  const canReview = canManageThisTask && (
+    (isPhase && isLeadOnThisProject && canCompletePhaseByCnda) ||
+    (isPendingApproval && (
+      liveAssignment.assignmentLevel !== "TASK_MEMBER" || !liveAssignment.parentAssignmentId ||
+      (isLeadOnThisProject && liveAssignment.approvalStage === "LEAD_APPROVED") ||
+      (isTaskInMyTeam && !isLeadOnThisProject && !liveAssignment.approvalStage)
+    ))
   );
 
   const overdue = isOverdue(liveAssignment, today);
@@ -220,50 +237,12 @@ export default function AssignmentDetailDrawer({
     await controller.removeAssignmentSubmission(liveAssignment.id, submissionId);
   };
 
+  // State cho Modal nộp hồ sơ trình CNDA
+  const [isSubmitToCndaOpen, setIsSubmitToCndaOpen] = useState(false);
+
   // Xử lý gửi báo cáo hoàn thành & yêu cầu nghiệm thu từ phía cán bộ
   const handleConfirmCompletion = () => {
-    const isPhase = liveAssignment.assignmentLevel === "PHASE_LEAD";
-    const approverText =
-      isPhase || liveAssignment.assignedByRole === "PROJECT_LEAD"
-        ? "Chủ nhiệm dự án"
-        : "Tổ trưởng chuyên môn";
-
-    modal.confirm({
-      width: 460,
-      centered: true,
-      title: "Gửi báo cáo hoàn thành & yêu cầu nghiệm thu?",
-      icon: null,
-      content: (
-        <div className="space-y-2.5 pt-1 text-xs">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-800 space-y-1">
-            <div className="font-bold text-slate-900">{liveAssignment.title}</div>
-            <div className="text-[11px] text-slate-500">
-              Dự án: {project?.name} · Hạn: {formatDateVi(liveAssignment.dueDate)}
-            </div>
-            {submissions.length > 0 && (
-              <div className="text-[11px] text-emerald-700 font-medium">
-                Đã đính kèm {submissions.length} hồ sơ/tài liệu
-              </div>
-            )}
-          </div>
-          <p className="text-slate-600 leading-relaxed">
-            Bạn có chắc chắn đã hoàn thành toàn bộ nội dung công việc và muốn gửi hồ sơ trình <strong>{approverText}</strong> xem xét nghiệm thu?
-          </p>
-        </div>
-      ),
-      okText: "Gửi duyệt nghiệm thu",
-      cancelText: "Hủy",
-      okButtonProps: {
-        className: "!bg-[#007A78] hover:!bg-[#006361] !border-[#007A78] !text-white text-xs font-semibold h-8 px-4",
-      },
-      cancelButtonProps: {
-        className: "text-xs font-medium h-8 px-4",
-      },
-      onOk: async () => {
-        await controller.requestCompletion(liveAssignment.id);
-        onClose();
-      },
-    });
+    setIsSubmitToCndaOpen(true);
   };
 
   // Xử lý chấp nhận nghiệm thu từ phía lãnh đạo
@@ -338,58 +317,103 @@ export default function AssignmentDetailDrawer({
         }
         footer={
           <div className="flex items-center justify-between px-3 py-2 bg-white w-full border-t border-slate-200">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {liveAssignment.approvalStage === "RETURNED_TO_LEAD" && isTaskInMyTeam && !isMyTask && (
                 <Button intent="primary" onClick={async () => { await controller.returnToMember(liveAssignment.id); onClose(); }}>
                   Chuyển thành viên chỉnh sửa
                 </Button>
               )}
-              {/* QUẢN LÝ / NGƯỜI DUYỆT (CNDA, Giám đốc, Tổ trưởng quản lý thành viên) */}
-              {canManageThisTask && (
+
+              {/* DÀNH CHO CNDA / LÃNH ĐẠO DỰ ÁN QUẢN LÝ GIAI ĐOẠN */}
+              {isLeadOnThisProject && isPhase && liveAssignment.status !== "DONE" && (
                 <>
-                  {canReview ? (
-                    <>
-                      <Button
-                        intent="primary"
-                        icon={<CheckOutlined />}
-                        onClick={handleAccept}
-                        className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-[#007A78] hover:!bg-[#006361] !border-[#007A78] !text-white"
-                      >
-                        {liveAssignment.assignmentLevel === "PHASE_LEAD" ? "Hoàn thành giai đoạn" : liveAssignment.parentAssignmentId && !liveAssignment.approvalStage ? "Duyệt chuyển CNDA" : "Chấp nhận bước con"}
-                      </Button>
-                      <Button
-                        danger
-                        icon={<CloseOutlined />}
-                        onClick={() => {
-                          setRejectReason("");
-                          setRejectModalOpen(true);
-                        }}
-                        className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-rose-50 hover:!bg-rose-100 !text-rose-600 !border-rose-300"
-                      >
-                        Từ chối
-                      </Button>
-                    </>
+                  {canCompletePhaseByCnda ? (
+                    <Button
+                      intent="primary"
+                      icon={<CheckOutlined />}
+                      onClick={handleAccept}
+                      className="text-xs font-semibold px-4 h-8 rounded-lg !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white shadow-2xs"
+                    >
+                      Nghiệm thu hoàn thành giai đoạn
+                    </Button>
+                  ) : childAssignments.length > 0 ? (
+                    <Button
+                      intent="primary"
+                      icon={<CheckOutlined />}
+                      disabled
+                      title={pendingCndaChildrenCount > 0
+                        ? `Có ${pendingCndaChildrenCount} bước con đang chờ CNDA duyệt bên dưới. Vui lòng duyệt bước con trước khi nghiệm thu giai đoạn.`
+                        : "Cần hoàn thành và duyệt tất cả các bước con trước khi nghiệm thu hoàn thành giai đoạn."}
+                      className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-slate-200 !border-slate-200 !text-slate-400 cursor-not-allowed"
+                    >
+                      Duyệt giai đoạn {pendingCndaChildrenCount > 0 ? `(Còn ${pendingCndaChildrenCount} bước chờ CNDA duyệt)` : `(Chưa xong các bước con)`}
+                    </Button>
                   ) : isPendingApproval ? (
-                    <span className="text-xs text-amber-700">
-                      {liveAssignment.approvalStage === "PROJECT_APPROVED" ? "CNDA đã duyệt bước, chờ chốt giai đoạn" : "Đang chờ cấp duyệt tiếp theo"}
-                    </span>
-                  ) : liveAssignment.status !== "DONE" ? (
-                    canEditThisTask ? (
-                      <Button
-                        intent="outline"
-                        icon={<EditOutlined />}
-                        onClick={() => handleOpenEdit(liveAssignment)}
-                        className="text-xs font-semibold px-3.5 h-8 rounded-lg !border-slate-300 !text-slate-700 hover:!border-[#007A78] hover:!text-[#007A78]"
-                      >
-                        Sửa phân công
-                      </Button>
-                    ) : null
+                    <Button
+                      intent="primary"
+                      icon={<CheckOutlined />}
+                      onClick={handleAccept}
+                      className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white"
+                    >
+                      Nghiệm thu hoàn thành giai đoạn
+                    </Button>
                   ) : null}
+
+                  {isPendingApproval && (
+                    <Button
+                      danger
+                      icon={<CloseOutlined />}
+                      onClick={() => {
+                        setRejectReason("");
+                        setRejectModalOpen(true);
+                      }}
+                      className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-rose-50 hover:!bg-rose-100 !text-rose-600 !border-rose-300"
+                    >
+                      Từ chối
+                    </Button>
+                  )}
                 </>
               )}
 
-              {/* DÀNH CHO CÁN BỘ THỰC HIỆN KHI ĐANG LÀM HOẶC CHỜ DUYỆT */}
-              {isMyTask && liveAssignment.status !== "DONE" && (
+              {/* DÀNH CHO NHIỆM VỤ THÀNH VIÊN (TASK_MEMBER) KHI MỞ TRỰC TIẾP */}
+              {!isPhase && canManageThisTask && canReview && (
+                <>
+                  <Button
+                    intent="primary"
+                    icon={<CheckOutlined />}
+                    onClick={handleAccept}
+                    className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white"
+                  >
+                    {liveAssignment.approvalStage === "LEAD_APPROVED" ? "CNDA duyệt hoàn thành" : "Tổ trưởng duyệt chuyển CNDA"}
+                  </Button>
+                  <Button
+                    danger
+                    icon={<CloseOutlined />}
+                    onClick={() => {
+                      setRejectReason("");
+                      setRejectModalOpen(true);
+                    }}
+                    className="text-xs font-semibold px-3.5 h-8 rounded-lg !bg-rose-50 hover:!bg-rose-100 !text-rose-600 !border-rose-300"
+                  >
+                    Từ chối
+                  </Button>
+                </>
+              )}
+
+              {/* SỬA PHÂN CÔNG */}
+              {canEditThisTask && liveAssignment.status !== "DONE" && (
+                <Button
+                  intent="outline"
+                  icon={<EditOutlined />}
+                  onClick={() => handleOpenEdit(liveAssignment)}
+                  className="text-xs font-semibold px-3.5 h-8 rounded-lg !border-slate-300 !text-slate-700 hover:!border-[#DC2626] hover:!text-[#DC2626]"
+                >
+                  Sửa phân công
+                </Button>
+              )}
+
+              {/* DÀNH CHO CÁN BỘ THỰC HIỆN KHI KHÔNG PHẢI CNDA */}
+              {!isLeadOnThisProject && isMyTask && liveAssignment.status !== "DONE" && (
                 <>
                   {isPendingApproval ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold">
@@ -406,10 +430,10 @@ export default function AssignmentDetailDrawer({
                       disabled={!canSubmitPhase}
                       title={!canSubmitPhase ? "Cần CNDA duyệt tất cả bước con trước khi gửi giai đoạn" : undefined}
                       className={canSubmitPhase
-                        ? "text-xs font-semibold px-3.5 h-8 rounded-lg !bg-[#007A78] hover:!bg-[#006361] !border-[#007A78] !text-white"
+                        ? "text-xs font-semibold px-3.5 h-8 rounded-lg !bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] !text-white"
                         : "text-xs font-semibold px-3.5 h-8 rounded-lg !bg-slate-200 !border-slate-200 !text-slate-500 cursor-not-allowed"}
                     >
-                      {liveAssignment.assignedByRole === "PROJECT_LEAD" || liveAssignment.assignmentLevel === "PHASE_LEAD"
+                      {isPhase
                         ? "Gửi CNDA duyệt"
                         : "Gửi duyệt nghiệm thu"}
                     </Button>
@@ -462,7 +486,7 @@ export default function AssignmentDetailDrawer({
                         variant="brand"
                         shape="circle"
                         size={38}
-                        className="font-bold shrink-0 bg-[#007A78] text-white shadow-xs"
+                        className="font-bold shrink-0 bg-[#DC2626] text-white shadow-xs"
                       >
                         {assignee.name
                           .split(" ")
@@ -608,20 +632,24 @@ export default function AssignmentDetailDrawer({
                       );
 
                       const isChildApproved = Boolean(
-                        child.approvalStage === "LEAD_APPROVED" ||
                         child.approvalStage === "PROJECT_APPROVED" ||
                         child.status === "DONE"
                       );
 
-                      const canReviewChild = !isLeadOnThisProject &&
-                        isLeadOfThisPhaseOrTeam &&
-                        !isChildApproved &&
+                      const canTeamLeadReviewChild = isLeadOfThisPhaseOrTeam &&
                         (child.status === "PENDING_APPROVAL" || Boolean(child.rejectionNote)) &&
+                        !child.approvalStage &&
                         child.assigneeId !== currentStaffId;
 
-                      const canUndoChild = !isLeadOnThisProject &&
-                        isLeadOfThisPhaseOrTeam &&
-                        isChildApproved &&
+                      const canCndaReviewChild = isLeadOnThisProject &&
+                        child.approvalStage === "LEAD_APPROVED";
+
+                      const canUndoChildByLead = isLeadOfThisPhaseOrTeam &&
+                        child.approvalStage === "LEAD_APPROVED" &&
+                        child.status !== "DONE";
+
+                      const canUndoChildByCnda = isLeadOnThisProject &&
+                        child.approvalStage === "PROJECT_APPROVED" &&
                         child.status !== "DONE";
 
                       const canEditChild = !isLeadOnThisProject &&
@@ -665,13 +693,69 @@ export default function AssignmentDetailDrawer({
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
+                              {canCndaReviewChild && (
+                                <>
+                                  <Button
+                                    intent="primary"
+                                    scale="compact"
+                                    icon={<CheckOutlined />}
+                                    loading={busyChildId === child.id}
+                                    className="!bg-[#DC2626] hover:!bg-[#B91C1C] !text-white !font-semibold shadow-2xs"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setBusyChildId(child.id);
+                                      try {
+                                        await controller.acceptAssignment(child.id);
+                                      } finally {
+                                        setBusyChildId(null);
+                                      }
+                                    }}
+                                  >
+                                    CNDA duyệt
+                                  </Button>
+                                  <Button
+                                    intent="outline"
+                                    scale="compact"
+                                    danger
+                                    icon={<CloseOutlined />}
+                                    className="!border-rose-300 !text-rose-600 hover:!bg-rose-50 font-medium"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRejectChildId(child.id);
+                                      setRejectReason(child.rejectionNote || "");
+                                      setRejectModalOpen(true);
+                                    }}
+                                  >
+                                    Từ chối
+                                  </Button>
+                                </>
+                              )}
+                              {canTeamLeadReviewChild && !isExpanded && (
+                                <Button
+                                  intent="primary"
+                                  scale="compact"
+                                  loading={busyChildId === child.id}
+                                  className="!bg-[#DC2626] hover:!bg-[#B91C1C] !text-white !font-semibold shadow-2xs"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setBusyChildId(child.id);
+                                    try {
+                                      await controller.acceptAssignment(child.id);
+                                    } finally {
+                                      setBusyChildId(null);
+                                    }
+                                  }}
+                                >
+                                  Duyệt
+                                </Button>
+                              )}
                               {canEditChild && !isExpanded && (
                                 <Button
                                   intent="outline"
                                   scale="compact"
                                   icon={<EditOutlined />}
                                   onClick={() => handleOpenEdit(child)}
-                                  className="!border-slate-300 !text-slate-700 hover:!border-[#007A78] hover:!text-[#007A78]"
+                                  className="!border-slate-300 !text-slate-700 hover:!border-[#DC2626] hover:!text-[#DC2626]"
                                 >
                                   Sửa
                                 </Button>
@@ -690,15 +774,22 @@ export default function AssignmentDetailDrawer({
                           {isExpanded && (
                             <div className="space-y-3 border-t border-slate-100 px-3 py-3 text-xs">
                               {/* Thông báo nổi bật khi bước con đang chờ duyệt */}
-                              {child.status === "PENDING_APPROVAL" && (
+                              {child.approvalStage === "LEAD_APPROVED" ? (
+                                <div className="rounded-lg border border-red-200 bg-red-50/70 p-2.5 text-xs text-red-900 flex items-start gap-2">
+                                  <ClockCircleOutlined className="text-red-600 mt-0.5 shrink-0 text-sm" />
+                                  <div>
+                                    <strong className="text-red-950 font-semibold">Tổ trưởng đã duyệt chuyển tiếp:</strong> Đang chờ Chủ nhiệm dự án (CNDA) kiểm tra hồ sơ và phê duyệt bước này.
+                                  </div>
+                                </div>
+                              ) : child.status === "PENDING_APPROVAL" ? (
                                 <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2.5 text-xs text-amber-900 flex items-start gap-2">
                                   <ClockCircleOutlined className="text-amber-600 mt-0.5 shrink-0 text-sm" />
                                   <div>
                                     <strong className="text-amber-950 font-semibold">Thành viên đã gửi báo cáo hoàn thành:</strong> Đã đính kèm {child.submissions?.length || 0} hồ sơ/tài liệu kiểm tra{child.confirmRequestedAt ? ` vào ngày ${formatDateVi(child.confirmRequestedAt)}` : ""}.
-                                    {canReviewChild ? " Tổ trưởng chuyên môn vui lòng kiểm tra hồ sơ và phê duyệt hoặc yêu cầu bổ sung." : " Đang chờ Tổ trưởng chuyên môn thẩm tra & phê duyệt."}
+                                    {canTeamLeadReviewChild ? " Tổ trưởng chuyên môn vui lòng kiểm tra hồ sơ và phê duyệt hoặc yêu cầu bổ sung." : " Đang chờ Tổ trưởng chuyên môn thẩm tra & phê duyệt."}
                                   </div>
                                 </div>
-                              )}
+                              ) : null}
 
                               <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 <div><dt className="text-slate-500">Người phụ trách</dt><dd className="mt-0.5 font-semibold text-slate-900">{childAssignee?.name || "Chưa giao"}{childAssignee?.title ? ` · ${childAssignee.title}` : ""}</dd></div>
@@ -744,7 +835,7 @@ export default function AssignmentDetailDrawer({
                                               a.download = file.fileName;
                                               a.click();
                                             }}
-                                            className="!text-slate-600 hover:!text-[#007A78] !h-6 !px-2 !text-[11px]"
+                                            className="!text-slate-600 hover:!text-[#DC2626] !h-6 !px-2 !text-[11px]"
                                           >
                                             Xem tệp
                                           </Button>
@@ -758,43 +849,48 @@ export default function AssignmentDetailDrawer({
                                 ) : <p className="text-slate-500">Chưa có tài liệu.</p>}
                               </div>
                               <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                                {isChildApproved ? (
-                                  <>
-                                    {canUndoChild && (
-                                      <Button
-                                        intent="outline"
-                                        scale="compact"
-                                        icon={<UndoOutlined />}
-                                        loading={busyChildId === child.id}
-                                        className="!border-amber-300 !text-amber-700 hover:!bg-amber-50 font-medium"
-                                        onClick={async () => {
-                                          setBusyChildId(child.id);
-                                          try {
-                                            await controller.undoAcceptAssignment(child.id);
-                                          } finally {
-                                            setBusyChildId(null);
-                                          }
-                                        }}
-                                      >
-                                        Hoàn tác
-                                      </Button>
-                                    )}
-                                    <Button
-                                      intent="subtle"
-                                      scale="compact"
-                                      onClick={() => setExpandedChildId(null)}
-                                      className="!text-slate-600 hover:!bg-slate-100 font-medium"
-                                    >
-                                      Đóng
-                                    </Button>
-                                  </>
-                                ) : canReviewChild ? (
+                                {canCndaReviewChild ? (
                                   <>
                                     <Button
                                       intent="primary"
                                       scale="compact"
+                                      icon={<CheckOutlined />}
                                       loading={busyChildId === child.id}
-                                      className="!bg-[#007A78] hover:!bg-[#006361] !text-white !font-semibold shadow-2xs"
+                                      className="!bg-[#DC2626] hover:!bg-[#B91C1C] !text-white !font-semibold shadow-2xs"
+                                      onClick={async () => {
+                                        setBusyChildId(child.id);
+                                        try {
+                                          await controller.acceptAssignment(child.id);
+                                        } finally {
+                                          setBusyChildId(null);
+                                        }
+                                      }}
+                                    >
+                                      CNDA phê duyệt bước con
+                                    </Button>
+                                    <Button
+                                      intent="outline"
+                                      scale="compact"
+                                      danger
+                                      icon={<CloseOutlined />}
+                                      className="!border-rose-300 !text-rose-600 hover:!bg-rose-50 font-medium"
+                                      onClick={() => {
+                                        setRejectChildId(child.id);
+                                        setRejectReason(child.rejectionNote || "");
+                                        setRejectModalOpen(true);
+                                      }}
+                                    >
+                                      Từ chối / Yêu cầu sửa
+                                    </Button>
+                                  </>
+                                ) : canTeamLeadReviewChild ? (
+                                  <>
+                                    <Button
+                                      intent="primary"
+                                      scale="compact"
+                                      icon={<CheckOutlined />}
+                                      loading={busyChildId === child.id}
+                                      className="!bg-[#DC2626] hover:!bg-[#B91C1C] !text-white !font-semibold shadow-2xs"
                                       onClick={async () => {
                                         setBusyChildId(child.id);
                                         try {
@@ -819,32 +915,63 @@ export default function AssignmentDetailDrawer({
                                     >
                                       Từ chối / Yêu cầu sửa
                                     </Button>
-                                    <Button
-                                      intent="subtle"
-                                      scale="compact"
-                                      onClick={() => setExpandedChildId(null)}
-                                      className="!text-slate-600 hover:!bg-slate-100 font-medium"
-                                    >
-                                      Đóng
-                                    </Button>
                                   </>
-                                ) : (
-                                  <>
-                                    {child.approvalStage === "RETURNED_TO_LEAD" && isLeadOfThisPhaseOrTeam && (
-                                      <Button intent="primary" scale="compact" onClick={() => controller.returnToMember(child.id)}>
-                                        Chuyển thành viên chỉnh sửa
-                                      </Button>
-                                    )}
-                                    <Button
-                                      intent="subtle"
-                                      scale="compact"
-                                      onClick={() => setExpandedChildId(null)}
-                                      className="!text-slate-600 hover:!bg-slate-100 font-medium"
-                                    >
-                                      Đóng
-                                    </Button>
-                                  </>
+                                ) : null}
+
+                                {canUndoChildByCnda && (
+                                  <Button
+                                    intent="outline"
+                                    scale="compact"
+                                    icon={<UndoOutlined />}
+                                    loading={busyChildId === child.id}
+                                    className="!border-amber-300 !text-amber-700 hover:!bg-amber-50 font-medium"
+                                    onClick={async () => {
+                                      setBusyChildId(child.id);
+                                      try {
+                                        await controller.undoAcceptAssignment(child.id);
+                                      } finally {
+                                        setBusyChildId(null);
+                                      }
+                                    }}
+                                  >
+                                    CNDA hoàn tác duyệt
+                                  </Button>
                                 )}
+
+                                {canUndoChildByLead && (
+                                  <Button
+                                    intent="outline"
+                                    scale="compact"
+                                    icon={<UndoOutlined />}
+                                    loading={busyChildId === child.id}
+                                    className="!border-amber-300 !text-amber-700 hover:!bg-amber-50 font-medium"
+                                    onClick={async () => {
+                                      setBusyChildId(child.id);
+                                      try {
+                                        await controller.undoAcceptAssignment(child.id);
+                                      } finally {
+                                        setBusyChildId(null);
+                                      }
+                                    }}
+                                  >
+                                    Tổ trưởng hoàn tác duyệt
+                                  </Button>
+                                )}
+
+                                {child.approvalStage === "RETURNED_TO_LEAD" && isLeadOfThisPhaseOrTeam && (
+                                  <Button intent="primary" scale="compact" onClick={() => controller.returnToMember(child.id)}>
+                                    Chuyển thành viên chỉnh sửa
+                                  </Button>
+                                )}
+
+                                <Button
+                                  intent="subtle"
+                                  scale="compact"
+                                  onClick={() => setExpandedChildId(null)}
+                                  className="!text-slate-600 hover:!bg-slate-100 font-medium"
+                                >
+                                  Đóng
+                                </Button>
                               </div>
                             </div>
                           )}
@@ -1063,6 +1190,19 @@ export default function AssignmentDetailDrawer({
           leadingTeamId={myLeadingTeamId || permissions.leadingTeamId}
         />
       )}
+
+      {/* Modal nộp hồ sơ trình Chủ nhiệm dự án (CNDA) / Tổ trưởng duyệt */}
+      <SubmitToCndaModal
+        open={isSubmitToCndaOpen}
+        assignment={liveAssignment}
+        projectName={project?.name || "Dự án"}
+        onClose={() => setIsSubmitToCndaOpen(false)}
+        onSubmit={async (assignmentId, submissionData) => {
+          await controller.requestCompletion(assignmentId, submissionData);
+          setIsSubmitToCndaOpen(false);
+          onClose();
+        }}
+      />
     </>
   );
 }

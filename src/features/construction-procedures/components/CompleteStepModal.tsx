@@ -3,12 +3,11 @@
 import React, { useState } from "react";
 import {
   CheckCircleFilled,
-  FileAddOutlined,
   FilePdfOutlined,
   PaperClipOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Drawer, Flex, Input, Tag, Text } from "@/components/ui";
+import { Button, Drawer, Flex, Input, Tag, Text } from "@/components/ui";
 import type { ProcedureDocument, ProcedureStep } from "../types/procedure.types";
 
 interface CompleteStepModalProps {
@@ -36,23 +35,12 @@ export default function CompleteStepModal({
   );
   const [notes, setNotes] = useState<string>("");
 
-  // Form thêm nhanh văn bản nếu bước chưa có văn bản (Quy tắc 10)
-  const [docCode, setDocCode] = useState<string>("");
-  const [docTitle, setDocTitle] = useState<string>("");
-  const [docIssuer, setDocIssuer] = useState<string>("");
-  const [docIssueDate, setDocIssueDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   React.useEffect(() => {
     if (open && step) {
       setActualEndDate(new Date().toISOString().slice(0, 10));
       setNotes("");
-      setDocCode("");
-      setDocTitle("");
-      setDocIssuer("");
-      setDocIssueDate(new Date().toISOString().slice(0, 10));
       setErrorMessage("");
     }
   }, [open, step?.id]);
@@ -70,49 +58,11 @@ export default function CompleteStepModal({
       return;
     }
 
-    // Quy tắc 10: Phải có ít nhất 1 văn bản
-    let newDoc: ProcedureDocument | undefined = undefined;
-
-    if (needsDocument) {
-      if (!docCode.trim()) {
-        setErrorMessage(
-          "Quy tắc 10: Bắt buộc phải đính kèm ít nhất 1 văn bản trước khi hoàn thành. Vui lòng nhập Số hiệu văn bản."
-        );
-        return;
-      }
-      if (!docTitle.trim()) {
-        setErrorMessage("Vui lòng nhập trích yếu / tên văn bản phê duyệt.");
-        return;
-      }
-      if (!docIssuer.trim()) {
-        setErrorMessage("Vui lòng nhập cơ quan ban hành văn bản.");
-        return;
-      }
-
-      newDoc = {
-        id: `DOC-NEW-${Date.now()}`,
-        documentCode: docCode.trim(),
-        title: docTitle.trim(),
-        issuer: docIssuer.trim(),
-        issueDate: docIssueDate,
-        fileName: `${docCode.replace(/[\/\\:]/g, "-")}.pdf`,
-        fileSize: "1.5 MB",
-        uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-        uploadedBy: "Lê Hoàng Minh",
-        fileType: "pdf",
-      };
-    }
-
     onConfirmComplete(step.id, {
       actualEndDate,
       notes: notes.trim() || undefined,
-      newDocument: newDoc,
     });
 
-    // Reset form
-    setDocCode("");
-    setDocTitle("");
-    setDocIssuer("");
     setNotes("");
     setErrorMessage("");
     onClose();
@@ -127,7 +77,7 @@ export default function CompleteStepModal({
       width="min(680px, 100vw)"
       title={
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[#DC2626]">
             <CheckCircleFilled className="text-base" />
           </div>
           <div className="min-w-0">
@@ -150,7 +100,7 @@ export default function CompleteStepModal({
           <Button
             intent="primary"
             scale="sm"
-            className="!bg-emerald-600 hover:!bg-emerald-700 !text-white"
+            className="!bg-[#DC2626] hover:!bg-[#B91C1C] !text-white"
             icon={<CheckCircleFilled />}
             onClick={handleComplete}
           >
@@ -184,7 +134,7 @@ export default function CompleteStepModal({
           className={`p-3 rounded-lg border flex items-start gap-2.5 text-xs ${
             needsDocument
               ? "bg-amber-50 border-amber-300 text-amber-900"
-              : "bg-emerald-50 border-emerald-300 text-emerald-900"
+              : "bg-red-50 border-red-200 text-red-900"
           }`}
         >
           {needsDocument ? (
@@ -197,7 +147,7 @@ export default function CompleteStepModal({
             </>
           ) : (
             <>
-              <PaperClipOutlined className="text-emerald-600 text-base shrink-0 mt-0.5" />
+              <PaperClipOutlined className="text-[#DC2626] text-base shrink-0 mt-0.5" />
               <div>
                 <strong className="block font-semibold">Đã có văn bản pháp lý hợp lệ</strong>
                 <span>Bước đã có {currentDocsCount} văn bản pháp lý đính kèm, đủ điều kiện để xác nhận hoàn thành.</span>
@@ -238,70 +188,6 @@ export default function CompleteStepModal({
           </div>
         )}
 
-        {/* Nhập văn bản mới nếu chưa có */}
-        {needsDocument && (
-          <Card
-            surface="workspace"
-            padding="comfortable"
-            rounded="lg"
-            className="border-amber-200 bg-amber-50/20"
-          >
-            <Text className="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2.5">
-              <FileAddOutlined /> Đính kèm văn bản pháp lý (Bắt buộc):
-            </Text>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Số hiệu văn bản *
-                </label>
-                <Input
-                  placeholder="Ví dụ: 182/QĐ-UBND"
-                  value={docCode}
-                  onChange={(e) => setDocCode(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Cơ quan ban hành *
-                </label>
-                <Input
-                  placeholder="Ví dụ: UBND TP Hà Tiên"
-                  value={docIssuer}
-                  onChange={(e) => setDocIssuer(e.target.value)}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Trích yếu / Tên văn bản *
-                </label>
-                <Input
-                  placeholder="Ví dụ: Quyết định phê duyệt chủ trương đầu tư..."
-                  value={docTitle}
-                  onChange={(e) => setDocTitle(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Ngày ký ban hành
-                </label>
-                <Input
-                  type="date"
-                  value={docIssueDate}
-                  onChange={(e) => setDocIssueDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Tệp đính kèm mô phỏng
-                </label>
-                <div className="h-[32px] px-2.5 rounded border border-dashed border-slate-300 bg-white flex items-center justify-between text-slate-500 text-xs">
-                  <span>{docCode ? `${docCode}.pdf` : "Ho-so-phe-duyet.pdf"}</span>
-                  <Tag intent="info" scale="sm">PDF</Tag>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Thông tin hoàn thành */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

@@ -13,15 +13,21 @@
    ═══════════════════════════════════════════════════════════ */
 export const semantic = {
   /**
-   * TEAL — Thương hiệu & Điểm nhấn tích cực
+   * CRIMSON RED — Thương hiệu Đỏ tươi thanh lịch & Điểm nhấn chính
    * Dùng: dự án đang quản lý, nút hành động chính,
    *       trạng thái Active menu, thiết kế kỹ thuật
    */
-  teal:           "#00C9A7",
-  tealLight:      "#33D4B7",
-  tealDark:       "#00A88C",
-  tealBg:         "rgba(0, 201, 167, 0.1)",
-  tealBorder:     "rgba(0, 201, 167, 0.3)",
+  brand:          "#DC2626",
+  brandLight:     "#EF4444",
+  brandDark:      "#B91C1C",
+  brandBg:        "#FEF2F2",
+  brandBorder:    "#FECACA",
+
+  teal:           "#DC2626",
+  tealLight:      "#EF4444",
+  tealDark:       "#B91C1C",
+  tealBg:         "#FEF2F2",
+  tealBorder:     "#FECACA",
 
   /**
    * GOLD / AMBER — Tài chính & Cảnh báo trung bình
@@ -123,8 +129,8 @@ export const lightSurface = {
   border:     "#E5E7EB",
   borderMid:  "#D1D5DB",
   text:       "#0F172A",
-  textMuted:  "#4B5563",
-  textFaint:  "#9CA3AF",
+  textMuted:  "#334155",
+  textFaint:  "#475569",
 } as const;
 
 /* ═══════════════════════════════════════════════════════════

@@ -77,7 +77,7 @@ export default function DisbursementDetailDrawer({
         <span>
           <span className="flex items-center gap-2">
             <span className="text-base font-bold text-[#102A43]">{disbursement.code}</span>
-            <Tag intent={status.intent} scale="md" className="m-0">{status.label}</Tag>
+            <Tag intent={status.intent} scale="md" className="m-0 font-semibold rounded-md">{status.label}</Tag>
           </span>
           <span className="block text-xs font-normal text-slate-500">{status.hint}</span>
         </span>
@@ -122,7 +122,7 @@ export default function DisbursementDetailDrawer({
         <section className="mt-4 rounded-xl border border-slate-200 p-4">
           <Flex align="center" justify="space-between" gap="small">
             <Text className="text-[13px] font-semibold text-slate-800">Hợp đồng {contract.code}</Text>
-            <Text className={`text-[13px] font-bold ${usage.isWarning ? "text-amber-700" : "text-teal-800"}`}>
+            <Text className={`text-[13px] font-bold ${usage.isWarning ? "text-amber-700" : "text-slate-800"}`}>
               {usage.percent}%
             </Text>
           </Flex>
@@ -130,7 +130,7 @@ export default function DisbursementDetailDrawer({
             percent={Math.min(100, usage.percent)}
             showInfo={false}
             size="small"
-            strokeColor={usage.isWarning ? "#E09F3E" : "#007A78"}
+            strokeColor={usage.isWarning ? "#E09F3E" : "#DC2626"}
           />
           <Text className="block text-xs text-slate-600">
             {contract.contractor} · Giá trị {formatVndBillions(contract.value)} · Đã giải ngân{" "}

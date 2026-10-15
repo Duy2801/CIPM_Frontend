@@ -23,6 +23,14 @@ export default function QuickRoleSelector({
   selectedUsername,
   loading = false,
 }: QuickRoleSelectorProps) {
+  const [activeTab, setActiveTab] = React.useState<"ALL" | "LEAD" | "STAFF">("LEAD");
+
+  const displayedRoles = React.useMemo(() => {
+    if (activeTab === "LEAD") return MOCK_ROLES.filter((r) => r.isLead);
+    if (activeTab === "STAFF") return MOCK_ROLES.filter((r) => !r.isLead);
+    return MOCK_ROLES;
+  }, [activeTab]);
+
   return (
     <Flex vertical gap={12}>
       <Flex align="center" justify="space-between" className="pb-2 border-b border-[color:var(--cipm-border-subtle)]">
@@ -37,8 +45,45 @@ export default function QuickRoleSelector({
         </Text>
       </Flex>
 
+      {/* Tabs lọc nhanh: Lead phòng ban / Tất cả */}
+      <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("LEAD")}
+          className={`flex-1 py-1 px-2 rounded-md font-semibold transition-all ${
+            activeTab === "LEAD"
+              ? "bg-white text-[#DC2626] shadow-2xs"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Lead phòng ban ({MOCK_ROLES.filter((r) => r.isLead).length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("ALL")}
+          className={`flex-1 py-1 px-2 rounded-md font-semibold transition-all ${
+            activeTab === "ALL"
+              ? "bg-white text-[#DC2626] shadow-2xs"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Tất cả ({MOCK_ROLES.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("STAFF")}
+          className={`flex-1 py-1 px-2 rounded-md font-semibold transition-all ${
+            activeTab === "STAFF"
+              ? "bg-white text-[#DC2626] shadow-2xs"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          Thành viên phòng ban ({MOCK_ROLES.filter((r) => !r.isLead).length})
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1 select-none">
-        {MOCK_ROLES.map((role) => {
+        {displayedRoles.map((role) => {
           const isSelected = selectedUsername === role.credentials.username;
 
           return (
@@ -63,10 +108,15 @@ export default function QuickRoleSelector({
                     {role.user.initials}
                   </Avatar>
                   <Flex vertical gap={1} className="min-w-0 flex-1">
-                    <Flex align="center" gap={6}>
+                    <Flex align="center" gap={6} wrap="wrap">
                       <Text strong className="text-sm text-[var(--cipm-text-title)] truncate">
                         {role.user.displayName}
                       </Text>
+                      {role.isLead && (
+                        <span className="text-[9px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded shrink-0">
+                          LEAD
+                        </span>
+                      )}
                       {isSelected && (
                         <CheckCircleFilled className="text-[var(--cipm-info)] text-xs" />
                       )}
@@ -108,6 +158,11 @@ export default function QuickRoleSelector({
                 </Flex>
                 <Text className="font-mono text-[11px] text-[var(--cipm-text-muted)]">
                   user: <strong className="text-[var(--cipm-text-body)]">{role.credentials.username}</strong>
+                  {role.aliases && role.aliases.length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                      (hoặc {role.aliases[0]})
+                    </span>
+                  )}
                 </Text>
               </Flex>
             </div>

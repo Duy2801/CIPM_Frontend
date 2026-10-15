@@ -2,13 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { message } from "antd";
+import { App } from "antd";
 import { getFirstAllowedRoute } from "@/access-control";
 import { useAuthStore } from "@/stores/auth.store";
 import * as authApi from "../api/auth.api";
 import type { LoginCredentials } from "../types/auth.types";
 
 export function useAuth() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
@@ -28,7 +29,7 @@ export function useAuth() {
         );
 
         setAuth(authUser, tokens.accessToken);
-        message.success(response.message || `Chao mung ${authUser.name}!`);
+        message.success(response.message || `Chào mừng ${authUser.name}!`);
 
         if (redirectOnSuccess) {
           router.push(getFirstAllowedRoute(authUser.permissions));
@@ -39,7 +40,7 @@ export function useAuth() {
         const errorMessage =
           error instanceof Error
             ? error.message
-            : "Dang nhap that bai. Vui long kiem tra lai tai khoan hoac mat khau.";
+            : "Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản hoặc mật khẩu.";
         message.error(errorMessage);
         throw error;
       } finally {

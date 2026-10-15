@@ -8,11 +8,13 @@ import type {
   ProjectLeadershipInput,
   Staff,
   StaffInput,
+  Team,
   UrgeMemberInput,
 } from "../types/personnel.types";
 
 /** Ranh giới dữ liệu M5 – backend chỉ cần cung cấp implementation cùng interface */
 export interface PersonnelRepository {
+  createTeam(input: { id?: string; name: string; description?: string; leaderId?: string }): Promise<Team>;
   getDataset(): Promise<PersonnelDataset>;
   assignProjectLeaders(input: ProjectLeadershipInput): Promise<PersonnelProject>;
   grantActingDirector(input: GrantActingDirectorInput): Promise<PersonnelProject>;

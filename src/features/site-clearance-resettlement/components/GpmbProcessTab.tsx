@@ -69,7 +69,7 @@ export default function GpmbProcessTab({ controller }: GpmbProcessTabProps) {
       render: (_, row) => (
         <span>
           <Text className="block text-[13px] text-slate-700">{row.output}</Text>
-          {row.forms && <Text className="block text-xs font-semibold text-teal-800">{row.forms}</Text>}
+          {row.forms && <Text className="block text-xs font-semibold text-slate-600">{row.forms}</Text>}
         </span>
       ),
     },

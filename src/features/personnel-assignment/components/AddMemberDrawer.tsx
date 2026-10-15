@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo, useState } from "react";
 import {
@@ -171,7 +171,7 @@ export default function AddMemberDrawer({
       className="[&_.ant-drawer-body]:!p-0 [&_.ant-drawer-body]:!overflow-hidden flex flex-col h-full"
       title={
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#007A78] border border-teal-100 flex items-center justify-center font-bold text-lg shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#DC2626] border border-emerald-100 flex items-center justify-center font-bold text-lg shrink-0">
             <UserAddOutlined />
           </div>
           <div>
@@ -195,7 +195,7 @@ export default function AddMemberDrawer({
             {selectedStaffIds.length > 0 ? (
               <span>
                 Đã chọn{" "}
-                <strong className="text-teal-700 font-bold">
+                <strong className="text-emerald-700 font-bold">
                   {selectedStaffIds.length} cán bộ
                 </strong>{" "}
                 sẵn sàng thêm vào tổ công tác.
@@ -211,7 +211,7 @@ export default function AddMemberDrawer({
               loading={submitting}
               disabled={selectedStaffIds.length === 0}
               icon={<CheckCircleFilled />}
-              className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#005f5d] text-white text-xs font-semibold px-4 h-8.5 rounded-lg shadow-xs"
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-white text-xs font-semibold px-4 h-8.5 rounded-lg shadow-xs"
             >
               Thêm{" "}
               {selectedStaffIds.length > 0
@@ -236,7 +236,7 @@ export default function AddMemberDrawer({
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <ApartmentOutlined className="text-[#007A78] text-sm" />
+                <ApartmentOutlined className="text-[#DC2626] text-sm" />
                 1. Chọn phòng ban / Tổ chuyên môn
               </span>
             </div>
@@ -268,7 +268,7 @@ export default function AddMemberDrawer({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <TeamOutlined className="text-[#007A78] text-sm" />
+                  <TeamOutlined className="text-[#DC2626] text-sm" />
                   2. Chọn thành viên trong phòng ban
                 </span>
                 <span className="block text-[11px] text-slate-500 mt-0.5">
@@ -329,8 +329,8 @@ export default function AddMemberDrawer({
                         isDisabled
                           ? "bg-slate-50/70 border-slate-200 opacity-65 cursor-not-allowed"
                           : isSelected
-                          ? "bg-teal-50/70 border-[#007A78] ring-1 ring-[#007A78] shadow-xs cursor-pointer"
-                          : "bg-white border-slate-200 hover:border-teal-300 hover:bg-slate-50/50 cursor-pointer"
+                          ? "bg-emerald-50/70 border-[#DC2626] ring-1 ring-[#DC2626] shadow-xs cursor-pointer"
+                          : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50/50 cursor-pointer"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -406,10 +406,10 @@ export default function AddMemberDrawer({
 
           {/* KHỐI HIỂN THỊ TÓM TẮT CÁN BỘ ĐÃ CHỌN (NẾU CÓ) */}
           {selectedStaffList.length > 0 && (
-            <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-4 shadow-2xs space-y-3">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
-                  <CheckCircleFilled className="text-teal-600" />
+                <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                  <CheckCircleFilled className="text-emerald-600" />
                   Danh sách cán bộ đã chọn ({selectedStaffList.length})
                 </span>
                 <button
@@ -427,7 +427,7 @@ export default function AddMemberDrawer({
                   return (
                     <div
                       key={person.id}
-                      className="flex items-center gap-2 bg-white border border-teal-200 rounded-lg px-2.5 py-1 shadow-2xs text-xs"
+                      className="flex items-center gap-2 bg-white border border-emerald-200 rounded-lg px-2.5 py-1 shadow-2xs text-xs"
                     >
                       <Avatar
                         variant="brand"

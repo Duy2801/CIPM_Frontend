@@ -300,7 +300,7 @@ export default function LegalAiLibraryScreen() {
         <button
           type="button"
           onClick={() => handleOpenDocDetail(row)}
-          className="text-left font-bold text-xs text-[#007A78] hover:text-[#005e5c] hover:underline cursor-pointer"
+          className="text-left font-bold text-xs text-[#DC2626] hover:text-[#B91C1C] hover:underline cursor-pointer"
         >
           {row.code}
         </button>
@@ -313,7 +313,7 @@ export default function LegalAiLibraryScreen() {
       render: (_, row) => (
         <div
           onClick={() => handleOpenDocDetail(row)}
-          className="text-xs font-medium text-slate-850 hover:text-[#007A78] cursor-pointer line-clamp-1"
+          className="text-xs font-medium text-slate-850 hover:text-[#DC2626] cursor-pointer line-clamp-1"
           title={row.title}
         >
           {row.title}
@@ -324,29 +324,27 @@ export default function LegalAiLibraryScreen() {
       title: "LĨNH VỰC",
       key: "field",
       width: "15%",
-      render: (_, row) => {
-        let badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-        if (row.field === "Đấu thầu") badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
-        if (row.field === "Đất đai") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-
-        return (
-          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}>
-            {row.field}
-          </span>
-        );
-      },
+      render: (_, row) => (
+        <span className="text-xs font-medium text-slate-600">
+          {row.field}
+        </span>
+      ),
     },
     {
       title: "TT",
       key: "status",
       width: "15%",
       render: (_, row) => {
-        let badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-        if (row.status === "Xem xét SĐ") badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
-        if (row.status === "Sắp hết HLực") badgeClass = "bg-rose-50 text-rose-700 border-rose-200";
+        let textClass = "text-slate-700";
+        if (row.status === "Xem xét SĐ") {
+          textClass = "text-amber-800";
+        }
+        if (row.status === "Sắp hết HLực") {
+          textClass = "text-rose-700";
+        }
 
         return (
-          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}>
+          <span className={`inline-flex items-center text-xs font-medium ${textClass}`}>
             {row.status}
           </span>
         );
@@ -359,11 +357,6 @@ export default function LegalAiLibraryScreen() {
       {/* Thanh trạng thái hệ thống & tác vụ nhanh thay thế tiêu đề cồng kềnh */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white px-4 py-2.5 rounded-lg border border-slate-200/90 shadow-2xs">
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          <span className="font-bold text-slate-800 flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Hệ thống văn bản pháp luật & AI
-          </span>
-          <span className="text-slate-300">|</span>
           <span className="text-slate-600">
             <strong>{legalItems.length}</strong> văn bản quy phạm
           </span>
@@ -372,32 +365,16 @@ export default function LegalAiLibraryScreen() {
             <strong>{GPMB_TEMPLATES.length}</strong> biểu mẫu chuẩn GPMB
           </span>
           <span className="text-slate-300">·</span>
-          <span className={`inline-flex items-center gap-1 font-medium px-2 py-0.5 rounded border text-[11px] ${
-            permissions.isReadOnly ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-teal-50 text-teal-800 border-teal-200"
-          }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${permissions.isReadOnly ? "bg-amber-500" : "bg-teal-600 animate-pulse"}`} />
-            {permissions.isReadOnly ? `Quyền: Chỉ xem (${permissions.roleTitle})` : `Quyền: Toàn quyền (${permissions.roleTitle})`}
-          </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            intent="outline"
-            scale="sm"
-            icon={<RobotOutlined className="text-[#007A78]" />}
-            onClick={() => setIsAssistantOpen(true)}
-            className="!border-[#007A78] !text-teal-800 hover:!bg-teal-50 h-8 text-xs font-semibold rounded-lg"
-          >
-            Hỏi Trợ lý AI
-          </Button>
-
           {canManageDocuments && (
             <Button
               intent="primary"
               scale="sm"
               icon={<PlusOutlined />}
               onClick={() => setIsCreateOpen(true)}
-              className="!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white h-8 text-xs font-semibold rounded-lg shadow-2xs"
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-8 text-xs font-semibold rounded-lg shadow-2xs"
             >
               Thêm văn bản
             </Button>
@@ -437,7 +414,7 @@ export default function LegalAiLibraryScreen() {
               columns={columns}
               dataSource={filteredItems}
               pagination={false}
-              className="w-full [&_.ant-table-thead>tr>th]:!bg-slate-50 [&_.ant-table-thead>tr>th]:!text-[11px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-500"
+              className="w-full [&_.ant-table-thead>tr>th]:!bg-slate-50 [&_.ant-table-thead>tr>th]:!text-[11px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-500 [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none [&_.ant-table-thead>tr>th::before]:!hidden [&_.ant-table-thead>tr>th:before]:!content-none"
             />
           </Card>
         </div>
@@ -451,13 +428,6 @@ export default function LegalAiLibraryScreen() {
             rounded="lg"
             className="border border-slate-200 shadow-xs bg-white flex flex-col gap-3"
           >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-850">AI – Kết xuất báo cáo</span>
-              <span className="rounded bg-teal-100 text-[#007A78] text-[10px] font-bold px-1.5 py-0.5">
-                AI
-              </span>
-            </div>
-
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                 LOẠI BÁO CÁO
@@ -504,7 +474,7 @@ export default function LegalAiLibraryScreen() {
               disabled={isGenerating || !permissions.canGenerateReport}
               onClick={permissions.canGenerateReport ? handleGenerateReport : undefined}
               className={permissions.canGenerateReport 
-                ? "!bg-[#007A78] !border-[#007A78] hover:!bg-[#006361] !text-white h-9 text-xs font-bold rounded-lg w-full flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                ? "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-9 text-xs font-bold rounded-lg w-full flex items-center justify-center gap-1.5 shadow-xs transition-colors"
                 : "h-9 text-xs font-semibold rounded-lg w-full flex items-center justify-center gap-1.5 bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"}
             >
               {isGenerating ? (
@@ -549,7 +519,7 @@ export default function LegalAiLibraryScreen() {
                   <button
                     type="button"
                     onClick={() => handleDownloadTemplate(tmpl)}
-                    className="shrink-0 flex items-center gap-1 text-[11.5px] font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer"
+                    className="shrink-0 flex items-center gap-1 text-[11.5px] font-semibold text-[#DC2626] bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer"
                   >
                     ↓ Tải
                   </button>

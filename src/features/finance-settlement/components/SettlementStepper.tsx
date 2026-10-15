@@ -18,12 +18,12 @@ export default function SettlementStepper({ completedSteps, nextStep }: Settleme
           <li key={step.number} aria-current={isNext ? "step" : undefined}>
             <span
               className={`block h-1.5 rounded-full ${
-                done ? "bg-emerald-500" : isNext ? "bg-teal-600" : "bg-slate-200"
+                done ? "bg-[#2563EB]" : isNext ? "bg-[#0B2546]" : "bg-slate-200"
               }`}
             />
             <span
               className={`mt-1 block truncate text-[10px] leading-4 ${
-                done ? "text-emerald-700" : isNext ? "font-semibold text-teal-800" : "text-slate-400"
+                done ? "text-[#2563EB] font-medium" : isNext ? "font-bold text-[#0B2546]" : "text-slate-400"
               }`}
             >
               {step.number}. {step.shortTitle}

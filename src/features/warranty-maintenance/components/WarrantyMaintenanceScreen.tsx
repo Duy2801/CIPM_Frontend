@@ -89,8 +89,8 @@ export default function WarrantyMaintenanceScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {controller.feedback && modal.mode === "closed" && (
-        <FeedbackBar type={controller.feedback.type} text={controller.feedback.text} onClose={controller.clearFeedback} />
+      {controller.feedback?.type === "error" && modal.mode === "closed" && (
+        <FeedbackBar type="error" text={controller.feedback.text} onClose={controller.clearFeedback} />
       )}
 
       {/* Hiển thị trực tiếp danh sách công trình bảo hành */}

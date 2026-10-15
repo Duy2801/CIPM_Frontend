@@ -243,6 +243,10 @@ export function usePersonnelAssignment() {
       () => mockPersonnelRepository.removeProjectMember(projectId, staffId),
       `Đã đưa ${nameOf(staffId)} ra khỏi tổ công tác ${projectOf(projectId)}.`,
     ),
+    createTeam: (input: { id?: string; name: string; description?: string; leaderId?: string }) => run(
+      () => mockPersonnelRepository.createTeam(input),
+      `Đã thêm phòng ban / tổ chuyên môn "${input.name.trim()}".`,
+    ),
     createStaff: (input: StaffInput) => run(
       () => mockPersonnelRepository.createStaff(input),
       `Đã thêm cán bộ ${input.name.trim()} vào hệ thống.`,

@@ -154,7 +154,7 @@ export default function CreateDocumentDrawer({
       title={
         <div className="py-1">
           <div className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <SafetyCertificateOutlined className="text-[#007A78]" />
+            <SafetyCertificateOutlined className="text-[#DC2626]" />
             {editingDocument ? "Cập nhật văn bản / biểu mẫu" : "Thêm mới văn bản pháp lý / biểu mẫu"}
           </div>
           <div className="mt-0.5 text-xs font-normal text-slate-500">
@@ -170,7 +170,7 @@ export default function CreateDocumentDrawer({
             intent="primary"
             scale="sm"
             onClick={handleSubmit}
-            className="!border-[#007A78] !bg-[#007A78] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#006361]"
+            className="!border-[#DC2626] !bg-[#DC2626] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#B91C1C]"
           >
             {editingDocument ? "Cập nhật văn bản" : "Lưu vào thư viện"}
           </Button>
@@ -190,7 +190,7 @@ export default function CreateDocumentDrawer({
         {/* 1. Nhóm văn bản & Số hiệu */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
           <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <FileTextOutlined className="text-[#007A78]" />
+            <FileTextOutlined className="text-[#DC2626]" />
             Phân loại & Số hiệu văn bản
           </div>
 
@@ -315,7 +315,7 @@ export default function CreateDocumentDrawer({
             onChange={(e) => setSummary(e.target.value)}
             rows={3}
             placeholder="Tóm tắt các điều khoản quan trọng, thời hạn bắt buộc, thủ tục quy định..."
-            className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
           />
         </div>
 
@@ -337,7 +337,7 @@ export default function CreateDocumentDrawer({
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-              <UploadOutlined className="text-[#007A78]" />
+              <UploadOutlined className="text-[#DC2626]" />
               Đính kèm tệp văn bản số hóa (PDF hoặc DOCX)
             </span>
             <div className="flex items-center gap-2 text-xs">
@@ -347,7 +347,7 @@ export default function CreateDocumentDrawer({
                   name="fileType"
                   checked={fileType === "PDF"}
                   onChange={() => setFileType("PDF")}
-                  className="text-teal-700"
+                  className="accent-[#DC2626]"
                 />
                 PDF
               </label>
@@ -357,16 +357,16 @@ export default function CreateDocumentDrawer({
                   name="fileType"
                   checked={fileType === "DOCX"}
                   onChange={() => setFileType("DOCX")}
-                  className="text-teal-700"
+                  className="accent-[#DC2626]"
                 />
                 DOCX
               </label>
             </div>
           </div>
 
-          <label className="flex flex-col items-center justify-center p-3 border border-dashed border-teal-300 bg-teal-50/30 rounded-lg cursor-pointer hover:bg-teal-50/60 transition-colors">
-            <InboxOutlined className="text-2xl text-teal-700 mb-1" />
-            <span className="text-xs font-medium text-teal-800">
+          <label className="flex flex-col items-center justify-center p-3 border border-dashed border-slate-300 bg-white rounded-lg cursor-pointer hover:border-red-400 hover:bg-red-50/20 transition-colors">
+            <InboxOutlined className="text-2xl text-slate-400 mb-1" />
+            <span className="text-xs font-medium text-slate-800">
               {fileName ? `Đã chọn: ${fileName}` : "Nhấn để tải lên tệp tài liệu số hóa"}
             </span>
             <span className="text-[11px] text-slate-500 mt-0.5">

@@ -93,7 +93,7 @@ export default function AiLegalAssistantDrawer({
       title={
         <div className="py-1">
           <div className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-[#007A78]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-[#DC2626]">
               <RobotOutlined className="text-base" />
             </span>
             <span>Trợ lý AI Pháp lý & Nghiệp vụ XDCB</span>
@@ -118,7 +118,7 @@ export default function AiLegalAssistantDrawer({
             intent="primary"
             scale="sm"
             onClick={onClose}
-            className="!border-[#007A78] !bg-[#007A78] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#006361]"
+            className="!border-[#DC2626] !bg-[#DC2626] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#B91C1C]"
           >
             Đóng
           </Button>
@@ -129,7 +129,7 @@ export default function AiLegalAssistantDrawer({
         {/* Câu hỏi gợi ý nhanh */}
         <div className="shrink-0 rounded-xl border border-slate-200/90 bg-slate-50/80 p-3">
           <div className="mb-2 flex items-center gap-1.5 text-[11.5px] font-bold text-slate-700">
-            <FileSearchOutlined className="text-[#007A78]" />
+            <FileSearchOutlined className="text-[#DC2626]" />
             Câu hỏi tình huống pháp lý phổ biến:
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -138,7 +138,7 @@ export default function AiLegalAssistantDrawer({
                 key={idx}
                 type="button"
                 onClick={() => handleSendMessage(question)}
-                className="cursor-pointer rounded-lg border border-teal-200/80 bg-white px-2.5 py-1 text-left text-xs font-medium text-teal-900 transition-colors hover:border-teal-500 hover:bg-teal-50/80"
+                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-left text-xs font-medium text-slate-800 transition-colors hover:border-red-400 hover:bg-red-50/50"
               >
                 {question}
               </button>
@@ -154,11 +154,11 @@ export default function AiLegalAssistantDrawer({
               className={`flex gap-2.5 ${msg.sender === "user" ? "flex-row-reverse" : "flex-row"}`}
             >
               {msg.sender === "user" ? (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-700 text-xs font-bold text-white shadow-xs">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white shadow-xs">
                   <UserOutlined />
                 </div>
               ) : (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#007A78] text-xs text-white shadow-xs">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DC2626] text-xs text-white shadow-xs">
                   <RobotOutlined />
                 </div>
               )}
@@ -166,7 +166,7 @@ export default function AiLegalAssistantDrawer({
               <div
                 className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-xs ${
                   msg.sender === "user"
-                    ? "bg-[#007A78] text-white rounded-tr-none"
+                    ? "bg-[#DC2626] text-white rounded-tr-none"
                     : "border border-slate-200 bg-white text-slate-800 rounded-tl-none"
                 }`}
               >
@@ -175,8 +175,8 @@ export default function AiLegalAssistantDrawer({
                 {/* Trích dẫn văn bản pháp lý */}
                 {msg.citations && msg.citations.length > 0 && (
                   <div className="mt-2.5 border-t border-slate-100 pt-2">
-                    <div className="mb-1.5 flex items-center gap-1 text-[11px] font-bold text-teal-800">
-                      <BookOutlined />
+                    <div className="mb-1.5 flex items-center gap-1 text-[11px] font-bold text-slate-800">
+                      <BookOutlined className="text-[#DC2626]" />
                       Căn cứ pháp lý trích dẫn:
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -186,7 +186,7 @@ export default function AiLegalAssistantDrawer({
                           className="flex items-center justify-between rounded-lg border border-slate-200/90 bg-slate-50/90 px-2.5 py-1.5 text-[11px] text-slate-700"
                         >
                           <span className="font-medium">
-                            <strong className="text-teal-700">{cite.code}</strong>: {cite.title}{" "}
+                            <strong className="text-[#DC2626]">{cite.code}</strong>: {cite.title}{" "}
                             {cite.article && <span className="text-slate-500">({cite.article})</span>}
                           </span>
                         </div>
@@ -197,7 +197,7 @@ export default function AiLegalAssistantDrawer({
 
                 <div
                   className={`mt-1.5 text-right text-[10px] ${
-                    msg.sender === "user" ? "text-teal-100" : "text-slate-400"
+                    msg.sender === "user" ? "text-red-100" : "text-slate-400"
                   }`}
                 >
                   {msg.timestamp}
@@ -208,12 +208,12 @@ export default function AiLegalAssistantDrawer({
 
           {isThinking && (
             <div className="flex gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#007A78] text-xs text-white shadow-xs">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DC2626] text-xs text-white shadow-xs">
                 <RobotOutlined />
               </div>
               <div className="rounded-2xl rounded-tl-none border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-xs">
                 <div className="flex items-center gap-2 font-medium">
-                  <LoadingOutlined className="text-teal-600" />
+                  <LoadingOutlined className="text-[#DC2626]" />
                   <span>AI đang tra cứu cơ sở dữ liệu pháp lý & các mô-đun BQL...</span>
                 </div>
               </div>
@@ -246,7 +246,7 @@ export default function AiLegalAssistantDrawer({
               scale="sm"
               icon={<SendOutlined />}
               disabled={!inputText.trim() || isThinking}
-              className="!border-[#007A78] !bg-[#007A78] px-4 text-xs font-semibold !text-white shadow-xs hover:!bg-[#006361]"
+              className="!border-[#DC2626] !bg-[#DC2626] px-4 text-xs font-semibold !text-white shadow-xs hover:!bg-[#B91C1C]"
             >
               Gửi
             </Button>
