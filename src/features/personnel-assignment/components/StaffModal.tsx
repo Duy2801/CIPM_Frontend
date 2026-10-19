@@ -2,12 +2,10 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-  CrownOutlined,
   InfoCircleOutlined,
   MailOutlined,
   PlusOutlined,
   SettingOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
 import { Button, Checkbox, Col, Divider, Drawer, Form, Input, Row, Select, Text, toast } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
@@ -171,15 +169,9 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
   const { roleSelectOptions, allRoleOptions } = useMemo(() => {
     const allLeafOptions: RoleOptionItem[] = [];
 
-    const renderLabel = (displayTitle: string, isLeader: boolean, teamId?: string) => (
-      <div className="flex items-center gap-1.5">
-        {isLeader ? (
-          <CrownOutlined className={teamId === "BGD" ? "text-red-500" : teamId === "PGD" ? "text-blue-500" : "text-amber-500"} />
-        ) : (
-          <UserOutlined className="text-slate-400" />
-        )}
-        <span className={isLeader ? "font-semibold text-slate-900" : "text-slate-700"}>{displayTitle}</span>
-      </div>
+    // Chỉ hiện tên vị trí (không biểu tượng); vị trí lãnh đạo in đậm
+    const renderLabel = (displayTitle: string, isLeader: boolean) => (
+      <span className={isLeader ? "font-semibold text-slate-900" : "text-slate-700"}>{displayTitle}</span>
     );
 
     teams.forEach((team) => {
@@ -276,7 +268,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
     allLeafOptions.forEach((o) => {
       const isShared = o.teamId && (teamCountByTitle.get(o.title.toLowerCase())?.size ?? 0) > 1;
       const displayTitle = isShared ? `${o.title} (${o.teamId})` : o.title;
-      o.label = renderLabel(displayTitle, o.isLeader, o.teamId);
+      o.label = renderLabel(displayTitle, o.isLeader);
       o.searchText = `${displayTitle} ${o.searchText}`;
     });
 

@@ -792,11 +792,6 @@ export default function ChangeRoleDrawer({
                 label: (
                   <div className="flex items-center justify-between gap-1.5 w-full">
                     <div className="flex items-center gap-1.5 truncate">
-                      {r.isLeader ? (
-                        <CrownOutlined className="text-amber-500 shrink-0" />
-                      ) : (
-                        <UserOutlined className="text-slate-400 shrink-0" />
-                      )}
                       <span
                         className={cn(
                           "truncate",
