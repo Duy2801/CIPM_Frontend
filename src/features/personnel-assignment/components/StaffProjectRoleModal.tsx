@@ -619,14 +619,7 @@ export default function StaffProjectRoleModal({
       title={
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-slate-800">
-                Hồ sơ & phân quyền: {staff.name}
-              </span>
-              <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-                {staff.title || "Chưa có vai trò"}
-              </span>
-            </div>
+            <span className="font-bold text-sm text-slate-800">Hồ sơ & phân quyền</span>
             <div className="text-xs text-slate-500 mt-0.5">
               Thông tin cá nhân, quyền hệ thống & nghiệp vụ chuyên môn
             </div>
