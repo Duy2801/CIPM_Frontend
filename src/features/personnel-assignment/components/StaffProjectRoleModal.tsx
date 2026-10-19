@@ -15,7 +15,6 @@ import {
   Drawer,
   Modal,
   Select,
-  Tag,
   Text,
   Tooltip,
   toast,
@@ -645,9 +644,6 @@ export default function StaffProjectRoleModal({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Text className="text-sm font-semibold text-slate-900">{staff.name}</Text>
-                <Tag scale="sm" intent={rbacProfile.isLeader || rbacProfile.roleCode === "DIRECTOR" ? "brand" : "subtle"}>
-                  {rbacProfile.displayBadge}
-                </Tag>
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
                 {staff.title || "Chưa có vai trò"} · {team?.name}
