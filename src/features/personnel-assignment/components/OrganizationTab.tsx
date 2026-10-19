@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { CustomFieldDefinition } from "../types/custom-fields.types";
+import { getCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
 import {
   ApartmentOutlined,
   CrownOutlined,
+  EditOutlined,
   LockOutlined,
   MailOutlined,
-  PhoneOutlined,
   SearchOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -23,19 +26,29 @@ import {
 import type { ColumnsType } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
 import { getInitials } from "@/utils/initials";
-import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
-import { resolveStaffRbac } from "../utils/personnel-rbac";
 import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { Staff, Team } from "../types/personnel.types";
 import AddTeamModal from "./AddTeamModal";
-import StaffProjectRoleModal from "./StaffProjectRoleModal";
+import StaffDetailDrawer from "./StaffDetailDrawer";
+import ConfigureCustomFieldsModal from "./ConfigureCustomFieldsModal";
+import { sortStaffByRank } from "../utils/personnel-sorting";
 
 export default function OrganizationTab({ controller }: { controller: PersonnelController }) {
   const { data, staff, permissions } = controller;
   const [addTeamModalOpen, setAddTeamModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [configFieldsModalOpen, setConfigFieldsModalOpen] = useState(false);
+  const [configuredTeamFields, setConfiguredTeamFields] = useState<CustomFieldDefinition[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStaffForRole, setSelectedStaffForRole] = useState<Staff | null>(null);
+
+  useEffect(() => {
+    setConfiguredTeamFields(getCustomFields("team"));
+    return subscribeCustomFieldsChange((target, fields) => {
+      if (target === "team") setConfiguredTeamFields(fields);
+    });
+  }, []);
 
   const filteredStaff = useMemo(() => {
     return staff.filter((person) => {
@@ -47,7 +60,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
         const q = searchQuery.trim().toLowerCase();
         const matchName = person.name.toLowerCase().includes(q);
         const matchTitle = person.title.toLowerCase().includes(q);
-        const matchPhone = person.phone.toLowerCase().includes(q);
+        const matchPhone = person.phone ? person.phone.toLowerCase().includes(q) : false;
         const matchEmail = person.email.toLowerCase().includes(q);
         if (!matchName && !matchTitle && !matchPhone && !matchEmail) {
           return false;
@@ -83,7 +96,15 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                 <Text className="truncate text-[13px] font-bold text-slate-900 group-hover:text-[#DC2626] transition-colors">
                   {person.name}
                 </Text>
-                {isLeader && (
+                {isLeader && team.id === "BGD" && (
+                  <Tooltip title="Giám đốc Ban QLDA">
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                      <CrownOutlined className="text-amber-500 text-[10px]" />
+                      Trưởng ban
+                    </span>
+                  </Tooltip>
+                )}
+                {isLeader && team.id !== "BGD" && team.id !== "PGD" && (
                   <Tooltip title="Phụ trách tổ / Tổ trưởng">
                     <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
                       <CrownOutlined className="text-amber-500 text-[10px]" />
@@ -100,7 +121,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                   </Tooltip>
                 )}
               </div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
                 <span className="font-medium text-slate-700">{person.title}</span>
                 <span>·</span>
                 <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[11px] text-slate-600">
@@ -113,74 +134,37 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
       },
     },
     {
-      title: "Thông tin liên hệ",
+      title: "Email công vụ",
       key: "contact",
       width: "27%",
       align: "center",
       render: (_, person) => (
-        <div className="inline-block text-left space-y-1 text-xs text-slate-600">
-          <div className="flex items-center gap-2">
-            <PhoneOutlined className="shrink-0 text-[11px] text-slate-400" />
-            <span className="font-mono text-[12px] text-slate-700 select-all">{person.phone}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <MailOutlined className="shrink-0 text-[11px] text-slate-400" />
-            <span className="text-[12px] text-slate-500 select-all truncate">{person.email}</span>
-          </div>
+        <div className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+          <MailOutlined className="shrink-0 text-[11px] text-slate-400" />
+          <span className="text-[12px] text-slate-600 select-all truncate">{person.email}</span>
         </div>
       ),
     },
     {
-      title: "Vai trò hệ thống",
-      key: "role",
+      title: "Vị trí / Chức danh",
+      key: "title",
       width: "24%",
       align: "center",
       render: (_, person) => {
-        const rbac = resolveStaffRbac(person, team, data.projects);
+        const isLeader = team.leaderId === person.id;
         return (
-          <Tooltip
-            title={
-              <div className="text-xs space-y-1.5 p-1 max-w-xs">
-                <div className="font-bold text-white text-[13px] border-b border-slate-600 pb-1">
-                  {rbac.displayBadge}
-                </div>
-                <div className="text-slate-200">
-                  <span className="text-emerald-300 font-semibold">1. Cấp bậc (Role):</span> {rbac.roleLabel}
-                </div>
-                <div className="text-[11px] text-slate-300 pl-3">
-                  Quyền hạn: {rbac.rolePermissions.map((p) => p.name).slice(0, 2).join(", ")}...
-                </div>
-                {rbac.teamCode && (
-                  <>
-                    <div className="text-slate-200 pt-1 border-t border-slate-700">
-                      <span className="text-blue-300 font-semibold">2. Chuyên môn (Team):</span> {rbac.teamLabel}
-                    </div>
-                    <div className="text-[11px] text-slate-300 pl-3">
-                      Nhiệm vụ: {rbac.teamPermissions.map((p) => p.name).slice(0, 2).join(", ")}...
-                    </div>
-                  </>
-                )}
-                {rbac.actingDirectorProjects.length > 0 && (
-                  <div className="text-amber-300 text-[11px] pt-1 border-t border-slate-700">
-                    ★ Đang giữ Quyền CNDA tại {rbac.actingDirectorProjects.length} dự án
-                  </div>
-                )}
-                <div className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-700">
-                  Nhấp để xem bảng phân quyền RBAC chi tiết
-                </div>
-              </div>
-            }
-          >
-            <div className="flex items-center justify-center">
-              <Tag
-                intent={rbac.isLeader || rbac.roleCode === "DIRECTOR" ? "brand" : "subtle"}
-                scale="sm"
-                className="m-0 font-medium whitespace-nowrap cursor-pointer hover:border-[#DC2626] transition-colors"
-              >
-                {rbac.displayBadge}
-              </Tag>
-            </div>
-          </Tooltip>
+          <div className="flex items-center justify-center">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${
+                isLeader
+                  ? "bg-red-50 text-[#DC2626] border border-red-200/80"
+                  : "bg-slate-100 text-slate-700 border border-slate-200/80"
+              }`}
+            >
+              {isLeader && <CrownOutlined className="text-[11px]" />}
+              {person.title}
+            </span>
+          </div>
         );
       },
     },
@@ -214,14 +198,24 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
           countLabel={filteredStaff.length === staff.length ? `${staff.length} cán bộ` : `${filteredStaff.length}/${staff.length} cán bộ`}
           actions={
             (permissions.canManageAccounts || permissions.canManageOrganization) && (
-              <Button
-                intent="primary"
-                icon={<ApartmentOutlined />}
-                className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
-                onClick={() => setAddTeamModalOpen(true)}
-              >
-                Thêm phòng ban
-              </Button>
+              <Flex align="center" gap={8}>
+                <Button
+                  intent="outline"
+                  icon={<SettingOutlined />}
+                  className="font-semibold text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]/50 bg-white shadow-2xs"
+                  onClick={() => setConfigFieldsModalOpen(true)}
+                >
+                  Cấu hình phòng ban
+                </Button>
+                <Button
+                  intent="primary"
+                  icon={<ApartmentOutlined />}
+                  className="font-semibold !bg-[#DC2626] hover:!bg-[#B91C1C] text-white shadow-2xs"
+                  onClick={() => setAddTeamModalOpen(true)}
+                >
+                  Thêm phòng ban
+                </Button>
+              </Flex>
             )
           }
           toolbar={
@@ -250,7 +244,7 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
                     allowClear
                     intent="clean"
                     prefix={<SearchOutlined className="text-slate-400" />}
-                    placeholder="Tìm cán bộ, chức danh, SĐT..."
+                    placeholder="Tìm cán bộ, chức danh, email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -281,7 +275,8 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
             </div>
           ) : (
             visibleTeams.map((team) => {
-              const members = filteredStaff.filter((person) => person.teamId === team.id);
+              const rawMembers = filteredStaff.filter((person) => person.teamId === team.id);
+              const members = sortStaffByRank(rawMembers, team);
             return (
               <section
                 key={team.id}
@@ -289,14 +284,52 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
               >
                 {/* Header tổ / ban */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3.5">
-                  <div>
-                    <div className="flex items-center gap-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       <Text className="text-sm font-bold text-slate-900">{team.name}</Text>
                       <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                         {members.length} người
                       </span>
                     </div>
                     <Text className="mt-0.5 block text-xs text-slate-500">{team.description}</Text>
+
+
+                    {team.customFields && Object.keys(team.customFields).length > 0 && (
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        {Object.entries(team.customFields)
+                          .filter(([key, val]) => {
+                            if (!val) return false;
+                            if (/fdsaf/i.test(key)) return false;
+                            return configuredTeamFields.some((f) => f.name === key);
+                          })
+                          .map(([key, val]) => {
+                            const fieldDef = configuredTeamFields.find((f) => f.name === key);
+                            const label = fieldDef?.label || key.replace(/_/g, " ");
+                            return (
+                              <span
+                                key={key}
+                                className="inline-flex items-center gap-1 text-[11px] bg-red-50/70 border border-red-200/60 text-slate-700 px-2 py-0.5 rounded-md font-medium"
+                              >
+                                <span className="text-red-700 capitalize">{label}:</span>
+                                <strong className="text-slate-900">{String(val)}</strong>
+                              </span>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nút cập nhật phòng ban */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      intent="outline"
+                      scale="compact"
+                      icon={<EditOutlined />}
+                      onClick={() => setEditingTeam(team)}
+                      className="text-xs font-semibold !text-[#DC2626] !border-[#DC2626] hover:!border-[#B91C1C] hover:!text-[#B91C1C] hover:!bg-red-50/60 bg-white shadow-2xs"
+                    >
+                      Cập nhật
+                    </Button>
                   </div>
                 </div>
 
@@ -327,31 +360,44 @@ export default function OrganizationTab({ controller }: { controller: PersonnelC
         </div>
       </Card>
 
-      {addTeamModalOpen && (
+      {(addTeamModalOpen || editingTeam !== null) && (
         <AddTeamModal
-          open={addTeamModalOpen}
+          open={addTeamModalOpen || editingTeam !== null}
           data={controller.data}
-          onClose={() => setAddTeamModalOpen(false)}
-          onSubmit={controller.createTeam}
+          editingTeam={editingTeam}
+          onClose={() => {
+            setAddTeamModalOpen(false);
+            setEditingTeam(null);
+          }}
+          onSubmit={async (input) => {
+            if (editingTeam) {
+              return await controller.updateTeam(editingTeam.id, input);
+            } else {
+              return await controller.createTeam(input);
+            }
+          }}
+        />
+      )}
+
+      {configFieldsModalOpen && (
+        <ConfigureCustomFieldsModal
+          open={configFieldsModalOpen}
+          target="team"
+          onClose={() => setConfigFieldsModalOpen(false)}
+          onFieldsUpdated={(fields) => setConfiguredTeamFields(fields)}
         />
       )}
 
 
 
-      {/* Drawer Chi tiết cán bộ & Quyền hạn: Xem chi tiết quyền hạn từng DA để thu hồi đúng quyền, và phục vụ khi lên chức */}
-      {selectedStaffForRole && (
-        <StaffProjectRoleModal
-          staff={selectedStaffForRole}
-          data={controller.data}
-          currentUser={controller.currentUser}
-          canManageRole={permissions.canGrantRole ?? true}
-          onClose={() => setSelectedStaffForRole(null)}
-          onGrantRole={controller.grantActingDirector}
-          onRevokeRole={controller.revokeActingDirector}
-          onUpdateStaff={controller.updateStaff}
-          onUpdateProjectPermissions={controller.updateProjectPermissions}
-        />
-      )}
+
+      {/* Drawer Chi tiết hồ sơ cán bộ (Chỉ hiển thị thông tin nhân sự, phòng ban, vị trí công tác) */}
+      <StaffDetailDrawer
+        open={Boolean(selectedStaffForRole)}
+        staff={selectedStaffForRole}
+        data={controller.data}
+        onClose={() => setSelectedStaffForRole(null)}
+      />
     </>
   );
 }

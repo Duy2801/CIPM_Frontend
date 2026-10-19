@@ -991,7 +991,7 @@ export function getDepartmentStaff(deptName?: string) {
   let allTeams = PERSONNEL_MOCK_DATA.teams;
   if (typeof window !== "undefined") {
     try {
-      const stored = window.localStorage.getItem("cipm_personnel_test_flow_v7");
+      const stored = window.localStorage.getItem("cipm_personnel_test_flow_v9") || window.localStorage.getItem("cipm_personnel_test_flow_v8");
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed.staff) && parsed.staff.length > 0) {

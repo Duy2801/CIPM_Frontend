@@ -129,14 +129,17 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
       };
     }
 
-    const dynamicPerms = getRoleEffectivePermissions(mockAccount.roleCode);
+    const dynamicPerms = getRoleEffectivePermissions(mockAccount.id).length > 0
+      ? getRoleEffectivePermissions(mockAccount.id)
+      : getRoleEffectivePermissions(mockAccount.roleCode);
     const resolvedPerms = dynamicPerms.length > 0 ? dynamicPerms : mockAccount.permissions;
 
     const authData = normalizeAuthResponse({
       user: {
         ...mockAccount.user,
+        roleId: mockAccount.id,
         permissions: Array.isArray(resolvedPerms) ? resolvedPerms : undefined,
-      },
+      } as any,
       tokens: {
         accessToken: `mock_access_token_${mockAccount.roleCode.toLowerCase()}_${Date.now()}`,
         refreshToken: `mock_refresh_token_${mockAccount.roleCode.toLowerCase()}_${Date.now()}`,

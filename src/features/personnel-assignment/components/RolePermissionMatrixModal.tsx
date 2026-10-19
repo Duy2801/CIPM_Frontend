@@ -1,10 +1,8 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  AppstoreOutlined,
   DeleteOutlined,
-  FilterOutlined,
   PlusOutlined,
   ReloadOutlined,
   SaveOutlined,
@@ -12,7 +10,6 @@ import {
 } from "@ant-design/icons";
 import {
   Button,
-  Input,
   Modal,
   Select,
   Text,
@@ -41,43 +38,114 @@ export default function RolePermissionMatrixModal({
     isDirty,
     hasPermission,
     togglePermission,
+    toggleModuleForRole,
     resetToDefault,
     saveMatrix,
     addCustomRole,
     deleteCustomRole,
   } = useRoleMatrix();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedModuleId, setSelectedModuleId] = useState<string>("ALL");
-  const [addRoleModalOpen, setAddRoleModalOpen] = useState(false);
-  const [roleToDelete, setRoleToDelete] = useState<{ code: string; name: string } | null>(null);
-
-  // Lọc chỉ hiển thị các chức vụ thực tế trong cơ quan (ẩn các role quyền chung cơ sở)
+  // Danh sách chức vụ thực tế trong cơ quan (ẩn base roles dùng để kế thừa)
   const visibleRoles = useMemo(() => {
     return roles.filter((r) => r.group !== "base");
   }, [roles]);
 
-  // Lọc quyền theo tìm kiếm và phân hệ
+  // Phân nhóm hiển thị trong dropdown chọn chức danh theo Phòng ban / Tổ chuyên môn từ trên xuống dưới
+  const selectGroupedOptions = useMemo(() => {
+    // Thứ tự các phòng ban chuẩn của BQL ĐTXD
+    const departmentOrder = [
+      { key: "bgd", title: "🏛️ BAN GIÁM ĐỐC", match: (d: string) => /Ban Giám đốc/i.test(d) },
+      { key: "pgd", title: "🏢 BAN PHÓ GIÁM ĐỐC (GIAO 03 NGƯỜI)", match: (d: string) => /Phó Giám đốc/i.test(d) },
+      { key: "gskt", title: "📐 TỔ GIÁM SÁT – KỸ THUẬT", match: (d: string) => /Giám sát/i.test(d) || /Kỹ thuật/i.test(d) },
+      { key: "bt", title: "🌳 TỔ BỒI THƯỜNG, GIẢI TỎA, GPMB – TÁI ĐỊNH CƯ", match: (d: string) => /Bồi thường/i.test(d) || /GPMB/i.test(d) },
+      { key: "hcth", title: "📋 TỔ HÀNH CHÍNH – TỔNG HỢP", match: (d: string) => /Hành chính/i.test(d) || /Tài chính/i.test(d) || /Kế toán/i.test(d) },
+    ];
+
+    const standardRoles = visibleRoles.filter((r) => !r.isCustom);
+    const customRoles = visibleRoles.filter((r) => r.isCustom);
+
+    const groups: { label: string; options: { value: string; label: string }[] }[] = [];
+    const assignedCodes = new Set<string>();
+
+    departmentOrder.forEach((dept) => {
+      const deptRoles = standardRoles.filter((r) => !assignedCodes.has(r.code) && dept.match(r.department || ""));
+      if (deptRoles.length > 0) {
+        deptRoles.forEach((r) => assignedCodes.add(r.code));
+        groups.push({
+          label: dept.title,
+          options: deptRoles.map((r) => ({
+            value: r.code,
+            label: r.name,
+          })),
+        });
+      }
+    });
+
+    // Các vai trò chuẩn còn lại (nếu có)
+    const remainingRoles = standardRoles.filter((r) => !assignedCodes.has(r.code));
+    if (remainingRoles.length > 0) {
+      groups.push({
+        label: "⭐ VAI TRÒ KHÁC",
+        options: remainingRoles.map((r) => ({
+          value: r.code,
+          label: r.department ? `${r.name} · ${r.department}` : r.name,
+        })),
+      });
+    }
+
+    // Các vai trò tùy chỉnh (loại bỏ trùng lặp nếu có)
+    const seenCustomNames = new Set<string>();
+    const uniqueCustomRoles = customRoles.filter((r) => {
+      const key = (r.name || "").trim().toLowerCase();
+      if (!key || seenCustomNames.has(key)) return false;
+      seenCustomNames.add(key);
+      return true;
+    });
+
+    if (uniqueCustomRoles.length > 0) {
+      groups.push({
+        label: "🛠️ VAI TRÒ TÙY CHỈNH",
+        options: uniqueCustomRoles.map((r) => ({
+          value: r.code,
+          label: `${r.name} (Tùy chỉnh)`,
+        })),
+      });
+    }
+
+    return groups;
+  }, [visibleRoles]);
+
+  // Vai trò đang được chọn để cấu hình phân quyền
+  const [selectedRoleCode, setSelectedRoleCode] = useState<string>(() => {
+    return visibleRoles[0]?.code || "ADMIN";
+  });
+
+  const [selectedModuleId, setSelectedModuleId] = useState<string>("ALL");
+  const [addRoleModalOpen, setAddRoleModalOpen] = useState(false);
+
+  // Đảm bảo selectedRoleCode luôn hợp lệ nếu danh sách roles thay đổi
+  const currentRole = useMemo(() => {
+    return visibleRoles.find((r) => r.code === selectedRoleCode) || visibleRoles[0];
+  }, [visibleRoles, selectedRoleCode]);
+
+  const activeRoleCode = currentRole?.code || visibleRoles[0]?.code || "ADMIN";
+
+  // Thống kê số quyền đã cấp cho role hiện tại
+  const roleGrantedCount = useMemo(() => {
+    return permissions.filter((p) => hasPermission(activeRoleCode, p.id)).length;
+  }, [permissions, hasPermission, activeRoleCode]);
+
+  // Lọc quyền theo màn hình / phân hệ
   const filteredPermissions = useMemo(() => {
     return permissions.filter((perm) => {
       if (selectedModuleId !== "ALL" && perm.moduleId !== selectedModuleId) {
         return false;
       }
-      if (searchQuery.trim()) {
-        const q = searchQuery.trim().toLowerCase();
-        const matchName = perm.name.toLowerCase().includes(q);
-        const matchCode = perm.code.toLowerCase().includes(q);
-        const matchDesc = perm.description.toLowerCase().includes(q);
-        const matchModule = perm.moduleName.toLowerCase().includes(q);
-        if (!matchName && !matchCode && !matchDesc && !matchModule) {
-          return false;
-        }
-      }
       return true;
     });
-  }, [permissions, selectedModuleId, searchQuery]);
+  }, [permissions, selectedModuleId]);
 
-  // Gom nhóm quyền theo Module
+  // Gom nhóm quyền theo Module / Màn hình
   const permissionsByModule = useMemo(() => {
     const map = new Map<string, MatrixPermission[]>();
     filteredPermissions.forEach((perm) => {
@@ -88,30 +156,30 @@ export default function RolePermissionMatrixModal({
     return map;
   }, [filteredPermissions]);
 
-  // Badge phân loại hành động: Tối giản màu sắc sang tone trung tính / đỏ thương hiệu
+  // Badge phân loại hành động (chuyển đồng bộ tông màu vàng/amber cho dễ nhìn)
   const getCategoryBadge = (category: MatrixPermission["category"]) => {
     switch (category) {
       case "read":
         return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
             Xem
           </span>
         );
       case "write":
         return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
             Nhập/Sửa
           </span>
         );
       case "approve":
         return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-[#DC2626] border border-red-200/70">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
             Phê duyệt
           </span>
         );
       case "admin":
         return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-[#DC2626] border border-red-200/70">
+          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
             Quản trị
           </span>
         );
@@ -124,77 +192,68 @@ export default function RolePermissionMatrixModal({
       onCancel={onClose}
       footer={null}
       closable={false}
-      width="min(1440px, calc(100vw - 32px))"
+      width="min(1120px, calc(100vw - 32px))"
       centered
       wrapClassName="cipm-centered-modal-wrap !overflow-hidden"
-      style={{ maxWidth: 1440, top: 0, paddingBottom: 0 }}
+      style={{ maxWidth: 1120, top: 0, paddingBottom: 0 }}
       className="m-0 max-w-[calc(100vw-32px)] [&_.ant-modal-content]:!p-0 [&_.ant-modal-content]:!rounded-2xl overflow-hidden shadow-2xl"
     >
       <div className="flex flex-col h-[min(88vh,780px)] max-h-[calc(100vh-48px)] bg-white text-slate-900 overflow-hidden">
-        {/* Header tối giản & thanh lịch */}
+        {/* 1. Header Modal */}
         <div className="px-6 py-3.5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-[#DC2626] border border-red-200">
-              <AppstoreOutlined className="text-lg" />
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Title level={4} className="!m-0 text-slate-900 font-bold text-base sm:text-lg">
+                Cấu hình phân quyền hệ thống BQL ĐTXD
+              </Title>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <Title level={4} className="!m-0 text-slate-900 font-bold text-base sm:text-lg">
-                  Ma trận phân quyền hệ thống BQL ĐTXD
-                </Title>
-                <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                  {visibleRoles.length} chức vụ
-                </span>
-                <span className="rounded-full bg-red-50 border border-red-200 text-[#DC2626] px-2 py-0.5 text-xs font-semibold">
-                  {permissions.length} quyền / 10 phân hệ
-                </span>
-              </div>
-              <Text className="text-xs text-slate-500">
-                Cấu hình quyền linh động cho từng vị trí chức danh trong cơ quan
-              </Text>
-            </div>
-          </div>
-
-          {/* Các nút hành động Header: Thêm vai trò */}
-          <div className="flex items-center gap-2.5">
-            {canManage && (
-              <Button
-                intent="outline"
-                scale="compact"
-                icon={<PlusOutlined className="text-[#DC2626]" />}
-                className="text-xs font-semibold !border-slate-300 text-slate-700 hover:text-[#DC2626] hover:!border-red-200 h-8.5 px-3"
-                onClick={() => setAddRoleModalOpen(true)}
-              >
-                Thêm vai trò
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* Thanh công cụ tìm kiếm và lọc gọn gàng (đã loại bỏ các nút rườm rà) */}
+        {/* 2. THANH CÔNG CỤ & BỘ LỌC TINH GỌN (CĂN GỌN TRÊN 1 DÒNG) */}
         <div className="px-6 py-2.5 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Tìm kiếm */}
-            <div className="w-72">
-              <Input
-                allowClear
-                intent="clean"
-                placeholder="Tìm quyền, mã, phân hệ..."
-                prefix={<SearchOutlined className="text-slate-400 text-xs" />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs h-8.5"
-              />
+          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+            {/* Chọn Chức danh */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">Chức danh:</span>
+              <div className="w-56 sm:w-80 flex items-center gap-1.5">
+                <Select
+                  value={activeRoleCode}
+                  onChange={(val) => setSelectedRoleCode(val)}
+                  className="w-full text-xs font-semibold"
+                  options={selectGroupedOptions}
+                  popupMatchSelectWidth={false}
+                />
+                {currentRole?.isCustom && canManage && (
+                  <Tooltip title={`Xóa vai trò tùy chỉnh "${currentRole.name}"`}>
+                    <Button
+                      intent="outline"
+                      scale="compact"
+                      icon={<DeleteOutlined className="text-rose-500" />}
+                      className="text-xs h-8 px-2 !border-rose-200 text-rose-600 hover:!border-rose-400 hover:!bg-rose-50 shrink-0 shadow-2xs"
+                      onClick={() => {
+                        deleteCustomRole(currentRole.code);
+                        setSelectedRoleCode(visibleRoles[0]?.code || "ADMIN");
+                      }}
+                    >
+                      Xóa
+                    </Button>
+                  </Tooltip>
+                )}
+              </div>
             </div>
 
-            {/* Lọc Phân hệ */}
-            <div className="w-64">
+            {/* Đường ngăn cách nhẹ */}
+            <div className="h-4 w-px bg-slate-300 hidden sm:block mx-0.5" />
+
+            {/* Lọc màn hình / phân hệ */}
+            <div className="w-48 sm:w-56">
               <Select
                 value={selectedModuleId}
                 onChange={(val) => setSelectedModuleId(val)}
-                className="w-full text-xs h-8.5"
+                className="w-full text-xs h-8"
                 options={[
-                  { value: "ALL", label: "Tất cả 10 Phân hệ" },
+                  { value: "ALL", label: `Tất cả ${modules.length} Màn hình` },
                   ...modules.map((m) => ({
                     value: m.id,
                     label: `${m.code} - ${m.shortName}`,
@@ -203,29 +262,38 @@ export default function RolePermissionMatrixModal({
               />
             </div>
 
-            {(searchQuery || selectedModuleId !== "ALL") && (
+            {selectedModuleId !== "ALL" && (
               <Button
                 intent="outline"
                 scale="compact"
                 className="text-xs h-8 text-slate-600 hover:text-[#DC2626]"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedModuleId("ALL");
-                }}
+                onClick={() => setSelectedModuleId("ALL")}
               >
                 Xóa lọc
               </Button>
             )}
           </div>
 
-          {/* Nút Khôi phục mặc định gọn gàng */}
-          <div>
-            <Tooltip title="Khôi phục ma trận phân quyền về chuẩn mặc định ban đầu của BQL">
+          {/* Góc phải: Nút Thêm vai trò & Nút Khôi phục mặc định */}
+          <div className="flex items-center gap-2 shrink-0">
+            {canManage && (
+              <Button
+                intent="outline"
+                scale="compact"
+                icon={<PlusOutlined className="text-[#DC2626]" />}
+                className="text-xs font-semibold !border-slate-300 text-slate-700 hover:text-[#DC2626] hover:!border-red-200 h-8 px-3"
+                onClick={() => setAddRoleModalOpen(true)}
+              >
+                Thêm vai trò
+              </Button>
+            )}
+
+            <Tooltip title="Khôi phục phân quyền về chuẩn mặc định ban đầu của BQL">
               <Button
                 intent="outline"
                 scale="compact"
                 icon={<ReloadOutlined className="text-slate-400" />}
-                className="text-xs !border-slate-200 text-slate-600 hover:text-[#DC2626] hover:!border-red-200 h-8"
+                className="text-xs !border-slate-300 text-slate-700 hover:text-[#DC2626] hover:!border-red-200 h-8"
                 onClick={resetToDefault}
               >
                 Khôi phục mặc định
@@ -234,179 +302,149 @@ export default function RolePermissionMatrixModal({
           </div>
         </div>
 
-        {/* Bảng Ma trận Phân quyền sạch sẽ, đồng bộ màu sắc */}
-        <div className="flex-1 overflow-auto [scrollbar-width:thin] min-h-0">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
-            {/* Header các cột Roles: Đồng bộ tone Slate trung tính, không rực rỡ */}
-            <thead className="sticky top-0 z-20 bg-slate-50 shadow-xs border-b border-slate-200">
-              <tr className="text-slate-800">
-                {/* Cột 1: Tên quyền & phân hệ */}
-                <th className="sticky left-0 z-30 bg-slate-50 w-[340px] min-w-[340px] px-4 py-3 border-r border-slate-200 text-xs font-bold uppercase tracking-wider">
-                  <div className="flex items-center justify-between">
-                    <span>Phân hệ / Quyền hạn</span>
-                    <FilterOutlined className="text-slate-400" />
-                  </div>
-                </th>
+        {/* 3. DANH SÁCH QUYỀN HẠN CÁC MÀN HÌNH ĐỂ TÍCH CHỌN */}
+        <div className="flex-1 overflow-auto [scrollbar-width:thin] min-h-0 p-6 space-y-4 bg-slate-50/50">
+          {filteredPermissions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white p-12 text-center">
+              <SearchOutlined className="text-slate-300 text-3xl mb-3" />
+              <div className="text-sm font-semibold text-slate-700">Không tìm thấy quyền hạn phù hợp</div>
+              <div className="text-xs text-slate-400 mt-1">
+                Thử thay đổi từ khóa tìm kiếm hoặc bỏ chọn bộ lọc màn hình
+              </div>
+            </div>
+          ) : (
+            modules.map((mod) => {
+              const modPerms = permissionsByModule.get(mod.id);
+              if (!modPerms || modPerms.length === 0) return null;
 
-                {/* Các cột Roles: Chỉ hiện chức vụ, không tag nhóm, không nút chọn tất cả */}
-                {visibleRoles.map((role) => {
-                  return (
-                    <th
-                      key={role.code}
-                      className="px-3 py-3 text-center border-r border-slate-200 align-middle min-w-[110px] max-w-[140px] bg-slate-50"
+              const modGrantedCount = modPerms.filter((p) => hasPermission(activeRoleCode, p.id)).length;
+
+              return (
+                <div
+                  key={`group-${mod.id}`}
+                  className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden"
+                >
+                  {/* Tiêu đề Màn hình / Phân hệ */}
+                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 font-bold">
+                        {mod.code}
+                      </span>
+                      <span className="font-bold text-xs sm:text-sm text-slate-900">{mod.name}</span>
+                    </div>
+
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-colors select-none ${
+                        canManage
+                          ? "cursor-pointer text-slate-700 hover:text-[#DC2626] hover:bg-slate-200/60"
+                          : "cursor-default text-slate-400"
+                      }`}
+                      title="Chọn toàn bộ quyền trong màn hình này"
                     >
-                      <div className="flex items-center justify-center gap-1">
-                        <Text
-                          strong
-                          className="text-xs text-slate-900 leading-tight text-center"
-                          title={role.description || role.name}
-                        >
-                          {role.shortName || role.name}
-                        </Text>
+                      <input
+                        type="checkbox"
+                        checked={modPerms.length > 0 && modGrantedCount === modPerms.length}
+                        ref={(el) => {
+                          if (el) {
+                            el.indeterminate = modGrantedCount > 0 && modGrantedCount < modPerms.length;
+                          }
+                        }}
+                        disabled={!canManage}
+                        onChange={() => {
+                          if (canManage) {
+                            toggleModuleForRole(
+                              activeRoleCode,
+                              mod.id,
+                              modPerms.map((p) => p.id)
+                            );
+                          }
+                        }}
+                        className="h-4 w-4 rounded accent-[#DC2626] cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <span>Chọn tất cả</span>
+                    </label>
+                  </div>
 
-                        {role.isCustom && canManage && (
-                          <Tooltip title="Xóa vai trò tùy chỉnh này">
-                            <button
-                              type="button"
-                              onClick={() => setRoleToDelete({ code: role.code, name: role.name })}
-                              className="text-slate-400 hover:text-red-600 transition-colors cursor-pointer p-0.5 rounded"
-                            >
-                              <DeleteOutlined className="text-xs" />
-                            </button>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-
-            {/* Thân bảng */}
-            <tbody className="divide-y divide-slate-200 text-xs">
-              {modules.map((mod) => {
-                const modPerms = permissionsByModule.get(mod.id);
-                if (!modPerms || modPerms.length === 0) return null;
-
-                return (
-                  <Fragment key={`group-${mod.id}`}>
-                    {/* Dòng phân cách Phân hệ */}
-                    <tr className="bg-slate-100/90 font-bold border-y border-slate-200">
-                      <td
-                        colSpan={visibleRoles.length + 1}
-                        className="px-4 py-2 bg-slate-100 text-slate-800 text-xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 font-bold">
-                              {mod.code}
-                            </span>
-                            <span className="font-bold text-slate-900">{mod.name}</span>
-                            <span className="text-[11px] font-normal text-slate-500">
-                              ({modPerms.length} quyền)
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-normal text-slate-400">
-                            Bấm ô checkbox để cấp hoặc thu hồi quyền
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Danh sách quyền */}
+                  {/* Danh sách các quyền của màn hình để tích */}
+                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {modPerms.map((perm) => {
+                      const isChecked = hasPermission(activeRoleCode, perm.id);
+
                       return (
-                        <tr
+                        <div
                           key={perm.id}
-                          className="hover:bg-slate-50/80 transition-colors group"
+                          role="checkbox"
+                          aria-checked={isChecked}
+                          tabIndex={canManage ? 0 : -1}
+                          onClick={() => {
+                            if (canManage) {
+                              togglePermission(activeRoleCode, perm.id);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (canManage && (e.key === " " || e.key === "Enter")) {
+                              e.preventDefault();
+                              togglePermission(activeRoleCode, perm.id);
+                            }
+                          }}
+                          className={`flex items-start gap-3 p-3 rounded-lg border bg-white transition-all select-none ${
+                            isChecked
+                              ? "border-slate-300 shadow-2xs"
+                              : "border-slate-200/80"
+                          } ${canManage ? "cursor-pointer hover:border-slate-300 hover:bg-slate-50/50" : "cursor-default"}`}
                         >
-                          {/* Cột Tên quyền */}
-                          <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 px-4 py-2.5 border-r border-slate-200 shadow-2xs">
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-2">
-                                {getCategoryBadge(perm.category)}
-                                <Text strong className="text-xs text-slate-900 leading-snug">
-                                  {perm.name}
-                                </Text>
-                              </div>
-                              <Text className="text-[11px] text-slate-500 leading-normal line-clamp-1">
-                                {perm.description}
-                              </Text>
-                              <span className="font-mono text-[9.5px] text-slate-400">
-                                {perm.code}
+                          <div className="pt-0.5 shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={!canManage}
+                              readOnly
+                              tabIndex={-1}
+                              aria-hidden="true"
+                              className="h-4.5 w-4.5 rounded accent-[#DC2626] pointer-events-none cursor-pointer"
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              {getCategoryBadge(perm.category)}
+                              <span className="font-bold text-xs text-slate-900 leading-snug">
+                                {perm.name}
                               </span>
                             </div>
-                          </td>
-
-                          {/* Checkbox các Roles: Nền trắng sạch sẽ, chỉ dùng đỏ thương hiệu */}
-                          {visibleRoles.map((role) => {
-                            const isChecked = hasPermission(role.code, perm.id);
-
-                            return (
-                              <td
-                                key={`${role.code}-${perm.id}`}
-                                role="checkbox"
-                                aria-checked={isChecked}
-                                aria-label={`${role.shortName || role.name}: ${perm.name}`}
-                                tabIndex={canManage ? 0 : -1}
-                                onClick={() => {
-                                  if (canManage) {
-                                    togglePermission(role.code, perm.id);
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (canManage && (e.key === " " || e.key === "Enter")) {
-                                    e.preventDefault();
-                                    togglePermission(role.code, perm.id);
-                                  }
-                                }}
-                                className={`px-2 py-2 text-center border-r border-slate-200 select-none transition-colors ${
-                                  canManage
-                                    ? "hover:bg-red-50/50 active:bg-red-100/60 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset"
-                                    : "cursor-default"
-                                }`}
-                              >
-                                <div className="flex items-center justify-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    disabled={!canManage}
-                                    readOnly
-                                    tabIndex={-1}
-                                    aria-hidden="true"
-                                    className="h-4.5 w-4.5 rounded transition-all accent-[#DC2626] pointer-events-none cursor-pointer"
-                                  />
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
+                            <div className="text-[11px] text-slate-500 leading-normal mb-1 line-clamp-2">
+                              {perm.description}
+                            </div>
+                            <span className="font-mono text-[9.5px] text-slate-400">
+                              {perm.code}
+                            </span>
+                          </div>
+                        </div>
                       );
                     })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
-        {/* Footer tinh giản & rõ ràng */}
+        {/* 4. Footer */}
         <div className="px-6 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <span
-              className={`h-2 w-2 rounded-full inline-block ${
-                isDirty ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
-              }`}
+              className=""
             />
             <span>
-              Tổng cộng <strong>{permissions.length}</strong> quyền hạn trên <strong>{visibleRoles.length}</strong> chức vụ.
-              {isDirty ? (
-                <span className="text-amber-600 font-medium ml-1">
-                  (Có thay đổi chưa lưu, bấm &quot;Lưu cấu hình&quot; để ghi nhận vào hệ thống)
-                </span>
-              ) : (
-                <span className="text-slate-500 ml-1">
-                  (Cấu hình phân quyền đã đồng bộ)
+              Đang xem chức danh: <strong className="text-slate-900">{currentRole?.name}</strong>{" "}
+              {currentRole?.department && (
+                <span className="text-slate-500 font-medium">({currentRole.department})</span>
+              )}{" "}
+              · Đã cấp <strong className="text-[#DC2626]">{roleGrantedCount}</strong>/{permissions.length} quyền.
+              {isDirty && (
+                <span className="text-amber-600 font-semibold ml-1.5">
+                  (Chưa lưu — bấm &quot;Lưu cấu hình&quot; để áp dụng)
                 </span>
               )}
             </span>
@@ -441,50 +479,12 @@ export default function RolePermissionMatrixModal({
           open={addRoleModalOpen}
           onClose={() => setAddRoleModalOpen(false)}
           onAddRole={(roleData) => {
-            addCustomRole(roleData);
+            const newRole = addCustomRole(roleData);
+            if (newRole?.code) {
+              setSelectedRoleCode(newRole.code);
+            }
           }}
         />
-      )}
-
-      {/* Modal Xác nhận xóa vai trò tùy chỉnh */}
-      {roleToDelete && (
-        <Modal
-          open={!!roleToDelete}
-          onCancel={() => setRoleToDelete(null)}
-          footer={null}
-          closable={false}
-          width={420}
-          className="[&_.ant-modal-content]:!p-0 [&_.ant-modal-content]:!rounded-2xl overflow-hidden shadow-2xl"
-        >
-          <div className="p-6 bg-white text-slate-900">
-            <Title level={4} className="!m-0 text-base font-bold text-slate-900 mb-2">
-              Xác nhận xóa vai trò
-            </Title>
-            <Text className="text-xs text-slate-600 block mb-6 leading-relaxed">
-              Bạn có chắc chắn muốn xóa vai trò tùy chỉnh{" "}
-              <strong className="text-slate-900">&quot;{roleToDelete.name}&quot;</strong> khỏi ma trận phân quyền? Các thiết lập quyền của vai trò này sẽ bị gỡ bỏ.
-            </Text>
-            <div className="flex items-center justify-end gap-2.5">
-              <Button
-                intent="outline"
-                className="text-xs h-8.5 rounded-lg text-slate-700"
-                onClick={() => setRoleToDelete(null)}
-              >
-                Hủy
-              </Button>
-              <Button
-                intent="primary"
-                className="text-xs h-8.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
-                onClick={() => {
-                  deleteCustomRole(roleToDelete.code);
-                  setRoleToDelete(null);
-                }}
-              >
-                Xác nhận xóa
-              </Button>
-            </div>
-          </div>
-        </Modal>
       )}
     </Modal>
   );

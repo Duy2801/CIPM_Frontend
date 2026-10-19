@@ -7,7 +7,7 @@ import type { PersonnelRepository } from "./personnel.repository";
 import { getSharedProjects, useProjectStore } from "../../../stores/project.store";
 
 const clone = <T,>(value: T): T => structuredClone(value);
-const STORAGE_KEY = "cipm_personnel_test_flow_v7";
+const STORAGE_KEY = "cipm_personnel_test_flow_v9";
 
 function loadDataset(): PersonnelDataset {
   if (typeof window === "undefined") return clone(PERSONNEL_MOCK_DATA);
@@ -17,6 +17,8 @@ function loadDataset(): PersonnelDataset {
     window.localStorage.removeItem("cipm_personnel_test_flow_v4");
     window.localStorage.removeItem("cipm_personnel_test_flow_v5");
     window.localStorage.removeItem("cipm_personnel_test_flow_v6");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v7");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v8");
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed: PersonnelDataset = JSON.parse(stored);
@@ -159,6 +161,28 @@ function loadDataset(): PersonnelDataset {
           }
         });
 
+        parsed.teams?.forEach((team) => {
+          if (!team.roles || team.roles.length === 0) {
+            const baseline = PERSONNEL_MOCK_DATA.teams.find((t) => t.id === team.id);
+            if (baseline?.roles) {
+              team.roles = clone(baseline.roles);
+            }
+          }
+          if (team.customFields) {
+            for (const k of Object.keys(team.customFields)) {
+              if (/fdsaf/i.test(k)) delete team.customFields[k];
+            }
+          }
+        });
+
+        parsed.staff?.forEach((person) => {
+          if (person.customFields) {
+            for (const k of Object.keys(person.customFields)) {
+              if (/fdsaf/i.test(k)) delete person.customFields[k];
+            }
+          }
+        });
+
         return parsed;
       }
     }
@@ -231,7 +255,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
   };
 
   const repository: PersonnelRepository = {
-    async createTeam(input: { id?: string; name: string; description?: string; leaderId?: string }): Promise<Team> {
+    async createTeam(input: { id?: string; name: string; description?: string; leaderId?: string; roles?: string[]; inactiveRoles?: string[]; customFields?: Record<string, any> }): Promise<Team> {
       syncSharedProjects();
       if (!input.name?.trim()) {
         throw new Error("Tên phòng ban / tổ chuyên môn không được để trống.");
@@ -256,6 +280,9 @@ export function createMockPersonnelRepository(): PersonnelRepository {
         name: input.name.trim(),
         description: input.description?.trim() || "",
         leaderId: input.leaderId || "",
+        roles: input.roles ? input.roles.map((r) => r.trim()).filter(Boolean) : [],
+        inactiveRoles: input.inactiveRoles ? input.inactiveRoles.map((r) => r.trim()).filter(Boolean) : [],
+        customFields: input.customFields,
       };
 
       dataset.teams.push(newTeam);
@@ -273,6 +300,37 @@ export function createMockPersonnelRepository(): PersonnelRepository {
 
       persistDataset();
       return clone(newTeam);
+    },
+
+    async updateTeam(id: string, input: Partial<{ name: string; description?: string; leaderId?: string; roles?: string[]; inactiveRoles?: string[]; customFields?: Record<string, any> }>): Promise<Team> {
+      syncSharedProjects();
+      const team = dataset.teams.find((t) => t.id === id);
+      if (!team) {
+        throw new Error("Không tìm thấy phòng ban / tổ chuyên môn.");
+      }
+
+      if (input.name !== undefined) {
+        if (!input.name.trim()) throw new Error("Tên phòng ban không được để trống.");
+        team.name = input.name.trim();
+      }
+      if (input.description !== undefined) {
+        team.description = input.description.trim();
+      }
+      if (input.roles !== undefined) {
+        team.roles = input.roles.map((r) => r.trim()).filter(Boolean);
+      }
+      if (input.inactiveRoles !== undefined) {
+        team.inactiveRoles = input.inactiveRoles.map((r) => r.trim()).filter(Boolean);
+      }
+      if (input.leaderId !== undefined) {
+        team.leaderId = input.leaderId;
+      }
+      if (input.customFields !== undefined) {
+        team.customFields = input.customFields;
+      }
+
+      persistDataset();
+      return clone(team);
     },
 
     async getDataset() {
@@ -853,13 +911,16 @@ export function createMockPersonnelRepository(): PersonnelRepository {
         id: staffId,
         name: input.name.trim(),
         citizenId: input.citizenId?.trim(),
+        dob: input.dob?.trim() || undefined,
+        gender: input.gender,
         title: input.title.trim() || "Chuyên viên",
         teamId: input.teamId,
         roleCode: input.roleCode,
         employment: input.employment || "Viên chức",
-        phone: input.phone.trim() || "Chưa cập nhật",
+        phone: input.phone?.trim() || "",
         email: input.email.trim() || `${staffId.toLowerCase()}@hatien.gov.vn`,
         accountActive: input.accountActive !== false,
+        customFields: input.customFields,
       };
 
       dataset.staff = [newStaff, ...dataset.staff];
@@ -867,7 +928,10 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       if (input.isLeader) {
         const team = dataset.teams.find((t) => t.id === input.teamId);
         if (team) {
-          team.leaderId = newStaff.id;
+          // Riêng Ban Phó Giám đốc (PGD) có nhiều Phó Giám đốc cùng phụ trách, không thay thế leaderId hiện có
+          if (input.teamId !== "PGD" || !team.leaderId) {
+            team.leaderId = newStaff.id;
+          }
         }
       }
 
@@ -888,7 +952,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       if (input.teamId !== undefined) person.teamId = input.teamId;
       if (input.roleCode !== undefined) person.roleCode = input.roleCode;
       if (input.employment !== undefined) person.employment = input.employment;
-      if (input.phone !== undefined) person.phone = input.phone.trim();
+      if (input.phone !== undefined) person.phone = input.phone?.trim() || "";
       if (input.email !== undefined) person.email = input.email.trim();
       if (input.accountActive !== undefined) person.accountActive = input.accountActive;
       if (input.permissions !== undefined) person.permissions = input.permissions;
@@ -898,10 +962,17 @@ export function createMockPersonnelRepository(): PersonnelRepository {
         const targetTeamId = input.teamId || person.teamId;
         const team = dataset.teams.find((t) => t.id === targetTeamId);
         if (team) {
-          if (input.isLeader) {
-            team.leaderId = person.id;
-          } else if (team.leaderId === person.id) {
-            team.leaderId = "";
+          if (targetTeamId === "PGD") {
+            // Không xóa hoặc ghi đè leaderId của Ban Phó Giám đốc nếu đã có
+            if (input.isLeader && !team.leaderId) {
+              team.leaderId = person.id;
+            }
+          } else {
+            if (input.isLeader) {
+              team.leaderId = person.id;
+            } else if (team.leaderId === person.id) {
+              team.leaderId = "";
+            }
           }
         }
       }

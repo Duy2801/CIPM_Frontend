@@ -198,7 +198,7 @@ export function resolveStaffRbac(
     } else {
       teamCode = "ADMIN";
     }
-  } else if (teamId === "BGD") {
+  } else if (teamId === "BGD" || teamId === "PGD") {
     teamCode = null;
   }
 
@@ -212,7 +212,9 @@ export function resolveStaffRbac(
   } else if (roleCode === "MEMBER" && teamMeta) {
     displayBadge = `Thành viên ${teamMeta.label.split("/")[0].trim()}`;
   } else if (roleCode === "DIRECTOR") {
-    displayBadge = "Giám đốc (Toàn quyền)";
+    displayBadge = "Giám đốc";
+  } else if (roleCode === "DEPUTY_DIRECTOR") {
+    displayBadge = "Phó Giám đốc";
   }
 
   // 4. Tìm các dự án được ủy quyền Quyền Chủ nhiệm dự án (CNDA)
@@ -236,7 +238,7 @@ export function resolveStaffRbac(
     roleLabel: roleMeta.label,
     roleDescription: roleMeta.description,
     teamCode,
-    teamLabel: teamMeta?.label ?? "Ban Giám đốc",
+    teamLabel: teamMeta?.label ?? (teamId === "PGD" ? "Ban Phó Giám đốc" : "Ban Giám đốc"),
     displayBadge,
     isLeader: roleCode === "LEAD",
     rolePermissions: roleMeta.permissions,

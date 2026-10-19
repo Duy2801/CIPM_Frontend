@@ -31,7 +31,7 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
   ({ intent, size, className, ...props }, ref) => (
     <AntSwitch
       ref={ref}
-      size={size === "small" ? "small" : "default"}
+      size={size === "small" ? "small" : undefined}
       className={cn(switchVariants({ intent, size }), className)}
       {...props}
     />

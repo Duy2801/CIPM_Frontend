@@ -18,15 +18,18 @@ import {
   STORAGE_KEY_PERMISSIONS,
 } from "@/access-control";
 
-const STORAGE_KEY_ROLES = "cipm_custom_roles_matrix_v1";
+const STORAGE_KEY_ROLES = "cipm_custom_roles_matrix_v3";
 
 function syncCurrentUserPermissions(permissionsMap: Record<string, string[]>) {
   if (typeof window === "undefined") return;
   try {
     const currentUser = useAuthStore.getState().user;
+    const roleId = (currentUser as any)?.roleId;
     const roleCode = currentUser?.role || (currentUser as any)?.roleCode;
-    if (roleCode && permissionsMap[roleCode]) {
-      const rolePermIds = permissionsMap[roleCode];
+    const targetKey = (roleId && permissionsMap[roleId]) ? roleId : roleCode;
+
+    if (targetKey && permissionsMap[targetKey]) {
+      const rolePermIds = permissionsMap[targetKey];
       const updatedPerms = convertMatrixPermIdsToPermissionCodes(rolePermIds);
       useAuthStore.getState().updateUser({ permissions: updatedPerms });
     }
@@ -34,9 +37,11 @@ function syncCurrentUserPermissions(permissionsMap: Record<string, string[]>) {
     const userInfoStr = Cookies.get("user_info");
     if (userInfoStr) {
       const userObj = JSON.parse(userInfoStr) as AuthUser;
+      const uRoleId = (userObj as any)?.roleId;
       const rCode = userObj.role || (userObj as any).roleCode;
-      if (rCode && permissionsMap[rCode]) {
-        const rPermIds = permissionsMap[rCode];
+      const uKey = (uRoleId && permissionsMap[uRoleId]) ? uRoleId : rCode;
+      if (uKey && permissionsMap[uKey]) {
+        const rPermIds = permissionsMap[uKey];
         userObj.permissions = convertMatrixPermIdsToPermissionCodes(rPermIds);
         Cookies.set("user_info", JSON.stringify(userObj), { path: "/", sameSite: "lax" });
       }
@@ -47,6 +52,35 @@ function syncCurrentUserPermissions(permissionsMap: Record<string, string[]>) {
   }
 }
 
+export function deduplicateRoles(roleList: MatrixRole[]): MatrixRole[] {
+  const seenCodes = new Set<string>();
+  const seenNames = new Set<string>();
+  const result: MatrixRole[] = [];
+
+  for (const r of roleList) {
+    if (!r || !r.code) continue;
+    const codeKey = r.code.trim().toLowerCase();
+    const nameKey = (r.name || "").trim().toLowerCase();
+
+    // Đối với vai trò tùy chỉnh: không cho phép trùng code hoặc trùng tên
+    if (r.isCustom) {
+      if (seenCodes.has(codeKey) || (nameKey && seenNames.has(nameKey))) {
+        continue;
+      }
+      seenCodes.add(codeKey);
+      if (nameKey) seenNames.add(nameKey);
+      result.push(r);
+    } else {
+      if (!seenCodes.has(codeKey)) {
+        seenCodes.add(codeKey);
+        result.push(r);
+      }
+    }
+  }
+
+  return result;
+}
+
 function getInitialRoles(): MatrixRole[] {
   if (typeof window === "undefined") return SYSTEM_MATRIX_ROLES;
   try {
@@ -54,7 +88,14 @@ function getInitialRoles(): MatrixRole[] {
     if (storedRoles) {
       const parsedRoles = JSON.parse(storedRoles);
       if (Array.isArray(parsedRoles) && parsedRoles.length > 0) {
-        return parsedRoles;
+        const customOnly = parsedRoles.filter((r: MatrixRole) => r.isCustom);
+        const combined = [...SYSTEM_MATRIX_ROLES, ...customOnly];
+        const deduplicated = deduplicateRoles(combined);
+        // Tự động dọn dẹp localStorage nếu trước đó có vai trò bị trùng lặp
+        if (deduplicated.length !== combined.length) {
+          window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(deduplicated));
+        }
+        return deduplicated;
       }
     }
   } catch (err) {
@@ -70,10 +111,10 @@ function getInitialPermissions(): Record<string, string[]> {
     if (storedPerms) {
       const parsedPerms = JSON.parse(storedPerms);
       if (parsedPerms && typeof parsedPerms === "object") {
-        if (!parsedPerms.ADMIN) {
-          parsedPerms.ADMIN = DEFAULT_ROLE_PERMISSIONS_MAP.ADMIN;
-        }
-        return parsedPerms;
+        return {
+          ...DEFAULT_ROLE_PERMISSIONS_MAP,
+          ...parsedPerms,
+        };
       }
     }
   } catch (err) {
@@ -87,17 +128,22 @@ export function useRoleMatrix() {
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>(getInitialPermissions);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Tự động lưu cấu hình vào localStorage khi có thay đổi (Auto-save) và đồng bộ ngay
+  // Lắng nghe sự kiện đồng bộ khi có vai trò tùy chỉnh mới được thêm/sửa/xóa ở modal khác
   useEffect(() => {
-    if (!isDirty || typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(permissionsMap));
-      window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(roles));
-      syncCurrentUserPermissions(permissionsMap);
-    } catch (err) {
-      console.error("Lỗi tự động lưu ma trận phân quyền:", err);
+    const handleSync = () => {
+      setRoles(getInitialRoles());
+      setPermissionsMap(getInitialPermissions());
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("cipm-roles-updated", handleSync);
+      window.addEventListener("storage", handleSync);
+      return () => {
+        window.removeEventListener("cipm-roles-updated", handleSync);
+        window.removeEventListener("storage", handleSync);
+      };
     }
-  }, [permissionsMap, roles, isDirty]);
+  }, []);
+
 
   // Kiểm tra vai trò có quyền permId không
   const hasPermission = useCallback(
@@ -107,7 +153,7 @@ export function useRoleMatrix() {
         return currentPerms.includes(permId);
       }
       // Giám đốc mặc định có mọi quyền nếu chưa thiết lập riêng
-      if (roleCode === "ADMIN") return true;
+      if (roleCode === "role_admin" || roleCode === "ADMIN") return true;
 
       return false;
     },
@@ -117,7 +163,7 @@ export function useRoleMatrix() {
   // Bật/tắt 1 quyền của 1 role
   const togglePermission = useCallback((roleCode: string, permId: string) => {
     setPermissionsMap((prev) => {
-      const current = prev[roleCode] || (roleCode === "ADMIN" ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
+      const current = prev[roleCode] || ((roleCode === "role_admin" || roleCode === "ADMIN") ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
       const has = current.includes(permId);
       const updated = has ? current.filter((id) => id !== permId) : [...current, permId];
 
@@ -158,13 +204,16 @@ export function useRoleMatrix() {
 
   // Bật/tắt toàn bộ quyền trong 1 Module cho 1 Role
   const toggleModuleForRole = useCallback(
-    (roleCode: string, moduleId: string) => {
-      const modulePermIds = MATRIX_PERMISSIONS.filter((p) => p.moduleId === moduleId).map((p) => p.id);
-      const current = permissionsMap[roleCode] || (roleCode === "ADMIN" ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
+    (roleCode: string, moduleId: string, specificPermIds?: string[]) => {
+      const modulePermIds =
+        specificPermIds && specificPermIds.length > 0
+          ? specificPermIds
+          : MATRIX_PERMISSIONS.filter((p) => p.moduleId === moduleId).map((p) => p.id);
+      const current = permissionsMap[roleCode] || ((roleCode === "role_admin" || roleCode === "ADMIN") ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
       const allActive = modulePermIds.every((id) => current.includes(id));
 
       setPermissionsMap((prev) => {
-        const cur = prev[roleCode] || (roleCode === "ADMIN" ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
+        const cur = prev[roleCode] || ((roleCode === "role_admin" || roleCode === "ADMIN") ? MATRIX_PERMISSIONS.map((p) => p.id) : []);
         const next = allActive
           ? cur.filter((id) => !modulePermIds.includes(id))
           : Array.from(new Set([...cur, ...modulePermIds]));
@@ -179,7 +228,7 @@ export function useRoleMatrix() {
   // Bật/tắt toàn bộ quyền cho 1 Role
   const toggleAllForRole = useCallback((roleCode: string) => {
     const allPermIds = MATRIX_PERMISSIONS.map((p) => p.id);
-    const current = permissionsMap[roleCode] || (roleCode === "ADMIN" ? allPermIds : []);
+    const current = permissionsMap[roleCode] || ((roleCode === "role_admin" || roleCode === "ADMIN") ? allPermIds : []);
     const isFull = allPermIds.every((id) => current.includes(id));
 
     setPermissionsMap((prev) => ({
@@ -235,19 +284,40 @@ export function useRoleMatrix() {
       color?: string;
       initialPermissions?: string[];
     }) => {
+      const trimmedName = newRole.name.trim();
+
+      // Kiểm tra xem vai trò cùng tên đã tồn tại chưa (tránh tạo 2 lần khi click nhanh)
+      const existing = roles.find(
+        (r) => (r.name || "").trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (existing) {
+        toast.warning(`Vai trò "${trimmedName}" đã tồn tại trong hệ thống.`);
+        return existing;
+      }
+
       const code = `CUSTOM_${Date.now()}`;
       const roleObj: MatrixRole = {
         code,
-        name: newRole.name.trim(),
-        shortName: newRole.shortName.trim() || newRole.name.trim().slice(0, 10),
+        name: trimmedName,
+        shortName: newRole.shortName.trim() || trimmedName.slice(0, 10),
         group: newRole.group,
         inheritsFrom: newRole.inheritsFrom,
         description: newRole.description.trim(),
-        color: newRole.color || "#059669",
+        color: newRole.color || "#0F4C81",
         isCustom: true,
       };
 
-      setRoles((prev) => [roleObj, ...prev]);
+      const nextRoles = deduplicateRoles([roleObj, ...roles]);
+      setRoles(nextRoles);
+
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(nextRoles));
+          window.dispatchEvent(new CustomEvent("cipm-roles-updated"));
+        } catch (err) {
+          console.error("Lỗi khi lưu vai trò mới vào localStorage:", err);
+        }
+      }
 
       // Khởi tạo quyền mặc định: ưu tiên danh sách chỉ định, nếu không thì kế thừa
       const initialPerms =
@@ -257,41 +327,64 @@ export function useRoleMatrix() {
           ? [...(permissionsMap[newRole.inheritsFrom] || [])]
           : [];
 
-      setPermissionsMap((prev) => ({
-        ...prev,
+      const nextPerms = {
+        ...permissionsMap,
         [code]: initialPerms,
-      }));
+      };
+      setPermissionsMap(nextPerms);
+
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(nextPerms));
+        } catch (err) {
+          console.error("Lỗi khi lưu quyền mới vào localStorage:", err);
+        }
+      }
 
       setIsDirty(true);
       toast.success(`Đã thêm vai trò "${roleObj.name}" vào ma trận với ${initialPerms.length} quyền.`);
       return roleObj;
     },
-    [permissionsMap]
+    [roles, permissionsMap]
   );
 
   // Xóa vai trò tùy chỉnh
   const deleteCustomRole = useCallback((roleCode: string) => {
-    setRoles((prev) => prev.filter((r) => r.code !== roleCode));
-    setPermissionsMap((prev) => {
-      const next = { ...prev };
-      delete next[roleCode];
-      return next;
-    });
+    const nextRoles = roles.filter((r) => r.code !== roleCode);
+    setRoles(nextRoles);
+
+    const nextPerms = { ...permissionsMap };
+    delete nextPerms[roleCode];
+    setPermissionsMap(nextPerms);
+
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(nextRoles));
+        window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(nextPerms));
+        window.dispatchEvent(new CustomEvent("cipm-roles-updated"));
+      } catch (err) {
+        console.error("Lỗi khi xóa vai trò khỏi localStorage:", err);
+      }
+    }
     setIsDirty(true);
     toast.success("Đã xóa vai trò tùy chỉnh.");
-  }, []);
+  }, [roles, permissionsMap]);
 
   // Khôi phục mặc định
   const resetToDefault = useCallback(() => {
     setRoles(SYSTEM_MATRIX_ROLES);
     setPermissionsMap(DEFAULT_ROLE_PERMISSIONS_MAP);
-    setIsDirty(true);
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY_PERMISSIONS);
-      window.localStorage.removeItem(STORAGE_KEY_ROLES);
+      try {
+        window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(SYSTEM_MATRIX_ROLES));
+        window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(DEFAULT_ROLE_PERMISSIONS_MAP));
+        window.dispatchEvent(new CustomEvent("cipm-roles-updated"));
+      } catch (err) {
+        console.error("Lỗi khi khôi phục mặc định vào localStorage:", err);
+      }
     }
-    syncCurrentUserPermissions(DEFAULT_ROLE_PERMISSIONS_MAP);
-    toast.info("Đã khôi phục ma trận phân quyền về mặc định ban đầu của Ban QLDA.");
+    setIsDirty(true);
+    toast.info("Đã khôi phục về mặc định ban đầu. Bấm \"Lưu cấu hình\" để áp dụng vào hệ thống.");
   }, []);
 
   // Lưu phân quyền
@@ -299,6 +392,7 @@ export function useRoleMatrix() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(permissionsMap));
       window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(roles));
+      window.dispatchEvent(new CustomEvent("cipm-roles-updated"));
       syncCurrentUserPermissions(permissionsMap);
     }
     setIsDirty(false);

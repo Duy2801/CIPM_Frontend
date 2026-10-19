@@ -29,24 +29,31 @@ export default function AddRoleModal({
   onAddRole,
 }: AddRoleModalProps) {
   const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = () => {
+    if (submitting) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
       toast.warning("Vui lòng nhập tên chức vụ / vai trò.");
       return;
     }
 
-    onAddRole({
-      name: trimmedName,
-      shortName: trimmedName,
-      group: "member",
-      description: `Vị trí chức danh ${trimmedName} trong hệ thống`,
-      initialPermissions: [],
-    });
+    setSubmitting(true);
+    try {
+      onAddRole({
+        name: trimmedName,
+        shortName: trimmedName,
+        group: "member",
+        description: `Vị trí chức danh ${trimmedName} trong hệ thống`,
+        initialPermissions: [],
+      });
 
-    setName("");
-    onClose();
+      setName("");
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -115,7 +122,9 @@ export default function AddRoleModal({
           <Button
             intent="primary"
             icon={<PlusOutlined />}
-            className="h-8.5 text-xs font-semibold bg-[#DC2626] hover:bg-red-700 text-white rounded-lg shadow-xs"
+            loading={submitting}
+            disabled={submitting || !name.trim()}
+            className="h-8.5 text-xs font-semibold bg-[#DC2626] hover:bg-red-700 text-white rounded-lg shadow-xs disabled:opacity-50"
             onClick={handleSubmit}
           >
             Thêm vai trò

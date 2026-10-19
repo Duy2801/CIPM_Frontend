@@ -44,6 +44,16 @@ class ToastManager {
     description?: string,
     duration = 4000
   ): string {
+    if (!title || !title.trim()) return "";
+
+    // Ngăn chặn hiển thị lặp cùng một toast nếu nó đang hiển thị trên màn hình
+    const existing = this.toasts.find(
+      (t) => !t.exiting && t.title === title && t.type === type
+    );
+    if (existing) {
+      return existing.id;
+    }
+
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const newToast: ToastItem = {
       id,

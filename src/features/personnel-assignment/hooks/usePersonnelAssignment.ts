@@ -223,13 +223,17 @@ export function usePersonnelAssignment() {
       () => mockPersonnelRepository.setAccountActive(staffId, true),
       `Đã mở lại tài khoản của ${nameOf(staffId)}.`,
     ),
-    grantActingDirector: (input: GrantActingDirectorInput) => run(
+    grantActingDirector: (input: GrantActingDirectorInput, customMessage?: string | false) => run(
       () => mockPersonnelRepository.grantActingDirector(input),
-      `Đã cấp role Quyền Chủ nhiệm dự án cho ${nameOf(input.staffId)} tại ${projectOf(input.projectId)}.`,
+      customMessage === false
+        ? ""
+        : (customMessage || `Đã cấp role Quyền Chủ nhiệm dự án cho ${nameOf(input.staffId)} tại ${projectOf(input.projectId)}.`),
     ),
-    revokeActingDirector: (projectId: string) => run(
+    revokeActingDirector: (projectId: string, customMessage?: string | false) => run(
       () => mockPersonnelRepository.revokeActingDirector(projectId),
-      `Đã thu hồi role Quyền Chủ nhiệm dự án tại ${projectOf(projectId)}.`,
+      customMessage === false
+        ? ""
+        : (customMessage || `Đã thu hồi role Quyền Chủ nhiệm dự án tại ${projectOf(projectId)}.`),
     ),
     addProjectMember: (projectId: string, staffId: string) => run(
       () => mockPersonnelRepository.addProjectMember(projectId, staffId),
@@ -243,17 +247,23 @@ export function usePersonnelAssignment() {
       () => mockPersonnelRepository.removeProjectMember(projectId, staffId),
       `Đã đưa ${nameOf(staffId)} ra khỏi tổ công tác ${projectOf(projectId)}.`,
     ),
-    createTeam: (input: { id?: string; name: string; description?: string; leaderId?: string }) => run(
+    createTeam: (input: { id?: string; name: string; description?: string; leaderId?: string; roles?: string[]; inactiveRoles?: string[]; customFields?: Record<string, any> }) => run(
       () => mockPersonnelRepository.createTeam(input),
       `Đã thêm phòng ban / tổ chuyên môn "${input.name.trim()}".`,
+    ),
+    updateTeam: (id: string, input: Partial<{ name: string; description?: string; leaderId?: string; roles?: string[]; inactiveRoles?: string[]; customFields?: Record<string, any> }>) => run(
+      () => mockPersonnelRepository.updateTeam(id, input),
+      `Đã cập nhật thông tin phòng ban / tổ chuyên môn "${input.name?.trim() || id}".`,
     ),
     createStaff: (input: StaffInput) => run(
       () => mockPersonnelRepository.createStaff(input),
       `Đã thêm cán bộ ${input.name.trim()} vào hệ thống.`,
     ),
-    updateStaff: (staffId: string, input: Partial<StaffInput>) => run(
+    updateStaff: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => run(
       () => mockPersonnelRepository.updateStaff(staffId, input),
-      `Đã cập nhật thông tin / chức vụ của cán bộ ${nameOf(staffId)}.`,
+      customMessage === false
+        ? ""
+        : (customMessage || `Đã cập nhật thông tin / chức vụ của cán bộ ${nameOf(staffId)}.`),
     ),
     updateProjectPermissions: (projectId: string, grantedPermissions: string[]) => run(
       () => mockPersonnelRepository.updateProjectPermissions(projectId, grantedPermissions),

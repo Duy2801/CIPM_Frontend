@@ -303,7 +303,7 @@ export default function ConstructionProceduresScreen() {
     if (!currentProject) return;
     try {
       if (typeof window !== "undefined") {
-        const STORAGE_KEY = "cipm_personnel_test_flow_v7";
+        const STORAGE_KEY = "cipm_personnel_test_flow_v9";
         const stored = window.localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -1519,7 +1519,7 @@ export default function ConstructionProceduresScreen() {
               // Đồng bộ các bước được giao cho nhân sự vào mockPersonnelRepository để phản ánh ngay trên Sơ đồ nhân sự (Screen 5)
               try {
                 if (typeof window !== "undefined") {
-                  const STORAGE_KEY = "cipm_personnel_test_flow_v7";
+                  const STORAGE_KEY = "cipm_personnel_test_flow_v9";
                   const stored = window.localStorage.getItem(STORAGE_KEY);
                   if (stored) {
                     const parsed = JSON.parse(stored);

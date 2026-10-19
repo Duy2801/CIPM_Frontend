@@ -21,7 +21,9 @@ export function useActionFeedback(onSuccess?: () => Promise<void>) {
       setFeedback(null);
       await action();
       await onSuccess?.();
-      toast.success(successText);
+      if (successText && successText.trim()) {
+        toast.success(successText);
+      }
       return true;
     } catch (error) {
       const errorMsg =

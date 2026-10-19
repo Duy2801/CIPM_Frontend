@@ -104,7 +104,7 @@ export default function LoginView() {
         {/* TIÊU ĐỀ CƠ QUAN NHÀ NƯỚC: Luôn khớp chuẩn xác 100% vào tâm khung đá ở mọi độ phân giải */}
         <div className="w-full max-w-[min(92vw,960px)] text-center mb-2.5 sm:mb-3.5 px-3 select-none">
           <p className="text-[clamp(12px,1.1vw,17px)] font-bold text-[#b91c1c] tracking-[0.12em] sm:tracking-[0.16em] uppercase leading-snug whitespace-nowrap [text-shadow:_0_1px_2px_rgba(255,255,255,0.95)]">
-            ỦY BAN NHÂN DÂN TỈNH AN GIANG
+            ỦY BAN NHÂN DÂN PHƯỜNG HÀ TIÊN
           </p>
           <h1 className="text-[clamp(15px,1.55vw,25px)] font-black text-[#fbbf24] tracking-normal sm:tracking-[0.025em] uppercase leading-tight mt-0.5 sm:mt-1 whitespace-nowrap [text-shadow:_0_1px_2px_rgba(0,0,0,0.5),_0_2px_4px_rgba(0,0,0,0.2)]">
             BAN QUẢN LÝ DỰ ÁN ĐẦU TƯ XÂY DỰNG HÀ TIÊN

@@ -11,14 +11,12 @@ import {
   CloseOutlined,
   DeleteOutlined,
   DownloadOutlined,
-  EyeOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
   FileWordOutlined,
   FileZipOutlined,
   InboxOutlined,
   LockOutlined,
-  PaperClipOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
   StopOutlined,
@@ -86,7 +84,6 @@ export default function ProcedureStepDetailDrawer({
   const { user } = useAuth();
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [previewDoc, setPreviewDoc] = useState<ProcedureDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!step) return null;
@@ -410,7 +407,7 @@ export default function ProcedureStepDetailDrawer({
               )}
               {isDirector && (
                 <Tag className="!bg-red-50 !text-red-700 !border-red-200 text-xs font-semibold">
-                  Ban Giám đốc (Toàn quyền)
+                  Ban Giám đốc
                 </Tag>
               )}
               {renderStatusBadge()}
@@ -672,17 +669,6 @@ export default function ProcedureStepDetailDrawer({
 
                   {/* Cụm nút thao tác trực tiếp trên từng file */}
                   <div className="flex items-center gap-1 shrink-0">
-                    <Tooltip title="Xem chi tiết tài liệu">
-                      <Button
-                        intent="outline"
-                        scale="xs"
-                        icon={<EyeOutlined />}
-                        className="!text-blue-600 hover:!bg-blue-50 !border-blue-200"
-                        onClick={() => setPreviewDoc(doc)}
-                      >
-                        Xem
-                      </Button>
-                    </Tooltip>
                     <Tooltip title="Tải tệp này về máy tính">
                       <Button
                         intent="outline"
@@ -760,86 +746,6 @@ export default function ProcedureStepDetailDrawer({
             onChange={(e) => setRejectReason(e.target.value)}
           />
         </div>
-      </Modal>
-
-      {/* Modal Xem chi tiết tài liệu trực tiếp */}
-      <Modal
-        open={Boolean(previewDoc)}
-        title={
-          <div className="flex items-center gap-2">
-            <PaperClipOutlined className="text-blue-600" />
-            <span>Chi tiết hồ sơ / tài liệu</span>
-          </div>
-        }
-        onCancel={() => setPreviewDoc(null)}
-        footer={
-          <div className="flex justify-between items-center w-full">
-            <span className="text-xs text-slate-400">
-              {previewDoc?.fileSize ? `Kích thước: ${previewDoc.fileSize}` : ""}
-            </span>
-            <div className="flex gap-2">
-              <Button intent="outline" scale="sm" onClick={() => setPreviewDoc(null)}>
-                Đóng
-              </Button>
-              {previewDoc && (
-                <Button
-                  intent="primary"
-                  scale="sm"
-                  icon={<DownloadOutlined />}
-                  className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] text-white font-medium"
-                  onClick={() => {
-                    handleDownloadDoc(previewDoc);
-                  }}
-                >
-                  Tải xuống tệp
-                </Button>
-              )}
-            </div>
-          </div>
-        }
-      >
-        {previewDoc && (
-          <div className="space-y-3.5 py-2">
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-              {renderFileIcon(previewDoc.fileType, previewDoc.fileName)}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-slate-900 break-words">
-                  {previewDoc.title}
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  Mã văn bản: <strong className="text-slate-800 font-mono">{previewDoc.documentCode}</strong>
-                </div>
-              </div>
-            </div>
-
-            <dl className="grid grid-cols-2 gap-3 text-xs bg-slate-50/50 p-3 rounded-lg border border-slate-100 m-0">
-              <div>
-                <dt className="text-slate-400 font-medium">Cơ quan ban hành:</dt>
-                <dd className="m-0 font-semibold text-slate-800 mt-0.5">{previewDoc.issuer || "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400 font-medium">Ngày ban hành:</dt>
-                <dd className="m-0 font-semibold text-slate-800 mt-0.5">{formatDate(previewDoc.issueDate)}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-400 font-medium">Tên tệp tin gốc:</dt>
-                <dd className="m-0 font-medium text-slate-700 mt-0.5 truncate" title={previewDoc.fileName}>
-                  {previewDoc.fileName || "Văn bản định dạng hệ thống"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-400 font-medium">Định dạng / Dung lượng:</dt>
-                <dd className="m-0 font-medium text-slate-700 mt-0.5">
-                  {previewDoc.fileType ? previewDoc.fileType.toUpperCase() : "PDF"} · {previewDoc.fileSize || "Đã lưu trữ"}
-                </dd>
-              </div>
-            </dl>
-
-            <div className="p-3 bg-blue-50/60 rounded-lg border border-blue-100 text-xs text-blue-900 leading-relaxed">
-              Tệp tài liệu này đã được lưu trữ an toàn trong hồ sơ bước thủ tục. Bạn có thể bấm nút <strong>&ldquo;Tải xuống tệp&rdquo;</strong> để lưu về thiết bị.
-            </div>
-          </div>
-        )}
       </Modal>
 
     </>

@@ -81,7 +81,7 @@ const ROLE_PROFILES: Record<string, PersonnelRoleProfile> = {
     canUrgeMembers: true,
     canManageAccounts: false,
     canManageOrganization: false,
-    defaultTab: "project-team",
+    defaultTab: "organization",
     scopeDescription: "Được Ban Giám đốc ủy quyền chủ dự án: Toàn quyền phân công nhiệm vụ nhân viên, quản lý thành viên tổ công tác và đôn đốc tiến độ dự án phụ trách.",
     allowedDuties: [
       "Phân công nhiệm vụ nhân viên theo các giai đoạn thực hiện dự án phụ trách",
@@ -108,7 +108,7 @@ const NO_ACCESS_PROFILE: PersonnelRoleProfile = {
   canUrgeMembers: false,
   canManageAccounts: false,
   canManageOrganization: false,
-  defaultTab: "project-team",
+  defaultTab: "organization",
   scopeDescription: "Theo dõi nhân sự dự án, nộp tài liệu giai đoạn và xem duyệt hồ sơ trong tổ công tác.",
   allowedDuties: ["Xem nhân sự dự án", "Theo dõi dự án của tổ", "Nộp hồ sơ chuyên môn"],
   readingGuide: "Cán bộ, tổ trưởng và thành viên theo dõi phân công và duyệt tài liệu tại tab Nhân sự dự án.",
@@ -192,12 +192,12 @@ export function getPersonnelRolePermissions(
 
   // 5. Kiểm tra xem cán bộ có phải là Tổ trưởng / Lead tổ chuyên môn không
   const leadingTeam = (context?.teams || []).find(
-    (t) => t.leaderId === matchingStaffId && t.id !== "BGD"
+    (t) => t.leaderId === matchingStaffId && t.id !== "BGD" && t.id !== "PGD"
   );
   const isTeamLeader = Boolean(leadingTeam);
 
   // Xác định tab mặc định phù hợp với quyền hạn thực tế
-  let resolvedDefaultTab: PersonnelTabKey = "project-team";
+  let resolvedDefaultTab: PersonnelTabKey = "organization";
   if (canManageOrganization) {
     resolvedDefaultTab = "organization";
   } else if (canManageAccounts) {
@@ -248,7 +248,7 @@ export function getPersonnelRolePermissions(
       memberProjectIds,
       canManageAccounts,
       canManageOrganization,
-      defaultTab: "project-team",
+      defaultTab: "organization",
     };
   }
 
@@ -275,7 +275,7 @@ export function getPersonnelRolePermissions(
       canManageOrganization,
       isProjectLeader: false,
       memberProjectIds,
-      defaultTab: "project-team",
+      defaultTab: "organization",
       scopeDescription: `Tổ trưởng ${leadingTeam?.name}: Nhận giai đoạn từ Chủ nhiệm dự án, giao việc chi tiết cho cán bộ thành viên trong tổ và duyệt nghiệm thu kết quả.`,
       allowedDuties: [
         `Nhận giai đoạn và bước quy trình do Chủ nhiệm dự án giao cho ${leadingTeam?.name}`,
@@ -304,7 +304,7 @@ export function getPersonnelRolePermissions(
     canManageOrganization,
     isProjectLeader: false,
     memberProjectIds,
-    defaultTab: "project-team",
+    defaultTab: "organization",
     canExport,
     scopeDescription: "Theo dõi nhiệm vụ được giao theo giai đoạn, phối hợp cùng tổ công tác và gửi xác nhận hoàn thành công việc kèm hồ sơ.",
     allowedDuties: [

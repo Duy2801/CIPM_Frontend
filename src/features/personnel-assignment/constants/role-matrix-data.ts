@@ -1,3 +1,5 @@
+import { MOCK_ROLES } from "@/features/auth/constants/mock-roles";
+
 export interface MatrixPermission {
   id: string;
   code: string;
@@ -12,6 +14,8 @@ export interface MatrixRole {
   code: string;
   name: string;
   shortName: string;
+  department?: string;
+  isLead?: boolean;
   group: "director" | "base" | "lead" | "member" | "special";
   inheritsFrom?: "BASE_LEAD" | "BASE_MEMBER";
   description: string;
@@ -377,241 +381,79 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
 ];
 
-export const SYSTEM_MATRIX_ROLES: MatrixRole[] = [
-  // 1. Cấp Ban Giám đốc
-  {
-    code: "ADMIN",
-    name: "Giám đốc (Toàn quyền)",
-    shortName: "Giám đốc",
-    group: "director",
-    description: "Lãnh đạo cao nhất Ban QLDA, toàn quyền điều hành, phê duyệt và phân bổ nguồn lực",
-    color: "#DC2626",
-  },
-  {
-    code: "DEPUTY_DIRECTOR",
-    name: "Phó Giám đốc",
-    shortName: "Phó GĐ",
-    group: "director",
-    description: "Giúp việc Giám đốc, trực tiếp chỉ đạo và điều hành các dự án được phân công",
-    color: "#2563EB",
-  },
+export const SYSTEM_MATRIX_ROLES: MatrixRole[] = MOCK_ROLES.map((r) => {
+  let group: MatrixRole["group"] = "member";
+  if (r.id === "role_admin" || r.roleCode === "ADMIN" || r.id === "role_deputy") {
+    group = "director";
+  } else if (r.isLead) {
+    group = "lead";
+  } else if (r.roleCode === "ACTING_DIRECTOR") {
+    group = "special";
+  }
 
-  // 2. NHÓM QUYỀN CHUNG (Base Roles) - Cốt lõi cho tính kế thừa
-  {
-    code: "BASE_LEAD",
-    name: "Tổ trưởng (Quyền chung Lead)",
-    shortName: "Lead (Chung)",
-    group: "base",
-    description: "Bộ quyền cơ sở dành cho tất cả vị trí Tổ trưởng / Trưởng bộ phận. Các role Lead sẽ tự động kế thừa bộ quyền này.",
-    color: "#D97706",
-  },
-  {
-    code: "BASE_MEMBER",
-    name: "Thành viên (Quyền chung Member)",
-    shortName: "Member (Chung)",
-    group: "base",
-    description: "Bộ quyền cơ sở dành cho tất cả nhân viên / chuyên viên chuyên môn. Các role Thành viên sẽ tự động kế thừa bộ quyền này.",
-    color: "#059669",
-  },
-
-  // 3. Các Role Lead cụ thể
-  {
-    code: "TECHNICAL_OFFICER",
-    name: "Tổ trưởng Giám sát – Kỹ thuật",
-    shortName: "Tổ trưởng GSKT",
-    group: "lead",
-    inheritsFrom: "BASE_LEAD",
-    description: "Quản lý tổ Kỹ thuật, nhận giai đoạn dự án, giao việc thành viên, cập nhật tiến độ và hồ sơ XDCB",
-    color: "#0891B2",
-  },
-  {
-    code: "CHIEF_ACCOUNTANT",
-    name: "Kế toán trưởng",
-    shortName: "Kế toán trưởng",
-    group: "lead",
-    inheritsFrom: "BASE_LEAD",
-    description: "Kiểm soát tài chính dự án, phê duyệt giải ngân cấp 1, kế hoạch vốn, tất toán KBNN",
-    color: "#7C3AED",
-  },
-
-  // 4. Các Role Member cụ thể
-  {
-    code: "TECHNICAL_MEMBER",
-    name: "Chuyên viên Giám sát Kỹ thuật",
-    shortName: "Chuyên viên KT",
-    group: "member",
-    inheritsFrom: "BASE_MEMBER",
-    description: "Thực hiện giám sát hiện trường, kiểm tra khối lượng, đính kèm biên bản nghiệm thu",
-    color: "#0284C7",
-  },
-  {
-    code: "ACCOUNTANT",
-    name: "Kế toán viên",
-    shortName: "Kế toán viên",
-    group: "member",
-    inheritsFrom: "BASE_MEMBER",
-    description: "Lập chứng từ tạm ứng, thanh toán khối lượng A-B, đối chiếu số liệu Kho bạc",
-    color: "#9333EA",
-  },
-  {
-    code: "COMPENSATION_OFFICER",
-    name: "Chuyên viên Bồi thường – GPMB",
-    shortName: "Cán bộ GPMB",
-    group: "member",
-    inheritsFrom: "BASE_MEMBER",
-    description: "Quản lý 16 bước GPMB, kiểm đếm hiện trạng, lập phương án bồi thường và chi trả",
-    color: "#E11D48",
-  },
-  {
-    code: "ADMINISTRATIVE_OFFICER",
-    name: "Chuyên viên Hành chính – Tổng hợp",
-    shortName: "Cán bộ HC-TH",
-    group: "member",
-    inheritsFrom: "BASE_MEMBER",
-    description: "Văn thư lưu trữ, thủ tục hành chính, tổng hợp báo cáo định kỳ",
-    color: "#4B5563",
-  },
-
-  // 5. Role đặc thù theo dự án
-  {
-    code: "ACTING_DIRECTOR",
-    name: "Quyền Chủ nhiệm dự án (CNDA)",
-    shortName: "Quyền CNDA",
-    group: "special",
-    description: "Được Ban Giám đốc ủy quyền: giao việc các giai đoạn dự án, quản lý tổ công tác công trình",
-    color: "#EA580C",
-  },
-];
+  return {
+    code: r.id,
+    name: r.roleName,
+    shortName: r.user.roleName || r.roleName.slice(0, 15),
+    department: r.department,
+    isLead: r.isLead,
+    group,
+    description: r.description,
+    color:
+      r.badgeColor === "red"
+        ? "#DC2626"
+        : r.badgeColor === "blue"
+        ? "#2563EB"
+        : r.badgeColor === "teal"
+        ? "#0D9488"
+        : r.badgeColor === "purple"
+        ? "#7C3AED"
+        : r.badgeColor === "gold"
+        ? "#D97706"
+        : "#475569",
+  };
+});
 
 /**
  * Bản đồ cấu hình phân quyền ban đầu (System Default Matrix)
+ * Tự động đồng bộ hóa từ dữ liệu chuẩn của MOCK_ROLES
  */
-export const DEFAULT_ROLE_PERMISSIONS_MAP: Record<string, string[]> = {
-  // Giám đốc: Toàn bộ tất cả quyền của hệ thống
-  ADMIN: MATRIX_PERMISSIONS.map((p) => p.id),
+export const DEFAULT_ROLE_PERMISSIONS_MAP: Record<string, string[]> = (() => {
+  const map: Record<string, string[]> = {};
 
-  // Phó Giám đốc: Toàn bộ quyền điều hành, phê duyệt dự án, GPMB, đấu thầu, thủ tục
-  DEPUTY_DIRECTOR: [
-    "m1.view", "m1.export",
-    "m2.view", "m2.create_edit", "m2.update_progress", "m2.close_open", "m2.export",
-    "m3.view", "m3.update_step", "m3.approve_step", "m3.config_template",
-    "m4.view", "m4.export",
-    "m5.view", "m5.assign_project_leaders", "m5.grant_cnda", "m5.review_submissions",
-    "m6.view", "m6.approve_compensation", "m6.export",
-    "m7.view", "m7.manage_tender", "m7.approve_bid", "m7.export",
-    "m8.view", "m8.release_bond", "m8.export",
-    "m9.view_search", "m9.use_ai", "m9.manage_docs",
-    "sys.audit_log",
-  ],
+  MOCK_ROLES.forEach((r) => {
+    if (r.id === "role_admin" || r.roleCode === "ADMIN") {
+      const allPerms = MATRIX_PERMISSIONS.map((p) => p.id);
+      map[r.id] = allPerms;
+      map[r.roleCode] = allPerms;
+    } else {
+      const granted: string[] = [];
+      MATRIX_PERMISSIONS.forEach((p) => {
+        const [mod, act] = p.code.split(":");
+        if (
+          r.permissions &&
+          (r.permissions as any)[mod] &&
+          (r.permissions as any)[mod].includes(act)
+        ) {
+          granted.push(p.id);
+        }
+      });
+      map[r.id] = granted;
+      if (!map[r.roleCode]) {
+        map[r.roleCode] = granted;
+      }
+    }
+  });
 
-  // Quyền CHUNG CỦA TỔ TRƯỞNG (Lead)
-  BASE_LEAD: [
-    "m1.view", "m1.export",
-    "m2.view",
-    "m3.view", "m3.update_step",
-    "m5.view", "m5.assign_tasks", "m5.review_submissions",
-    "m9.view_search", "m9.use_ai",
-  ],
+  // Fallback bổ sung cho các mã hệ thống kế thừa
+  map.ADMIN = MATRIX_PERMISSIONS.map((p) => p.id);
+  map.BASE_LEAD = [
+    "m1.view", "m1.export", "m2.view", "m3.view", "m3.update_step",
+    "m5.view", "m5.assign_tasks", "m5.review_submissions", "m9.view_search",
+  ];
+  map.BASE_MEMBER = [
+    "m1.view", "m2.view", "m3.view", "m5.view", "m9.view_search",
+  ];
 
-  // Quyền CHUNG CỦA THÀNH VIÊN (Member)
-  BASE_MEMBER: [
-    "m1.view",
-    "m2.view",
-    "m3.view",
-    "m5.view",
-    "m9.view_search", "m9.use_ai",
-  ],
-
-  // Tổ trưởng GSKT: Kế thừa Base Lead + quyền chuyên môn M2, M3, M7, M8
-  TECHNICAL_OFFICER: [
-    // Base Lead
-    "m1.view", "m1.export",
-    "m2.view",
-    "m3.view", "m3.update_step",
-    "m5.view", "m5.assign_tasks", "m5.review_submissions",
-    "m9.view_search", "m9.use_ai",
-    // Chuyên môn
-    "m2.create_edit", "m2.update_progress", "m2.export",
-    "m3.config_template",
-    "m4.view",
-    "m7.view", "m7.manage_tender",
-    "m8.view", "m8.manage_incidents",
-  ],
-
-  // Kế toán trưởng: Kế thừa Base Lead + quyền tài chính M4, M8
-  CHIEF_ACCOUNTANT: [
-    // Base Lead
-    "m1.view", "m1.export",
-    "m2.view",
-    "m3.view", "m3.update_step",
-    "m5.view", "m5.assign_tasks", "m5.review_submissions",
-    "m9.view_search", "m9.use_ai",
-    // Chuyên môn
-    "m4.view", "m4.create_disbursement", "m4.approve_disbursement", "m4.export",
-    "m8.view", "m8.release_bond",
-  ],
-
-  // Chuyên viên Kỹ thuật: Kế thừa Base Member + M2, M3, M8
-  TECHNICAL_MEMBER: [
-    // Base Member
-    "m1.view",
-    "m2.view",
-    "m3.view",
-    "m5.view",
-    "m9.view_search", "m9.use_ai",
-    // Chuyên môn
-    "m2.update_progress",
-    "m3.update_step",
-    "m8.view", "m8.manage_incidents",
-  ],
-
-  // Kế toán viên: Kế thừa Base Member + M4
-  ACCOUNTANT: [
-    // Base Member
-    "m1.view",
-    "m2.view",
-    "m3.view",
-    "m5.view",
-    "m9.view_search", "m9.use_ai",
-    // Chuyên môn
-    "m4.view", "m4.create_disbursement", "m4.export",
-  ],
-
-  // Cán bộ GPMB: Kế thừa Base Member + M6
-  COMPENSATION_OFFICER: [
-    // Base Member
-    "m1.view",
-    "m2.view",
-    "m3.view",
-    "m5.view",
-    "m9.view_search", "m9.use_ai",
-    // Chuyên môn
-    "m3.update_step",
-    "m6.view", "m6.input_survey", "m6.export",
-  ],
-
-  // Cán bộ Hành chính: Kế thừa Base Member + M1, M3, M9
-  ADMINISTRATIVE_OFFICER: [
-    // Base Member
-    "m1.view",
-    "m2.view",
-    "m3.view",
-    "m5.view",
-    "m9.view_search", "m9.use_ai",
-    // Chuyên môn
-    "m1.export",
-    "m3.update_step",
-    "m9.manage_docs",
-  ],
-
-  // Quyền CNDA: Có quyền điều hành giao việc trong dự án phụ trách
-  ACTING_DIRECTOR: [
-    "m1.view",
-    "m2.view", "m2.update_progress",
-    "m3.view", "m3.update_step",
-    "m5.view", "m5.assign_tasks", "m5.review_submissions",
-    "m7.view", "m7.manage_tender",
-    "m8.view", "m8.manage_incidents",
-    "m9.view_search", "m9.use_ai",
-  ],
-};
+  return map;
+})();

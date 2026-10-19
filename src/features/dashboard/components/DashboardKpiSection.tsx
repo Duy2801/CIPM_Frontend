@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { Card, Flex, Text } from "@/components/ui";
@@ -47,7 +47,7 @@ export default function DashboardKpiSection({ data }: DashboardKpiSectionProps) 
             Giải ngân 2026
           </Text>
           <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80 w-fit mt-0.5">
-            {data.disbursementRate}% kế hoạch
+            Kế hoạch
           </span>
         </Flex>
       </Card>

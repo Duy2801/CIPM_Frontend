@@ -1,6 +1,6 @@
 import type { WorkspaceRoleProfile, WorkspaceTask } from "../../../components/workspace/workspace.types.ts";
 
-export type TeamId = "BGD" | "GSKT" | "HCTH" | "BT" | "KHKT" | "DT" | (string & {});
+export type TeamId = "BGD" | "PGD" | "GSKT" | "HCTH" | "BT" | "KHKT" | "DT" | (string & {});
 export type Employment = "Viên chức" | "Hợp đồng";
 export type AssignmentStatus = "TODO" | "IN_PROGRESS" | "PENDING_APPROVAL" | "DONE";
 export type AssignmentPriority = "HIGH" | "NORMAL";
@@ -10,6 +10,9 @@ export interface Team {
   name: string;
   description: string;
   leaderId: string;
+  roles?: string[];
+  inactiveRoles?: string[];
+  customFields?: Record<string, any>;
 }
 
 export interface Staff {
@@ -26,10 +29,16 @@ export interface Staff {
   email: string;
   accountActive: boolean;
   lockReason?: string;
+  /** Ngày tháng năm sinh */
+  dob?: string;
+  /** Giới tính */
+  gender?: "Nam" | "Nữ";
   /** Danh sách các quyền hạn được cấp thêm (Granted Permissions) */
   permissions?: string[];
   /** Danh sách các quyền hạn bị thu hồi (Revoked Permissions) */
   revokedPermissions?: string[];
+  /** Các trường thông tin động được cấu hình theo dự án */
+  customFields?: Record<string, any>;
 }
 
 export interface PersonnelProject {
@@ -233,15 +242,18 @@ export interface StaffInput {
   teamId: TeamId;
   roleCode: string;
   employment: Employment;
-  phone: string;
+  phone?: string;
   email: string;
   username?: string;
   password?: string;
   accountActive?: boolean;
   isLeader?: boolean;
+  dob?: string;
+  gender?: "Nam" | "Nữ";
   note?: string;
   permissions?: string[];
   revokedPermissions?: string[];
+  customFields?: Record<string, any>;
 }
 
 export type PersonnelTabKey = "assignments" | "project-tasks" | "team-tasks" | "project-team" | "organization" | "accounts";

@@ -1592,7 +1592,6 @@ export default function StepConfigModal({
         zIndex={1350}
         title={
           <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-            <FolderAddOutlined className="text-[#DC2626] text-base" />
             <span>Thêm Quy trình Thủ tục Mới</span>
           </div>
         }

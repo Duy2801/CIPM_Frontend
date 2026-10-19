@@ -104,7 +104,7 @@ export function canDo(
   return permissions.includes(`${moduleKey}:${action}` as Permission);
 }
 
-export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v1";
+export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v2";
 
 import type { AuthUser } from "@/types/auth";
 import {
@@ -172,6 +172,11 @@ export function getRoleEffectivePermissions(roleCode?: string): Permission[] {
  */
 export function getUserEffectivePermissions(user: AuthUser | null): Permission[] {
   if (!user) return [];
+  const roleId = (user as any).roleId;
+  if (roleId) {
+    const roleIdPerms = getRoleEffectivePermissions(roleId);
+    if (roleIdPerms && roleIdPerms.length > 0) return roleIdPerms;
+  }
   const roleCode = user.role || (user as any).roleCode;
   if (roleCode) {
     return getRoleEffectivePermissions(roleCode);

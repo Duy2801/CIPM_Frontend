@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  BankOutlined,
   CheckCircleFilled,
   CloseCircleFilled,
   FileDoneOutlined,
@@ -84,10 +83,7 @@ export default function SettlementWorkflowModal({
     <Drawer
       open={open}
       title={
-        <span className="flex items-center gap-2">
-          <BankOutlined className="text-[#DC2626]" />
-          <span className="text-base font-bold text-[#102A43]">Hồ sơ tất toán tài khoản KBNN</span>
-        </span>
+        <span className="text-base font-bold text-[#102A43]">Hồ sơ tất toán tài khoản KBNN</span>
       }
       width="min(680px, 100vw)"
       onClose={onClose}

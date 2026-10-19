@@ -58,6 +58,8 @@ export { Select, selectVariants } from "./select";
 export type { SelectProps } from "./select";
 export { Checkbox, checkboxVariants } from "./checkbox";
 export type { CheckboxProps } from "./checkbox";
+export { Radio, radioVariants } from "./radio";
+export type { RadioProps } from "./radio";
 export { Form, formVariants, useForm, useWatch } from "./form";
 export type { FormProps } from "./form";
 export { Switch, switchVariants } from "./switch";

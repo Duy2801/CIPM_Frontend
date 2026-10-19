@@ -6,7 +6,6 @@ import {
   CheckCircleFilled,
   HistoryOutlined,
   LockOutlined,
-  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { Button, Card, Flex, Input, Modal, Select, Tag, Text } from "@/components/ui";
 import { useAuth } from "@/features/auth";
@@ -99,7 +98,6 @@ export default function ProjectProgressModal({
     <Modal
       title={
         <Flex align="center" gap={8}>
-          <ThunderboltOutlined className="text-[#DC2626] text-base" />
           <Text strong className="text-slate-900 text-sm sm:text-base">
             Cập nhật tiến độ tuần: {project.code}
           </Text>
