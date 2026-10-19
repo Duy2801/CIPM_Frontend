@@ -58,12 +58,22 @@ export function usePersonnelAssignment() {
 
   useEffect(() => {
     let active = true;
-    mockPersonnelRepository.getDataset().then((result) => {
-      if (active) {
-        setData(result);
-        setLoading(false);
-      }
-    });
+    const load = () => {
+      mockPersonnelRepository.getDataset().then((result) => {
+        if (active) {
+          setData(result);
+          setLoading(false);
+        }
+      });
+    };
+    load();
+    if (typeof window !== "undefined") {
+      window.addEventListener("cipm_personnel_dataset_updated", load);
+      return () => {
+        active = false;
+        window.removeEventListener("cipm_personnel_dataset_updated", load);
+      };
+    }
     return () => { active = false; };
   }, []);
 
@@ -227,13 +237,13 @@ export function usePersonnelAssignment() {
       () => mockPersonnelRepository.grantActingDirector(input),
       customMessage === false
         ? ""
-        : (customMessage || `Đã cấp role Quyền Chủ nhiệm dự án cho ${nameOf(input.staffId)} tại ${projectOf(input.projectId)}.`),
+        : (customMessage || `Đã cấp vai trò Quyền Chủ nhiệm dự án cho ${nameOf(input.staffId)} tại ${projectOf(input.projectId)}.`),
     ),
     revokeActingDirector: (projectId: string, customMessage?: string | false) => run(
       () => mockPersonnelRepository.revokeActingDirector(projectId),
       customMessage === false
         ? ""
-        : (customMessage || `Đã thu hồi role Quyền Chủ nhiệm dự án tại ${projectOf(projectId)}.`),
+        : (customMessage || `Đã thu hồi vai trò Quyền Chủ nhiệm dự án tại ${projectOf(projectId)}.`),
     ),
     addProjectMember: (projectId: string, staffId: string) => run(
       () => mockPersonnelRepository.addProjectMember(projectId, staffId),

@@ -2,28 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ApartmentOutlined,
-  LockOutlined,
-  SafetyCertificateOutlined,
-} from "@ant-design/icons";
+import { LockOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Spin, Text, Title } from "@/components/ui";
-import {
-  ModuleTabLabel,
-  ReasonModal,
-} from "@/components/workspace";
-import { PERSONNEL_TAB_LABELS } from "../constants/personnel-labels";
+import { ReasonModal } from "@/components/workspace";
 import { usePersonnelAssignment } from "../hooks/usePersonnelAssignment";
-import type { PersonnelTabKey } from "../types/personnel.types";
-import AccountsTab from "./AccountsTab";
-import OrganizationTab from "./OrganizationTab";
+import PersonnelDirectoryTab from "./PersonnelDirectoryTab";
 
 export default function PersonnelAssignmentScreen() {
   const router = useRouter();
   const controller = usePersonnelAssignment();
   const { permissions } = controller;
 
-  const [activeTab, setActiveTab] = useState<PersonnelTabKey | null>(null);
   const [lockTargetId, setLockTargetId] = useState<string>();
 
   const currentStaff = useMemo(() => {
@@ -81,92 +70,12 @@ export default function PersonnelAssignmentScreen() {
 
   const lockTarget = controller.data.staff.find((person) => person.id === lockTargetId);
 
-  const defaultTabKey: PersonnelTabKey = "organization";
-
-  const currentTab = activeTab ?? defaultTabKey;
-
-  const tabItems: Array<{
-    key: PersonnelTabKey;
-    label: React.ReactNode;
-    children: React.ReactNode;
-  }> = [
-    {
-      key: "organization" as const,
-      label: (
-        <ModuleTabLabel
-          icon={<ApartmentOutlined />}
-          text={PERSONNEL_TAB_LABELS.organization}
-        />
-      ),
-      children: <OrganizationTab controller={controller} />,
-    },
-    ...(permissions.canManageAccounts
-      ? [
-          {
-            key: "accounts" as const,
-            label: (
-              <ModuleTabLabel
-                icon={<SafetyCertificateOutlined />}
-                text={PERSONNEL_TAB_LABELS.accounts}
-              />
-            ),
-            children: (
-              <AccountsTab
-                controller={controller}
-                onLockAccount={(person) => setLockTargetId(person.id)}
-              />
-            ),
-          },
-        ]
-      : []),
-  ];
-
-  const resolvedCurrentTab = tabItems.some((item) => item.key === currentTab)
-    ? currentTab
-    : tabItems[0]?.key || "organization";
-
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-
-      <section id="personnel-tabs" className="scroll-mt-4">
-        <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
-          <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-100/80 p-1.5 shadow-2xs">
-            {tabItems.map((item) => {
-              const isActive = resolvedCurrentTab === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setActiveTab(item.key as PersonnelTabKey)}
-                  className={`relative flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
-                    isActive
-                      ? "bg-[#DC2626] text-white shadow-sm font-bold"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-                  }`}
-                >
-                  <span className={`text-base leading-none transition-colors ${isActive ? "text-white" : "text-slate-500"}`}>
-                    {item.key === "organization" ? (
-                      <ApartmentOutlined />
-                    ) : (
-                      <SafetyCertificateOutlined />
-                    )}
-                  </span>
-                  <span className="whitespace-nowrap tracking-wide">
-                    {item.key === "organization"
-                      ? PERSONNEL_TAB_LABELS.organization
-                      : PERSONNEL_TAB_LABELS.accounts}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Nội dung tab đang hiển thị */}
-        <div>
-          {tabItems.find((item) => item.key === resolvedCurrentTab)?.children}
-        </div>
-      </section>
+      <PersonnelDirectoryTab
+        controller={controller}
+        onLockAccount={(person) => setLockTargetId(person.id)}
+      />
 
       {lockTarget && (
         <ReasonModal

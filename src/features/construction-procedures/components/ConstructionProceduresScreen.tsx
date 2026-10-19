@@ -10,7 +10,7 @@ import {
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { Button, Input, Modal, Select, Tag, toast } from "@/components/ui";
-import { INITIAL_PROCEDURE_PROJECTS } from "../constants/procedure-mock-data";
+import { INITIAL_PROCEDURE_PROJECTS, createBaseSteps } from "../constants/procedure-mock-data";
 import {
   BUILTIN_PROCEDURE_TEMPLATES,
   loadCustomProfiles,
@@ -72,7 +72,9 @@ export default function ConstructionProceduresScreen() {
     }
     return INITIAL_PROCEDURE_PROJECTS;
   });
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(() => {
+    return INITIAL_PROCEDURE_PROJECTS[0]?.projectId || "";
+  });
 
   // Tự động lưu dữ liệu quy trình vào localStorage
   useEffect(() => {
@@ -93,7 +95,11 @@ export default function ConstructionProceduresScreen() {
       if (p.projectCode) projectsDataMap.set(p.projectCode, p);
     });
 
-    return sharedProjects.map((sp): ProjectProcedureData => {
+    if (!sharedProjects || sharedProjects.length === 0) {
+      return projectsData;
+    }
+
+    const merged = sharedProjects.map((sp): ProjectProcedureData => {
       const existing = projectsDataMap.get(sp.id) || (sp.code ? projectsDataMap.get(sp.code) : undefined);
       if (existing) {
         // Giữ trọn vẹn danh sách bước thủ tục đã cấu hình và lưu
@@ -123,7 +129,7 @@ export default function ConstructionProceduresScreen() {
           departmentStatuses: existing.departmentStatuses || {},
           directorApproval: existing.directorApproval || { status: "PENDING" },
           stageApprovals: existing.stageApprovals || {},
-          steps: currentSteps,
+          steps: currentSteps.length > 0 ? currentSteps : createBaseSteps(),
           history: existing.history || [],
         };
       }
@@ -144,10 +150,19 @@ export default function ConstructionProceduresScreen() {
         departmentStatuses: {},
         directorApproval: { status: "PENDING" },
         stageApprovals: {},
-        steps: [],
+        steps: createBaseSteps(),
         history: [],
       };
     });
+
+    // Giữ lại các dự án mẫu nếu sharedProjects chưa có
+    projectsData.forEach((p) => {
+      if (!merged.some((m) => m.projectId === p.projectId || m.projectCode === p.projectCode)) {
+        merged.push(p);
+      }
+    });
+
+    return merged;
   }, [projectsData, sharedProjects]);
 
   // Lấy dữ liệu dự án đang chọn
@@ -183,6 +198,10 @@ export default function ConstructionProceduresScreen() {
         currentProject.supervisorName?.toLowerCase() === userName)
   );
 
+  const canViewProcedure =
+    canUserDo(user, "m3_construction_procedures", "view") ||
+    hasMatrixPermission(user, "m3.view");
+
   const canApproveProcedure =
     canUserDo(user, "m3_construction_procedures", "approve") ||
     hasMatrixPermission(user, "m3.approve_step");
@@ -193,7 +212,8 @@ export default function ConstructionProceduresScreen() {
 
   const canConfigureProcedure =
     canUserDo(user, "m3_construction_procedures", "configure") ||
-    hasMatrixPermission(user, "m3.config_template");
+    hasMatrixPermission(user, "m3.config_template") ||
+    canUpdateProcedure;
 
   // Quản lý quy trình được áp dụng cho từng dự án
   const [projectProcedures, setProjectProcedures] = useState<Record<string, string>>(() => {
@@ -1299,7 +1319,8 @@ export default function ConstructionProceduresScreen() {
         procedureProfiles={allProcedureProfiles}
         selectedProcedureId={selectedProcedureId}
         onSelectProcedure={handleSelectProcedure}
-        canUpdateProcedure={canConfigureProcedure}
+        canUpdateProcedure={canUpdateProcedure}
+        canConfigureProcedure={canConfigureProcedure}
       />
 
       {/* 4. Danh sách các bước thủ tục */}
@@ -1327,6 +1348,7 @@ export default function ConstructionProceduresScreen() {
             onOpenDetailStep={(step) => setDetailStep(step)}
             canUpdateProcedure={canUpdateProcedure}
             canConfigureProcedure={canConfigureProcedure}
+            canApproveProcedure={canApproveProcedure}
             onOpenStepConfig={() => setIsConfigOpen(true)}
             onOpenAddDeptProcedure={() => setIsAddDeptModalOpen(true)}
             isLeadOfDept={isLeadOfUserDept}
@@ -1368,11 +1390,12 @@ export default function ConstructionProceduresScreen() {
       />
 
       {/* 7. Modal Cấu hình Bước Điều Kiện (BRD 4.3.1) */}
-      {isConfigOpen && canConfigureProcedure && currentProject && (
+      {isConfigOpen && canConfigureProcedure && (
         <StepConfigModal
           open
-          steps={currentProject.steps || []}
+          steps={currentProject?.steps || createBaseSteps()}
           currentProcedureId={selectedProcedureId}
+          projectName={currentProject?.projectName || "Dự án"}
           onClose={() => setIsConfigOpen(false)}
           onSaveConfig={handleSaveConfig}
         />

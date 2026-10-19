@@ -26,7 +26,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
         "Tổ trưởng Giám sát",
         "Kỹ sư Kỹ thuật – Giám sát",
         "Chuyên viên QLDA",
-        "Thành viên tổ",
+        "Thành viên",
       ],
     },
     {
@@ -37,7 +37,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
       roles: [
         "Tổ trưởng Bồi thường – GPMB",
         "Chuyên viên Bồi thường – GPMB",
-        "Thành viên tổ",
+        "Thành viên",
       ],
     },
     {
@@ -50,7 +50,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
         "Kế toán trưởng",
         "Kế toán viên (Tài chính)",
         "Chuyên viên Hành chính – Tổng hợp",
-        "Thành viên tổ",
+        "Thành viên",
       ],
     },
   ],
@@ -150,7 +150,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-007",
       name: "Chau Thị Thi",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nữ",
@@ -164,7 +164,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-008",
       name: "Huỳnh Phú Lợi",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nam",
@@ -178,7 +178,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-009",
       name: "Trần Thu Kiên",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nữ",
@@ -192,7 +192,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-010",
       name: "Đặng Hoàng Huy",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nam",
@@ -206,7 +206,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-011",
       name: "Hoàng Huy Hoàng",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nam",
@@ -220,7 +220,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-012",
       name: "Huỳnh Thắng Lợi",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nam",
@@ -234,7 +234,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-013",
       name: "Trương Thế Kiệt",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "GSKT",
       roleCode: "TECHNICAL_OFFICER",
       gender: "Nam",
@@ -278,7 +278,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-016",
       name: "Trần Lê Huynh",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "BT",
       roleCode: "COMPENSATION_OFFICER",
       gender: "Nam",
@@ -291,7 +291,7 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
     {
       id: "ST-017",
       name: "Huỳnh Công Lý",
-      title: "Tổ viên",
+      title: "Thành viên",
       teamId: "BT",
       roleCode: "COMPENSATION_OFFICER",
       gender: "Nam",

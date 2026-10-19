@@ -57,6 +57,7 @@ interface ProcedureFilterToolbarProps {
   selectedProcedureId?: string;
   onSelectProcedure?: (procedureId: string) => void;
   canUpdateProcedure?: boolean;
+  canConfigureProcedure?: boolean;
 }
 
 const statusOptions: { value: ProcedureFilterStatus; label: string }[] = [
@@ -95,10 +96,14 @@ export default function ProcedureFilterToolbar({
   isDeptCompletedByLead = false,
   onConfirmDeptComplete,
   canUpdateProcedure = true,
+  canConfigureProcedure,
 }: ProcedureFilterToolbarProps) {
   const { user } = useAuth();
-  const isDirector = isDirectorUser(user);
-  const currentProject = projects.find((project) => project.projectId === selectedProjectId);
+  const currentProject =
+    projects.find((project) => project.projectId === selectedProjectId) ||
+    projects[0];
+
+  const hasConfigPerm = canConfigureProcedure !== undefined ? canConfigureProcedure : canUpdateProcedure;
 
   const departmentOptions = availableDepartments.map((dept) => ({
     value: dept,
@@ -132,7 +137,7 @@ export default function ProcedureFilterToolbar({
             </div>
             <Select
               className="h-8.5 w-full text-xs"
-              value={selectedProjectId || undefined}
+              value={selectedProjectId || currentProject?.projectId || undefined}
               placeholder="— Chọn dự án để theo dõi —"
               showSearch
               optionFilterProp="label"
@@ -147,11 +152,10 @@ export default function ProcedureFilterToolbar({
 
         {/* Cụm nút thao tác bên phải theo Phân quyền nghiệp vụ */}
         <div className="flex shrink-0 items-center gap-2 pt-1 sm:pt-0 flex-wrap">
-          {canUpdateProcedure && (
+          {hasConfigPerm && (
             <Button
               intent="outline"
               scale="compact"
-              disabled={!currentProject}
               icon={<SlidersOutlined />}
               onClick={onOpenStepConfig}
               className="h-9 text-xs font-semibold text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] shadow-2xs"
@@ -163,7 +167,6 @@ export default function ProcedureFilterToolbar({
           <Button
             intent="outline"
             scale="compact"
-            disabled={!currentProject}
             icon={<HistoryOutlined />}
             onClick={onOpenAuditLog}
             className="h-9 text-xs font-semibold text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] shadow-2xs"

@@ -37,6 +37,8 @@ export interface Staff {
   permissions?: string[];
   /** Danh sách các quyền hạn bị thu hồi (Revoked Permissions) */
   revokedPermissions?: string[];
+  /** Vai trò / chức danh đã tắt (thu hồi): không tính vào chức danh & quyền, vẫn lưu để bật lại */
+  revokedRoles?: string[];
   /** Các trường thông tin động được cấu hình theo dự án */
   customFields?: Record<string, any>;
 }
@@ -253,6 +255,8 @@ export interface StaffInput {
   note?: string;
   permissions?: string[];
   revokedPermissions?: string[];
+  /** Vai trò / chức danh đã tắt (thu hồi): không tính vào chức danh & quyền, vẫn lưu để bật lại */
+  revokedRoles?: string[];
   customFields?: Record<string, any>;
 }
 

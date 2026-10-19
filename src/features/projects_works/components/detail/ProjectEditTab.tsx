@@ -2,12 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
   FileTextOutlined,
   PaperClipOutlined,
-  PlusOutlined,
   SaveOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
@@ -280,66 +278,95 @@ export default function ProjectEditTab({
             />
           </Flex>
 
-          {/* HÀNG: PHÒNG BAN PHỤ TRÁCH (1 hàng riêng biệt dạng thẻ chọn thông minh) */}
-          <div className="space-y-2">
-            <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide block">
-              PHÒNG BAN PHỤ TRÁCH <span className="text-rose-500">*</span>
-            </Text>
-
-            {/* Danh sách các phòng ban: mỗi phòng 1 hàng để hiển thị đầy đủ tên, rõ ràng, không bị co cụm */}
-            <div className="flex flex-col gap-1.5">
-              {DEPARTMENT_OPTIONS.map((dept) => {
-                const isSelected = formData.departments.includes(dept.value);
-                return (
-                  <button
-                    key={dept.value}
-                    type="button"
-                    onClick={() => {
-                      const next = isSelected
-                        ? formData.departments.filter((d: string) => d !== dept.value)
-                        : [...formData.departments, dept.value];
-                      setFormData({ ...formData, departments: next });
-                      setEditErrorMsg("");
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-red-50/70 border-[#DC2626] text-[#DC2626] shadow-xs ring-1 ring-red-200"
-                        : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`font-mono text-xs px-2 py-0.5 rounded font-bold shrink-0 ${
-                          isSelected
-                            ? "bg-[#DC2626] text-white"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
-                        }`}
-                      >
-                        {dept.short}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-800" title={dept.label}>
-                        {dept.value}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isSelected ? (
-                        <span className="text-[11px] font-semibold text-[#DC2626] flex items-center gap-1">
-                          <CheckOutlined className="text-xs" /> Đã chọn
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <PlusOutlined className="text-xs" /> Bấm để chọn
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+          {/* HÀNG: PHÒNG BAN PHỤ TRÁCH (Chọn qua Select & hiển thị danh sách trong khung bên dưới) */}
+          <Flex vertical gap={6} className="w-full">
+            <div className="flex items-center justify-between">
+              <Text variant="label" className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
+                PHÒNG BAN PHỤ TRÁCH <span className="text-rose-500">*</span>
+              </Text>
+              {formData.departments.length > 0 && (
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Đã chọn: <strong className="text-[#DC2626]">{formData.departments.length}</strong> phòng ban
+                </span>
+              )}
             </div>
-            <span className="block text-[11px] text-slate-400">
-              Bấm trực tiếp vào từng phòng ban để chọn hoặc bỏ chọn phối hợp thực hiện dự án.
-            </span>
-          </div>
+
+            {/* Input Select dùng để thêm phòng ban */}
+            <Select
+              placeholder={
+                DEPARTMENT_OPTIONS.filter((d) => !formData.departments.includes(d.value)).length > 0
+                  ? "+ Chọn thêm phòng ban phụ trách..."
+                  : "Đã chọn đủ tất cả phòng ban"
+              }
+              value={null}
+              disabled={DEPARTMENT_OPTIONS.filter((d) => !formData.departments.includes(d.value)).length === 0}
+              onChange={(val) => {
+                if (val && !formData.departments.includes(val)) {
+                  setFormData({ ...formData, departments: [...formData.departments, val] });
+                  setEditErrorMsg("");
+                }
+              }}
+              className="w-full text-xs"
+              options={DEPARTMENT_OPTIONS.filter((d) => !formData.departments.includes(d.value)).map((dept) => ({
+                value: dept.value,
+                label: `${dept.short} — ${dept.value}`,
+              }))}
+            />
+
+            {/* Khung hiển thị các phòng ban đã thêm */}
+            {formData.departments.length > 0 ? (
+              <div className="p-2.5 rounded-lg bg-slate-50/80 border border-slate-200 space-y-1.5">
+                <div className="flex items-center justify-between px-1 pb-1">
+                  <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                    Danh sách phòng ban đã thêm
+                  </span>
+                  {formData.departments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, departments: [] })}
+                      className="text-[11px] text-slate-400 hover:text-red-600 cursor-pointer transition-colors"
+                    >
+                      Xóa tất cả
+                    </button>
+                  )}
+                </div>
+                {formData.departments.map((deptVal: string) => {
+                  const deptInfo = DEPARTMENT_OPTIONS.find((d) => d.value === deptVal);
+                  const short = deptInfo?.short || "PB";
+                  return (
+                    <div
+                      key={deptVal}
+                      className="flex items-center justify-between px-3 py-2 rounded-md bg-white border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="font-mono text-xs px-2 py-0.5 rounded font-bold bg-[#DC2626] text-white shrink-0">
+                          {short}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-800" title={deptVal}>
+                          {deptVal}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = formData.departments.filter((d: string) => d !== deptVal);
+                          setFormData({ ...formData, departments: next });
+                        }}
+                        className="text-slate-400 hover:text-[#DC2626] hover:bg-red-50 p-1 rounded-md transition-colors cursor-pointer shrink-0 ml-2"
+                        title={`Xóa ${deptVal}`}
+                      >
+                        <CloseOutlined className="text-xs" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-slate-50 border border-dashed border-slate-300 text-center text-xs text-slate-500">
+                Chưa có phòng ban phụ trách nào được chọn. Vui lòng chọn từ menu ở trên.
+              </div>
+            )}
+          </Flex>
 
           {/* HÀNG: THỜI GIAN TRIỂN KHAI (NGÀY BẮT ĐẦU & NGÀY KẾT THÚC KẾ HOẠCH) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

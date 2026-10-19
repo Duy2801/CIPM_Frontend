@@ -5,13 +5,16 @@ import {
   CrownOutlined,
   InfoCircleOutlined,
   MailOutlined,
+  PlusOutlined,
   SettingOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Checkbox, Col, Drawer, Form, Input, Row, Select, Text } from "@/components/ui";
-import type { PersonnelDataset, StaffInput, TeamId } from "../types/personnel.types";
-import type { CustomFieldDefinition } from "../types/custom-fields.types";
-import { getCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
+import { Button, Checkbox, Col, Divider, Drawer, Form, Input, Row, Select, Text, toast } from "@/components/ui";
+import { normalizeSearchText } from "@/utils/search-text";
+import type { PersonnelDataset, StaffInput, Team, TeamId } from "../types/personnel.types";
+import type { CustomFieldDefinition, CustomFieldType } from "../types/custom-fields.types";
+import { getCustomFields, saveCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
+import { mockPersonnelRepository } from "../services/mock-personnel.repository";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
   title?: string;
@@ -26,11 +29,116 @@ interface StaffModalProps {
   onCreate: (input: StaffInput) => Promise<boolean>;
 }
 
+interface RoleOptionItem {
+  value: string;
+  roleCode: string;
+  isLeader: boolean;
+  title: string;
+  teamId?: string;
+  teamName?: string;
+  searchText: string;
+  label: React.ReactNode;
+}
+
+const BASE_TEAM_POSITIONS: Record<
+  string,
+  { title: string; roleCode: string; isLeader?: boolean }[]
+> = {
+  BGD: [
+    { title: "Giám đốc", roleCode: "ADMIN", isLeader: true },
+  ],
+  PGD: [
+    { title: "Phó Giám đốc", roleCode: "DEPUTY_DIRECTOR", isLeader: true },
+  ],
+  GSKT: [
+    { title: "Tổ trưởng", roleCode: "TECHNICAL_OFFICER", isLeader: true },
+    { title: "Tổ phó (KT)", roleCode: "TECHNICAL_OFFICER", isLeader: false },
+    { title: "Tổ phó (GS)", roleCode: "TECHNICAL_OFFICER", isLeader: false },
+    { title: "Thành viên", roleCode: "TECHNICAL_OFFICER", isLeader: false },
+  ],
+  BT: [
+    { title: "Tổ trưởng", roleCode: "COMPENSATION_OFFICER", isLeader: true },
+    { title: "Tổ phó", roleCode: "COMPENSATION_OFFICER", isLeader: false },
+    { title: "Thành viên bồi thường", roleCode: "COMPENSATION_OFFICER", isLeader: false },
+    { title: "Thành viên", roleCode: "COMPENSATION_OFFICER", isLeader: false },
+  ],
+  HCTH: [
+    { title: "Kế toán trưởng", roleCode: "CHIEF_ACCOUNTANT", isLeader: true },
+    { title: "Kế toán Công trình - Thủ quỹ", roleCode: "ACCOUNTANT", isLeader: false },
+    { title: "Kế toán viên", roleCode: "ACCOUNTANT", isLeader: false },
+    { title: "Hành chính tổng hợp", roleCode: "ADMINISTRATIVE_OFFICER", isLeader: false },
+    { title: "Văn thư, hỗ trợ Hành chính TH", roleCode: "ADMINISTRATIVE_OFFICER", isLeader: false },
+    { title: "Thành viên", roleCode: "ADMINISTRATIVE_OFFICER", isLeader: false },
+  ],
+};
+
+function getLocalStorageCustomRoles(): { title: string; roleCode: string; isLeader?: boolean }[] {
+  if (typeof window === "undefined") return [];
+  const results: { title: string; roleCode: string; isLeader?: boolean }[] = [];
+  const seen = new Set<string>();
+
+  const storageKeys = [
+    "cipm_custom_roles_matrix_v3",
+    "cipm_custom_roles_matrix_v2",
+    "cipm_custom_roles_matrix",
+    "cipm_custom_roles",
+    "cipm_roles",
+  ];
+
+  for (const k of storageKeys) {
+    try {
+      const raw = window.localStorage.getItem(k);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item: any) => {
+            const name = item.name || item.title || item.label || item.shortName;
+            if (name && typeof name === "string") {
+              const trimmed = name.trim();
+              if (trimmed && !seen.has(trimmed.toLowerCase())) {
+                seen.add(trimmed.toLowerCase());
+                results.push({
+                  title: trimmed,
+                  roleCode: item.code || "TECHNICAL_OFFICER",
+                  isLeader: item.group === "lead" || Boolean(item.isLeader),
+                });
+              }
+            }
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return results;
+}
+
 export default function StaffModal({ data, errorText, onClose, onCreate }: StaffModalProps) {
   const [form] = Form.useForm<StaffFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [appliedFieldIds, setAppliedFieldIds] = useState<Record<string, boolean>>({});
+
+  // Danh sách phòng ban nội bộ có thể bổ sung ngay trên form
+  const [teams, setTeams] = useState<Team[]>(() => data.teams);
+
+  useEffect(() => {
+    setTeams(data.teams);
+  }, [data.teams]);
+
+  // State thêm phòng ban mới trong dropdown
+  const [newDeptName, setNewDeptName] = useState("");
+  const [isAddingDeptLoading, setIsAddingDeptLoading] = useState(false);
+
+  // State thêm vị trí mới trong dropdown
+  const [newRoleTitle, setNewRoleTitle] = useState("");
+  const [isAddingRoleLoading, setIsAddingRoleLoading] = useState(false);
+
+  // State thêm trường dữ liệu tùy biến (field) trực tiếp trên form
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState<CustomFieldType>("text");
+  const [isAddingField, setIsAddingField] = useState(false);
 
   useEffect(() => {
     setCustomFields(getCustomFields("staff"));
@@ -54,196 +162,291 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
   const selectedTeamId = Form.useWatch("teamId", form);
   const selectedTeamRole = Form.useWatch("teamRole", form);
 
-const BASE_TEAM_POSITIONS: Record<
-  string,
-  { title: string; roleCode: string; isLeader?: boolean }[]
-> = {
-  BGD: [
-    { title: "Giám đốc", roleCode: "ADMIN", isLeader: true },
-  ],
-  PGD: [
-    { title: "Phó Giám đốc", roleCode: "DEPUTY_DIRECTOR", isLeader: true },
-  ],
-  GSKT: [
-    { title: "Tổ trưởng", roleCode: "TECHNICAL_OFFICER", isLeader: true },
-    { title: "Tổ phó (KT)", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-    { title: "Tổ phó (GS)", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-    { title: "Tổ viên", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-  ],
-  BT: [
-    { title: "Tổ trưởng", roleCode: "COMPENSATION_OFFICER", isLeader: true },
-    { title: "Tổ phó", roleCode: "COMPENSATION_OFFICER", isLeader: false },
-    { title: "Thành viên bồi thường", roleCode: "COMPENSATION_OFFICER", isLeader: false },
-    { title: "Tổ viên", roleCode: "COMPENSATION_OFFICER", isLeader: false },
-  ],
-  HCTH: [
-    { title: "Kế toán trưởng", roleCode: "CHIEF_ACCOUNTANT", isLeader: true },
-    { title: "Kế toán Công trình - Thủ quỹ", roleCode: "ACCOUNTANT", isLeader: false },
-    { title: "Kế toán viên", roleCode: "ACCOUNTANT", isLeader: false },
-    { title: "Hành chính tổng hợp", roleCode: "ADMINISTRATIVE_OFFICER", isLeader: false },
-    { title: "Văn thư, hỗ trợ Hành chính TH", roleCode: "ADMINISTRATIVE_OFFICER", isLeader: false },
-    { title: "Tổ viên", roleCode: "ADMINISTRATIVE_OFFICER", isLeader: false },
-  ],
-};
-
-  const currentTeam = data.teams.find((t) => t.id === selectedTeamId);
+  const currentTeam = teams.find((t) => t.id === selectedTeamId) || data.teams.find((t) => t.id === selectedTeamId);
   const currentLeader = data.staff.find((s) => s.id === currentTeam?.leaderId);
 
-  // Danh sách các vai trò / vị trí trong tổ CHỈ hiển thị vị trí thuộc tổ đó (và các vị trí đã thêm trước đó)
-  const teamRoleOptions = useMemo(() => {
-    if (!selectedTeamId) return [];
+  // Toàn bộ vị trí trong hệ thống, một danh sách phẳng (không chia nhóm theo phòng ban).
+  // Vị trí trùng tên ở nhiều phòng ban (VD: "Thành viên") được ghi kèm mã phòng ban để phân biệt,
+  // vì cùng tên nhưng mỗi phòng ban có quyền khác nhau: "Thành viên (GSKT)", "Thành viên (HCTH)".
+  const { roleSelectOptions, allRoleOptions } = useMemo(() => {
+    const allLeafOptions: RoleOptionItem[] = [];
 
-    const basePositions = BASE_TEAM_POSITIONS[selectedTeamId] || [
-      { title: "Tổ trưởng / Phụ trách", roleCode: "TECHNICAL_OFFICER", isLeader: true },
-      { title: "Tổ phó", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-      { title: "Tổ viên", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-    ];
+    const renderLabel = (displayTitle: string, isLeader: boolean, teamId?: string) => (
+      <div className="flex items-center gap-1.5">
+        {isLeader ? (
+          <CrownOutlined className={teamId === "BGD" ? "text-red-500" : teamId === "PGD" ? "text-blue-500" : "text-amber-500"} />
+        ) : (
+          <UserOutlined className="text-slate-400" />
+        )}
+        <span className={isLeader ? "font-semibold text-slate-900" : "text-slate-700"}>{displayTitle}</span>
+      </div>
+    );
 
-    const existingStaff = data.staff.filter((s) => s.teamId === selectedTeamId);
-    const seenTitles = new Set<string>();
-    const options: {
-      value: string;
-      roleCode: string;
-      isLeader: boolean;
-      title: string;
-      label: React.ReactNode;
-    }[] = [];
+    teams.forEach((team) => {
+      const seenInTeam = new Set<string>();
 
-    // 1. Các vị trí được cấu hình trên phòng ban (team.roles)
-    if (currentTeam?.roles && currentTeam.roles.length > 0) {
-      const inactiveSet = new Set((currentTeam.inactiveRoles || []).map((r) => r.trim().toLowerCase()));
-      currentTeam.roles.forEach((r, idx) => {
-        const trimmed = r.trim();
-        // Nếu role đang bị khóa (inactive) thì ẩn đi đối với thêm mới cán bộ
-        if (!trimmed || seenTitles.has(trimmed.toLowerCase())) return;
-        if (inactiveSet.has(trimmed.toLowerCase())) return;
-        seenTitles.add(trimmed.toLowerCase());
+      const addRole = (title: string, defaultRoleCode?: string, defaultIsLeader?: boolean) => {
+        const cleanTitle = title.trim();
+        if (!cleanTitle || seenInTeam.has(cleanTitle.toLowerCase())) return;
+        seenInTeam.add(cleanTitle.toLowerCase());
+
         const isLeader =
-          idx === 0 ||
-          /trưởng|lead|chủ nhiệm|phụ trách|giám đốc/i.test(trimmed);
-        let roleCode = "TECHNICAL_OFFICER";
-        if (selectedTeamId === "BGD") {
-          roleCode = /giám đốc/i.test(trimmed) && !/phó|thư ký/i.test(trimmed) ? "ADMIN" : "ADMINISTRATIVE_OFFICER";
-        } else if (selectedTeamId === "PGD") {
-          roleCode = "DEPUTY_DIRECTOR";
-        } else if (isLeader) {
-          roleCode =
-            selectedTeamId === "HCTH"
-              ? "CHIEF_ACCOUNTANT"
-              : selectedTeamId === "BT"
-              ? "COMPENSATION_OFFICER"
-              : "TECHNICAL_OFFICER";
-        } else if (/kế toán|tài chính/i.test(trimmed)) {
-          roleCode = /trưởng/i.test(trimmed) ? "CHIEF_ACCOUNTANT" : "ACCOUNTANT";
-        } else if (/bồi thường|gpmb|giải tỏa|tái định cư/i.test(trimmed)) {
-          roleCode = "COMPENSATION_OFFICER";
-        } else if (/hành chính|văn thư|tổng hợp/i.test(trimmed)) {
-          roleCode = "ADMINISTRATIVE_OFFICER";
+          defaultIsLeader !== undefined
+            ? defaultIsLeader
+            : team.id === "BGD"
+            ? /giám đốc/i.test(cleanTitle) && !/phó|thư ký/i.test(cleanTitle)
+            : team.id === "PGD"
+            ? true
+            : /trưởng|lead|chủ nhiệm|phụ trách|giám đốc/i.test(cleanTitle);
+
+        let roleCode = defaultRoleCode || "TECHNICAL_OFFICER";
+        if (!defaultRoleCode) {
+          if (team.id === "BGD") {
+            roleCode = /giám đốc/i.test(cleanTitle) && !/phó|thư ký/i.test(cleanTitle) ? "ADMIN" : "ADMINISTRATIVE_OFFICER";
+          } else if (team.id === "PGD") {
+            roleCode = "DEPUTY_DIRECTOR";
+          } else if (isLeader) {
+            roleCode =
+              team.id === "HCTH"
+                ? "CHIEF_ACCOUNTANT"
+                : team.id === "BT"
+                ? "COMPENSATION_OFFICER"
+                : "TECHNICAL_OFFICER";
+          } else if (/kế toán|tài chính/i.test(cleanTitle)) {
+            roleCode = /trưởng/i.test(cleanTitle) ? "CHIEF_ACCOUNTANT" : "ACCOUNTANT";
+          } else if (/bồi thường|gpmb|giải tỏa|tái định cư/i.test(cleanTitle)) {
+            roleCode = "COMPENSATION_OFFICER";
+          } else if (/hành chính|văn thư|tổng hợp/i.test(cleanTitle)) {
+            roleCode = "ADMINISTRATIVE_OFFICER";
+          }
         }
 
-        options.push({
-          value: `ROLE_${selectedTeamId}_${trimmed}`,
+        allLeafOptions.push({
+          value: `ROLE_${team.id}_${cleanTitle}`,
+          title: cleanTitle,
           roleCode,
           isLeader,
-          title: trimmed,
-          label: (
-            <div className="flex items-center gap-1.5">
-              {isLeader ? (
-                <CrownOutlined className={selectedTeamId === "BGD" ? "text-red-500" : selectedTeamId === "PGD" ? "text-blue-500" : "text-amber-500"} />
-              ) : (
-                <UserOutlined className="text-slate-400" />
-              )}
-              <span className={isLeader ? "font-semibold text-slate-900" : "text-slate-700"}>
-                {trimmed}
-              </span>
-            </div>
-          ),
+          teamId: team.id,
+          teamName: team.name,
+          searchText: `${cleanTitle} ${team.name} ${team.id}`,
+          label: null, // gán ở bước dưới, sau khi biết tên có trùng giữa các phòng ban không
         });
+      };
+
+      // 1. Roles cấu hình trên team
+      const inactiveSet = new Set((team.inactiveRoles || []).map((r) => r.trim().toLowerCase()));
+      (team.roles || []).forEach((r) => {
+        if (!inactiveSet.has(r.trim().toLowerCase())) {
+          addRole(r);
+        }
       });
+
+      // 2. Base positions
+      (BASE_TEAM_POSITIONS[team.id] || []).forEach((bp) => addRole(bp.title, bp.roleCode, bp.isLeader));
+
+      // 3. Existing staff in team
+      data.staff
+        .filter((s) => s.teamId === team.id)
+        .forEach((s) => {
+          if (s.title) addRole(s.title, s.roleCode);
+        });
+    });
+
+    // 4. Custom/independent roles from localStorage
+    getLocalStorageCustomRoles().forEach((cr) => {
+      if (allLeafOptions.some((o) => o.title.toLowerCase() === cr.title.toLowerCase())) return;
+      allLeafOptions.push({
+        value: `ROLE_CUSTOM_${cr.title}`,
+        title: cr.title,
+        roleCode: cr.roleCode,
+        isLeader: Boolean(cr.isLeader),
+        searchText: `${cr.title} Vai trò tùy chỉnh`,
+        label: null,
+      });
+    });
+
+    // Đếm tên vị trí xuất hiện ở bao nhiêu phòng ban → trùng thì ghi kèm mã phòng ban
+    const teamCountByTitle = new Map<string, Set<string>>();
+    allLeafOptions.forEach((o) => {
+      if (!o.teamId) return;
+      const key = o.title.toLowerCase();
+      teamCountByTitle.set(key, (teamCountByTitle.get(key) ?? new Set()).add(o.teamId));
+    });
+
+    allLeafOptions.forEach((o) => {
+      const isShared = o.teamId && (teamCountByTitle.get(o.title.toLowerCase())?.size ?? 0) > 1;
+      const displayTitle = isShared ? `${o.title} (${o.teamId})` : o.title;
+      o.label = renderLabel(displayTitle, o.isLeader, o.teamId);
+      o.searchText = `${displayTitle} ${o.searchText}`;
+    });
+
+    return { roleSelectOptions: allLeafOptions, allRoleOptions: allLeafOptions };
+  }, [teams, data.staff]);
+
+  // Xử lý thêm phòng ban mới trực tiếp từ dropdown
+  const handleAddDepartment = async () => {
+    const trimmed = newDeptName.trim();
+    if (!trimmed) {
+      toast.warning("Chưa nhập tên phòng ban", "Vui lòng nhập tên phòng ban / tổ chuyên môn.");
+      return;
     }
 
-    // 2. Các vị trí cơ sở theo danh mục chuẩn của tổ (nếu chưa có)
-    basePositions.forEach((pos) => {
-      if (seenTitles.has(pos.title.toLowerCase().trim())) return;
-      seenTitles.add(pos.title.toLowerCase().trim());
-      options.push({
-        value: `ROLE_${selectedTeamId}_${pos.title}`,
-        roleCode: pos.roleCode,
-        isLeader: Boolean(pos.isLeader),
-        title: pos.title,
-        label: (
-          <div className="flex items-center gap-1.5">
-            {pos.isLeader ? (
-              <CrownOutlined className="text-amber-500" />
-            ) : (
-              <UserOutlined className="text-slate-400" />
-            )}
-            <span className={pos.isLeader ? "font-semibold text-slate-900" : "text-slate-700"}>
-              {pos.title}
-            </span>
-          </div>
-        ),
+    if (teams.some((t) => normalizeSearchText(t.name) === normalizeSearchText(trimmed))) {
+      toast.warning("Trùng tên phòng ban", "Phòng ban này đã tồn tại trong danh sách.");
+      return;
+    }
+
+    setIsAddingDeptLoading(true);
+    try {
+      const createdTeam = await mockPersonnelRepository.createTeam({
+        name: trimmed,
+        roles: ["Tổ trưởng", "Tổ phó", "Thành viên"],
       });
-    });
-
-    // 2. Tự động gom thêm các vị trí mà phòng ban này đã có nhân sự thêm trước đó (nếu chưa có trong chuẩn)
-    existingStaff.forEach((s) => {
-      const cleanTitle = s.title?.trim();
-      if (cleanTitle && !seenTitles.has(cleanTitle.toLowerCase())) {
-        seenTitles.add(cleanTitle.toLowerCase());
-        const isLeader =
-          s.id === currentTeam?.leaderId ||
-          cleanTitle.toLowerCase().startsWith("tổ trưởng") ||
-          cleanTitle.toLowerCase().startsWith("trưởng") ||
-          cleanTitle.toLowerCase().includes("giám đốc");
-        options.push({
-          value: `ROLE_${selectedTeamId}_${cleanTitle}`,
-          roleCode: s.roleCode || "TECHNICAL_OFFICER",
-          isLeader,
-          title: cleanTitle,
-          label: (
-            <div className="flex items-center gap-1.5">
-              {isLeader ? (
-                <CrownOutlined className="text-amber-500" />
-              ) : (
-                <UserOutlined className="text-slate-400" />
-              )}
-              <span className={isLeader ? "font-semibold text-slate-900" : "text-slate-700"}>
-                {cleanTitle}
-              </span>
-            </div>
-          ),
-        });
+      setTeams((prev) => [...prev, createdTeam]);
+      setNewDeptName("");
+      handleTeamChange(createdTeam.id as TeamId);
+      toast.success("Thành công", `Đã thêm phòng ban "${trimmed}".`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("cipm_personnel_dataset_updated"));
       }
-    });
+    } catch (err: any) {
+      toast.error("Lỗi", err?.message || "Không thể thêm phòng ban mới.");
+    } finally {
+      setIsAddingDeptLoading(false);
+    }
+  };
 
-    return options;
-  }, [selectedTeamId, data.teams, data.staff, currentTeam?.leaderId]);
+  // Xử lý thêm vị trí / vai trò mới trực tiếp từ dropdown
+  const handleAddRole = async () => {
+    const trimmed = newRoleTitle.trim();
+    if (!trimmed) {
+      toast.warning("Chưa nhập tên vị trí", "Vui lòng nhập tên vị trí / chức vụ mới.");
+      return;
+    }
 
-  // Luôn đồng bộ giá trị khi đổi phòng ban hoặc khi options thay đổi
+    if (!selectedTeamId) {
+      toast.warning("Chưa chọn phòng ban", "Vui lòng chọn bộ phận trực thuộc trước.");
+      return;
+    }
+
+    const currentRoles = currentTeam?.roles || [];
+    if (
+      currentRoles.some((r) => normalizeSearchText(r) === normalizeSearchText(trimmed)) ||
+      allRoleOptions.some((opt) => normalizeSearchText(opt.title) === normalizeSearchText(trimmed))
+    ) {
+      toast.warning("Trùng tên vị trí", "Vị trí này đã tồn tại trong danh mục.");
+      return;
+    }
+
+    setIsAddingRoleLoading(true);
+    try {
+      const updatedRoles = [...currentRoles, trimmed];
+      const updatedTeam = await mockPersonnelRepository.updateTeam(selectedTeamId, {
+        roles: updatedRoles,
+      });
+      setTeams((prev) =>
+        prev.map((t) => (t.id === selectedTeamId ? updatedTeam : t))
+      );
+      setNewRoleTitle("");
+
+      // Xác định cờ isLeader và roleCode
+      const isLeader = /trưởng|lead|chủ nhiệm|phụ trách|giám đốc/i.test(trimmed);
+      let roleCode = "TECHNICAL_OFFICER";
+      if (selectedTeamId === "BGD") {
+        roleCode = /giám đốc/i.test(trimmed) && !/phó|thư ký/i.test(trimmed) ? "ADMIN" : "ADMINISTRATIVE_OFFICER";
+      } else if (selectedTeamId === "PGD") {
+        roleCode = "DEPUTY_DIRECTOR";
+      } else if (isLeader) {
+        roleCode =
+          selectedTeamId === "HCTH"
+            ? "CHIEF_ACCOUNTANT"
+            : selectedTeamId === "BT"
+            ? "COMPENSATION_OFFICER"
+            : "TECHNICAL_OFFICER";
+      } else if (/kế toán|tài chính/i.test(trimmed)) {
+        roleCode = /trưởng/i.test(trimmed) ? "CHIEF_ACCOUNTANT" : "ACCOUNTANT";
+      } else if (/bồi thường|gpmb|giải tỏa|tái định cư/i.test(trimmed)) {
+        roleCode = "COMPENSATION_OFFICER";
+      } else if (/hành chính|văn thư|tổng hợp/i.test(trimmed)) {
+        roleCode = "ADMINISTRATIVE_OFFICER";
+      }
+
+      const newRoleValue = `ROLE_${selectedTeamId}_${trimmed}`;
+      form.setFieldValue("teamRole", newRoleValue);
+      form.setFieldValue("title", trimmed);
+      form.setFieldValue("roleCode", roleCode);
+
+      toast.success("Thành công", `Đã thêm vị trí "${trimmed}" cho ${currentTeam?.name || "phòng ban"}.`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("cipm_personnel_dataset_updated"));
+      }
+    } catch (err: any) {
+      toast.error("Lỗi", err?.message || "Không thể thêm vị trí mới.");
+    } finally {
+      setIsAddingRoleLoading(false);
+    }
+  };
+
+  // Xử lý thêm trường thông tin tùy biến (custom field) trực tiếp trên form
+  const handleAddCustomField = () => {
+    const trimmed = newFieldLabel.trim();
+    if (!trimmed) {
+      toast.warning("Chưa nhập tên trường", "Vui lòng nhập tên trường dữ liệu mới.");
+      return;
+    }
+
+    if (customFields.some((f) => f.label.toLowerCase() === trimmed.toLowerCase())) {
+      toast.warning("Trùng tên trường", "Trường thông tin này đã có trong danh mục.");
+      return;
+    }
+
+    const fieldId = `cf_${Date.now()}`;
+    const fieldName = `field_${Date.now()}`;
+
+    const newField: CustomFieldDefinition = {
+      id: fieldId,
+      name: fieldName,
+      label: trimmed,
+      type: newFieldType,
+      required: false,
+      active: true,
+      placeholder: `Nhập ${trimmed.toLowerCase()}...`,
+    };
+
+    const updated = [...customFields, newField];
+    saveCustomFields("staff", updated);
+    setCustomFields(updated);
+    setAppliedFieldIds((prev) => ({ ...prev, [fieldId]: true }));
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setIsAddingField(false);
+    toast.success("Thành công", `Đã thêm trường "${trimmed}".`);
+  };
+
+  // Luôn đồng bộ giá trị khởi tạo khi danh sách vai trò sẵn sàng
   useEffect(() => {
-    if (teamRoleOptions.length > 0) {
+    if (allRoleOptions.length > 0) {
       const currentVal = form.getFieldValue("teamRole");
-      const matched = teamRoleOptions.find((opt) => opt.value === currentVal);
+      const matched = allRoleOptions.find((opt) => opt.value === currentVal);
       if (!matched) {
-        const base = BASE_TEAM_POSITIONS[selectedTeamId] || [];
-        const defaultPos = base.length === 1 ? base[0] : (base.find((p) => !p.isLeader) || base[0]);
-        const matchedDefault = defaultPos
-          ? teamRoleOptions.find((opt) => opt.title === defaultPos.title)
-          : teamRoleOptions[0];
-        const pick = matchedDefault || teamRoleOptions[0];
-        form.setFieldValue("teamRole", pick.value);
-        form.setFieldValue("roleCode", pick.roleCode);
+        const defaultRole =
+          allRoleOptions.find((r) => r.teamId === selectedTeamId) ||
+          allRoleOptions[0];
+        if (defaultRole) {
+          form.setFieldValue("teamRole", defaultRole.value);
+          form.setFieldValue("roleCode", defaultRole.roleCode);
+          form.setFieldValue("title", defaultRole.title);
+        }
       }
     }
-  }, [teamRoleOptions, selectedTeamId, form]);
+  }, [allRoleOptions, form]);
 
   const handleFinish = async (values: StaffFormValues) => {
     setSubmitting(true);
     try {
-      const matchedOpt = teamRoleOptions.find((o) => o.value === values.teamRole);
+      const matchedOpt = allRoleOptions.find((o) => o.value === values.teamRole);
       const isLeader = matchedOpt ? matchedOpt.isLeader : false;
-      const title = matchedOpt?.title || "Tổ viên";
+      const title = matchedOpt?.title || values.title || "Thành viên";
       const roleCode = values.roleCode || matchedOpt?.roleCode || "TECHNICAL_OFFICER";
 
       let filteredCustomFields: Record<string, any> | undefined = undefined;
@@ -287,46 +490,33 @@ const BASE_TEAM_POSITIONS: Record<
     }
   };
 
-  const teamOptions = data.teams.map((t) => {
-    const leader = data.staff.find((s) => s.id === t.leaderId);
-    return {
-      value: t.id,
-      label: (
-        <div className="flex items-center justify-between">
-          <span>{t.name} ({t.id})</span>
-          {leader && t.id !== "PGD" && (
-            <span className="text-[11px] text-slate-400 font-normal">
-              Lead: {leader.name}
-            </span>
-          )}
-          {t.id === "PGD" && (
-            <span className="text-[11px] text-slate-400 font-normal">
-              Nhiều PGĐ
-            </span>
-          )}
-        </div>
-      ),
-    };
-  });
+  const teamOptions = teams.map((t) => ({
+    value: t.id,
+    searchText: `${t.name} ${t.id}`,
+    label: `${t.name} (${t.id})`,
+  }));
 
   const handleTeamChange = (newTeamId: TeamId) => {
     form.setFieldValue("teamId", newTeamId);
-    const baseList = BASE_TEAM_POSITIONS[newTeamId] || [
-      { title: "Tổ trưởng / Phụ trách", roleCode: "TECHNICAL_OFFICER", isLeader: true },
-      { title: "Tổ phó", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-      { title: "Tổ viên", roleCode: "TECHNICAL_OFFICER", isLeader: false },
-    ];
-    if (baseList.length > 0) {
-      const defaultPos = baseList.length === 1 ? baseList[0] : (baseList.find((p) => !p.isLeader) || baseList[0]);
-      form.setFieldValue("teamRole", `ROLE_${newTeamId}_${defaultPos.title}`);
-      form.setFieldValue("roleCode", defaultPos.roleCode);
-      form.setFieldValue("title", defaultPos.title);
+    // Nếu người dùng chưa chọn vai trò nào thì mới tự động gán vai trò của phòng ban mới
+    const currentVal = form.getFieldValue("teamRole");
+    if (!currentVal) {
+      const defaultRole = allRoleOptions.find((r) => r.teamId === newTeamId) || allRoleOptions[0];
+      if (defaultRole) {
+        form.setFieldValue("teamRole", defaultRole.value);
+        form.setFieldValue("roleCode", defaultRole.roleCode);
+        form.setFieldValue("title", defaultRole.title);
+      }
     }
   };
 
   const handleTeamRoleChange = (roleValue: string) => {
-    const matched = teamRoleOptions.find((opt) => opt.value === roleValue);
+    const matched = allRoleOptions.find((opt) => opt.value === roleValue);
     if (matched) {
+      // Mỗi vị trí gắn với một phòng ban (quyền khác nhau) → đồng bộ bộ phận trực thuộc
+      if (matched.teamId && matched.teamId !== form.getFieldValue("teamId")) {
+        form.setFieldValue("teamId", matched.teamId as TeamId);
+      }
       form.setFieldValue("roleCode", matched.roleCode);
       if (matched.title) {
         form.setFieldValue("title", matched.title);
@@ -335,6 +525,21 @@ const BASE_TEAM_POSITIONS: Record<
       }
     }
   };
+
+  // Tìm trong dropdown: không phân biệt hoa/thường và dấu ("giam doc" khớp "Giám đốc")
+  const filterBySearchText = (input: string, option?: any) => {
+    if (!input) return true;
+    const searchTarget = option?.searchText || option?.label || option?.value || "";
+    return normalizeSearchText(String(searchTarget)).includes(normalizeSearchText(input));
+  };
+
+  const deptQuery = newDeptName.trim();
+  const canAddDept =
+    Boolean(deptQuery) && !teams.some((t) => normalizeSearchText(t.name) === normalizeSearchText(deptQuery));
+  const roleQuery = newRoleTitle.trim();
+  const canAddRole =
+    Boolean(roleQuery) &&
+    !allRoleOptions.some((opt) => normalizeSearchText(opt.title) === normalizeSearchText(roleQuery));
 
   const initialTeam = data.teams[0];
   const initialBasePos = BASE_TEAM_POSITIONS[initialTeam?.id || "BGD"]?.[0];
@@ -462,9 +667,40 @@ const BASE_TEAM_POSITIONS: Record<
                 rules={[{ required: true, message: "Vui lòng chọn tổ công tác." }]}
               >
                 <Select
-                  placeholder="Chọn tổ bộ phận"
+                  showSearch
+                  placeholder="Gõ để tìm phòng ban..."
                   options={teamOptions}
-                  onChange={handleTeamChange}
+                  searchValue={newDeptName}
+                  onSearch={setNewDeptName}
+                  filterOption={filterBySearchText}
+                  onChange={(val) => {
+                    setNewDeptName("");
+                    handleTeamChange(val);
+                  }}
+                  notFoundContent={
+                    <div className="py-1 text-xs text-slate-400">Chưa có phòng ban này trong hệ thống.</div>
+                  }
+                  popupRender={(menu) => (
+                    <>
+                      {menu}
+                      <Divider style={{ margin: "6px 0" }} />
+                      <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
+                        <span className="text-[11px] text-slate-500">
+                          {canAddDept ? "Chưa có, có thể thêm mới:" : "Không thấy phòng ban? Gõ tên để thêm mới."}
+                        </span>
+                        <Button
+                          type="primary"
+                          size="small"
+                          disabled={!canAddDept}
+                          loading={isAddingDeptLoading}
+                          onClick={handleAddDepartment}
+                          className="text-xs"
+                        >
+                          Thêm
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 />
               </Form.Item>
             </Col>
@@ -477,8 +713,40 @@ const BASE_TEAM_POSITIONS: Record<
                 tooltip="Chọn cán bộ là Thành viên hay Tổ trưởng / Phụ trách tổ (Lead)"
               >
                 <Select
-                  options={teamRoleOptions}
-                  onChange={handleTeamRoleChange}
+                  showSearch
+                  placeholder="Gõ để tìm vị trí..."
+                  options={roleSelectOptions}
+                  searchValue={newRoleTitle}
+                  onSearch={setNewRoleTitle}
+                  filterOption={filterBySearchText}
+                  onChange={(val) => {
+                    setNewRoleTitle("");
+                    handleTeamRoleChange(val);
+                  }}
+                  notFoundContent={
+                    <div className="py-1 text-xs text-slate-400">Chưa có vị trí này trong hệ thống.</div>
+                  }
+                  popupRender={(menu) => (
+                    <>
+                      {menu}
+                      <Divider style={{ margin: "6px 0" }} />
+                      <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
+                        <span className="text-[11px] text-slate-500">
+                          {canAddRole ? "Chưa có, có thể thêm mới:" : "Không thấy vị trí? Gõ tên để thêm mới."}
+                        </span>
+                        <Button
+                          type="primary"
+                          size="small"
+                          disabled={!canAddRole}
+                          loading={isAddingRoleLoading}
+                          onClick={handleAddRole}
+                          className="text-xs"
+                        >
+                          Thêm
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 />
               </Form.Item>
             </Col>
@@ -501,19 +769,74 @@ const BASE_TEAM_POSITIONS: Record<
         </div>
 
         {/* Section 2: Trường thông tin tùy biến (Cấu hình động - áp dụng linh hoạt khi thêm) */}
-        {customFields.length > 0 && (
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3.5">
-            <div className="mb-2.5 flex items-center justify-between border-b border-slate-200/70 pb-1.5">
-              <div className="flex items-center gap-1.5">
-                <Text className="text-xs font-bold text-[#102A43]">
-                  Thông tin tùy biến (Đã cấu hình)
-                </Text>
-              </div>
-              <span className="text-[11px] text-slate-500 font-normal">
-                {customFields.filter((f) => appliedFieldIds[f.id] !== false).length}/{customFields.length} trường áp dụng
-              </span>
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/40 p-3.5">
+          <div className="mb-2.5 flex items-center justify-between border-b border-slate-200/70 pb-2">
+            <div className="flex items-center gap-1.5">
+              <Text className="text-xs font-bold text-[#102A43]">
+                Thông tin bổ xung {customFields.length > 0 && `(${customFields.filter((f) => appliedFieldIds[f.id] !== false).length}/${customFields.length} trường áp dụng)`}
+              </Text>
             </div>
+            <Button
+              type="dashed"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => setIsAddingField(!isAddingField)}
+              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+            >
+              {isAddingField ? "Đóng thêm field" : "Thêm trường dữ liệu"}
+            </Button>
+          </div>
 
+          {/* Form thêm field trực tiếp */}
+          {isAddingField && (
+            <div className="mb-3.5 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+              <div className="mb-2 text-xs font-semibold text-blue-900">
+                Thêm trường dữ liệu tùy biến mới
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  placeholder="Nhập tên trường (ví dụ: Số CCCD phụ, Size áo...)"
+                  value={newFieldLabel}
+                  onChange={(e) => setNewFieldLabel(e.target.value)}
+                  onPressEnter={handleAddCustomField}
+                  className="flex-1 min-w-[240px]"
+                />
+                <Select
+                  value={newFieldType}
+                  onChange={(val) => setNewFieldType(val as CustomFieldType)}
+                  className="w-full sm:w-[210px]"
+                  options={[
+                    { value: "text", label: "Văn bản (Text)" },
+                    { value: "number", label: "Số (Number)" },
+                    { value: "date", label: "Ngày tháng (Date)" },
+                    { value: "select", label: "Danh sách chọn (Select)" },
+                    { value: "textarea", label: "Đoạn văn (Textarea)" },
+                  ]}
+                />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAddCustomField}
+                >
+                  Thêm
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsAddingField(false);
+                    setNewFieldLabel("");
+                  }}
+                >
+                  Hủy
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {customFields.length === 0 ? (
+            <div className="py-4 text-center text-xs text-slate-400 italic">
+              Chưa có trường tùy biến nào. Bấm &quot;Thêm trường dữ liệu&quot; ở trên để thêm nhanh.
+            </div>
+          ) : (
             <Row gutter={[16, 0]}>
               {customFields.map((field) => {
                 const isApplied = appliedFieldIds[field.id] !== false;
@@ -595,8 +918,8 @@ const BASE_TEAM_POSITIONS: Record<
                 );
               })}
             </Row>
-          </div>
-        )}
+          )}
+        </div>
       </Form>
     </Drawer>
   );

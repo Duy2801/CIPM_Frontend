@@ -7,7 +7,7 @@ import type { PersonnelRepository } from "./personnel.repository";
 import { getSharedProjects, useProjectStore } from "../../../stores/project.store";
 
 const clone = <T,>(value: T): T => structuredClone(value);
-const STORAGE_KEY = "cipm_personnel_test_flow_v9";
+const STORAGE_KEY = "cipm_personnel_test_flow_v10";
 
 function loadDataset(): PersonnelDataset {
   if (typeof window === "undefined") return clone(PERSONNEL_MOCK_DATA);
@@ -19,6 +19,7 @@ function loadDataset(): PersonnelDataset {
     window.localStorage.removeItem("cipm_personnel_test_flow_v6");
     window.localStorage.removeItem("cipm_personnel_test_flow_v7");
     window.localStorage.removeItem("cipm_personnel_test_flow_v8");
+    window.localStorage.removeItem("cipm_personnel_test_flow_v9");
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed: PersonnelDataset = JSON.parse(stored);
@@ -441,12 +442,12 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       if (!project) throw new Error("Không tìm thấy dự án.");
       if (!project.mainExecutorId) {
         throw new Error(
-          "Dự án này chưa có Người thực hiện chính. Cần phân công Người thực hiện chính trước khi cấp role Quyền Chủ nhiệm dự án."
+          "Dự án này chưa có Người thực hiện chính. Cần phân công Người thực hiện chính trước khi cấp vai trò Quyền Chủ nhiệm dự án."
         );
       }
       if (project.mainExecutorId !== input.staffId) {
         throw new Error(
-          "Theo quy định, chỉ có Người thực hiện chính của dự án mới được cấp role Quyền Chủ nhiệm dự án."
+          "Theo quy định, chỉ có Người thực hiện chính của dự án mới được cấp vai trò Quyền Chủ nhiệm dự án."
         );
       }
       const staff = dataset.staff.find((s) => s.id === input.staffId);
@@ -457,7 +458,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       project.actingDirectorAssignedBy = input.assignedBy || "Ban Giám đốc";
       project.actingDirectorNote =
         input.note ||
-        "Được cấp role Quyền Chủ nhiệm dự án – có toàn quyền phân công nhân sự, bổ nhiệm thành viên tổ công tác và đôn đốc thành viên trong dự án này.";
+        "Được cấp vai trò Quyền Chủ nhiệm dự án – có toàn quyền phân công nhân sự, bổ nhiệm thành viên tổ công tác và đôn đốc thành viên trong dự án này.";
 
       project.cndaRevoked = false;
 
@@ -955,8 +956,22 @@ export function createMockPersonnelRepository(): PersonnelRepository {
       if (input.phone !== undefined) person.phone = input.phone?.trim() || "";
       if (input.email !== undefined) person.email = input.email.trim();
       if (input.accountActive !== undefined) person.accountActive = input.accountActive;
+      if (input.dob !== undefined) person.dob = input.dob.trim() || undefined;
+      if (input.gender !== undefined) person.gender = input.gender;
+      if (input.customFields !== undefined) person.customFields = input.customFields;
       if (input.permissions !== undefined) person.permissions = input.permissions;
       if (input.revokedPermissions !== undefined) person.revokedPermissions = input.revokedPermissions;
+      if (input.revokedRoles !== undefined) person.revokedRoles = input.revokedRoles;
+      // Vai trò đang giữ (có trong chức danh) thì không còn ở danh sách "đã tắt" (VD: vừa được cấp lại)
+      if (person.revokedRoles?.length) {
+        const activeTitles = new Set(
+          (person.title || "")
+            .split(/\s*·\s*|\s*;\s*/)
+            .map((part) => part.trim().toLowerCase())
+            .filter(Boolean)
+        );
+        person.revokedRoles = person.revokedRoles.filter((role) => !activeTitles.has(role.trim().toLowerCase()));
+      }
 
       if (input.isLeader !== undefined) {
         const targetTeamId = input.teamId || person.teamId;

@@ -36,6 +36,7 @@ interface ProcedureStepListProps {
   highlightedStepId?: string | null;
   canUpdateProcedure?: boolean;
   canConfigureProcedure?: boolean;
+  canApproveProcedure?: boolean;
   onOpenStepConfig?: () => void;
   onOpenAddDeptProcedure?: () => void;
   isLeadOfDept?: boolean;
@@ -66,6 +67,7 @@ export default function ProcedureStepList({
   highlightedStepId,
   canUpdateProcedure = true,
   canConfigureProcedure = false,
+  canApproveProcedure,
   onOpenStepConfig,
   onOpenAddDeptProcedure,
   isLeadOfDept = false,
@@ -81,6 +83,7 @@ export default function ProcedureStepList({
   onDirectorRejectStage,
   stageApprovals,
 }: ProcedureStepListProps) {
+  const canApprove = canApproveProcedure !== undefined ? canApproveProcedure : isDirector;
   // Lọc theo search và status
   const filteredSteps = useMemo(() => {
     return steps.filter((step) => {
@@ -160,13 +163,13 @@ export default function ProcedureStepList({
           Dự án chưa có quy trình thủ tục nào
         </h3>
         <p className="text-xs text-slate-500 max-w-lg mx-auto mb-6 leading-relaxed">
-          {isLeadOfDept
-            ? `Quy trình thủ tục của dự án sẽ do Tổ trưởng thiết lập. Bạn có thể nhấn nút bên dưới để thêm quy trình chuyên môn của ${userDepartment || "phòng ban mình"} vào dự án.`
-            : isDirector
-            ? "Ban Giám đốc có toàn quyền thiết lập quy trình hoặc giao cho các Tổ trưởng chủ động thêm các bước thủ tục chuyên môn vào dự án."
+          {canConfigureProcedure
+            ? "Bạn có toàn quyền thiết lập, cấu hình quy trình thủ tục và phân công nhiệm vụ vào dự án."
+            : canApprove
+            ? "Lãnh đạo có quyền phê duyệt quy trình hoặc phân công cho các bộ phận chủ động thiết lập thủ tục chuyên môn."
             : "Quy trình thủ tục của dự án sẽ do các Tổ trưởng/Trưởng phòng ban được phân công chủ động thiết lập và phân công nhiệm vụ cho từng cán bộ."}
         </p>
-        {(isLeadOfDept || isDirector || canConfigureProcedure) && onOpenAddDeptProcedure && (
+        {(isLeadOfDept || canApprove || canConfigureProcedure || canUpdateProcedure) && onOpenAddDeptProcedure && (
           <div className="flex items-center justify-center gap-3">
             <Button
               intent="primary"
@@ -192,7 +195,7 @@ export default function ProcedureStepList({
         <Text className="text-xs text-slate-400 block mb-4">
           Tổ trưởng phòng ban sẽ chủ động thiết lập quy trình chuyên môn khi triển khai dự án.
         </Text>
-        {(isLeadOfDept || canConfigureProcedure) && onOpenAddDeptProcedure && (
+        {(isLeadOfDept || canApprove || canConfigureProcedure || canUpdateProcedure) && onOpenAddDeptProcedure && (
           <div className="flex justify-center">
             <Button
               intent="primary"
@@ -276,7 +279,7 @@ export default function ProcedureStepList({
                       >
                         BGĐ yêu cầu rà soát lại
                       </Tag>
-                      {isDirector && (
+                      {canApprove && (
                         <Button
                           intent="primary"
                           scale="compact"
@@ -288,7 +291,7 @@ export default function ProcedureStepList({
                         </Button>
                       )}
                     </div>
-                  ) : isDirector ? (
+                  ) : canApprove ? (
                     <div className="flex items-center gap-2">
                       <Button
                         intent="primary"
@@ -563,7 +566,7 @@ export default function ProcedureStepList({
                     >
                       BGĐ yêu cầu rà soát lại
                     </Tag>
-                    {isDirector && (
+                    {canApprove && (
                       <Button
                         intent="primary"
                         scale="compact"
@@ -578,7 +581,7 @@ export default function ProcedureStepList({
                 );
               }
 
-              if (isDirector) {
+              if (canApprove) {
                 return (
                   <div className="flex items-center gap-2">
                     <Button

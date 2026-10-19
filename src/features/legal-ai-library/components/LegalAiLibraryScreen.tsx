@@ -2,157 +2,263 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  DownloadOutlined,
-  FileSearchOutlined,
-  FileTextOutlined,
-  LoadingOutlined,
-  LockOutlined,
-  PlusOutlined,
-  RobotOutlined,
-  SearchOutlined,
-  ThunderboltOutlined,
-} from "@ant-design/icons";
-import { Button, Card, Flex, Input, Select, Table, Tag, Text, Title } from "@/components/ui";
-import type { ColumnsType } from "@/components/ui";
+import { LockOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Flex, Input, Pagination, Select, Text, Title } from "@/components/ui";
+import { todayIso } from "@/utils/date";
+import { normalizeSearchText } from "@/utils/search-text";
 import AiLegalAssistantDrawer from "./AiLegalAssistantDrawer";
 import CreateDocumentDrawer from "./CreateDocumentDrawer";
 import DocumentDetailDrawer from "./DocumentDetailDrawer";
-import ReportPreviewModal from "./ReportPreviewModal";
-import type { LegalDocument, ReportType } from "../types/legal-ai.types";
-import { generateAiReport } from "../utils/report-generator";
+import { CATEGORY_LABELS, STATUS_META, STATUS_ORDER } from "../constants/legal-mock-data";
+import { SAMPLE_DECREE_10_2021_CONTENT } from "../constants/legal-sample-content";
+import type { LegalDocument, LegalDocumentCategory, LegalDocumentStatus } from "../types/legal-ai.types";
 import { getLegalAiPermissions } from "../utils/legal-ai-permissions";
 import { useAuthStore } from "@/stores/auth.store";
 
-// Dữ liệu danh mục văn bản pháp luật chuẩn theo bố cục yêu cầu
-interface LegalItem {
-  id: string;
-  code: string;
-  title: string;
-  field: "Xây dựng" | "Đấu thầu" | "Đất đai" | "Tài chính";
-  status: "Hiệu lực" | "Xem xét SĐ" | "Sắp hết HLực";
-  issuer: string;
-  issueDate: string;
-  effectiveDate: string;
-  summary: string;
-}
+// Văn bản trong thư viện: giữ nguyên toàn bộ thông tin đã nhập (tags, tệp) + ngày cập nhật
+type LegalItem = LegalDocument & { updatedAt: string };
 
 const INITIAL_LEGAL_ITEMS: LegalItem[] = [
   {
     id: "L-01",
-    code: "Luật 50/2014",
-    title: "Luật Xây dựng (sửa đổi 2020)",
-    field: "Xây dựng",
-    status: "Hiệu lực",
+    code: "50/2014/QH13",
+    title:
+      "Luật Xây dựng năm 2014, được sửa đổi, bổ sung một số điều theo Luật số 62/2020/QH14 về hoạt động đầu tư xây dựng",
+    category: "LAW",
+    status: "EFFECTIVE",
     issuer: "Quốc hội",
     issueDate: "2014-06-18",
     effectiveDate: "2015-01-01",
+    updatedAt: "2026-09-12",
+    scope: "M2 – Quản lý dự án & tiến độ thi công",
     summary:
       "Quy định quyền và nghĩa vụ của chủ đầu tư, ban quản lý dự án chuyên ngành; thẩm định thiết kế, dự toán, cấp phép và nghiệm thu bàn giao công trình xây dựng.",
+    fileType: "PDF",
+    fileSize: "3.1 MB",
+    downloads: 126,
+    tags: ["Chủ đầu tư", "Thẩm định thiết kế", "Nghiệm thu"],
   },
   {
     id: "L-02",
-    code: "Luật 22/2023",
-    title: "Luật Đấu thầu 2023",
-    field: "Đấu thầu",
-    status: "Hiệu lực",
+    code: "22/2023/QH15",
+    title:
+      "Luật Đấu thầu quy định quản lý nhà nước về đấu thầu, trách nhiệm của các bên và hoạt động lựa chọn nhà thầu, nhà đầu tư",
+    category: "LAW",
+    status: "EFFECTIVE",
     issuer: "Quốc hội",
     issueDate: "2023-06-23",
     effectiveDate: "2024-01-01",
+    updatedAt: "2026-08-30",
+    scope: "M7 – Quản lý đấu thầu qua mạng (9 bước)",
     summary:
       "Quy định quy trình lựa chọn nhà thầu qua Hệ thống mạng đấu thầu quốc gia, 9 bước phê duyệt kế hoạch, E-HSMT, đánh giá E-HSDT và ký kết hợp đồng.",
+    fileType: "PDF",
+    fileSize: "2.8 MB",
+    downloads: 98,
+    tags: ["Lựa chọn nhà thầu", "E-HSMT", "Mạng đấu thầu quốc gia"],
   },
   {
     id: "L-03",
-    code: "Luật 31/2024",
-    title: "Luật Đất đai 2024",
-    field: "Đất đai",
-    status: "Hiệu lực",
+    code: "31/2024/QH15",
+    title:
+      "Luật Đất đai quy định chế độ sở hữu đất đai, quyền hạn và trách nhiệm của Nhà nước đại diện chủ sở hữu toàn dân về đất đai",
+    category: "LAW",
+    status: "EFFECTIVE",
     issuer: "Quốc hội",
     issueDate: "2024-01-18",
     effectiveDate: "2024-08-01",
+    updatedAt: "2026-09-05",
+    scope: "M6 – Bồi thường, hỗ trợ & GPMB (16 bước)",
     summary:
       "Quy định chính sách thu hồi đất, nguyên tắc bồi thường hỗ trợ tái định cư; thời hạn bắt buộc niêm yết công khai phương án bồi thường tối thiểu 10 ngày (Điều 87).",
+    fileType: "PDF",
+    fileSize: "4.2 MB",
+    downloads: 143,
+    tags: ["Thu hồi đất", "Bồi thường", "Tái định cư"],
   },
   {
     id: "L-04",
-    code: "NĐ 10/2021",
-    title: "Quyết toán dự án hoàn thành & Quản lý chi phí",
-    field: "Xây dựng",
-    status: "Xem xét SĐ",
+    code: "10/2021/NĐ-CP",
+    title:
+      "Nghị định của Chính phủ về quản lý chi phí đầu tư xây dựng",
+    category: "DECREE",
+    status: "PARTIAL",
     issuer: "Chính phủ",
     issueDate: "2021-02-09",
     effectiveDate: "2021-02-09",
+    updatedAt: "2026-10-02",
+    scope: "M4 – Giải ngân KBNN, tạm ứng & quyết toán",
     summary:
       "Quy định về quản lý chi phí đầu tư xây dựng, lập và phê duyệt dự toán, kiểm soát thanh toán khối lượng qua Kho bạc Nhà nước.",
+    fileType: "PDF",
+    fileSize: "1.9 MB",
+    downloads: 87,
+    tags: ["Chi phí đầu tư", "Dự toán", "Quyết toán"],
+    // Toàn văn mẫu dài để thử cuộn trong bản xem trước
+    content: SAMPLE_DECREE_10_2021_CONTENT,
   },
   {
     id: "L-05",
-    code: "TT 09/2021",
-    title: "Quản lý chi phí ĐTXD",
-    field: "Xây dựng",
-    status: "Sắp hết HLực",
+    code: "11/2021/TT-BXD",
+    title:
+      "Thông tư hướng dẫn một số nội dung xác định và quản lý chi phí đầu tư xây dựng",
+    category: "CIRCULAR",
+    status: "EXPIRING",
     issuer: "Bộ Xây dựng",
-    issueDate: "2021-08-16",
+    issueDate: "2021-08-31",
     effectiveDate: "2021-10-15",
+    updatedAt: "2026-10-10",
+    scope: "M4 – Giải ngân KBNN, tạm ứng & quyết toán",
     summary:
       "Hướng dẫn phương pháp xác định và quản lý chi phí đầu tư xây dựng công trình, định mức kinh tế kỹ thuật và đơn giá xây dựng.",
+    fileType: "PDF",
+    fileSize: "1.2 MB",
+    downloads: 64,
+    tags: ["Định mức", "Đơn giá", "Chi phí ĐTXD"],
   },
   {
     id: "L-06",
-    code: "NQ 254/2025",
-    title: "Quốc hội về đất đai đặc biệt",
-    field: "Đất đai",
-    status: "Hiệu lực",
+    code: "254/2025/QH15",
+    title:
+      "Nghị quyết quy định một số cơ chế, chính sách tháo gỡ vướng mắc trong tổ chức thi hành Luật Đất đai",
+    category: "RESOLUTION",
+    status: "EFFECTIVE",
     issuer: "Quốc hội",
     issueDate: "2025-06-25",
     effectiveDate: "2025-08-01",
+    updatedAt: "2026-07-21",
+    scope: "M6 – Bồi thường, hỗ trợ & GPMB (16 bước)",
     summary:
       "Nghị quyết thí điểm một số cơ chế, chính sách đặc thù phát triển hệ thống hạ tầng và công tác bồi thường giải phóng mặt bằng dự án trọng điểm.",
+    fileType: "PDF",
+    fileSize: "0.9 MB",
+    downloads: 41,
+    tags: ["Cơ chế đặc thù", "GPMB", "Dự án trọng điểm"],
   },
   {
     id: "L-07",
-    code: "QĐ 18/2024",
-    title: "Bồi thường, hỗ trợ, TĐC tỉnh Kiên Giang",
-    field: "Đất đai",
-    status: "Hiệu lực",
+    code: "18/2024/QĐ-UBND",
+    title:
+      "Quyết định ban hành Quy định về bồi thường, hỗ trợ, tái định cư khi Nhà nước thu hồi đất trên địa bàn tỉnh Kiên Giang",
+    category: "DECISION",
+    status: "EFFECTIVE",
     issuer: "UBND tỉnh Kiên Giang",
     issueDate: "2024-05-15",
     effectiveDate: "2024-06-01",
+    updatedAt: "2026-06-18",
+    scope: "M6 – Bồi thường, hỗ trợ & GPMB (16 bước)",
     summary:
       "Quy định đơn giá bồi thường đất, tài sản trên đất, chính sách hỗ trợ chuyển đổi nghề nghiệp và bố trí tái định cư áp dụng trên địa bàn Kiên Giang & TP Hà Tiên.",
+    fileType: "PDF",
+    fileSize: "1.6 MB",
+    downloads: 112,
+    tags: ["Đơn giá bồi thường", "Kiên Giang", "Hà Tiên"],
   },
   {
     id: "L-08",
-    code: "NĐ 24/2024",
-    title: "Quy định chi tiết Luật Đấu thầu 2023",
-    field: "Đấu thầu",
-    status: "Hiệu lực",
+    code: "24/2024/NĐ-CP",
+    title:
+      "Nghị định quy định chi tiết một số điều và biện pháp thi hành Luật Đấu thầu về lựa chọn nhà thầu",
+    category: "DECREE",
+    status: "EFFECTIVE",
     issuer: "Chính phủ",
     issueDate: "2024-02-27",
     effectiveDate: "2024-02-27",
+    updatedAt: "2026-08-14",
+    scope: "M7 – Quản lý đấu thầu qua mạng (9 bước)",
     summary:
       "Quy định chi tiết thi hành một số điều của Luật Đấu thầu về lựa chọn nhà thầu, mẫu hồ sơ mời thầu xây lắp, thẩm định kết quả và bảo đảm dự thầu.",
+    fileType: "PDF",
+    fileSize: "2.2 MB",
+    downloads: 79,
+    tags: ["Hồ sơ mời thầu", "Bảo đảm dự thầu", "Thẩm định"],
+  },
+  {
+    id: "L-09",
+    code: "06/2021/NĐ-CP",
+    title:
+      "Nghị định quy định chi tiết một số nội dung về quản lý chất lượng, thi công xây dựng và bảo trì công trình xây dựng",
+    category: "DECREE",
+    status: "EFFECTIVE",
+    issuer: "Chính phủ",
+    issueDate: "2021-01-26",
+    effectiveDate: "2021-01-26",
+    updatedAt: "2026-05-20",
+    scope: "M8 – Bảo hành công trình & bảo lãnh hợp đồng",
+    summary:
+      "Quy định về quản lý chất lượng khảo sát, thiết kế, thi công xây dựng; nghiệm thu, bàn giao công trình và thời hạn bảo hành, bảo trì công trình xây dựng.",
+    fileType: "PDF",
+    fileSize: "2.6 MB",
+    downloads: 95,
+    tags: ["Quản lý chất lượng", "Nghiệm thu", "Bảo hành"],
+  },
+  {
+    id: "L-10",
+    code: "15/2021/NĐ-CP",
+    title: "Nghị định quy định chi tiết một số nội dung về quản lý dự án đầu tư xây dựng",
+    category: "DECREE",
+    status: "EXPIRED",
+    issuer: "Chính phủ",
+    issueDate: "2021-03-03",
+    effectiveDate: "2021-03-03",
+    updatedAt: "2026-04-08",
+    scope: "M2 – Quản lý dự án & tiến độ thi công",
+    summary:
+      "Quy định về lập, thẩm định, phê duyệt dự án, thiết kế xây dựng; cấp giấy phép xây dựng và hình thức tổ chức quản lý dự án đầu tư xây dựng.",
+    fileType: "PDF",
+    fileSize: "2.3 MB",
+    downloads: 58,
+    tags: ["Quản lý dự án", "Thẩm định dự án", "Giấy phép xây dựng"],
+  },
+  {
+    id: "L-11",
+    code: "58/2024/QH15",
+    title: "Luật Đầu tư công quy định việc quản lý nhà nước về đầu tư công, quản lý và sử dụng vốn đầu tư công",
+    category: "LAW",
+    status: "EFFECTIVE",
+    issuer: "Quốc hội",
+    issueDate: "2024-11-29",
+    effectiveDate: "2025-01-01",
+    updatedAt: "2026-03-15",
+    scope: "M4 – Giải ngân KBNN, tạm ứng & quyết toán",
+    summary:
+      "Quy định về kế hoạch đầu tư công trung hạn và hằng năm, quản lý, sử dụng vốn đầu tư công; quyền, nghĩa vụ của cơ quan, tổ chức, cá nhân liên quan.",
+    fileType: "PDF",
+    fileSize: "1.8 MB",
+    downloads: 70,
+    tags: ["Vốn đầu tư công", "Kế hoạch trung hạn", "Giải ngân"],
+  },
+  {
+    id: "L-12",
+    code: "88/2024/NĐ-CP",
+    title: "Nghị định quy định về bồi thường, hỗ trợ, tái định cư khi Nhà nước thu hồi đất",
+    category: "DECREE",
+    status: "EFFECTIVE",
+    issuer: "Chính phủ",
+    issueDate: "2024-07-15",
+    effectiveDate: "2024-08-01",
+    updatedAt: "2026-02-27",
+    scope: "M6 – Bồi thường, hỗ trợ & GPMB (16 bước)",
+    summary:
+      "Quy định chi tiết về bồi thường đất, tài sản gắn liền với đất, hỗ trợ ổn định đời sống, đào tạo chuyển đổi nghề và bố trí tái định cư khi Nhà nước thu hồi đất.",
+    fileType: "PDF",
+    fileSize: "1.5 MB",
+    downloads: 101,
+    tags: ["Bồi thường", "Tái định cư", "Thu hồi đất"],
   },
 ];
 
-// Danh sách biểu mẫu chuẩn GPMB (Mẫu 01-09)
-interface FormTemplate {
-  id: string;
-  name: string;
-  code: string;
-}
+type DocumentCategory = Exclude<LegalDocumentCategory, "ALL">;
 
-const GPMB_TEMPLATES: FormTemplate[] = [
-  { id: "T-01", name: "Mẫu 01 – Biên bản họp dân", code: "BM-01-GPMB" },
-  { id: "T-02", name: "Mẫu 02 – Thông báo thu hồi đất", code: "BM-02-GPMB" },
-  { id: "T-03", name: "Mẫu 03 – Biên bản kiểm kê", code: "BM-03-GPMB" },
-  { id: "T-04", name: "Mẫu 04 – Biên bản niêm yết phương án", code: "BM-04-GPMB" },
-  { id: "T-05", name: "Mẫu 05 – QĐ phê duyệt phương án", code: "BM-05-GPMB" },
-  { id: "T-06", name: "Mẫu 06 – Biên bản chi trả tiền bồi thường", code: "BM-06-GPMB" },
-  { id: "T-07", name: "Mẫu 07 – Biên bản bàn giao mặt bằng", code: "BM-07-GPMB" },
-  { id: "T-08", name: "Mẫu HĐ-XL – Điều khoản giữ bảo lãnh BH 5%", code: "BM-HD-BH05" },
-];
+/** Thứ tự loại văn bản trong bộ lọc (theo thứ bậc hiệu lực pháp lý) */
+const CATEGORY_FILTER_ORDER: DocumentCategory[] = ["LAW", "RESOLUTION", "DECREE", "CIRCULAR", "DECISION", "LOCAL"];
+
+/** "2024-06-01" → "01/06/2024" */
+function formatDate(isoDate: string | undefined): string {
+  if (!isoDate) return "—";
+  const [year, month, day] = isoDate.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : isoDate;
+}
 
 export default function LegalAiLibraryScreen() {
   const router = useRouter();
@@ -162,9 +268,12 @@ export default function LegalAiLibraryScreen() {
 
   const [legalItems, setLegalItems] = useState<LegalItem[]>(INITIAL_LEGAL_ITEMS);
   const [search, setSearch] = useState("");
-  const [selectedReportType, setSelectedReportType] = useState<ReportType>("MONTHLY");
-  const [reportPeriod, setReportPeriod] = useState("Tháng 09/2026");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<LegalDocumentStatus | "ALL">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | "ALL">("ALL");
+  const [page, setPage] = useState(1);
+  const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Chặn truy cập nếu không có quyền theo Ma trận phân quyền BRD Mục 5
   if (!permissions.canAccessModule) {
@@ -199,346 +308,219 @@ export default function LegalAiLibraryScreen() {
     );
   }
 
-  // Modals & Drawers state
-  const [previewModal, setPreviewModal] = useState<{
-    open: boolean;
-    title: string;
-    period: string;
-    content: string;
-  }>({
-    open: false,
-    title: "",
-    period: "",
-    content: "",
-  });
-  const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-
-  // Lọc văn bản pháp luật
-  const filteredItems = legalItems.filter((item) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      item.code.toLowerCase().includes(q) ||
-      item.title.toLowerCase().includes(q) ||
-      item.field.toLowerCase().includes(q) ||
-      item.status.toLowerCase().includes(q)
+  // Lọc văn bản pháp luật: từ khóa (không phân biệt hoa/thường và dấu) + loại văn bản + tình trạng
+  const query = normalizeSearchText(search);
+  const matchesQuery = (item: LegalItem) =>
+    !query ||
+    [item.code, item.title, item.issuer, item.summary, ...item.tags].some((text) =>
+      normalizeSearchText(text).includes(query),
     );
-  });
 
-  // Tải biểu mẫu
-  const handleDownloadTemplate = (template: FormTemplate) => {
-    const fileName = `${template.code}_${template.name.replace(/[\/\\?%*:|"<>]/g, "_")}.txt`;
-    const element = window.document.createElement("a");
-    const file = new Blob(
-      [
-        `BIỂU MẪU CHUẨN BAN QUẢN LÝ DỰ ÁN ĐẦU TƯ XÂY DỰNG TP HÀ TIÊN\n\n` +
-          `Mã biểu mẫu: ${template.code}\n` +
-          `Tên biểu mẫu: ${template.name}\n` +
-          `Áp dụng: Quy trình Bồi thường, hỗ trợ & GPMB / Quản lý hợp đồng xây lắp\n` +
-          `Căn cứ pháp lý: Luật Đất đai 2024, Luật Xây dựng, Quyết định 18/2024/QĐ-UBND Kiên Giang\n`,
-      ],
-      { type: "text/plain;charset=utf-8" },
-    );
-    element.href = URL.createObjectURL(file);
-    element.download = fileName;
-    window.document.body.appendChild(element);
-    element.click();
-    window.document.body.removeChild(element);
+  const matchesStatus = (item: LegalItem) => statusFilter === "ALL" || item.status === statusFilter;
+  const matchesCategory = (item: LegalItem) => categoryFilter === "ALL" || item.category === categoryFilter;
+
+  const filteredItems = legalItems
+    .filter((item) => matchesQuery(item) && matchesCategory(item) && matchesStatus(item))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / DEFAULT_LIST_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * DEFAULT_LIST_PAGE_SIZE;
+  const pagedItems = filteredItems.slice(pageStart, pageStart + DEFAULT_LIST_PAGE_SIZE);
+
+  const isFiltering = Boolean(query) || statusFilter !== "ALL" || categoryFilter !== "ALL";
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setCategoryFilter("ALL");
+    setPage(1);
   };
 
-  // AI Kết xuất báo cáo tự động
-  const handleGenerateReport = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      const generated = generateAiReport(selectedReportType, "ALL", reportPeriod);
-      setPreviewModal({
-        open: true,
-        title: generated.title,
-        period: reportPeriod,
-        content: generated.content,
-      });
-      setIsGenerating(false);
-    }, 600);
-  };
-
-  // Xem chi tiết văn bản
-  const handleOpenDocDetail = (item: LegalItem) => {
-    const doc: LegalDocument = {
-      id: item.id,
-      code: item.code,
-      title: item.title,
-      category: item.code.startsWith("Luật")
-        ? "LAW"
-        : item.code.startsWith("NĐ")
-        ? "DECREE"
-        : item.code.startsWith("TT")
-        ? "CIRCULAR"
-        : "LOCAL",
-      issuer: item.issuer,
-      issueDate: item.issueDate,
-      effectiveDate: item.effectiveDate,
-      status: item.status === "Hiệu lực" ? "EFFECTIVE" : item.status === "Sắp hết HLực" ? "EXPIRED" : "PARTIAL",
-      scope: `Lĩnh vực ${item.field} – Ban QLDA Hà Tiên`,
-      summary: item.summary,
-      fileType: "PDF",
-      fileSize: "2.4 MB",
-      downloads: 48,
-      tags: [item.field, item.status, "Văn bản quy phạm"],
-    };
-    setSelectedDoc(doc);
-  };
-
-  // Định nghĩa cột bảng Văn bản pháp luật (chuẩn theo layout ảnh)
-  const columns: ColumnsType<LegalItem> = [
-    {
-      title: "SỐ KÝ HIỆU",
-      key: "code",
-      width: "25%",
-      render: (_, row) => (
-        <button
-          type="button"
-          onClick={() => handleOpenDocDetail(row)}
-          className="text-left font-bold text-xs text-[#DC2626] hover:text-[#B91C1C] hover:underline cursor-pointer"
-        >
-          {row.code}
-        </button>
-      ),
-    },
-    {
-      title: "TÊN VĂN BẢN",
-      key: "title",
-      width: "45%",
-      render: (_, row) => (
-        <div
-          onClick={() => handleOpenDocDetail(row)}
-          className="text-xs font-medium text-slate-850 hover:text-[#DC2626] cursor-pointer line-clamp-1"
-          title={row.title}
-        >
-          {row.title}
-        </div>
-      ),
-    },
-    {
-      title: "LĨNH VỰC",
-      key: "field",
-      width: "15%",
-      render: (_, row) => (
-        <span className="text-xs font-medium text-slate-600">
-          {row.field}
-        </span>
-      ),
-    },
-    {
-      title: "TT",
-      key: "status",
-      width: "15%",
-      render: (_, row) => {
-        let textClass = "text-slate-700";
-        if (row.status === "Xem xét SĐ") {
-          textClass = "text-amber-800";
-        }
-        if (row.status === "Sắp hết HLực") {
-          textClass = "text-rose-700";
-        }
-
-        return (
-          <span className={`inline-flex items-center text-xs font-medium ${textClass}`}>
-            {row.status}
-          </span>
-        );
-      },
-    },
-  ];
+  // Xem chi tiết văn bản: mở đúng dữ liệu đã lưu (phạm vi, tags, tệp đính kèm)
+  const handleOpenDocDetail = (item: LegalItem) => setSelectedDoc(item);
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {/* Thanh trạng thái hệ thống & tác vụ nhanh thay thế tiêu đề cồng kềnh */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white px-4 py-2.5 rounded-lg border border-slate-200/90 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          <span className="text-slate-600">
-            <strong>{legalItems.length}</strong> văn bản quy phạm
-          </span>
-          <span className="text-slate-300">·</span>
-          <span className="text-slate-600">
-            <strong>{GPMB_TEMPLATES.length}</strong> biểu mẫu chuẩn GPMB
-          </span>
-          <span className="text-slate-300">·</span>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <Card
+        surface="flat"
+        padding="none"
+        rounded="lg"
+        className="overflow-hidden border border-slate-200 shadow-xs bg-white"
+      >
+        {/* Hàng 1: tiêu đề · thêm văn bản */}
+        <div className="flex items-start justify-between gap-3 px-4 pt-3.5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="m-0 text-base font-bold text-slate-900">Văn bản pháp luật</h2>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                {legalItems.length}
+              </span>
+            </div>
+            <p className="m-0 mt-0.5 text-xs text-slate-500">
+              Luật, nghị định, thông tư, nghị quyết và quyết định áp dụng cho công tác quản lý dự án.
+            </p>
+          </div>
           {canManageDocuments && (
             <Button
               intent="primary"
-              scale="sm"
               icon={<PlusOutlined />}
               onClick={() => setIsCreateOpen(true)}
-              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-8 text-xs font-semibold rounded-lg shadow-2xs"
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-9 shrink-0 text-sm font-semibold shadow-2xs"
             >
               Thêm văn bản
             </Button>
           )}
         </div>
-      </div>
 
-      {/* BỐ CỤC 2 CỘT CHUẨN THEO THIẾT KẾ YÊU CẦU */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* CỘT TRÁI: Bảng Văn bản pháp luật (chiếm ~60-65% không gian) */}
-        <div className="lg:col-span-7 xl:col-span-8">
-          <Card
-            surface="flat"
-            padding="none"
-            rounded="lg"
-            className="overflow-hidden border border-slate-200 shadow-xs bg-white"
-          >
-            {/* Header thẻ bên trái */}
-            <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="text-sm font-bold text-slate-850">Văn bản pháp luật</div>
-              <div className="w-full sm:w-64">
-                <Input
-                  allowClear
-                  intent="clean"
-                  prefix={<SearchOutlined className="text-slate-400 text-xs" />}
-                  placeholder="Tìm số hiệu, tên văn bản..."
-                  className="w-full text-xs h-8"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Bảng văn bản pháp luật */}
-            <Table<LegalItem>
-              rowKey="id"
-              columns={columns}
-              dataSource={filteredItems}
-              pagination={false}
-              className="w-full [&_.ant-table-thead>tr>th]:!bg-slate-50 [&_.ant-table-thead>tr>th]:!text-[11px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-500 [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none [&_.ant-table-thead>tr>th::before]:!hidden [&_.ant-table-thead>tr>th:before]:!content-none"
+        {/* Hàng 2: tìm kiếm · lọc loại văn bản · lọc tình trạng | phân trang */}
+        <div className="flex flex-col gap-2 border-b border-slate-200 px-4 pb-3.5 pt-3 xl:flex-row xl:items-center">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              allowClear
+              intent="clean"
+              aria-label="Tìm văn bản"
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Tìm số hiệu, tên, cơ quan ban hành, từ khóa..."
+              className="h-9 w-full text-sm sm:max-w-md sm:flex-1"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
             />
-          </Card>
-        </div>
+            <Select
+              aria-label="Lọc theo loại văn bản"
+              value={categoryFilter}
+              onChange={(val) => {
+                setCategoryFilter(val as DocumentCategory | "ALL");
+                setPage(1);
+              }}
+              className="h-9 w-full sm:w-52"
+              options={[
+                { value: "ALL", label: "Tất cả loại văn bản" },
+                ...CATEGORY_FILTER_ORDER.map((cat) => ({
+                  value: cat,
+                  label: CATEGORY_LABELS[cat],
+                })),
+              ]}
+            />
+            <Select
+              aria-label="Lọc theo tình trạng"
+              value={statusFilter}
+              onChange={(val) => {
+                setStatusFilter(val as LegalDocumentStatus | "ALL");
+                setPage(1);
+              }}
+              className="h-9 w-full sm:w-52"
+              options={[
+                { value: "ALL", label: "Tất cả tình trạng" },
+                ...STATUS_ORDER.map((st) => ({
+                  value: st,
+                  label: STATUS_META[st].label,
+                })),
+              ]}
+            />
+          </div>
 
-        {/* CỘT PHẢI: 2 Thẻ (AI - Kết xuất báo cáo & Biểu mẫu GPMB) */}
-        <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
-          {/* 1. Thẻ AI – Kết xuất báo cáo */}
-          <Card
-            surface="flat"
-            padding="md"
-            rounded="lg"
-            className="border border-slate-200 shadow-xs bg-white flex flex-col gap-3"
-          >
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                LOẠI BÁO CÁO
-              </label>
-              <Select
-                aria-label="Loại báo cáo"
-                value={selectedReportType}
-                onChange={(val) => setSelectedReportType(val as ReportType)}
-                className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-                options={[
-                  { value: "MONTHLY", label: "Báo cáo tiến độ tháng định kỳ" },
-                  { value: "WEEKLY", label: "Báo cáo tiến độ tuần của Ban" },
-                  { value: "GPMB_TOPIC", label: "Báo cáo chuyên đề Bồi thường & GPMB" },
-                  { value: "DISBURSEMENT_TOPIC", label: "Báo cáo tình hình giải ngân vốn đầu tư công" },
-                  { value: "ANNUAL", label: "Báo cáo tổng kết công tác năm" },
-                ]}
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                KỲ BÁO CÁO
-              </label>
-              <Input
-                intent="clean"
-                value={reportPeriod}
-                onChange={(e) => setReportPeriod(e.target.value)}
-                placeholder="VD: Tháng 09/2026 hoặc March 2026"
-                className="w-full text-xs h-8"
-              />
-            </div>
-
-            {!permissions.canGenerateReport && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-900 flex items-start gap-2">
-                <LockOutlined className="text-amber-600 mt-0.5 text-xs shrink-0" />
-                <div>
-                  <strong>Phân quyền BRD Mục 5:</strong> Quyền kết xuất và ban hành báo cáo lời cấp Ban bằng AI chỉ dành cho <strong>Ban Giám đốc (GĐ/PGĐ)</strong>. Tài khoản của bạn ({permissions.roleTitle}) có quyền tra cứu văn bản và tải biểu mẫu.
-                </div>
-              </div>
-            )}
-
-            <Button
-              intent={permissions.canGenerateReport ? "primary" : "default"}
-              disabled={isGenerating || !permissions.canGenerateReport}
-              onClick={permissions.canGenerateReport ? handleGenerateReport : undefined}
-              className={permissions.canGenerateReport 
-                ? "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-9 text-xs font-bold rounded-lg w-full flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-                : "h-9 text-xs font-semibold rounded-lg w-full flex items-center justify-center gap-1.5 bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"}
-            >
-              {isGenerating ? (
-                <>
-                  <LoadingOutlined /> Đang kết xuất...
-                </>
-              ) : permissions.canGenerateReport ? (
-                <>✦ Kết xuất báo cáo tự động</>
-              ) : (
-                <>🔒 Yêu cầu quyền Ban Giám đốc</>
+          {filteredItems.length > 0 && (
+            <div className="flex shrink-0 items-center justify-between gap-3 text-xs text-slate-500 xl:justify-end">
+              <span className="whitespace-nowrap">
+                Hiển thị {pageStart + 1}–{pageStart + pagedItems.length} / {filteredItems.length} văn bản
+              </span>
+              {totalPages > 1 && (
+                <Pagination
+                  current={currentPage}
+                  pageSize={DEFAULT_LIST_PAGE_SIZE}
+                  total={filteredItems.length}
+                  onChange={setPage}
+                  showSizeChanger={false}
+                  size="small"
+                />
               )}
-            </Button>
-
-            <p className="text-[11px] text-slate-500 leading-relaxed mb-0">
-              AI điền số liệu thực tế từ hệ thống vào khung mẫu báo cáo → người dùng xem xét và chỉnh sửa → ban hành
-            </p>
-          </Card>
-
-          {/* 2. Thẻ Biểu mẫu GPMB (Mẫu 01–09) */}
-          <Card
-            surface="flat"
-            padding="md"
-            rounded="lg"
-            className="border border-slate-200 shadow-xs bg-white"
-          >
-            <div className="text-sm font-bold text-slate-850 mb-2">
-              Biểu mẫu GPMB (Mẫu 01–09)
             </div>
-
-            <div className="divide-y divide-slate-100">
-              {GPMB_TEMPLATES.map((tmpl) => (
-                <div
-                  key={tmpl.id}
-                  className="flex items-center justify-between py-2 px-1 hover:bg-slate-50/80 rounded transition-colors"
-                >
-                  <span
-                    className="text-xs font-medium text-slate-800 line-clamp-1 pr-2"
-                    title={tmpl.name}
-                  >
-                    {tmpl.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadTemplate(tmpl)}
-                    className="shrink-0 flex items-center gap-1 text-[11.5px] font-semibold text-[#DC2626] bg-red-50 hover:bg-red-100 border border-red-200 hover:border-red-300 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer"
-                  >
-                    ↓ Tải
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
+          )}
         </div>
-      </div>
 
-      {/* Modal xem trước báo cáo AI đã kết xuất (closable=false) */}
-      <ReportPreviewModal
-        open={previewModal.open}
-        title={previewModal.title}
-        period={previewModal.period}
-        initialContent={previewModal.content}
-        canExport={permissions.canExportReport}
-        onClose={() => setPreviewModal((prev) => ({ ...prev, open: false }))}
-      />
+        {/* Danh sách văn bản */}
+        {pagedItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center px-4 py-14 text-center">
+            <SearchOutlined className="mb-2 text-2xl text-slate-300" />
+            <p className="m-0 text-sm font-semibold text-slate-700">Không tìm thấy văn bản phù hợp</p>
+            <p className="m-0 mt-1 text-xs text-slate-500">Thử từ khóa khác hoặc bỏ bớt bộ lọc.</p>
+            {isFiltering && (
+              <Button intent="outline" scale="compact" className="mt-3" onClick={resetFilters}>
+                Xóa bộ lọc
+              </Button>
+            )}
+          </div>
+        ) : (
+          <ol className="m-0 list-none divide-y divide-slate-100 p-0">
+            {pagedItems.map((item) => {
+              const status = STATUS_META[item.status];
+              return (
+                <li key={item.id}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Xem chi tiết ${item.title ? `${item.code} – ${item.title}` : item.code}`}
+                    onClick={() => handleOpenDocDetail(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleOpenDocDetail(item);
+                      }
+                    }}
+                    className="group flex cursor-pointer flex-col gap-3 px-4 py-4 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-start md:gap-6"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div>
+                        <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                          {item.title && (
+                            <>
+                              <span className="font-semibold text-slate-700">{item.code}</span>
+                              <span className="text-slate-300" aria-hidden>
+                                ·
+                              </span>
+                            </>
+                          )}
+                          <span className="text-slate-500">{item.issuer}</span>
+                        </div>
+                        <p className="m-0 text-[15px] font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#DC2626]">
+                          {item.title || item.code}
+                        </p>
+                        {item.tags.length > 0 && (
+                          <ul className="m-0 mt-2 flex list-none flex-wrap gap-1.5 p-0" aria-label="Từ khóa">
+                            {item.tags.map((tag) => (
+                              <li
+                                key={tag}
+                                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs text-slate-600"
+                              >
+                                {tag}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+
+                    <dl className="m-0 grid shrink-0 grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 gap-y-1 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs md:ml-auto md:w-[190px]">
+                      <dt className="text-slate-500">Ban hành</dt>
+                      <dd className="m-0 font-medium text-slate-800">{formatDate(item.issueDate)}</dd>
+                      <dt className="text-slate-500">Hiệu lực</dt>
+                      <dd className="m-0 font-medium text-slate-800">{formatDate(item.effectiveDate)}</dd>
+                      <dt className="text-slate-500">Tình trạng</dt>
+                      <dd className={`m-0 font-semibold leading-snug break-words ${status.textClass}`}>{status.label}</dd>
+                      <dt className="text-slate-500">Cập nhật</dt>
+                      <dd className="m-0 font-medium text-slate-800">{formatDate(item.updatedAt)}</dd>
+                    </dl>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+
+      </Card>
 
       {/* Drawer xem chi tiết văn bản (closable=false) */}
       <DocumentDetailDrawer
@@ -550,25 +532,12 @@ export default function LegalAiLibraryScreen() {
       {/* Drawer thêm mới văn bản (closable=false) */}
       <CreateDocumentDrawer
         open={isCreateOpen}
+        knownIssuers={legalItems.map((item) => item.issuer)}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={(doc) => {
-          const newItem: LegalItem = {
-            id: doc.id,
-            code: doc.code,
-            title: doc.title,
-            field: doc.scope.includes("Đấu thầu")
-              ? "Đấu thầu"
-              : doc.scope.includes("GPMB")
-              ? "Đất đai"
-              : "Xây dựng",
-            status: doc.status === "EFFECTIVE" ? "Hiệu lực" : doc.status === "EXPIRED" ? "Sắp hết HLực" : "Xem xét SĐ",
-            issuer: doc.issuer,
-            issueDate: doc.issueDate,
-            effectiveDate: doc.effectiveDate,
-            summary: doc.summary,
-          };
+          const newItem: LegalItem = { ...doc, updatedAt: todayIso() };
           setLegalItems((prev) => [newItem, ...prev]);
-          setSearch("");
+          resetFilters();
         }}
       />
 

@@ -12,7 +12,7 @@ import type { Staff, Team } from "../types/personnel.types";
  * 7. Kế toán viên
  * 8. Hành chính tổng hợp
  * 9. Văn thư, hỗ trợ hành chính
- * 10. Tổ viên / Chuyên viên / Nhân viên khác
+ * 10. Thành viên / Chuyên viên / Nhân viên khác
  */
 export function getStaffRankWeight(staff: Staff, team?: Team): number {
   const title = (staff.title || "").toLowerCase();
@@ -69,7 +69,7 @@ export function getStaffRankWeight(staff: Staff, team?: Team): number {
     return 90;
   }
 
-  // 10. Tổ viên, nhân viên thông thường
+  // 10. Thành viên, nhân viên thông thường
   return 100;
 }
 

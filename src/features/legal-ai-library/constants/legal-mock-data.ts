@@ -1,18 +1,57 @@
-import type { LegalDocument, LegalDocumentCategory, ReportType } from "../types/legal-ai.types";
+import type {
+  LegalDocument,
+  LegalDocumentCategory,
+  LegalDocumentStatus,
+  ReportType,
+} from "../types/legal-ai.types";
 
+/** Tên nhóm văn bản (cơ quan ban hành nhập riêng ở ô "Cơ quan ban hành", không ghi kèm ở đây) */
 export const CATEGORY_LABELS: Record<LegalDocumentCategory, string> = {
   ALL: "Tất cả văn bản & biểu mẫu",
-  LAW: "Luật (Quốc hội)",
-  DECREE: "Nghị định (Chính phủ)",
-  CIRCULAR: "Thông tư (Bộ ngành)",
-  LOCAL: "Văn bản địa phương (Kiên Giang)",
-  TEMPLATE: "Biểu mẫu chuẩn (BQL)",
+  LAW: "Luật",
+  DECREE: "Nghị định",
+  CIRCULAR: "Thông tư",
+  RESOLUTION: "Nghị quyết",
+  DECISION: "Quyết định",
+  LOCAL: "Văn bản địa phương",
+  TEMPLATE: "Biểu mẫu chuẩn",
 };
 
-export const STATUS_META = {
-  EFFECTIVE: { label: "Còn hiệu lực", badge: "bg-red-50 text-[#DC2626] border-red-200" },
-  EXPIRED: { label: "Hết hiệu lực", badge: "bg-slate-100 text-slate-500 border-slate-200" },
-  PARTIAL: { label: "Hết hiệu lực một phần", badge: "bg-amber-50 text-amber-700 border-amber-200" },
+/** Cơ quan ban hành thường gặp (gợi ý trong ô chọn; văn bản trong thư viện bổ sung thêm) */
+export const COMMON_ISSUERS: string[] = [
+  "Quốc hội",
+  "Ủy ban Thường vụ Quốc hội",
+  "Chính phủ",
+  "Thủ tướng Chính phủ",
+  "Bộ Xây dựng",
+  "Bộ Tài chính",
+  "Bộ Kế hoạch và Đầu tư",
+  "Bộ Tài nguyên và Môi trường",
+  "Bộ Giao thông vận tải",
+  "HĐND tỉnh Kiên Giang",
+  "UBND tỉnh Kiên Giang",
+  "Sở Xây dựng tỉnh Kiên Giang",
+  "UBND TP Hà Tiên",
+];
+
+/** Cơ quan ban hành gợi ý sẵn theo nhóm văn bản */
+export const DEFAULT_ISSUER_BY_CATEGORY: Partial<Record<LegalDocumentCategory, string>> = {
+  LAW: "Quốc hội",
+  DECREE: "Chính phủ",
+  CIRCULAR: "Bộ Xây dựng",
+  RESOLUTION: "Quốc hội",
+  DECISION: "UBND tỉnh Kiên Giang",
+  LOCAL: "UBND tỉnh Kiên Giang",
+};
+
+/** Thứ tự hiển thị tình trạng hiệu lực (dùng chung cho form, bộ lọc, danh sách) */
+export const STATUS_ORDER: LegalDocumentStatus[] = ["EFFECTIVE", "EXPIRING", "PARTIAL", "EXPIRED"];
+
+export const STATUS_META: Record<LegalDocumentStatus, { label: string; badge: string; textClass: string }> = {
+  EFFECTIVE: { label: "Còn hiệu lực", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", textClass: "text-emerald-700" },
+  EXPIRING: { label: "Sắp hết hiệu lực", badge: "bg-rose-50 text-rose-700 border-rose-200", textClass: "text-rose-700" },
+  PARTIAL: { label: "Hết hiệu lực một phần", badge: "bg-amber-50 text-amber-700 border-amber-200", textClass: "text-amber-700" },
+  EXPIRED: { label: "Hết hiệu lực", badge: "bg-slate-100 text-slate-500 border-slate-200", textClass: "text-slate-500" },
 };
 
 export const REPORT_TYPE_OPTIONS: { value: ReportType; label: string; desc: string }[] = [

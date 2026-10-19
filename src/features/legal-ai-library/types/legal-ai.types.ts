@@ -3,10 +3,13 @@ export type LegalDocumentCategory =
   | "LAW"
   | "DECREE"
   | "CIRCULAR"
+  | "RESOLUTION"
+  | "DECISION"
   | "LOCAL"
   | "TEMPLATE";
 
-export type LegalDocumentStatus = "EFFECTIVE" | "EXPIRED" | "PARTIAL";
+/** Tình trạng hiệu lực: Còn hiệu lực · Sắp hết hiệu lực · Hết hiệu lực một phần · Hết hiệu lực */
+export type LegalDocumentStatus = "EFFECTIVE" | "EXPIRING" | "PARTIAL" | "EXPIRED";
 
 export interface AttachedDocumentFile {
   id: string;
@@ -14,6 +17,14 @@ export interface AttachedDocumentFile {
   size: string;
   type: "PDF" | "DOCX";
   url?: string;
+  /** Tệp vừa tải lên (chưa có đường dẫn trên máy chủ) */
+  rawFile?: File;
+}
+
+/** Một chương của toàn văn: các điều, mỗi điều gồm các khoản */
+export interface LegalDocumentSection {
+  heading: string;
+  articles: { title: string; paragraphs: string[] }[];
 }
 
 export interface LegalDocument {
@@ -32,6 +43,10 @@ export interface LegalDocument {
   downloads: number;
   tags: string[];
   files?: AttachedDocumentFile[];
+  /** Ngày cập nhật vào thư viện (YYYY-MM-DD) */
+  updatedAt?: string;
+  /** Toàn văn (khi chưa có tệp gốc) để hiển thị trong bản xem trước */
+  content?: LegalDocumentSection[];
 }
 
 export type ReportType =

@@ -24,6 +24,8 @@ import type { AuthUser } from "@/types/auth";
 import { cn } from "@/utils/cn";
 import { getInitials } from "@/utils/initials";
 import { resolveStaffRbac } from "../utils/personnel-rbac";
+import RoleAdjustPanel from "./RoleAdjustPanel";
+import StaffInfoCard from "./StaffInfoCard";
 import type {
   GrantActingDirectorInput,
   PersonnelDataset,
@@ -194,6 +196,8 @@ interface StaffProjectRoleModalProps {
   onUpdateProjectPermissions?: (projectId: string, grantedPermissions: string[]) => Promise<boolean>;
   onLockAccount?: (person: Staff) => void;
   onUnlockAccount?: (person: Staff) => void;
+  /** Cho phép sửa trực tiếp thông tin cá nhân (lưu qua onUpdateStaff) */
+  canEditInfo?: boolean;
   initialPromoting?: boolean;
 }
 
@@ -209,6 +213,7 @@ export default function StaffProjectRoleModal({
   onUpdateProjectPermissions,
   onLockAccount,
   onUnlockAccount,
+  canEditInfo = false,
   initialPromoting = false,
 }: StaffProjectRoleModalProps) {
   const { modal } = App.useApp();
@@ -237,7 +242,17 @@ export default function StaffProjectRoleModal({
   const team = data.teams.find((t) => t.id === staff.teamId);
   const rbacProfile = resolveStaffRbac(staff, team, data.projects);
 
-  // Kiểm tra cán bộ có đang giữ vai trò nâng cao hay đã là thành viên cơ bản (Tổ viên)
+  // Dự án cán bộ được Giám đốc phân công thực hiện / giám sát chính
+  const relatedProjects: { project: PersonnelProject; roleText: string }[] = [];
+  for (const proj of data.projects) {
+    if (proj.mainExecutorId === staff.id) {
+      relatedProjects.push({ project: proj, roleText: "Người thực hiện chính" });
+    } else if (proj.mainSupervisorId === staff.id) {
+      relatedProjects.push({ project: proj, roleText: "Người giám sát chính" });
+    }
+  }
+
+  // Kiểm tra cán bộ có đang giữ vai trò nâng cao hay đã là thành viên cơ bản (Thành viên)
   const isBasicMember = useMemo(() => {
     if (!staff) return true;
     const isLead = Boolean(rbacProfile.isLeader) || team?.leaderId === staff.id;
@@ -253,7 +268,7 @@ export default function StaffProjectRoleModal({
     return !isLead && !isElevatedRole && !hasElevatedTitle && !hasActingProjects;
   }, [staff, team?.leaderId, rbacProfile.actingDirectorProjects.length, rbacProfile.isLeader]);
 
-  // Xử lý thu hồi vai trò cán bộ (đưa về Tổ viên cơ bản, không thu hồi quyền thủ công)
+  // Xử lý thu hồi vai trò cán bộ (đưa về Thành viên cơ bản, không thu hồi quyền thủ công)
   const handleRevokeStaffRole = () => {
     if (!staff || !onUpdateStaff) return;
 
@@ -275,7 +290,7 @@ export default function StaffProjectRoleModal({
                 Thu hồi vai trò cán bộ?
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Thu hồi chức danh lãnh đạo / quản lý, đưa cán bộ về vị trí Tổ viên cơ bản
+                Thu hồi chức danh lãnh đạo / quản lý, đưa cán bộ về vị trí Thành viên cơ bản
               </p>
             </div>
           </div>
@@ -288,13 +303,13 @@ export default function StaffProjectRoleModal({
             <div className="flex items-center justify-between">
               <span className="text-slate-500 font-medium">Chức vụ hiện tại:</span>
               <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200/60">
-                {staff.title} · {team?.name}
+                {staff.title || "Chưa có vai trò"} · {team?.name}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-500 font-medium">Vai trò sau thu hồi:</span>
               <span className="font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
-                Tổ viên (Thành viên cơ bản)
+                Thành viên (vai trò cơ bản)
               </span>
             </div>
           </div>
@@ -314,7 +329,7 @@ export default function StaffProjectRoleModal({
           else if (staff.teamId === "HCTH") defaultRoleCode = "ADMINISTRATIVE_OFFICER";
 
           await onUpdateStaff(staff.id, {
-            title: "Tổ viên",
+            title: "Thành viên",
             roleCode: defaultRoleCode,
             isLeader: false,
           }, `Đã thu hồi vai trò của cán bộ ${staff.name} thành công!`);
@@ -531,9 +546,9 @@ export default function StaffProjectRoleModal({
       {
         id: "ROLE_GSKT_MEMBER",
         roleCode: "TECHNICAL_OFFICER",
-        title: "Thành viên tổ",
+        title: "Thành viên",
         isLeader: false,
-        label: "Thành viên tổ",
+        label: "Thành viên",
       },
     ];
   }, [editTeamId, data.teams]);
@@ -607,14 +622,14 @@ export default function StaffProjectRoleModal({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-slate-800">
-                Phân quyền cán bộ: {staff.name}
+                Hồ sơ & phân quyền: {staff.name}
               </span>
               <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200">
-                {staff.title}
+                {staff.title || "Chưa có vai trò"}
               </span>
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
-              Quyền hệ thống & nghiệp vụ chuyên môn
+              Thông tin cá nhân, quyền hệ thống & nghiệp vụ chuyên môn
             </div>
           </div>
         </div>
@@ -635,7 +650,7 @@ export default function StaffProjectRoleModal({
                 </Tag>
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
-                {staff.title} · {team?.name}
+                {staff.title || "Chưa có vai trò"} · {team?.name}
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
                 Email: {staff.email}
@@ -644,7 +659,7 @@ export default function StaffProjectRoleModal({
           </div>
 
           {/* Khóa / Mở lại tài khoản cán bộ */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
             {onLockAccount && (
               staff.accountActive ? (
                 <Button
@@ -757,7 +772,29 @@ export default function StaffProjectRoleModal({
         )}
       </div>
 
-      {/* 2. QUYỀN HẠN HỆ THỐNG & NGHIỆP VỤ CHUYÊN MÔN - Ẩn khi đang ở chế độ đổi vai trò */}
+      {/* 2. THÔNG TIN CÁ NHÂN & VỊ TRÍ CÔNG TÁC (sửa trực tiếp trên thẻ) */}
+      {!isPromoting && (
+        <StaffInfoCard
+          key={`info-${staff.id}`}
+          staff={staff}
+          team={team}
+          relatedProjects={relatedProjects}
+          onSave={canEditInfo ? onUpdateStaff : undefined}
+        />
+      )}
+
+      {/* 2b. ĐIỀU CHỈNH VAI TRÒ: Cấp / Đổi / Thu hồi vai trò ngay trong drawer */}
+      {!isPromoting && canManageRole && onUpdateStaff && (
+        <RoleAdjustPanel
+          key={`roles-${staff.id}`}
+          staff={staff}
+          data={data}
+          onUpdateStaff={onUpdateStaff}
+          onRevokeActingDirector={onRevokeRole}
+        />
+      )}
+
+      {/* 3. QUYỀN HẠN HỆ THỐNG & NGHIỆP VỤ CHUYÊN MÔN - Ẩn khi đang ở chế độ đổi vai trò */}
       {!isPromoting && (
         <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
           <div className="mb-1 flex items-center justify-between gap-2 flex-wrap">

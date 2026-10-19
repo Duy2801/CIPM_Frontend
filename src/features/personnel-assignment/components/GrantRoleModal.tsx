@@ -1,21 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  CheckCircleFilled,
-} from "@ant-design/icons";
+import { CheckCircleFilled, SearchOutlined } from "@ant-design/icons";
 import {
   Avatar,
   Button,
   Checkbox,
   Drawer,
-  Select,
+  Input,
   Tag,
   Text,
   toast,
 } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { getInitials } from "@/utils/initials";
+import { normalizeSearchText } from "@/utils/search-text";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
 import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
 import type { PersonnelDataset, Staff, Team, TeamId } from "../types/personnel.types";
@@ -25,6 +24,8 @@ interface GrantRoleModalProps {
   staff: Staff | null;
   data: PersonnelDataset;
   onClose: () => void;
+  /** Hiển thị ngay trong drawer chi tiết cán bộ thay vì mở drawer riêng */
+  embedded?: boolean;
   onSubmit: (
     staffId: string,
     input: {
@@ -184,11 +185,14 @@ export default function GrantRoleModal({
   staff,
   data,
   onClose,
+  embedded = false,
   onSubmit,
 }: GrantRoleModalProps) {
   const { roles: matrixRoles } = useRoleMatrix();
-  const [selectedTeamId, setSelectedTeamId] = useState<string>("ALL");
+  const [roleQuery, setRoleQuery] = useState("");
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  // Vai trò cán bộ đang giữ: luôn được giữ lại, không bỏ tick được (bỏ vai trò dùng mục "Thu hồi vai trò")
+  const [heldRoleIds, setHeldRoleIds] = useState<string[]>([]);
   const [storedCustomRoles, setStoredCustomRoles] = useState<RoleItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -322,98 +326,91 @@ export default function GrantRoleModal({
     return trulyIndependentCustomRoles;
   }, [trulyIndependentCustomRoles]);
 
-  // Tổng hợp tất cả vai trò trong hệ thống để tra cứu
-  const allKnownRolesMap = useMemo(() => {
-    const map = new Map<string, RoleItem>();
-    systemIndependentRoles.forEach((r) => map.set(r.id, r));
-    data.teams.forEach((t) => {
-      const teamRoles = getDepartmentRoles(t);
-      teamRoles.forEach((r) => map.set(r.id, r));
-    });
-    return map;
-  }, [systemIndependentRoles, data.teams]);
+  // Toàn bộ vai trò có thể cấp: vai trò của mọi phòng ban (kể cả vai trò tùy chỉnh riêng phòng ban) + vai trò độc lập
+  const allRoles = useMemo<RoleItem[]>(() => {
+    const list: RoleItem[] = [];
+    const seenIds = new Set<string>();
+    const push = (role: RoleItem) => {
+      if (seenIds.has(role.id)) return;
+      seenIds.add(role.id);
+      list.push(role);
+    };
 
-  // Danh sách vai trò hiển thị tương ứng với lựa chọn phòng ban
-  const displayedRoles = useMemo<RoleItem[]>(() => {
-    if (selectedTeamId === "ALL") {
-      return systemIndependentRoles;
-    }
-
-    const targetTeam = data.teams.find((t) => t.id === selectedTeamId);
-    if (!targetTeam) return systemIndependentRoles;
-
-    const baseDeptRoles = getDepartmentRoles(targetTeam);
-
-    // Thêm các role tùy chỉnh thuộc riêng phòng ban này (nếu có trong matrixRoles)
-    const extraDeptCustomRoles: RoleItem[] = [];
-    const seenTitles = new Set(baseDeptRoles.map((r) => r.title.toLowerCase().trim()));
-
-    matrixRoles
-      .filter(
-        (r) =>
-          r.isCustom &&
-          (r.department?.toLowerCase() === targetTeam.name.toLowerCase() ||
-            r.department?.toLowerCase() === targetTeam.id.toLowerCase())
-      )
-      .forEach((r) => {
-        const titleLower = r.name.toLowerCase().trim();
-        if (!seenTitles.has(titleLower)) {
+    data.teams.forEach((team) => {
+      const baseRoles = getDepartmentRoles(team);
+      baseRoles.forEach(push);
+      const seenTitles = new Set(baseRoles.map((r) => r.title.toLowerCase().trim()));
+      matrixRoles
+        .filter(
+          (r) =>
+            r.isCustom &&
+            (r.department?.toLowerCase() === team.name.toLowerCase() ||
+              r.department?.toLowerCase() === team.id.toLowerCase())
+        )
+        .forEach((r) => {
+          const titleLower = r.name.toLowerCase().trim();
+          if (seenTitles.has(titleLower)) return;
           seenTitles.add(titleLower);
-          extraDeptCustomRoles.push({
+          push({
             id: r.code,
             roleCode: r.code,
             title: r.name,
             label: r.name,
-            teamName: targetTeam.name,
+            teamName: team.name,
             isLeader: r.group === "lead",
             isCustom: true,
           });
-        }
-      });
+        });
+    });
+    systemIndependentRoles.forEach(push);
+    return list;
+  }, [data.teams, matrixRoles, systemIndependentRoles]);
 
-    return [...baseDeptRoles, ...extraDeptCustomRoles];
-  }, [selectedTeamId, systemIndependentRoles, data.teams, matrixRoles]);
+  const allKnownRolesMap = useMemo(() => new Map(allRoles.map((r) => [r.id, r])), [allRoles]);
+
+  // Tìm vai trò: không phân biệt hoa/thường và dấu, theo tên vai trò hoặc phòng ban
+  const displayedRoles = useMemo<RoleItem[]>(() => {
+    const q = normalizeSearchText(roleQuery);
+    if (!q) return allRoles;
+    return allRoles.filter((r) =>
+      [r.title, r.label, r.teamName].some((text) => normalizeSearchText(text).includes(q))
+    );
+  }, [allRoles, roleQuery]);
 
   // Khởi tạo vai trò ban đầu khi mở Drawer
   useEffect(() => {
     if (staff && open) {
-      // Mặc định chọn phòng ban hiện tại của cán bộ nếu có, ngược lại chọn "ALL"
-      const defaultTeamId =
-        staff.teamId && data.teams.some((t) => t.id === staff.teamId)
-          ? staff.teamId
-          : "ALL";
-      setSelectedTeamId(defaultTeamId);
+      setRoleQuery("");
 
-      // Khởi tạo các vai trò đang có từ staff.title
-      const titleLower = (staff.title || "").toLowerCase();
-      const initialMatches: string[] = [];
-
-      allKnownRolesMap.forEach((role, id) => {
-        if (titleLower.includes(role.title.toLowerCase())) {
-          initialMatches.push(id);
-        }
+      // Xác định vai trò đang giữ từ chức danh (các chức danh ngăn cách bởi "·"), so khớp chính xác
+      // để "Phó Giám đốc" không bị tính nhầm là đang giữ "Giám đốc".
+      // Tên trùng ở nhiều phòng ban (VD: "Thành viên") thì lấy vai trò thuộc phòng ban của cán bộ.
+      const staffTeamName = data.teams.find((t) => t.id === staff.teamId)?.name;
+      const titleParts = (staff.title || "")
+        .split(/\s*·\s*|\s*;\s*|\r?\n/)
+        .map((part) => normalizeSearchText(part))
+        .filter(Boolean);
+      const heldIds: string[] = [];
+      titleParts.forEach((part) => {
+        const candidates = allRoles.filter((role) => normalizeSearchText(role.title) === part);
+        const match = candidates.find((role) => role.teamName === staffTeamName) ?? candidates[0];
+        if (match && !heldIds.includes(match.id)) heldIds.push(match.id);
       });
 
-      if (initialMatches.length > 0) {
-        setSelectedRoleIds(initialMatches);
-      } else {
-        const defaultRoles =
-          defaultTeamId === "ALL"
-            ? systemIndependentRoles
-            : getDepartmentRoles(data.teams.find((t) => t.id === defaultTeamId)!);
-        if (defaultRoles.length > 0) {
-          setSelectedRoleIds([defaultRoles[0].id]);
-        }
-      }
+      setHeldRoleIds(heldIds);
+      setSelectedRoleIds(heldIds);
     }
   }, [staff?.id, open]);
 
   // Toggle chọn / bỏ chọn vai trò (lưu trữ độc lập, không bị mất khi chuyển phòng ban)
   const handleToggleRole = (roleId: string) => {
+    if (heldRoleIds.includes(roleId)) return;
     setSelectedRoleIds((prev) =>
       prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
     );
   };
+
+  const newRoleCount = selectedRoleIds.filter((id) => !heldRoleIds.includes(id)).length;
 
   // Danh sách các vai trò đang được chọn
   const selectedRoles = useMemo<RoleItem[]>(() => {
@@ -439,8 +436,8 @@ export default function GrantRoleModal({
       const hasAdmin = selectedRoles.some((r) => r.roleCode === "ADMIN");
       const finalRoleCode = hasAdmin ? "ADMIN" : selectedRoles[0].roleCode;
 
-      // Giữ nguyên phòng ban hiện tại của cán bộ nếu chọn "ALL", chỉ đổi khi người dùng chọn phòng ban cụ thể
-      const finalTeamId = selectedTeamId === "ALL" ? staff.teamId : (selectedTeamId as TeamId);
+      // Cấp thêm vai trò không đổi phòng ban của cán bộ (đổi phòng ban dùng mục "Đổi vai trò")
+      const finalTeamId: TeamId = staff.teamId;
 
       // Giữ nguyên trạng thái lãnh đạo hiện có của cán bộ, tuyệt đối không tự ý đổi phụ trách của người khác
       const isAlreadyLeader = data.teams.find((t) => t.id === staff.teamId)?.leaderId === staff.id;
@@ -453,7 +450,7 @@ export default function GrantRoleModal({
           teamId: finalTeamId,
           isLeader: isAlreadyLeader,
         },
-        `Đã cấp ${selectedRoles.length} vai trò cho cán bộ ${staff.name} thành công!`
+        `Đã cấp thêm ${newRoleCount} vai trò cho cán bộ ${staff.name} thành công!`
       );
 
       if (ok) {
@@ -468,59 +465,34 @@ export default function GrantRoleModal({
 
   const currentTeam = data.teams.find((t) => t.id === staff.teamId);
 
-  // Danh sách lựa chọn phòng ban
-  const departmentOptions = [
-    {
-      value: "ALL",
-      label: "Vai trò độc lập (Không thuộc phòng ban riêng)",
-    },
-    ...data.teams.map((t) => ({
-      value: t.id,
-      label: `${t.name} (${t.id})`,
-    })),
-  ];
+  const footerContent = (
+    <div className="flex items-center justify-start gap-2.5 px-2 py-1">
+      <Button
+        intent="primary"
+        scale="compact"
+        onClick={handleConfirm}
+        loading={submitting}
+        disabled={newRoleCount === 0}
+        className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] disabled:!bg-slate-300 disabled:!border-slate-300 text-white text-xs font-semibold px-5 shadow-xs"
+      >
+        Xác nhận cấp
+      </Button>
+      <Button
+        intent="outline"
+        scale="compact"
+        onClick={onClose}
+        disabled={submitting}
+        className="text-xs font-semibold px-4"
+      >
+        Đóng
+      </Button>
+    </div>
+  );
 
-  return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      width="min(680px, 100vw)"
-      footer={
-        <div className="flex items-center justify-start gap-2.5 px-2 py-1">
-          <Button
-            intent="primary"
-            scale="compact"
-            onClick={handleConfirm}
-            loading={submitting}
-            disabled={selectedRoleIds.length === 0}
-            className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] disabled:!bg-slate-300 disabled:!border-slate-300 text-white text-xs font-semibold px-5 shadow-xs"
-          >
-            Xác nhận cấp role
-          </Button>
-          <Button
-            intent="outline"
-            scale="compact"
-            onClick={onClose}
-            disabled={submitting}
-            className="text-xs font-semibold px-4"
-          >
-            Đóng
-          </Button>
-        </div>
-      }
-      title={
-        <div>
-          <h3 className="text-base font-bold text-slate-900 leading-snug">
-            Cấp vai trò / Bổ nhiệm cán bộ
-          </h3>
-          <p className="text-xs text-slate-500 font-normal">
-            Phân công vai trò và cập nhật quyền hạn hệ thống cho nhân sự
-          </p>
-        </div>
-      }
-    >
-      <div className="space-y-4 pt-1">
-        {/* Card thông tin cán bộ hiện tại */}
+  const bodyContent = (
+    <div className="space-y-4 pt-1">
+      {/* Card thông tin cán bộ hiện tại */}
+      {!embedded && (
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Avatar variant="brand" shape="circle" size={44} className="font-bold text-xs shrink-0">
@@ -542,116 +514,154 @@ export default function GrantRoleModal({
             </div>
           </div>
         </div>
+      )}
 
-        {/* Khung cấu hình cấp vai trò */}
-        <div className="rounded-xl border border-sky-200/80 bg-sky-50/20 p-4 space-y-4">
-          {/* 1. Chọn phòng ban / tổ chuyên môn hoặc Toàn đơn vị */}
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-700 block mb-1.5">
-              1. Lọc theo phòng ban / Vai trò độc lập:
+      {/* Khung cấu hình cấp vai trò */}
+      <div className="rounded-xl border border-sky-200/80 bg-sky-50/20 p-4 space-y-4">
+        {/* Tìm và tick các vai trò cần cấp (vai trò của mọi phòng ban + vai trò độc lập) */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="grant-role-search" className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+              Chọn các vai trò bổ nhiệm:
             </label>
-            <Select
-              value={selectedTeamId}
-              onChange={(val) => setSelectedTeamId(val)}
-              className="w-full text-xs"
-              options={departmentOptions}
-            />
+            <span className="text-xs font-semibold text-[#0F4C81]">
+              Cấp thêm: {newRoleCount} vai trò
+            </span>
           </div>
 
-          {/* 2. Chọn các vai trò bổ nhiệm (Cho phép tích nhiều vai trò) */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                2. Chọn các vai trò bổ nhiệm:
-              </label>
-              <span className="text-xs font-semibold text-[#0F4C81]">
-                Đã chọn: {selectedRoleIds.length} vai trò
-              </span>
-            </div>
+          <Input
+            id="grant-role-search"
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm vai trò hoặc phòng ban (VD: tổ trưởng, kế toán...)"
+            value={roleQuery}
+            onChange={(e) => setRoleQuery(e.target.value)}
+            className="mb-2.5 w-full text-xs"
+          />
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              {displayedRoles.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                  Chưa có vai trò độc lập nào được thiết lập.
-                </div>
-              ) : (
-                displayedRoles.map((r) => {
-                const isChecked = selectedRoleIds.includes(r.id);
-                return (
-                  <div
-                    key={r.id}
-                    onClick={() => handleToggleRole(r.id)}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none",
-                      isChecked
-                        ? "bg-sky-50/80 border-sky-300 shadow-2xs"
-                        : "bg-white border-slate-200/80 hover:bg-slate-50/80 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={isChecked}
-                        onChange={() => handleToggleRole(r.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div>
-                        <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                          <span>{r.title}</span>
-                          {r.isCustom && (
-                            <span className="text-[10px] bg-sky-100 text-[#0F4C81] font-semibold px-1.5 py-0.2 rounded border border-sky-200">
-                              Vai trò tùy chỉnh
-                            </span>
-                          )}
-                          {r.teamName && !r.isCustom && (
-                            <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.2 rounded border border-slate-200">
-                              {r.teamName}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          Vai trò hệ thống: <strong className="text-slate-700 font-medium">{r.isCustom || r.roleCode.startsWith("CUSTOM_") ? (r.title || "Vai trò tùy chỉnh") : (SYSTEM_ROLE_META[r.roleCode]?.label || r.roleCode)}</strong>
-                        </div>
+          <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+            {displayedRoles.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                {roleQuery.trim() ? `Không tìm thấy vai trò phù hợp với "${roleQuery.trim()}".` : "Chưa có vai trò nào được thiết lập."}
+              </div>
+            ) : (
+              displayedRoles.map((r) => {
+              const isChecked = selectedRoleIds.includes(r.id);
+              const isHeld = heldRoleIds.includes(r.id);
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => handleToggleRole(r.id)}
+                  aria-disabled={isHeld}
+                  title={isHeld ? "Cán bộ đang giữ vai trò này — muốn bỏ hãy dùng mục Thu hồi vai trò" : undefined}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl border transition-all select-none",
+                    isHeld
+                      ? "bg-slate-50 border-slate-200/80 opacity-70 cursor-not-allowed"
+                      : isChecked
+                      ? "bg-sky-50/80 border-sky-300 shadow-2xs cursor-pointer"
+                      : "bg-white border-slate-200/80 hover:bg-slate-50/80 hover:border-slate-300 cursor-pointer"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={isChecked}
+                      disabled={isHeld}
+                      onChange={() => handleToggleRole(r.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                        <span>{r.title}</span>
+                        {isHeld && (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.2 rounded border border-emerald-200">
+                            Đang giữ
+                          </span>
+                        )}
+                        {r.isCustom && (
+                          <span className="text-[10px] bg-sky-100 text-[#0F4C81] font-semibold px-1.5 py-0.2 rounded border border-sky-200">
+                            Vai trò tùy chỉnh
+                          </span>
+                        )}
+                        {r.teamName && !r.isCustom && (
+                          <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.2 rounded border border-slate-200">
+                            {r.teamName}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Vai trò hệ thống: <strong className="text-slate-700 font-medium">{r.isCustom || r.roleCode.startsWith("CUSTOM_") ? (r.title || "Vai trò tùy chỉnh") : (SYSTEM_ROLE_META[r.roleCode]?.label || r.roleCode)}</strong>
                       </div>
                     </div>
-                    {isChecked && (
-                      <span className="text-xs font-semibold text-[#0F4C81] flex items-center gap-1 shrink-0">
-                        <CheckCircleFilled className="text-sm" />
-                      </span>
-                    )}
                   </div>
-                );
-              }))}
+                  {isChecked && !isHeld && (
+                    <span className="text-xs font-semibold text-[#0F4C81] flex items-center gap-1 shrink-0">
+                      <CheckCircleFilled className="text-sm" />
+                    </span>
+                  )}
+                </div>
+              );
+            }))}
+          </div>
+        </div>
+
+        {/* Tổng kết các vai trò đã chọn (KHÔNG CÓ DẤU X) */}
+        {selectedRoles.length > 0 && (
+          <div className="p-3 rounded-xl bg-white border border-sky-200 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                Chức danh tổng hợp sau khi cấp:
+              </span>
+              <span className="text-[11px] font-semibold text-[#0F4C81]">
+                {selectedRoles.length} vai trò
+              </span>
+            </div>
+            <div className="text-xs font-bold text-[#0F4C81] leading-relaxed bg-sky-50/60 p-2 rounded-lg border border-sky-100">
+              {combinedTitle}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              {selectedRoles.map((r) => (
+                <span
+                  key={r.id}
+                  className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-white text-[#0F4C81] border border-sky-200 shadow-2xs"
+                >
+                  {r.title}
+                </span>
+              ))}
             </div>
           </div>
-
-          {/* Tổng kết các vai trò đã chọn (KHÔNG CÓ DẤU X) */}
-          {selectedRoles.length > 0 && (
-            <div className="p-3 rounded-xl bg-white border border-sky-200 shadow-2xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                  Chức danh tổng hợp sau khi cấp:
-                </span>
-                <span className="text-[11px] font-semibold text-[#0F4C81]">
-                  {selectedRoles.length} vai trò
-                </span>
-              </div>
-              <div className="text-xs font-bold text-[#0F4C81] leading-relaxed bg-sky-50/60 p-2 rounded-lg border border-sky-100">
-                {combinedTitle}
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                {selectedRoles.map((r) => (
-                  <span
-                    key={r.id}
-                    className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-white text-[#0F4C81] border border-sky-200 shadow-2xs"
-                  >
-                    {r.title}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-3">
+        {bodyContent}
+        {footerContent}
+      </div>
+    );
+  }
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      width="min(680px, 100vw)"
+      footer={footerContent}
+      title={
+        <div>
+          <h3 className="text-base font-bold text-slate-900 leading-snug">
+            Cấp vai trò / Bổ nhiệm cán bộ
+          </h3>
+          <p className="text-xs text-slate-500 font-normal">
+            Phân công vai trò và cập nhật quyền hạn hệ thống cho nhân sự
+          </p>
+        </div>
+      }
+    >
+      {bodyContent}
     </Drawer>
   );
 }

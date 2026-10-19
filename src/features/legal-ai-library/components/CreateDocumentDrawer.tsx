@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarOutlined,
   DeleteOutlined,
@@ -15,10 +15,17 @@ import {
   TagOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Input, Select, StandardFileUpload, Text, STANDARD_DRAWER_WIDTH } from "@/components/ui";
+import { Button, Divider, Drawer, Input, Select, StandardFileUpload, Text, STANDARD_DRAWER_WIDTH } from "@/components/ui";
 import type { UploadedAttachment } from "@/components/ui/standard-file-upload";
 import { todayIso } from "@/utils/date";
-import { CATEGORY_LABELS } from "../constants/legal-mock-data";
+import { normalizeSearchText } from "@/utils/search-text";
+import {
+  CATEGORY_LABELS,
+  COMMON_ISSUERS,
+  DEFAULT_ISSUER_BY_CATEGORY,
+  STATUS_META,
+  STATUS_ORDER,
+} from "../constants/legal-mock-data";
 import type {
   AttachedDocumentFile,
   LegalDocument,
@@ -31,31 +38,19 @@ interface CreateDocumentDrawerProps {
   editingDocument?: LegalDocument | null;
   onClose: () => void;
   onSubmit: (doc: LegalDocument) => void;
+  /** Cơ quan ban hành của các văn bản đã có trong thư viện (bổ sung vào danh sách gợi ý) */
+  knownIssuers?: string[];
 }
 
-const CATEGORY_SELECT_OPTIONS = [
-  { value: "LAW", label: "Luật (Quốc hội)" },
-  { value: "DECREE", label: "Nghị định (Chính phủ)" },
-  { value: "CIRCULAR", label: "Thông tư (Bộ ngành)" },
-  { value: "LOCAL", label: "Văn bản địa phương (Kiên Giang / Hà Tiên)" },
-  { value: "TEMPLATE", label: "Biểu mẫu chuẩn (BQL áp dụng nội bộ)" },
-];
+type DocumentCategory = Exclude<LegalDocumentCategory, "ALL">;
 
-const STATUS_SELECT_OPTIONS: { value: LegalDocumentStatus; label: string }[] = [
-  { value: "EFFECTIVE", label: "Còn hiệu lực" },
-  { value: "PARTIAL", label: "Hết hiệu lực một phần" },
-  { value: "EXPIRED", label: "Hết hiệu lực" },
-];
+const CATEGORY_SELECT_OPTIONS = (
+  ["LAW", "DECREE", "CIRCULAR", "RESOLUTION", "DECISION", "LOCAL"] as DocumentCategory[]
+).map((value) => ({ value, label: CATEGORY_LABELS[value] }));
 
-const SCOPE_SUGGESTIONS = [
-  "M2 – Quản lý dự án & tiến độ thi công",
-  "M3 – Thủ tục XDCB & pháp lý dự án",
-  "M4 – Giải ngân KBNN, tạm ứng & quyết toán",
-  "M6 – Bồi thường, hỗ trợ & GPMB (16 bước)",
-  "M7 – Quản lý đấu thầu qua mạng (9 bước)",
-  "M8 – Bảo hành công trình & bảo lãnh hợp đồng",
-  "Toàn bộ các phân hệ quản lý của Ban",
-];
+const STATUS_SELECT_OPTIONS = STATUS_ORDER.map((value) => ({ value, label: STATUS_META[value].label }));
+
+const DEFAULT_ISSUERS = new Set(Object.values(DEFAULT_ISSUER_BY_CATEGORY));
 
 function formatFileSize(bytes: number): string {
   if (bytes <= 0) return "0 B";
@@ -70,16 +65,16 @@ export default function CreateDocumentDrawer({
   editingDocument,
   onClose,
   onSubmit,
+  knownIssuers = [],
 }: CreateDocumentDrawerProps) {
   const [code, setCode] = useState("");
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<Exclude<LegalDocumentCategory, "ALL">>("DECREE");
+  const [category, setCategory] = useState<DocumentCategory>("DECREE");
   const [issuer, setIssuer] = useState("");
+  const [issuerQuery, setIssuerQuery] = useState("");
+  const [addedIssuers, setAddedIssuers] = useState<string[]>([]);
   const [issueDate, setIssueDate] = useState(todayIso());
   const [effectiveDate, setEffectiveDate] = useState(todayIso());
   const [status, setStatus] = useState<LegalDocumentStatus>("EFFECTIVE");
-  const [scope, setScope] = useState(SCOPE_SUGGESTIONS[0]);
-  const [summary, setSummary] = useState("");
   const [tagsStr, setTagsStr] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<UploadedAttachment[]>([]);
   const [errorText, setErrorText] = useState("");
@@ -87,14 +82,11 @@ export default function CreateDocumentDrawer({
   useEffect(() => {
     if (editingDocument) {
       setCode(editingDocument.code);
-      setTitle(editingDocument.title);
       setCategory(editingDocument.category);
       setIssuer(editingDocument.issuer);
       setIssueDate(editingDocument.issueDate);
       setEffectiveDate(editingDocument.effectiveDate);
       setStatus(editingDocument.status);
-      setScope(editingDocument.scope);
-      setSummary(editingDocument.summary);
       setTagsStr(editingDocument.tags.join(", "));
       if (editingDocument.files && editingDocument.files.length > 0) {
         setAttachedFiles(
@@ -120,19 +112,49 @@ export default function CreateDocumentDrawer({
       setErrorText("");
     } else {
       setCode("");
-      setTitle("");
       setCategory("DECREE");
-      setIssuer("Chính phủ");
+      setIssuer(DEFAULT_ISSUER_BY_CATEGORY.DECREE ?? "");
       setIssueDate(todayIso());
       setEffectiveDate(todayIso());
       setStatus("EFFECTIVE");
-      setScope(SCOPE_SUGGESTIONS[0]);
-      setSummary("");
       setTagsStr("");
       setAttachedFiles([]);
       setErrorText("");
     }
+    setIssuerQuery("");
   }, [editingDocument, open]);
+
+  const issuerOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const name of [...COMMON_ISSUERS, ...knownIssuers, ...addedIssuers, issuer]) {
+      const trimmed = name.trim();
+      const key = normalizeSearchText(trimmed);
+      if (!trimmed || seen.has(key)) continue;
+      seen.add(key);
+      list.push(trimmed);
+    }
+    return list.map((name) => ({ value: name, label: name }));
+  }, [knownIssuers, addedIssuers, issuer]);
+
+  const issuerQueryTrimmed = issuerQuery.trim();
+  const canAddIssuer =
+    Boolean(issuerQueryTrimmed) &&
+    !issuerOptions.some((opt) => normalizeSearchText(opt.value) === normalizeSearchText(issuerQueryTrimmed));
+
+  const handleAddIssuer = () => {
+    if (!canAddIssuer) return;
+    setAddedIssuers((prev) => [...prev, issuerQueryTrimmed]);
+    setIssuer(issuerQueryTrimmed);
+    setIssuerQuery("");
+  };
+
+  const handleCategoryChange = (next: DocumentCategory) => {
+    setCategory(next);
+    if (!issuer.trim() || DEFAULT_ISSUERS.has(issuer.trim())) {
+      setIssuer(DEFAULT_ISSUER_BY_CATEGORY[next] ?? "");
+    }
+  };
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -157,15 +179,15 @@ export default function CreateDocumentDrawer({
     if (e) e.preventDefault();
 
     if (!code.trim()) {
-      setErrorText("Vui lòng nhập số hiệu văn bản hoặc mã biểu mẫu.");
-      return;
-    }
-    if (!title.trim()) {
-      setErrorText("Vui lòng nhập trích yếu nội dung hoặc tên biểu mẫu.");
+      setErrorText("Vui lòng nhập số hiệu văn bản.");
       return;
     }
     if (!issuer.trim()) {
       setErrorText("Vui lòng nhập cơ quan ban hành.");
+      return;
+    }
+    if (issueDate && effectiveDate && effectiveDate < issueDate) {
+      setErrorText("Ngày có hiệu lực không được trước ngày ban hành.");
       return;
     }
 
@@ -186,14 +208,16 @@ export default function CreateDocumentDrawer({
     const newDoc: LegalDocument = {
       id: editingDocument ? editingDocument.id : `DOC-${Date.now().toString().slice(-4)}`,
       code: code.trim(),
-      title: title.trim(),
+      // Form không nhập trích yếu / phạm vi nữa; giữ giá trị cũ khi cập nhật văn bản đã có
+      title: editingDocument?.title ?? "",
       category,
       issuer: issuer.trim(),
       issueDate,
       effectiveDate,
       status,
-      scope: scope.trim(),
-      summary: summary.trim() || `Văn bản quy định về ${title.trim()} áp dụng trong hoạt động của Ban.`,
+      scope: editingDocument?.scope ?? "",
+      // Form không nhập tóm tắt nữa; giữ tóm tắt cũ khi cập nhật văn bản đã có
+      summary: editingDocument?.summary ?? "",
       fileType: primaryType,
       fileSize: totalSizeStr,
       downloads: editingDocument?.downloads ?? 0,
@@ -221,17 +245,17 @@ export default function CreateDocumentDrawer({
         <div className="py-1">
           <div className="flex items-center gap-2 text-base font-bold text-slate-800">
             <SafetyCertificateOutlined className="text-[#DC2626]" />
-            {editingDocument ? "Cập nhật văn bản / biểu mẫu" : "Thêm mới văn bản pháp lý / biểu mẫu"}
+            {editingDocument ? "Cập nhật văn bản pháp luật" : "Thêm văn bản pháp luật"}
           </div>
           <div className="mt-0.5 text-xs font-normal text-slate-500">
             {editingDocument
-              ? "Chỉnh sửa số hiệu, trích yếu, phạm vi áp dụng và tệp tài liệu số hóa"
-              : "Bổ sung luật, nghị định, thông tư hoặc biểu mẫu phục vụ tra cứu và AI kết xuất"}
+              ? "Chỉnh sửa số hiệu, cơ quan ban hành, hiệu lực và tệp tài liệu số hóa"
+              : "Bổ sung luật, nghị định, thông tư, nghị quyết, quyết định vào thư viện tra cứu"}
           </div>
         </div>
       }
       footer={
-        <div className="flex w-full items-center justify-end gap-2.5 py-2">
+        <div className="flex w-full items-center justify-start gap-2.5 py-2">
           <Button
             intent="primary"
             scale="sm"
@@ -268,7 +292,7 @@ export default function CreateDocumentDrawer({
               <Select
                 aria-label="Nhóm văn bản"
                 value={category}
-                onChange={(val) => setCategory(val as Exclude<LegalDocumentCategory, "ALL">)}
+                onChange={(val) => handleCategoryChange(val as DocumentCategory)}
                 className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
                 options={CATEGORY_SELECT_OPTIONS}
               />
@@ -282,23 +306,10 @@ export default function CreateDocumentDrawer({
                 intent="clean"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="VD: 10/2021/NĐ-CP hoặc Mẫu 04-GPMB"
+                placeholder="VD: 10/2021/NĐ-CP"
                 className="w-full text-xs h-8"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Trích yếu nội dung / Tên biểu mẫu <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              intent="clean"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Nghị định về quản lý chi phí đầu tư xây dựng..."
-              className="w-full text-xs h-8"
-            />
           </div>
         </div>
 
@@ -308,12 +319,47 @@ export default function CreateDocumentDrawer({
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Cơ quan ban hành <span className="text-rose-500">*</span>
             </label>
-            <Input
-              intent="clean"
-              value={issuer}
-              onChange={(e) => setIssuer(e.target.value)}
-              placeholder="VD: Quốc hội, Chính phủ, Bộ Xây dựng, UBND Kiên Giang"
-              className="w-full text-xs h-8"
+            <Select
+              showSearch
+              aria-label="Cơ quan ban hành"
+              placeholder="Gõ để tìm cơ quan ban hành..."
+              value={issuer || undefined}
+              options={issuerOptions}
+              searchValue={issuerQuery}
+              onSearch={setIssuerQuery}
+              // Tìm không phân biệt hoa/thường và dấu: "ubnd kien giang" khớp "UBND tỉnh Kiên Giang"
+              filterOption={(input, option) =>
+                normalizeSearchText(String(option?.value ?? "")).includes(normalizeSearchText(input))
+              }
+              onChange={(val) => {
+                setIssuer(val);
+                setIssuerQuery("");
+              }}
+              notFoundContent={
+                <div className="py-1 text-xs text-slate-400">Chưa có cơ quan này trong danh sách.</div>
+              }
+              className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+              popupRender={(menu) => (
+                <>
+                  {menu}
+                  <Divider style={{ margin: "6px 0" }} />
+                  <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
+                    <span className="text-[11px] text-slate-500">
+                      {canAddIssuer ? "Chưa có, có thể thêm mới:" : "Không thấy cơ quan? Gõ tên để thêm mới."}
+                    </span>
+                    <Button
+                      htmlType="button"
+                      intent="primary"
+                      scale="xs"
+                      disabled={!canAddIssuer}
+                      onClick={handleAddIssuer}
+                      className="text-xs"
+                    >
+                      Thêm
+                    </Button>
+                  </div>
+                </>
+              )}
             />
           </div>
 
@@ -357,35 +403,7 @@ export default function CreateDocumentDrawer({
           </div>
         </div>
 
-        {/* 3. Phạm vi áp dụng trong BQL */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Phạm vi áp dụng trong Ban QLDA
-          </label>
-          <Select
-            aria-label="Phạm vi áp dụng"
-            value={scope}
-            onChange={setScope}
-            className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-            options={SCOPE_SUGGESTIONS.map((s) => ({ value: s, label: s }))}
-          />
-        </div>
-
-        {/* 4. Tóm tắt nội dung & Hướng dẫn */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Tóm tắt nội dung cốt lõi & Hướng dẫn áp dụng
-          </label>
-          <textarea
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            rows={3}
-            placeholder="Tóm tắt các điều khoản quan trọng, thời hạn bắt buộc, thủ tục quy định..."
-            className="w-full rounded-lg border border-slate-300 p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-          />
-        </div>
-
-        {/* 5. Từ khóa tra cứu */}
+        {/* 3. Từ khóa tra cứu */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
             Từ khóa tra cứu (Tags - phân cách bằng dấu phẩy)
@@ -399,7 +417,7 @@ export default function CreateDocumentDrawer({
           />
         </div>
 
-        {/* 6. Tập tin đính kèm */}
+        {/* 4. Tập tin đính kèm */}
         <StandardFileUpload
           value={attachedFiles}
           onChange={setAttachedFiles}

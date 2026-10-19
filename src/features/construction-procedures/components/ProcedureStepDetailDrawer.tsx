@@ -38,7 +38,7 @@ import {
   isDirectorUser,
   isLeadOfDepartment,
 } from "../constants/procedure-department-templates";
-import { canUserDo } from "@/access-control";
+import { canUserDo, hasMatrixPermission } from "@/access-control";
 
 interface ProcedureStepDetailDrawerProps {
   step: ProcedureStep | null;
@@ -202,9 +202,22 @@ export default function ProcedureStepDetailDrawer({
         (step.assignedToId && step.assignedToId === user?.id))
   );
 
-  const canOperateStep = canUserDo(user, "m3_construction_procedures", "input") || isAssigned;
-  const canApproveStep = canUserDo(user, "m3_construction_procedures", "approve") || isLeadOfThisStep;
-  const canAssignStep = canUserDo(user, "m3_construction_procedures", "configure") || canApproveStep;
+  const canOperateStep =
+    canUserDo(user, "m3_construction_procedures", "input") ||
+    hasMatrixPermission(user, "m3.update_step") ||
+    canUserDo(user, "m3_construction_procedures", "configure") ||
+    hasMatrixPermission(user, "m3.config_template") ||
+    isAssigned;
+
+  const canApproveStep =
+    canUserDo(user, "m3_construction_procedures", "approve") ||
+    hasMatrixPermission(user, "m3.approve_step") ||
+    isLeadOfThisStep;
+
+  const canAssignStep =
+    canUserDo(user, "m3_construction_procedures", "configure") ||
+    hasMatrixPermission(user, "m3.config_template") ||
+    canApproveStep;
 
   const departmentStaff = getDepartmentStaff(step.department);
 
