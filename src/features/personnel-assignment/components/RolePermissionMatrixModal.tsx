@@ -16,6 +16,7 @@ import {
   Title,
   Tooltip,
 } from "@/components/ui";
+import { normalizeSearchText } from "@/utils/search-text";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
 import type { MatrixPermission } from "../constants/role-matrix-data";
 import AddRoleModal from "./AddRoleModal";
@@ -50,69 +51,56 @@ export default function RolePermissionMatrixModal({
     return roles.filter((r) => r.group !== "base");
   }, [roles]);
 
-  // Phân nhóm hiển thị trong dropdown chọn chức danh theo Phòng ban / Tổ chuyên môn từ trên xuống dưới
-  const selectGroupedOptions = useMemo(() => {
-    // Thứ tự các phòng ban chuẩn của BQL ĐTXD
-    const departmentOrder = [
-      { key: "bgd", title: "🏛️ BAN GIÁM ĐỐC", match: (d: string) => /Ban Giám đốc/i.test(d) },
-      { key: "pgd", title: "🏢 BAN PHÓ GIÁM ĐỐC (GIAO 03 NGƯỜI)", match: (d: string) => /Phó Giám đốc/i.test(d) },
-      { key: "gskt", title: "📐 TỔ GIÁM SÁT – KỸ THUẬT", match: (d: string) => /Giám sát/i.test(d) || /Kỹ thuật/i.test(d) },
-      { key: "bt", title: "🌳 TỔ BỒI THƯỜNG, GIẢI TỎA, GPMB – TÁI ĐỊNH CƯ", match: (d: string) => /Bồi thường/i.test(d) || /GPMB/i.test(d) },
-      { key: "hcth", title: "📋 TỔ HÀNH CHÍNH – TỔNG HỢP", match: (d: string) => /Hành chính/i.test(d) || /Tài chính/i.test(d) || /Kế toán/i.test(d) },
+  // Danh sách chức danh trong dropdown: một danh sách liền (không chia nhóm theo phòng ban),
+  // vẫn sắp theo thứ tự Ban Giám đốc → Phó Giám đốc → các tổ → vai trò khác → vai trò tùy chỉnh.
+  const roleSelectOptions = useMemo(() => {
+    const departmentOrder: ((d: string) => boolean)[] = [
+      (d) => /Ban Giám đốc/i.test(d),
+      (d) => /Phó Giám đốc/i.test(d),
+      (d) => /Giám sát/i.test(d) || /Kỹ thuật/i.test(d),
+      (d) => /Bồi thường/i.test(d) || /GPMB/i.test(d),
+      (d) => /Hành chính/i.test(d) || /Tài chính/i.test(d) || /Kế toán/i.test(d),
     ];
+    const orderOf = (department?: string) => {
+      const idx = departmentOrder.findIndex((match) => match(department || ""));
+      return idx === -1 ? departmentOrder.length : idx;
+    };
 
-    const standardRoles = visibleRoles.filter((r) => !r.isCustom);
-    const customRoles = visibleRoles.filter((r) => r.isCustom);
+    const standardRoles = visibleRoles
+      .filter((r) => !r.isCustom)
+      .map((r, idx) => ({ role: r, idx }))
+      .sort((a, b) => orderOf(a.role.department) - orderOf(b.role.department) || a.idx - b.idx)
+      .map(({ role }) => role);
 
-    const groups: { label: string; options: { value: string; label: string }[] }[] = [];
-    const assignedCodes = new Set<string>();
-
-    departmentOrder.forEach((dept) => {
-      const deptRoles = standardRoles.filter((r) => !assignedCodes.has(r.code) && dept.match(r.department || ""));
-      if (deptRoles.length > 0) {
-        deptRoles.forEach((r) => assignedCodes.add(r.code));
-        groups.push({
-          label: dept.title,
-          options: deptRoles.map((r) => ({
-            value: r.code,
-            label: r.name,
-          })),
-        });
-      }
-    });
-
-    // Các vai trò chuẩn còn lại (nếu có)
-    const remainingRoles = standardRoles.filter((r) => !assignedCodes.has(r.code));
-    if (remainingRoles.length > 0) {
-      groups.push({
-        label: "⭐ VAI TRÒ KHÁC",
-        options: remainingRoles.map((r) => ({
-          value: r.code,
-          label: r.department ? `${r.name} · ${r.department}` : r.name,
-        })),
-      });
-    }
-
-    // Các vai trò tùy chỉnh (loại bỏ trùng lặp nếu có)
+    // Vai trò tùy chỉnh (loại bỏ trùng tên)
     const seenCustomNames = new Set<string>();
-    const uniqueCustomRoles = customRoles.filter((r) => {
+    const customRoles = visibleRoles.filter((r) => {
+      if (!r.isCustom) return false;
       const key = (r.name || "").trim().toLowerCase();
       if (!key || seenCustomNames.has(key)) return false;
       seenCustomNames.add(key);
       return true;
     });
 
-    if (uniqueCustomRoles.length > 0) {
-      groups.push({
-        label: "🛠️ VAI TRÒ TÙY CHỈNH",
-        options: uniqueCustomRoles.map((r) => ({
-          value: r.code,
-          label: `${r.name} (Tùy chỉnh)`,
-        })),
-      });
-    }
+    // Tên trùng nhau → ghi kèm phòng ban để phân biệt
+    const nameCount = new Map<string, number>();
+    standardRoles.forEach((r) => {
+      const key = r.name.trim().toLowerCase();
+      nameCount.set(key, (nameCount.get(key) ?? 0) + 1);
+    });
 
-    return groups;
+    return [
+      ...standardRoles.map((r) => {
+        const isShared = (nameCount.get(r.name.trim().toLowerCase()) ?? 0) > 1;
+        const label = isShared && r.department ? `${r.name} (${r.department})` : r.name;
+        return { value: r.code, label, searchText: `${label} ${r.department ?? ""}` };
+      }),
+      ...customRoles.map((r) => ({
+        value: r.code,
+        label: `${r.name} (Tùy chỉnh)`,
+        searchText: `${r.name} Tùy chỉnh ${r.department ?? ""}`,
+      })),
+    ];
   }, [visibleRoles]);
 
   // Vai trò đang được chọn để cấu hình phân quyền
@@ -218,10 +206,14 @@ export default function RolePermissionMatrixModal({
               <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">Chức danh:</span>
               <div className="w-56 sm:w-80 flex items-center gap-1.5">
                 <Select
+                  showSearch
                   value={activeRoleCode}
                   onChange={(val) => setSelectedRoleCode(val)}
                   className="w-full text-xs font-semibold"
-                  options={selectGroupedOptions}
+                  options={roleSelectOptions}
+                  filterOption={(input, option) =>
+                    normalizeSearchText(String(option?.searchText ?? "")).includes(normalizeSearchText(input))
+                  }
                   popupMatchSelectWidth={false}
                 />
                 {currentRole?.isCustom && canManage && (
