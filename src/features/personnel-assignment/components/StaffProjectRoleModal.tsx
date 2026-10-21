@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircleFilled,
   CrownOutlined,
+  IdcardOutlined,
   InfoCircleOutlined,
   LockOutlined,
+  ProjectOutlined,
   RollbackOutlined,
+  SafetyCertificateOutlined,
   UnlockOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -19,6 +22,8 @@ import {
   Tooltip,
   toast,
 } from "@/components/ui";
+import { SegmentedTabs } from "@/components/workspace";
+import type { SegmentedTabItem } from "@/components/workspace";
 import type { AuthUser } from "@/types/auth";
 import { cn } from "@/utils/cn";
 import { getInitials } from "@/utils/initials";
@@ -183,6 +188,8 @@ export const GRANTABLE_PERMISSION_OPTIONS = [
 ];
 
 
+type StaffDetailTab = "info" | "title" | "permissions" | "cnda";
+
 interface StaffProjectRoleModalProps {
   staff: Staff | null;
   data: PersonnelDataset;
@@ -228,6 +235,14 @@ export default function StaffProjectRoleModal({
   }, [initialPromoting, staff?.id]);
 
   const [savingRevoke, setSavingRevoke] = useState(false);
+
+  // Tab đang xem trong drawer; mở cán bộ khác thì quay về tab thông tin cá nhân
+  const [activeTab, setActiveTab] = useState<StaffDetailTab>("info");
+  const [tabStaffId, setTabStaffId] = useState(staff?.id);
+  if (staff?.id !== tabStaffId) {
+    setTabStaffId(staff?.id);
+    setActiveTab("info");
+  }
 
   // Đồng bộ lại phòng ban đang chọn khi staff thay đổi
   useEffect(() => {
@@ -302,7 +317,7 @@ export default function StaffProjectRoleModal({
             <div className="flex items-center justify-between">
               <span className="text-slate-500 font-medium">Chức vụ hiện tại:</span>
               <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200/60">
-                {staff.title || "Chưa có vai trò"} · {team?.name}
+                {staff.title || "Chưa có chức danh"} · {team?.name}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -604,6 +619,27 @@ export default function StaffProjectRoleModal({
     }
   };
 
+  const canChangeTitle = canManageRole && Boolean(onUpdateStaff);
+  const hasCndaProjects = rbacProfile.actingDirectorProjects.length > 0;
+  const tabItems: SegmentedTabItem<StaffDetailTab>[] = [
+    { key: "info", icon: <UserOutlined />, label: "Thông tin cá nhân" },
+    ...(canChangeTitle ? [{ key: "title" as const, icon: <IdcardOutlined />, label: "Chức danh" }] : []),
+    { key: "permissions", icon: <SafetyCertificateOutlined />, label: "Quyền hạn" },
+    ...(hasCndaProjects
+      ? [
+          {
+            key: "cnda" as const,
+            icon: <ProjectOutlined />,
+            label: "Quyền CNDA",
+            badge: rbacProfile.actingDirectorProjects.length,
+            badgeTone: "warning" as const,
+          },
+        ]
+      : []),
+  ];
+  // Tab đang chọn không còn (VD: vừa thu hồi hết quyền CNDA) → quay về tab đầu
+  const currentTab = tabItems.some((t) => t.key === activeTab) ? activeTab : "info";
+
   return (
     <Drawer
       open={Boolean(staff)}
@@ -639,7 +675,7 @@ export default function StaffProjectRoleModal({
                 <Text className="text-sm font-semibold text-slate-900">{staff.name}</Text>
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
-                {staff.title || "Chưa có vai trò"} · {team?.name}
+                {staff.title || "Chưa có chức danh"} · {team?.name}
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
                 Email: {staff.email}
@@ -703,7 +739,7 @@ export default function StaffProjectRoleModal({
 
               <div>
                 <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Vai trò hệ thống:
+                  Chức danh:
                 </label>
                 <Select
                   value={selectedRoleId}
@@ -761,8 +797,13 @@ export default function StaffProjectRoleModal({
         )}
       </div>
 
-      {/* 2. THÔNG TIN CÁ NHÂN & VỊ TRÍ CÔNG TÁC (sửa trực tiếp trên thẻ) */}
+      {/* THANH TAB: Thông tin cá nhân / Chức danh / Quyền hạn / Quyền CNDA */}
       {!isPromoting && (
+        <SegmentedTabs className="mb-4" activeKey={currentTab} onChange={setActiveTab} items={tabItems} />
+      )}
+
+      {/* 2. THÔNG TIN CÁ NHÂN & VỊ TRÍ CÔNG TÁC (sửa trực tiếp trên thẻ) */}
+      {!isPromoting && currentTab === "info" && (
         <StaffInfoCard
           key={`info-${staff.id}`}
           staff={staff}
@@ -772,19 +813,13 @@ export default function StaffProjectRoleModal({
         />
       )}
 
-      {/* 2b. ĐIỀU CHỈNH VAI TRÒ: Cấp / Đổi / Thu hồi vai trò ngay trong drawer */}
-      {!isPromoting && canManageRole && onUpdateStaff && (
-        <RoleAdjustPanel
-          key={`roles-${staff.id}`}
-          staff={staff}
-          data={data}
-          onUpdateStaff={onUpdateStaff}
-          onRevokeActingDirector={onRevokeRole}
-        />
+      {/* 2b. CHỨC DANH: mỗi cán bộ một chức danh, chọn trong danh sách */}
+      {!isPromoting && currentTab === "title" && canChangeTitle && onUpdateStaff && (
+        <RoleAdjustPanel key={`roles-${staff.id}`} staff={staff} data={data} onUpdateStaff={onUpdateStaff} />
       )}
 
-      {/* 3. QUYỀN HẠN HỆ THỐNG & NGHIỆP VỤ CHUYÊN MÔN - Ẩn khi đang ở chế độ đổi vai trò */}
-      {!isPromoting && (
+      {/* 3. QUYỀN HẠN HỆ THỐNG & NGHIỆP VỤ CHUYÊN MÔN */}
+      {!isPromoting && currentTab === "permissions" && (
         <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
           <div className="mb-1 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
@@ -818,7 +853,7 @@ export default function StaffProjectRoleModal({
       )}
 
       {/* 4. DỰ ÁN ĐƯỢC ỦY QUYỀN ĐIỀU HÀNH (QUYỀN CNDA) NẾU CÓ */}
-      {rbacProfile.actingDirectorProjects.length > 0 && (
+      {!isPromoting && currentTab === "cnda" && hasCndaProjects && (
         <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50/30 p-4 shadow-2xs">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">

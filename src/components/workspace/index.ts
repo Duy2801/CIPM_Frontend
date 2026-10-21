@@ -13,6 +13,8 @@ export { default as FilterChip } from "./FilterChip";
 export { default as FeedbackBar } from "./FeedbackBar";
 export { default as StepTrack } from "./StepTrack";
 export { default as ModuleTabLabel } from "./ModuleTabLabel";
+export { default as SegmentedTabs } from "./SegmentedTabs";
+export type { SegmentedTabItem } from "./SegmentedTabs";
 export { default as ReasonModal } from "./ReasonModal";
 export { useActionFeedback } from "./useActionFeedback";
 export type { ActionFeedback } from "./useActionFeedback";

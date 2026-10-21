@@ -322,7 +322,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
         },
       },
       {
-        title: "Vai trò",
+        title: "Chức danh",
         key: "role",
         width: 220,
         align: "center",
@@ -333,7 +333,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
             return (
               <div className="flex w-full items-center justify-center">
                 <span className="inline-flex !w-[160px] items-center justify-center rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs italic text-slate-400">
-                  Chưa có vai trò
+                  Chưa có chức danh
                 </span>
               </div>
             );
@@ -478,7 +478,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                   onChange={(val) => setSelectedTeamId(val)}
                   className="w-full text-xs"
                   options={[
-                    { value: "ALL", label: "Tất cả phòng ban / tổ" },
+                    { value: "ALL", label: "Tất cả phòng ban" },
                     ...data.teams.map((t) => ({ value: t.id, label: t.name })),
                   ]}
                 />

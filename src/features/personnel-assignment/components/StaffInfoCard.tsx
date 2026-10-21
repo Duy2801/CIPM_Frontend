@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarOutlined, EditOutlined } from "@ant-design/icons";
+import { CalendarOutlined, FormOutlined } from "@ant-design/icons";
+import { App } from "antd";
 import { Button, Form, Input, Select, Text } from "@/components/ui";
 import type { Employment, PersonnelProject, Staff, StaffInput, Team } from "../types/personnel.types";
 import type { CustomFieldDefinition } from "../types/custom-fields.types";
@@ -11,7 +12,7 @@ interface StaffInfoCardProps {
   staff: Staff;
   team?: Team;
   relatedProjects: { project: PersonnelProject; roleText: string }[];
-  /** Có truyền thì hiện nút "Cập nhật thông tin" để sửa trực tiếp trên thẻ */
+  /** Có truyền thì các ô thông tin bấm vào sửa trực tiếp được, lưu sau khi xác nhận */
   onSave?: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => Promise<boolean>;
 }
 
@@ -26,125 +27,201 @@ interface StaffInfoFormValues {
 
 const EMPTY_TEXT = <span className="font-normal italic text-slate-400">Chưa cập nhật</span>;
 
-function FieldBox({ label, editing, children }: { label: string; editing?: boolean; children: React.ReactNode }) {
+/** Ô nhập "trong suốt": trông như giá trị đang hiển thị, bấm vào là sửa được ngay */
+const INLINE_INPUT_CLASS = "!px-0 !font-semibold !text-slate-800 placeholder:!font-normal placeholder:!italic";
+const INLINE_SELECT_CLASS =
+  "w-full [&_.ant-select-selector]:!px-0 [&_.ant-select-content]:!font-semibold [&_.ant-select-content]:!text-slate-800";
+
+function FieldBox({ label, editable, children }: { label: string; editable?: boolean; children: React.ReactNode }) {
   return (
-    <div
-      className={`rounded-lg border px-2.5 py-2 ${
-        editing ? "border-[#DC2626]/30 bg-white" : "border-slate-200/70 bg-slate-50/50"
+    // Dùng <label> để bấm vào bất kỳ đâu trong ô (kể cả biểu tượng bút) là con trỏ vào ô nhập luôn
+    <label
+      className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-colors ${
+        editable
+          ? "cursor-text border-slate-200/70 bg-slate-50/50 hover:border-[#DC2626]/40 hover:bg-white focus-within:border-[#DC2626]/60 focus-within:bg-white focus-within:shadow-xs"
+          : "border-slate-200/70 bg-slate-50/50"
       }`}
     >
-      <span className="block text-[11px] text-slate-400">{label}</span>
-      <div className="font-semibold text-slate-800 break-words">{children}</div>
-    </div>
+      <div className="min-w-0 flex-1">
+        <span className="block text-[11px] text-slate-400">{label}</span>
+        <div className="font-semibold text-slate-800 break-words">{children}</div>
+      </div>
+      {/* Biểu tượng sửa luôn hiện để người dùng biết ô này sửa được */}
+      {editable && <FormOutlined className="shrink-0 text-lg text-slate-700" aria-hidden />}
+    </label>
   );
 }
 
+const isEmptyValue = (val: unknown) => val === undefined || val === null || val === "";
+const sameValue = (a: unknown, b: unknown) => (isEmptyValue(a) && isEmptyValue(b)) || String(a ?? "").trim() === String(b ?? "").trim();
+
 export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: StaffInfoCardProps) {
+  const { modal } = App.useApp();
   const [form] = Form.useForm<StaffInfoFormValues>();
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customFieldDefs] = useState<CustomFieldDefinition[]>(() => getCustomFields("staff"));
+  const editable = Boolean(onSave);
 
-  // Khi xem: chỉ hiện trường tùy biến có giá trị. Khi sửa: hiện đủ để nhập bổ sung.
-  const visibleCustomFields = customFieldDefs.filter((def) => {
-    if (editing) return true;
-    const val = staff.customFields?.[def.name];
-    return val !== undefined && val !== null && val !== "";
-  });
-
-  const startEditing = () => {
-    form.setFieldsValue({
-      email: staff.email,
-      phone: staff.phone,
-      employment: staff.employment,
-      gender: staff.gender,
-      dob: staff.dob,
-      customFields: staff.customFields || {},
-    });
-    setEditing(true);
+  const initialValues: StaffInfoFormValues = {
+    email: staff.email,
+    phone: staff.phone,
+    employment: staff.employment,
+    gender: staff.gender,
+    dob: staff.dob,
+    customFields: staff.customFields || {},
   };
 
-  const handleSave = async (values: StaffInfoFormValues) => {
+  // So sánh giá trị đang nhập với hồ sơ để biết có thay đổi nào chưa lưu
+  const watched = Form.useWatch([], form) as StaffInfoFormValues | undefined;
+  const fieldLabels: { key: keyof Omit<StaffInfoFormValues, "customFields">; label: string }[] = [
+    { key: "email", label: "Email công vụ" },
+    { key: "phone", label: "Số điện thoại" },
+    { key: "employment", label: "Hình thức tuyển dụng" },
+    { key: "gender", label: "Giới tính" },
+    { key: "dob", label: "Ngày sinh" },
+  ];
+  const changes: { label: string; from: unknown; to: unknown }[] = watched
+    ? [
+        ...fieldLabels
+          .filter(({ key }) => key in watched && !sameValue(watched[key], staff[key]))
+          .map(({ key, label }) => ({ label, from: staff[key], to: watched[key] })),
+        ...customFieldDefs
+          .filter((def) => watched.customFields && !sameValue(watched.customFields[def.name], staff.customFields?.[def.name]))
+          .map((def) => ({ label: def.label, from: staff.customFields?.[def.name], to: watched.customFields?.[def.name] })),
+      ]
+    : [];
+  const isDirty = changes.length > 0;
+
+  // Chỉ xem: ẩn trường tùy biến chưa có giá trị. Sửa được: hiện đủ để nhập bổ sung.
+  const visibleCustomFields = customFieldDefs.filter(
+    (def) => editable || !isEmptyValue(staff.customFields?.[def.name])
+  );
+
+  const resetChanges = () => form.setFieldsValue(initialValues);
+
+  const saveChanges = async (values: StaffInfoFormValues) => {
     if (!onSave) return;
     // Giữ lại các trường tùy biến chưa cấu hình để không làm mất dữ liệu cũ
     const nextCustomFields: Record<string, unknown> = { ...(staff.customFields || {}) };
     for (const field of customFieldDefs) {
       const val = values.customFields?.[field.name];
-      if (val === undefined || val === null || val === "") delete nextCustomFields[field.name];
+      if (isEmptyValue(val)) delete nextCustomFields[field.name];
       else nextCustomFields[field.name] = val;
     }
 
     setSaving(true);
     try {
-      const ok = await onSave(
+      await onSave(
         staff.id,
         {
-          email: values.email,
+          email: values.email.trim(),
           phone: values.phone?.trim() || "",
           employment: values.employment,
           gender: values.gender,
           dob: values.dob?.trim() || "",
           customFields: nextCustomFields,
         },
-        `Đã cập nhật thông tin cán bộ ${staff.name}.`,
+        `Đã lưu ${changes.length} thay đổi trong hồ sơ của cán bộ ${staff.name}.`,
       );
-      if (ok) setEditing(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // Form.Item chỉ dùng khi đang sửa; khi xem thì hiện giá trị thuần
-  const formItemClass = "!mb-0 mt-1 [&_.ant-form-item-explain]:text-[11px]";
+  // Bấm "Lưu thay đổi": kiểm tra dữ liệu → hỏi xác nhận, liệt kê đúng những gì sẽ đổi
+  const confirmSave = async () => {
+    let values: StaffInfoFormValues;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
+    const renderValue = (val: unknown) =>
+      isEmptyValue(val) ? <span className="italic text-slate-400">Trống</span> : String(val);
+
+    modal.confirm({
+      centered: true,
+      width: 460,
+      title: "Xác nhận thay đổi thông tin",
+      content: (
+        <div className="space-y-2.5 text-xs">
+          <p className="m-0 text-slate-600">
+            Bạn có đồng ý cập nhật {changes.length} thông tin sau cho cán bộ{" "}
+            <strong className="text-slate-900">{staff.name}</strong>?
+          </p>
+          <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+            {changes.map((c) => (
+              <div key={c.label} className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="font-semibold text-slate-700">{c.label}:</span>
+                <span className="text-slate-500 line-through">{renderValue(c.from)}</span>
+                <span className="text-slate-400">→</span>
+                <span className="font-semibold text-[#DC2626]">{renderValue(c.to)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+      okText: "Đồng ý lưu",
+      cancelText: "Xem lại",
+      okButtonProps: { className: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C]" },
+      onOk: () => saveChanges(values),
+    });
+  };
+
+  const formItemClass = "!mb-0 [&_.ant-form-item-explain]:text-[11px]";
 
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
-      <Text className="mb-3 block text-xs font-bold text-slate-800 uppercase tracking-wide">
+      <Text className="mb-1 block text-xs font-bold text-slate-800 uppercase tracking-wide">
         Thông tin cá nhân & vị trí công tác
       </Text>
+      {editable && <p className="m-0 mb-3 text-[11px] text-slate-500">Bấm vào ô thông tin để sửa trực tiếp.</p>}
 
-      <Form form={form} layout="vertical" requiredMark={false} onFinish={handleSave}>
+      <Form form={form} layout="vertical" requiredMark={false} initialValues={initialValues}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          {/* Phòng ban, chức vụ đổi qua mục "Đổi vai trò" nên luôn chỉ đọc */}
+          {/* Phòng ban, chức danh đổi qua tab "Chức danh" nên luôn chỉ đọc */}
           <FieldBox label="Phòng ban / Tổ chuyên môn">{team?.name || EMPTY_TEXT}</FieldBox>
-          <FieldBox label="Vị trí / Chức vụ">{staff.title || EMPTY_TEXT}</FieldBox>
+          <FieldBox label="Chức danh">{staff.title || EMPTY_TEXT}</FieldBox>
 
-          <FieldBox label="Email công vụ" editing={editing}>
-            {editing ? (
+          <FieldBox label="Email công vụ" editable={editable}>
+            {editable ? (
               <Form.Item
                 name="email"
                 className={formItemClass}
                 rules={[
-                  { required: true, message: "Vui lòng nhập email." },
+                  { required: true, whitespace: true, message: "Vui lòng nhập email." },
                   { type: "email", message: "Email không đúng định dạng." },
                 ]}
               >
-                <Input size="small" placeholder="canbo@hatien.gov.vn" />
+                <Input size="small" variant="borderless" className={INLINE_INPUT_CLASS} placeholder="canbo@hatien.gov.vn" />
               </Form.Item>
             ) : (
               staff.email || EMPTY_TEXT
             )}
           </FieldBox>
 
-          <FieldBox label="Số điện thoại" editing={editing}>
-            {editing ? (
+          <FieldBox label="Số điện thoại" editable={editable}>
+            {editable ? (
               <Form.Item
                 name="phone"
                 className={formItemClass}
                 rules={[{ pattern: /^[0-9+\s.-]{8,15}$/, message: "Số điện thoại không hợp lệ." }]}
               >
-                <Input size="small" placeholder="09xx xxx xxx" />
+                <Input size="small" variant="borderless" className={INLINE_INPUT_CLASS} placeholder="Chưa cập nhật" />
               </Form.Item>
             ) : (
               staff.phone || EMPTY_TEXT
             )}
           </FieldBox>
 
-          <FieldBox label="Hình thức tuyển dụng" editing={editing}>
-            {editing ? (
+          <FieldBox label="Hình thức tuyển dụng" editable={editable}>
+            {editable ? (
               <Form.Item name="employment" className={formItemClass} rules={[{ required: true }]}>
                 <Select
                   size="small"
+                  variant="borderless"
+                  suffixIcon={null}
+                  className={INLINE_SELECT_CLASS}
                   options={[
                     { value: "Viên chức", label: "Viên chức" },
                     { value: "Hợp đồng", label: "Hợp đồng" },
@@ -156,12 +233,15 @@ export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: 
             )}
           </FieldBox>
 
-          <FieldBox label="Giới tính" editing={editing}>
-            {editing ? (
+          <FieldBox label="Giới tính" editable={editable}>
+            {editable ? (
               <Form.Item name="gender" className={formItemClass}>
                 <Select
                   size="small"
-                  placeholder="Chọn giới tính"
+                  variant="borderless"
+                  suffixIcon={null}
+                  className={INLINE_SELECT_CLASS}
+                  placeholder="Chưa cập nhật"
                   options={[
                     { value: "Nam", label: "Nam" },
                     { value: "Nữ", label: "Nữ" },
@@ -173,10 +253,20 @@ export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: 
             )}
           </FieldBox>
 
-          <FieldBox label="Ngày sinh" editing={editing}>
-            {editing ? (
-              <Form.Item name="dob" className={formItemClass}>
-                <Input size="small" type="date" />
+          <FieldBox label="Ngày sinh" editable={editable}>
+            {editable ? (
+              <Form.Item
+                name="dob"
+                className={formItemClass}
+                rules={[{ pattern: /^\d{2}\/\d{2}\/\d{4}$/, message: "Nhập theo dạng dd/mm/yyyy." }]}
+              >
+                <Input
+                  size="small"
+                  variant="borderless"
+                  className={INLINE_INPUT_CLASS}
+                  prefix={<CalendarOutlined className="text-slate-400" />}
+                  placeholder="dd/mm/yyyy"
+                />
               </Form.Item>
             ) : staff.dob ? (
               <span className="inline-flex items-center gap-1.5">
@@ -190,27 +280,37 @@ export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: 
 
           {visibleCustomFields.map((field) => (
             <div key={field.id} className={field.type === "textarea" ? "sm:col-span-2" : undefined}>
-              <FieldBox label={field.label} editing={editing}>
-                {editing ? (
+              <FieldBox label={field.label} editable={editable}>
+                {editable ? (
                   <Form.Item
                     name={["customFields", field.name]}
                     className={formItemClass}
                     rules={field.required ? [{ required: true, message: `Vui lòng nhập ${field.label.toLowerCase()}.` }] : []}
                   >
                     {field.type === "textarea" ? (
-                      <Input.TextArea rows={2} placeholder={field.placeholder || `Nhập ${field.label}...`} />
+                      <Input.TextArea
+                        rows={2}
+                        variant="borderless"
+                        className={INLINE_INPUT_CLASS}
+                        placeholder={field.placeholder || "Chưa cập nhật"}
+                      />
                     ) : field.type === "select" ? (
                       <Select
                         size="small"
+                        variant="borderless"
                         allowClear
-                        placeholder={field.placeholder || `Chọn ${field.label.toLowerCase()}`}
+                        suffixIcon={null}
+                        className={INLINE_SELECT_CLASS}
+                        placeholder={field.placeholder || "Chưa cập nhật"}
                         options={(field.options || []).map((opt) => ({ value: opt, label: opt }))}
                       />
                     ) : (
                       <Input
                         size="small"
+                        variant="borderless"
+                        className={INLINE_INPUT_CLASS}
                         type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-                        placeholder={field.placeholder || `Nhập ${field.label}...`}
+                        placeholder={field.placeholder || "Chưa cập nhật"}
                       />
                     )}
                   </Form.Item>
@@ -242,34 +342,26 @@ export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: 
         </div>
       )}
 
-      {onSave && (
-        <div className="mt-3.5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
-          {editing ? (
-            <>
-              <Button intent="outline" scale="compact" disabled={saving} onClick={() => setEditing(false)}>
-                Hủy
-              </Button>
-              <Button
-                intent="primary"
-                scale="compact"
-                loading={saving}
-                onClick={() => form.submit()}
-                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-xs font-semibold"
-              >
-                Lưu thông tin
-              </Button>
-            </>
-          ) : (
-            <Button
-              intent="outline"
-              scale="compact"
-              icon={<EditOutlined />}
-              onClick={startEditing}
-              className="!border-[#DC2626] !text-[#DC2626] hover:!bg-red-50/60 text-xs font-semibold"
-            >
-              Cập nhật thông tin
+      {/* Thanh lưu chỉ hiện khi có thay đổi chưa lưu */}
+      {editable && isDirty && (
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">
+          <span className="text-xs text-amber-900">
+            Có <strong>{changes.length}</strong> thay đổi chưa lưu
+          </span>
+          <div className="flex items-center gap-2">
+            <Button intent="outline" scale="compact" disabled={saving} onClick={resetChanges}>
+              Hủy thay đổi
             </Button>
-          )}
+            <Button
+              intent="primary"
+              scale="compact"
+              loading={saving}
+              onClick={confirmSave}
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-xs font-semibold"
+            >
+              Lưu thay đổi
+            </Button>
+          </div>
         </div>
       )}
     </div>

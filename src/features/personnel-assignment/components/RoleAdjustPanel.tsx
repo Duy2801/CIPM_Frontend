@@ -1,129 +1,135 @@
 "use client";
 
-import { useState } from "react";
-import type { ReactNode } from "react";
-import { MinusCircleOutlined, PlusCircleOutlined, RightOutlined, SwapOutlined } from "@ant-design/icons";
-import { Text } from "@/components/ui";
-import type { PersonnelDataset, Staff, StaffInput } from "../types/personnel.types";
-import ChangeRoleDrawer from "./ChangeRoleDrawer";
-import GrantRoleModal from "./GrantRoleModal";
-import RevokeRoleDrawer from "./RevokeRoleDrawer";
-
-type RoleAction = "grant" | "change" | "revoke";
-
-const ACTIONS: { key: RoleAction; label: string; hint: string; icon: ReactNode }[] = [
-  { key: "grant", label: "Cấp vai trò", hint: "Thêm vai trò mới", icon: <PlusCircleOutlined /> },
-  { key: "change", label: "Đổi vai trò", hint: "Đổi sang vai trò khác", icon: <SwapOutlined /> },
-  { key: "revoke", label: "Thu hồi vai trò", hint: "Gỡ vai trò đang giữ", icon: <MinusCircleOutlined /> },
-];
+import { useMemo, useState } from "react";
+import { CrownOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { Button, Select, Text } from "@/components/ui";
+import { normalizeSearchText } from "@/utils/search-text";
+import { useRoleMatrix } from "../hooks/useRoleMatrix";
+import type { PersonnelDataset, Staff, StaffInput, TeamId } from "../types/personnel.types";
+import { buildAssignableRoles, resolveRoleCodeFromTitle } from "../utils/assignable-roles";
 
 interface RoleAdjustPanelProps {
   staff: Staff;
   data: PersonnelDataset;
   onUpdateStaff: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => Promise<boolean>;
-  onRevokeActingDirector?: (projectId: string, customMessage?: string | false) => Promise<boolean>;
 }
 
-/** Mục "Điều chỉnh vai trò" trong drawer chi tiết cán bộ: chọn Cấp / Đổi / Thu hồi, nội dung hiện ngay bên dưới.
- *  Quyền hạn của cán bộ được suy ra từ vai trò (xem mục "Quyền hạn hệ thống" bên dưới). */
-export default function RoleAdjustPanel({ staff, data, onUpdateStaff, onRevokeActingDirector }: RoleAdjustPanelProps) {
-  const [action, setAction] = useState<RoleAction | null>(null);
-  const closePanel = () => setAction(null);
-  const activeHint = ACTIONS.find((a) => a.key === action)?.hint;
+const normalizeTitle = (title: string) => title.trim().toLowerCase();
+
+/** Mục "Chức danh" trong drawer chi tiết cán bộ: mỗi cán bộ chỉ giữ MỘT chức danh, chọn trong danh sách là xong.
+ *  Quyền hạn của cán bộ được suy ra từ chức danh (xem tab "Quyền hạn"). */
+export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdjustPanelProps) {
+  const { roles: matrixRoles } = useRoleMatrix();
+  const [saving, setSaving] = useState(false);
+
+  const roles = useMemo(() => buildAssignableRoles(data.teams, matrixRoles), [data.teams, matrixRoles]);
+
+  // Chức danh hiện tại: dữ liệu cũ có thể ghép nhiều chức danh bằng "·" → lấy chức danh đầu tiên
+  const currentTitle = (staff.title || "").split(/\s*·\s*|\s*;\s*/)[0]?.trim() ?? "";
+  const currentRoleId = useMemo(() => {
+    const sameTitle = roles.filter((r) => normalizeTitle(r.title) === normalizeTitle(currentTitle));
+    return (sameTitle.find((r) => r.teamId === staff.teamId) ?? sameTitle[0])?.id;
+  }, [roles, currentTitle, staff.teamId]);
+
+  const [selectedId, setSelectedId] = useState<string | undefined>(currentRoleId);
+  const selectedRole = roles.find((r) => r.id === selectedId);
+  const hasChanged = Boolean(selectedRole) && selectedId !== currentRoleId;
+
+  // Danh sách chỉ hiện tên chức danh (không chia nhóm phòng ban); tên trùng ở nhiều phòng ban chỉ hiện một lần,
+  // ưu tiên chức danh thuộc phòng ban hiện tại của cán bộ (và mục đang chọn) để không tự chuyển phòng ban
+  const options = useMemo(() => {
+    const byTitle = new Map<string, (typeof roles)[number]>();
+    roles.forEach((r) => {
+      const key = normalizeTitle(r.title);
+      const existing = byTitle.get(key);
+      const preferred = r.id === currentRoleId || (r.teamId === staff.teamId && existing?.id !== currentRoleId);
+      if (!existing || preferred) byTitle.set(key, r);
+    });
+    return [...byTitle.values()].map((r) => ({ value: r.id, label: r.title }));
+  }, [roles, currentRoleId, staff.teamId]);
+
+  const handleSave = async () => {
+    if (!selectedRole) return;
+    setSaving(true);
+    try {
+      // Chức danh độc lập giữ nguyên phòng ban hiện tại; chức danh phòng ban thì chuyển cán bộ sang phòng ban đó
+      const teamId: TeamId =
+        selectedRole.teamId && data.teams.some((t) => t.id === selectedRole.teamId)
+          ? (selectedRole.teamId as TeamId)
+          : staff.teamId;
+      await onUpdateStaff(
+        staff.id,
+        {
+          title: selectedRole.title,
+          roleCode: resolveRoleCodeFromTitle(selectedRole.title, selectedRole.roleCode),
+          teamId,
+          isLeader: Boolean(selectedRole.isLeader),
+          revokedRoles: [],
+        },
+        `Đã cập nhật chức danh "${selectedRole.title}" cho cán bộ ${staff.name}!`
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
-      <Text className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-800">Điều chỉnh vai trò</Text>
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
+      <Text className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-800">Chức danh</Text>
       <p className="m-0 mb-3 text-xs text-slate-500">
-        {activeHint
-          ? `Đang mở: ${activeHint.toLowerCase()} cho cán bộ.`
-          : "Bấm vào một thao tác bên dưới để cấp, đổi hoặc thu hồi vai trò. Quyền hạn sẽ tự cập nhật theo vai trò."}
+        Mỗi cán bộ giữ một chức danh. Quyền hạn tự cập nhật theo chức danh được chọn.
       </p>
 
-      {/* Chọn thao tác: 3 ô hành động rõ là nút bấm (biểu tượng + tên + mô tả) */}
-      <div role="tablist" aria-label="Điều chỉnh vai trò" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {ACTIONS.map((item) => {
-          const active = action === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setAction(active ? null : item.key)}
-              className={`group flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                active
-                  ? "border-[#DC2626] bg-[#DC2626] text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-[#DC2626]/60 hover:bg-red-50/50"
-              }`}
-            >
-              <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-base ${
-                  active ? "bg-white/20 text-white" : "bg-red-50 text-[#DC2626]"
-                }`}
-              >
-                {item.icon}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold">{item.label}</span>
-                <span className={`block truncate text-[11px] ${active ? "text-white/85" : "text-slate-500"}`}>
-                  {item.hint}
-                </span>
-              </span>
-              <RightOutlined
-                className={`shrink-0 text-[10px] transition-transform ${
-                  active ? "rotate-90 text-white" : "text-slate-400 group-hover:translate-x-0.5"
-                }`}
-              />
-            </button>
-          );
-        })}
-      </div>
+      <label className="mb-1 block text-xs font-semibold text-slate-700">Chức danh</label>
+      <Select
+        showSearch
+        value={selectedId}
+        onChange={setSelectedId}
+        placeholder="Chọn chức danh..."
+        className="w-full"
+        options={options}
+        filterOption={(input, option) =>
+          normalizeSearchText(String(option?.label ?? "")).includes(normalizeSearchText(input))
+        }
+        notFoundContent={<div className="py-1 text-xs text-slate-400">Không tìm thấy chức danh.</div>}
+      />
 
-      {/* Nội dung thao tác đang chọn (dùng lại đúng màn Cấp / Đổi / Thu hồi, ở chế độ nhúng) */}
-      {action && (
-        <div role="tabpanel" className="mt-4 border-t border-slate-100 pt-4">
-          {action === "grant" && (
-            <GrantRoleModal
-              key={`grant-${staff.id}`}
-              embedded
-              open
-              staff={staff}
-              data={data}
-              onClose={closePanel}
-              onSubmit={onUpdateStaff}
-            />
-          )}
-          {action === "change" && (
-            <ChangeRoleDrawer
-              key={`change-${staff.id}`}
-              embedded
-              open
-              staff={staff}
-              data={data}
-              onClose={closePanel}
-              onConfirm={(staffId, updateInput, customMessage) => onUpdateStaff(staffId, updateInput, customMessage)}
-              onRevokeActingDirector={onRevokeActingDirector}
-            />
-          )}
-          {action === "revoke" && (
-            <RevokeRoleDrawer
-              key={`revoke-${staff.id}`}
-              embedded
-              open
-              staff={staff}
-              data={data}
-              onClose={closePanel}
-              onConfirm={async (staffId, updateInput, revokedActingProjectIds, customMessage) => {
-                for (const projectId of revokedActingProjectIds ?? []) {
-                  await onRevokeActingDirector?.(projectId, false);
-                }
-                return onUpdateStaff(staffId, updateInput, customMessage);
-              }}
-            />
-          )}
+      {!currentRoleId && currentTitle && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+          <InfoCircleOutlined className="text-slate-400" />
+          <span>
+            Chức danh hiện tại <strong className="text-slate-700">{currentTitle}</strong> không còn trong danh mục, hãy
+            chọn chức danh mới.
+          </span>
         </div>
       )}
+
+      {hasChanged && selectedRole?.isLeader && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200/90 bg-amber-50 p-2.5 text-xs text-amber-900">
+          <CrownOutlined className="shrink-0 text-sm text-amber-600" />
+          <span>
+            Cán bộ sẽ được bổ nhiệm làm <strong>{selectedRole.title}</strong> (phụ trách lãnh đạo đơn vị).
+          </span>
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-end gap-2">
+        {hasChanged && (
+          <Button intent="outline" scale="compact" onClick={() => setSelectedId(currentRoleId)} disabled={saving}>
+            Hoàn tác
+          </Button>
+        )}
+        <Button
+          intent="primary"
+          scale="compact"
+          onClick={handleSave}
+          loading={saving}
+          disabled={!hasChanged}
+          className="px-4 text-xs font-semibold"
+        >
+          Lưu chức danh
+        </Button>
+      </div>
     </div>
   );
 }

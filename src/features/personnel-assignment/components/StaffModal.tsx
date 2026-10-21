@@ -700,13 +700,13 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
             <Col xs={24} sm={12}>
               <Form.Item
                 name="teamRole"
-                label="Vị trí trong tổ"
-                rules={[{ required: true, message: "Vui lòng chọn vị trí trong tổ." }]}
-                tooltip="Chọn cán bộ là Thành viên hay Tổ trưởng / Phụ trách tổ (Lead)"
+                label="Chức danh"
+                rules={[{ required: true, message: "Vui lòng chọn chức danh." }]}
+                tooltip="Mỗi cán bộ giữ một chức danh; quyền hạn đi theo chức danh"
               >
                 <Select
                   showSearch
-                  placeholder="Gõ để tìm vị trí..."
+                  placeholder="Gõ để tìm chức danh..."
                   options={roleSelectOptions}
                   searchValue={newRoleTitle}
                   onSearch={setNewRoleTitle}
