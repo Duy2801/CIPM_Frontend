@@ -53,10 +53,10 @@ export default function PersonnelAssignmentScreen() {
                 Không có quyền truy cập phân hệ Nhân sự & Phân công
               </Title>
               <Text type="secondary" className="text-sm">
-                Theo quy định, phân hệ <strong>M5 – Nhân sự và Phân công</strong> dành cho <strong>Ban Giám đốc</strong> (phân công dự án) và <strong>Người có quyền chủ dự án</strong> (phân công nhiệm vụ nhân viên). Các vai trò khác không có quyền truy cập.
+                Theo quy định, phân hệ <strong>M5 – Nhân sự và Phân công</strong> dành cho <strong>Ban Giám đốc</strong> (phân công dự án) và <strong>Người có quyền chủ dự án</strong> (phân công nhiệm vụ nhân viên). Các chức danh khác không có quyền truy cập.
               </Text>
               <div className="mt-2 text-xs text-slate-500 bg-slate-50 px-3.5 py-2 rounded-lg border border-slate-200">
-                Tài khoản hiện tại: <strong className="text-slate-800">{controller.currentUser?.displayName ?? controller.currentUser?.name}</strong> · Vai trò: <strong className="text-slate-800">{controller.currentUser?.roleName ?? controller.currentUser?.role ?? "Khách"}</strong>
+                Tài khoản hiện tại: <strong className="text-slate-800">{controller.currentUser?.displayName ?? controller.currentUser?.name}</strong> · Chức danh: <strong className="text-slate-800">{controller.currentUser?.roleName ?? controller.currentUser?.role ?? "Khách"}</strong>
               </div>
             </Flex>
             <Button intent="primary" onClick={() => router.push("/dashboard")}>

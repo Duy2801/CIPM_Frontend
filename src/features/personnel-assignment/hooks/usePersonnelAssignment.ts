@@ -273,7 +273,7 @@ export function usePersonnelAssignment() {
       () => mockPersonnelRepository.updateStaff(staffId, input),
       customMessage === false
         ? ""
-        : (customMessage || `Đã cập nhật thông tin / chức vụ của cán bộ ${nameOf(staffId)}.`),
+        : (customMessage || `Đã cập nhật thông tin / chức danh của cán bộ ${nameOf(staffId)}.`),
     ),
     updateProjectPermissions: (projectId: string, grantedPermissions: string[]) => run(
       () => mockPersonnelRepository.updateProjectPermissions(projectId, grantedPermissions),

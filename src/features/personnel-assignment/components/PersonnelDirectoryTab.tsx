@@ -19,6 +19,7 @@ import { getInitials } from "@/utils/initials";
 import { normalizeSearchText } from "@/utils/search-text";
 import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
+import { useLockedTitles } from "../hooks/useLockedTitles";
 import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { CustomFieldDefinition } from "../types/custom-fields.types";
 import type { PersonnelProject, Staff, Team } from "../types/personnel.types";
@@ -74,7 +75,8 @@ function loadAllCustomRolesMap(): Map<string, string> {
 function getStaffDisplayRoles(
   staff: Staff,
   rolesMap: Map<string, string>,
-  projects: PersonnelProject[]
+  projects: PersonnelProject[],
+  lockedTitles: Set<string> = new Set()
 ): string[] {
   const result: string[] = [];
   const seen = new Set<string>();
@@ -91,7 +93,7 @@ function getStaffDisplayRoles(
     // Nếu chứa mã CUSTOM_\d+ thì thay thế bằng tên thật
     if (/CUSTOM_\d+/i.test(clean)) {
       clean = clean.replace(/CUSTOM_\d+/gi, (matched) => {
-        return rolesMap.get(matched) || "Vai trò tùy chỉnh";
+        return rolesMap.get(matched) || "Chức danh tùy chỉnh";
       });
     }
 
@@ -120,14 +122,16 @@ function getStaffDisplayRoles(
       .split(/\s*·\s*|\s*;\s*|\r?\n/)
       .map((p) => p.trim())
       .filter(Boolean)
+      // Chức danh đang tắt → không tính (cán bộ tạm thời không có chức danh đó)
+      .filter((p) => !lockedTitles.has(p.toLowerCase()))
       .forEach((p) => addRole(p));
   }
 
   // 2. Nếu cán bộ được gán vai trò tùy chỉnh qua roleCode (dạng CUSTOM_...)
-  if (staff.roleCode) {
+  if (staff.roleCode && !lockedTitles.has((rolesMap.get(staff.roleCode.trim()) || "").toLowerCase())) {
     const rCode = staff.roleCode.trim();
     if (/CUSTOM_\d+/i.test(rCode)) {
-      const customName = rolesMap.get(rCode) || "Vai trò tùy chỉnh";
+      const customName = rolesMap.get(rCode) || "Chức danh tùy chỉnh";
       // Nếu hiện tại chỉ có chức danh mặc định "Thành viên", ưu tiên thay thế bằng tên vai trò mới
       if (result.length === 1 && result[0].toLowerCase() === "thành viên") {
         result[0] = customName;
@@ -159,6 +163,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
   const canManageTeams = permissions.canManageAccounts || permissions.canManageOrganization;
 
   const { roles: matrixRoles } = useRoleMatrix();
+  const lockedTitles = useLockedTitles();
   const [customRolesMap, setCustomRolesMap] = useState<Map<string, string>>(() => loadAllCustomRolesMap());
 
   useEffect(() => {
@@ -268,7 +273,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
             </div>
           </div>
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 text-xs text-slate-700 leading-relaxed">
-            Cán bộ <strong className="text-slate-900">{person.name}</strong> sẽ có thể đăng nhập lại vào hệ thống với vai trò <strong className="text-[#0F4C81]">{resolvedRolesMap.get(person.roleCode) || SYSTEM_ROLE_META[person.roleCode]?.label || person.title || "Cán bộ"}</strong>.
+            Cán bộ <strong className="text-slate-900">{person.name}</strong> sẽ có thể đăng nhập lại vào hệ thống với chức danh <strong className="text-[#0F4C81]">{resolvedRolesMap.get(person.roleCode) || SYSTEM_ROLE_META[person.roleCode]?.label || person.title || "Cán bộ"}</strong>.
           </div>
         </div>
       ),
@@ -328,7 +333,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
         align: "center",
         render: (_, person) => {
           // Dòng gọn: chỉ hiện vai trò chính (chức danh trong phòng ban), các vai trò còn lại gom vào "+N"
-          const [mainRole, ...otherRoles] = getStaffDisplayRoles(person, resolvedRolesMap, data.projects);
+          const [mainRole, ...otherRoles] = getStaffDisplayRoles(person, resolvedRolesMap, data.projects, lockedTitles);
           if (!mainRole) {
             return (
               <div className="flex w-full items-center justify-center">
@@ -355,7 +360,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                 <Tooltip
                   title={
                     <div className="py-0.5">
-                      <div className="mb-1 text-[11px] font-semibold opacity-80">Vai trò khác</div>
+                      <div className="mb-1 text-[11px] font-semibold opacity-80">Chức danh khác</div>
                       <ul className="m-0 list-disc space-y-0.5 pl-4 text-xs">
                         {otherRoles.map((roleName) => (
                           <li key={roleName}>{roleName}</li>
@@ -365,7 +370,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                   }
                 >
                   <span
-                    aria-label={`Còn ${otherRoles.length} vai trò khác: ${otherRoles.join(", ")}`}
+                    aria-label={`Còn ${otherRoles.length} chức danh khác: ${otherRoles.join(", ")}`}
                     className="inline-flex h-[26px] min-w-[34px] shrink-0 cursor-help items-center justify-center rounded-full border border-red-200 bg-white px-2 text-xs font-bold text-[#DC2626]"
                   >
                     +{otherRoles.length}
@@ -432,7 +437,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
       <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm">
         <SectionIntro
           title="Cơ cấu tổ chức, tài khoản & phân quyền"
-          description="Cán bộ theo từng phòng ban / tổ chuyên môn. Quản lý thông tin, trạng thái tài khoản và vai trò truy cập hệ thống."
+          description="Cán bộ theo từng phòng ban / tổ chuyên môn. Quản lý thông tin, trạng thái tài khoản và chức danh của cán bộ."
           countLabel={
             filteredStaff.length === staff.length
               ? `${staff.length} cán bộ · ${data.teams.length} phòng ban`

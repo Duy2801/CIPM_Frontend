@@ -336,7 +336,7 @@ export default function ProfilePage() {
                               </span>
                             </Col>
                             <Col span={12}>
-                              <span className="text-slate-500">Vai trò / Chức danh: </span>
+                              <span className="text-slate-500">Chức danh: </span>
                               <span className="font-medium text-slate-700">
                                 {user?.roleName ?? user?.role}
                               </span>

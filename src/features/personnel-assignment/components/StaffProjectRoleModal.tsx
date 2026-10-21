@@ -28,6 +28,7 @@ import type { AuthUser } from "@/types/auth";
 import { cn } from "@/utils/cn";
 import { getInitials } from "@/utils/initials";
 import { resolveStaffRbac } from "../utils/personnel-rbac";
+import { isStaffTitleLocked, useLockedTitles } from "../hooks/useLockedTitles";
 import RoleAdjustPanel from "./RoleAdjustPanel";
 import StaffInfoCard from "./StaffInfoCard";
 import type {
@@ -188,6 +189,8 @@ export const GRANTABLE_PERMISSION_OPTIONS = [
 ];
 
 
+const normalizeTitle = (title?: string) => (title || "").trim().toLowerCase();
+
 type StaffDetailTab = "info" | "title" | "permissions" | "cnda";
 
 interface StaffProjectRoleModalProps {
@@ -237,6 +240,7 @@ export default function StaffProjectRoleModal({
   const [savingRevoke, setSavingRevoke] = useState(false);
 
   // Tab đang xem trong drawer; mở cán bộ khác thì quay về tab thông tin cá nhân
+  const lockedTitles = useLockedTitles();
   const [activeTab, setActiveTab] = useState<StaffDetailTab>("info");
   const [tabStaffId, setTabStaffId] = useState(staff?.id);
   if (staff?.id !== tabStaffId) {
@@ -254,7 +258,9 @@ export default function StaffProjectRoleModal({
   if (!staff) return null;
 
   const team = data.teams.find((t) => t.id === staff.teamId);
-  const rbacProfile = resolveStaffRbac(staff, team, data.projects);
+  // Chức danh đang tắt → cán bộ tạm thời không có chức danh / quyền (bật lại thì có lại như cũ)
+  const titleLocked = isStaffTitleLocked(staff.title, lockedTitles);
+  const rbacProfile = resolveStaffRbac(staff, team, data.projects, titleLocked);
 
   // Dự án cán bộ được Giám đốc phân công thực hiện / giám sát chính
   const relatedProjects: { project: PersonnelProject; roleText: string }[] = [];
@@ -286,67 +292,29 @@ export default function StaffProjectRoleModal({
   const handleRevokeStaffRole = () => {
     if (!staff || !onUpdateStaff) return;
 
+    // Hỏi xác nhận trước; thu hồi xong cán bộ không còn chức danh nào (để trống), không còn quyền theo chức danh
     modal.confirm({
-      width: 460,
+      width: 440,
       centered: true,
-      title: null,
       icon: null,
-      className:
-        "[&_.ant-modal-content]:!rounded-2xl [&_.ant-modal-content]:!p-6 [&_.ant-modal-content]:!shadow-xl",
+      title: `Thu hồi chức danh của ${staff.name}?`,
       content: (
-        <div className="space-y-3.5">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-lg">
-              <RollbackOutlined />
-            </span>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 leading-snug">
-                Thu hồi vai trò cán bộ?
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Thu hồi chức danh lãnh đạo / quản lý, đưa cán bộ về vị trí Thành viên cơ bản
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-2 text-xs text-slate-700 leading-relaxed">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">Cán bộ thực hiện:</span>
-              <strong className="text-slate-900 font-semibold">{staff.name}</strong>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">Chức vụ hiện tại:</span>
-              <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200/60">
-                {staff.title || "Chưa có chức danh"} · {team?.name}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">Vai trò sau thu hồi:</span>
-              <span className="font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
-                Thành viên (vai trò cơ bản)
-              </span>
-            </div>
-          </div>
-        </div>
+        <p className="m-0 text-xs leading-relaxed text-slate-600">
+          Cán bộ sẽ không còn chức danh <strong className="text-slate-800">{staff.title}</strong> và không còn quyền
+          hạn theo chức danh này. Bạn có thể gán chức danh mới tại tab Chức danh.
+        </p>
       ),
-      okText: "Xác nhận thu hồi",
-      okButtonProps: {
-        className:
-          "!h-9 !px-4 !rounded-lg !font-semibold !bg-rose-600 hover:!bg-rose-700 !border-rose-600 !text-white",
-      },
+      okText: "Thu hồi",
       cancelText: "Hủy",
+      okButtonProps: { danger: true },
       onOk: async () => {
         setSavingRevoke(true);
         try {
-          let defaultRoleCode = "TECHNICAL_OFFICER";
-          if (staff.teamId === "BT") defaultRoleCode = "COMPENSATION_OFFICER";
-          else if (staff.teamId === "HCTH") defaultRoleCode = "ADMINISTRATIVE_OFFICER";
-
-          await onUpdateStaff(staff.id, {
-            title: "Thành viên",
-            roleCode: defaultRoleCode,
-            isLeader: false,
-          }, `Đã thu hồi vai trò của cán bộ ${staff.name} thành công!`);
+          await onUpdateStaff(
+            staff.id,
+            { title: "", roleCode: "", isLeader: false, revokedRoles: [] },
+            `Đã thu hồi chức danh của cán bộ ${staff.name}.`
+          );
         } finally {
           setSavingRevoke(false);
         }
@@ -608,7 +576,7 @@ export default function StaffProjectRoleModal({
           teamId: editTeamId,
           isLeader: Boolean(activeRole.isLeader),
         },
-        `Đã cập nhật vai trò & phân công tổ của cán bộ ${staff.name} thành công!`
+        `Đã cập nhật chức danh & phòng ban của cán bộ ${staff.name} thành công!`
       );
       if (ok) {
         setIsPromoting(false);
@@ -675,7 +643,12 @@ export default function StaffProjectRoleModal({
                 <Text className="text-sm font-semibold text-slate-900">{staff.name}</Text>
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
-                {staff.title || "Chưa có chức danh"} · {team?.name}
+                {titleLocked || !staff.title ? "Chưa có chức danh" : staff.title} · {team?.name}
+                {titleLocked && (
+                  <span className="ml-1.5 inline-block whitespace-nowrap rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-500">
+                    {staff.title} đang tắt
+                  </span>
+                )}
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
                 Email: {staff.email}
@@ -683,8 +656,21 @@ export default function StaffProjectRoleModal({
             </div>
           </div>
 
-          {/* Khóa / Mở lại tài khoản cán bộ */}
+          {/* Thu hồi chức danh & Khóa / Mở lại tài khoản cán bộ */}
           <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+            {/* Thu hồi chức danh: chỉ hiện khi cán bộ đang có chức danh (chức danh đang tắt thì coi như chưa có) */}
+            {canManageRole && onUpdateStaff && normalizeTitle(staff.title) !== "" && !titleLocked && (
+              <Button
+                intent="outline"
+                scale="compact"
+                loading={savingRevoke}
+                onClick={handleRevokeStaffRole}
+                icon={<RollbackOutlined />}
+                className="!border-amber-300 !text-amber-700 hover:!border-amber-400 hover:!bg-amber-50 text-xs"
+              >
+                Thu hồi chức danh
+              </Button>
+            )}
             {onLockAccount && (
               staff.accountActive ? (
                 <Button
@@ -715,7 +701,7 @@ export default function StaffProjectRoleModal({
         {isPromoting && (
           <div className="mt-3.5 pt-3.5 border-t border-slate-100 bg-slate-50/70 p-3.5 rounded-lg space-y-3">
             <div className="text-xs font-semibold text-slate-800">
-              Điều chỉnh vai trò hệ thống & Tổ chuyên môn:
+              Điều chỉnh chức danh & phòng ban:
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -809,6 +795,7 @@ export default function StaffProjectRoleModal({
           staff={staff}
           team={team}
           relatedProjects={relatedProjects}
+          titleLocked={titleLocked}
           onSave={canEditInfo ? onUpdateStaff : undefined}
         />
       )}
@@ -832,7 +819,7 @@ export default function StaffProjectRoleModal({
             </span>
           </div>
           <div className="text-[11px] text-slate-500 mb-3.5">
-            Toàn bộ quyền hạn phân hệ được cấp tự động theo vị trí công tác và vai trò của cán bộ trong hệ thống.
+            Toàn bộ quyền hạn phân hệ được cấp tự động theo chức danh của cán bộ trong hệ thống.
           </div>
 
           {/* Danh sách quyền hệ thống & chuyên môn thống nhất */}

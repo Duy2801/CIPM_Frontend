@@ -34,7 +34,7 @@ export const ROLE_PERMISSION_DEFS: Record<RbacRoleCode, {
       { code: "all.full_control", name: "Toàn quyền điều hành", description: "Chỉ đạo toàn diện các hoạt động của Ban QLDA và dự án" },
       { code: "leadership.assign", name: "Phân công lãnh đạo DA", description: "Chỉ định Chủ nhiệm dự án và Giám sát chính cho các công trình" },
       { code: "acting_director.manage", name: "Cấp / Thu hồi quyền CNDA", description: "Ủy quyền Quyền Chủ nhiệm dự án cho cán bộ thực hiện chính" },
-      { code: "account.manage", name: "Quản trị tài khoản & hệ thống", description: "Thêm, khóa tài khoản, phân quyền và điều chỉnh chức vụ" },
+      { code: "account.manage", name: "Quản trị tài khoản & hệ thống", description: "Thêm, khóa tài khoản, phân quyền và điều chỉnh chức danh" },
       { code: "report.export_all", name: "Xuất báo cáo toàn diện", description: "Xuất dữ liệu báo cáo tất cả 9 phân hệ của Ban" },
     ],
   },
@@ -165,7 +165,9 @@ export interface StaffRbacProfile {
 export function resolveStaffRbac(
   staff: Staff,
   team?: Team,
-  projects: PersonnelProject[] = []
+  projects: PersonnelProject[] = [],
+  /** Chức danh của cán bộ đang tắt ở màn phân quyền → tạm thời không có quyền theo chức danh */
+  titleLocked = false
 ): StaffRbacProfile {
   // 1. Xác định RoleCode theo cấp bậc
   let roleCode: RbacRoleCode = "MEMBER";
@@ -203,14 +205,18 @@ export function resolveStaffRbac(
   }
 
   const roleMeta = ROLE_PERMISSION_DEFS[roleCode];
-  const teamMeta = teamCode ? TEAM_PERMISSION_DEFS[teamCode] : null;
+  // Đã bị thu hồi chức danh (chức danh & mã vai trò đều trống) → không còn quyền theo chức danh / tổ
+  const hasNoTitle = titleLocked || (!(staff.title || "").trim() && !(staff.roleCode || "").trim());
+  const teamMeta = teamCode && !hasNoTitle ? TEAM_PERMISSION_DEFS[teamCode] : null;
 
   // 3. Tạo nhãn hiển thị trực quan (Display Badge)
-  let displayBadge = roleMeta.label;
+  let displayBadge = hasNoTitle ? "Chưa có chức danh" : roleMeta.label;
   if (roleCode === "LEAD" && teamMeta) {
     displayBadge = `Trưởng tổ ${teamMeta.label.split("/")[0].trim()}`;
   } else if (roleCode === "MEMBER" && teamMeta) {
     displayBadge = `Thành viên ${teamMeta.label.split("/")[0].trim()}`;
+  } else if (hasNoTitle) {
+    // giữ nhãn "Chưa có chức danh"
   } else if (roleCode === "DIRECTOR") {
     displayBadge = "Giám đốc";
   } else if (roleCode === "DEPUTY_DIRECTOR") {
@@ -241,7 +247,7 @@ export function resolveStaffRbac(
     teamLabel: teamMeta?.label ?? (teamId === "PGD" ? "Ban Phó Giám đốc" : "Ban Giám đốc"),
     displayBadge,
     isLeader: roleCode === "LEAD",
-    rolePermissions: roleMeta.permissions,
+    rolePermissions: hasNoTitle ? [] : roleMeta.permissions,
     teamPermissions: teamMeta?.permissions ?? [],
     actingDirectorProjects: actingProjects,
   };

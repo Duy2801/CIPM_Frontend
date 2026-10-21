@@ -64,10 +64,10 @@ export default function WarrantyMaintenanceScreen() {
                 Không có quyền truy cập phân hệ Bảo hành & Bảo trì
               </Title>
               <Text type="secondary" className="text-sm">
-                Theo Ma trận phân quyền BRD Mục 5, phân hệ <strong>M8 – Bảo hành & Bảo trì</strong> chỉ dành cho <strong>Ban Giám đốc</strong> (chỉ xem), <strong>Tổ Giám sát – Kỹ thuật</strong> và <strong>Kế toán trưởng</strong> (toàn quyền thao tác). Các vai trò khác không có quyền truy cập.
+                Theo Ma trận phân quyền BRD Mục 5, phân hệ <strong>M8 – Bảo hành & Bảo trì</strong> chỉ dành cho <strong>Ban Giám đốc</strong> (chỉ xem), <strong>Tổ Giám sát – Kỹ thuật</strong> và <strong>Kế toán trưởng</strong> (toàn quyền thao tác). Các chức danh khác không có quyền truy cập.
               </Text>
               <div className="mt-2 text-xs text-slate-500 bg-slate-50 px-3.5 py-2 rounded-lg border border-slate-200">
-                Tài khoản hiện tại: <strong className="text-slate-800">{user?.displayName ?? user?.name ?? "Chưa đăng nhập"}</strong> · Vai trò: <strong className="text-slate-800">{user?.roleName ?? user?.role ?? "Khách"}</strong>
+                Tài khoản hiện tại: <strong className="text-slate-800">{user?.displayName ?? user?.name ?? "Chưa đăng nhập"}</strong> · Chức danh: <strong className="text-slate-800">{user?.roleName ?? user?.role ?? "Khách"}</strong>
               </div>
             </Flex>
             <Button intent="primary" onClick={() => router.push("/dashboard")}>

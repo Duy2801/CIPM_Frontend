@@ -44,7 +44,7 @@ export function getLocalStorageCustomRoles(): AvailableRoleOption[] {
                     title: trimmed,
                     label: trimmed,
                     teamId: item.department ? (item.department as any) : "INDEPENDENT",
-                    teamName: item.department || "Vai trò tùy chỉnh / Toàn đơn vị",
+                    teamName: item.department || "Chức danh tùy chỉnh / Toàn đơn vị",
                     isLeader: item.group === "lead" || Boolean(item.isLeader),
                     isCustom: true,
                   });
@@ -390,4 +390,10 @@ export function resolveRoleCodeFromTitle(title: string, fallback: string): strin
   if (/bồi thường|gpmb/.test(t)) return "COMPENSATION_OFFICER";
   if (/hành chính|văn thư/.test(t)) return "ADMINISTRATIVE_OFFICER";
   return fallback || "TECHNICAL_OFFICER";
+}
+
+/** Tên (viết thường) các chức danh đã khóa trong ma trận phân quyền */
+export function getLockedTitles(matrixRoles: MatrixRole[], lockedRoleCodes: string[]): Set<string> {
+  const locked = new Set(lockedRoleCodes);
+  return new Set(matrixRoles.filter((r) => locked.has(r.code)).map((r) => r.name.trim().toLowerCase()));
 }

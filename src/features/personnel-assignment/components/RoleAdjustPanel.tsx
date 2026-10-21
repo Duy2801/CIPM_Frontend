@@ -6,7 +6,7 @@ import { Button, Select, Text } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
 import type { PersonnelDataset, Staff, StaffInput, TeamId } from "../types/personnel.types";
-import { buildAssignableRoles, resolveRoleCodeFromTitle } from "../utils/assignable-roles";
+import { buildAssignableRoles, getLockedTitles, resolveRoleCodeFromTitle } from "../utils/assignable-roles";
 
 interface RoleAdjustPanelProps {
   staff: Staff;
@@ -19,17 +19,21 @@ const normalizeTitle = (title: string) => title.trim().toLowerCase();
 /** Mục "Chức danh" trong drawer chi tiết cán bộ: mỗi cán bộ chỉ giữ MỘT chức danh, chọn trong danh sách là xong.
  *  Quyền hạn của cán bộ được suy ra từ chức danh (xem tab "Quyền hạn"). */
 export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdjustPanelProps) {
-  const { roles: matrixRoles } = useRoleMatrix();
+  const { roles: matrixRoles, lockedRoleCodes } = useRoleMatrix();
   const [saving, setSaving] = useState(false);
 
   const roles = useMemo(() => buildAssignableRoles(data.teams, matrixRoles), [data.teams, matrixRoles]);
 
   // Chức danh hiện tại: dữ liệu cũ có thể ghép nhiều chức danh bằng "·" → lấy chức danh đầu tiên
   const currentTitle = (staff.title || "").split(/\s*·\s*|\s*;\s*/)[0]?.trim() ?? "";
+  const lockedTitles = useMemo(() => getLockedTitles(matrixRoles, lockedRoleCodes), [matrixRoles, lockedRoleCodes]);
+  // Chức danh hiện tại đang tắt → coi như chưa có chức danh
+  const currentTitleLocked = Boolean(currentTitle) && lockedTitles.has(normalizeTitle(currentTitle));
   const currentRoleId = useMemo(() => {
+    if (currentTitleLocked) return undefined;
     const sameTitle = roles.filter((r) => normalizeTitle(r.title) === normalizeTitle(currentTitle));
     return (sameTitle.find((r) => r.teamId === staff.teamId) ?? sameTitle[0])?.id;
-  }, [roles, currentTitle, staff.teamId]);
+  }, [roles, currentTitle, staff.teamId, currentTitleLocked]);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(currentRoleId);
   const selectedRole = roles.find((r) => r.id === selectedId);
@@ -40,13 +44,15 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
   const options = useMemo(() => {
     const byTitle = new Map<string, (typeof roles)[number]>();
     roles.forEach((r) => {
+      // Chức danh đang tắt không cho chọn
+      if (lockedTitles.has(normalizeTitle(r.title))) return;
       const key = normalizeTitle(r.title);
       const existing = byTitle.get(key);
       const preferred = r.id === currentRoleId || (r.teamId === staff.teamId && existing?.id !== currentRoleId);
       if (!existing || preferred) byTitle.set(key, r);
     });
     return [...byTitle.values()].map((r) => ({ value: r.id, label: r.title }));
-  }, [roles, currentRoleId, staff.teamId]);
+  }, [roles, currentRoleId, staff.teamId, lockedTitles]);
 
   const handleSave = async () => {
     if (!selectedRole) return;
@@ -98,8 +104,17 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
         <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
           <InfoCircleOutlined className="text-slate-400" />
           <span>
-            Chức danh hiện tại <strong className="text-slate-700">{currentTitle}</strong> không còn trong danh mục, hãy
-            chọn chức danh mới.
+            {currentTitleLocked ? (
+              <>
+                Chức danh <strong className="text-slate-700">{currentTitle}</strong> đang tắt nên cán bộ tạm thời không
+                có chức danh. Bật lại chức danh ở màn phân quyền, hoặc chọn chức danh mới.
+              </>
+            ) : (
+              <>
+                Chức danh hiện tại <strong className="text-slate-700">{currentTitle}</strong> không còn trong danh mục,
+                hãy chọn chức danh mới.
+              </>
+            )}
           </span>
         </div>
       )}

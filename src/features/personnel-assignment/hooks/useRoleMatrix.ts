@@ -15,10 +15,29 @@ import {
 
 import {
   convertMatrixPermIdsToPermissionCodes,
+  getLockedRoleCodes,
+  STORAGE_KEY_LOCKED_ROLES,
   STORAGE_KEY_PERMISSIONS,
 } from "@/access-control";
 
 const STORAGE_KEY_ROLES = "cipm_custom_roles_matrix_v3";
+/** Tên chức danh đã sửa, theo mã (lưu riêng vì chức danh hệ thống luôn được nạp lại từ danh mục gốc) */
+const STORAGE_KEY_ROLE_NAMES = "cipm_role_name_overrides_v1";
+
+function getRoleNameOverrides(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY_ROLE_NAMES) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function applyRoleNameOverrides(roleList: MatrixRole[]): MatrixRole[] {
+  const overrides = getRoleNameOverrides();
+  return roleList.map((r) => (overrides[r.code] ? { ...r, name: overrides[r.code], shortName: overrides[r.code] } : r));
+}
 
 function syncCurrentUserPermissions(permissionsMap: Record<string, string[]>) {
   if (typeof window === "undefined") return;
@@ -95,13 +114,13 @@ function getInitialRoles(): MatrixRole[] {
         if (deduplicated.length !== combined.length) {
           window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(deduplicated));
         }
-        return deduplicated;
+        return applyRoleNameOverrides(deduplicated);
       }
     }
   } catch (err) {
     console.error("Lỗi khi đọc roles từ localStorage:", err);
   }
-  return SYSTEM_MATRIX_ROLES;
+  return applyRoleNameOverrides(SYSTEM_MATRIX_ROLES);
 }
 
 function getInitialPermissions(): Record<string, string[]> {
@@ -123,9 +142,24 @@ function getInitialPermissions(): Record<string, string[]> {
   return DEFAULT_ROLE_PERMISSIONS_MAP;
 }
 
+const getInitialLockedRoleCodes = getLockedRoleCodes;
+
+function saveLockedRoleCodes(codes: string[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY_LOCKED_ROLES, JSON.stringify(codes));
+    window.dispatchEvent(new CustomEvent("cipm-role-locks-updated"));
+    // Làm mới quyền của tài khoản đang đăng nhập (menu, trang được bảo vệ)
+    window.dispatchEvent(new CustomEvent("cipm-permissions-updated"));
+  } catch (err) {
+    console.error("Lỗi khi lưu danh sách chức danh bị khóa:", err);
+  }
+}
+
 export function useRoleMatrix() {
   const [roles, setRoles] = useState<MatrixRole[]>(getInitialRoles);
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>(getInitialPermissions);
+  const [lockedRoleCodes, setLockedRoleCodes] = useState<string[]>(getInitialLockedRoleCodes);
   const [isDirty, setIsDirty] = useState(false);
 
   // Lắng nghe sự kiện đồng bộ khi có vai trò tùy chỉnh mới được thêm/sửa/xóa ở modal khác
@@ -133,12 +167,16 @@ export function useRoleMatrix() {
     const handleSync = () => {
       setRoles(getInitialRoles());
       setPermissionsMap(getInitialPermissions());
+      setLockedRoleCodes(getInitialLockedRoleCodes());
     };
+    const handleLockSync = () => setLockedRoleCodes(getInitialLockedRoleCodes());
     if (typeof window !== "undefined") {
       window.addEventListener("cipm-roles-updated", handleSync);
+      window.addEventListener("cipm-role-locks-updated", handleLockSync);
       window.addEventListener("storage", handleSync);
       return () => {
         window.removeEventListener("cipm-roles-updated", handleSync);
+        window.removeEventListener("cipm-role-locks-updated", handleLockSync);
         window.removeEventListener("storage", handleSync);
       };
     }
@@ -291,7 +329,7 @@ export function useRoleMatrix() {
         (r) => (r.name || "").trim().toLowerCase() === trimmedName.toLowerCase()
       );
       if (existing) {
-        toast.warning(`Vai trò "${trimmedName}" đã tồn tại trong hệ thống.`);
+        toast.warning(`Chức danh "${trimmedName}" đã tồn tại trong hệ thống.`);
         return existing;
       }
 
@@ -342,7 +380,7 @@ export function useRoleMatrix() {
       }
 
       setIsDirty(true);
-      toast.success(`Đã thêm vai trò "${roleObj.name}" vào ma trận với ${initialPerms.length} quyền.`);
+      toast.success(`Đã thêm chức danh "${roleObj.name}" vào ma trận với ${initialPerms.length} quyền.`);
       return roleObj;
     },
     [roles, permissionsMap]
@@ -367,13 +405,84 @@ export function useRoleMatrix() {
       }
     }
     setIsDirty(true);
-    toast.success("Đã xóa vai trò tùy chỉnh.");
+    toast.success("Đã xóa chức danh tùy chỉnh.");
   }, [roles, permissionsMap]);
+
+  // Bật / tắt chức danh: áp dụng ngay (không chờ "Lưu cấu hình").
+  // Chức danh bị tắt không được chọn khi thêm nhân sự hay đổi chức danh; cán bộ đang giữ vẫn giữ nguyên.
+  const setRoleLocked = useCallback(
+    (roleCode: string, locked: boolean) => {
+      const next = locked
+        ? Array.from(new Set([...lockedRoleCodes, roleCode]))
+        : lockedRoleCodes.filter((code) => code !== roleCode);
+      setLockedRoleCodes(next);
+      saveLockedRoleCodes(next);
+      const roleName = roles.find((r) => r.code === roleCode)?.name ?? "";
+      toast.success(locked ? `Đã tắt chức danh "${roleName}".` : `Đã bật lại chức danh "${roleName}".`);
+    },
+    [lockedRoleCodes, roles]
+  );
+
+  // Đổi tên chức danh: lưu ngay. Trả về false nếu tên trống hoặc trùng chức danh khác.
+  const renameRole = useCallback(
+    (roleCode: string, newName: string): boolean => {
+      const trimmed = newName.trim();
+      if (!trimmed) {
+        toast.warning("Vui lòng nhập tên chức danh.");
+        return false;
+      }
+      const duplicated = roles.some(
+        (r) => r.code !== roleCode && (r.name || "").trim().toLowerCase() === trimmed.toLowerCase()
+      );
+      if (duplicated) {
+        toast.warning(`Chức danh "${trimmed}" đã tồn tại trong hệ thống.`);
+        return false;
+      }
+      const target = roles.find((r) => r.code === roleCode);
+      if (!target || target.name === trimmed) return true;
+
+      const nextRoles = roles.map((r) => (r.code === roleCode ? { ...r, name: trimmed, shortName: trimmed } : r));
+      setRoles(nextRoles);
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(
+            STORAGE_KEY_ROLE_NAMES,
+            JSON.stringify({ ...getRoleNameOverrides(), [roleCode]: trimmed })
+          );
+          window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(nextRoles));
+          window.dispatchEvent(new CustomEvent("cipm-roles-updated"));
+        } catch (err) {
+          console.error("Lỗi khi lưu tên chức danh:", err);
+        }
+      }
+      return true;
+    },
+    [roles]
+  );
+
+  // Ghi đè và lưu ngay toàn bộ quyền của một chức danh (dùng ở màn Thêm / Cập nhật chức danh)
+  // Chỉ ghi đè chức danh này vào ma trận đã lưu, không lưu kèm các tick chưa lưu của chức danh khác
+  const updateRolePermissions = useCallback((roleCode: string, permIds: string[]) => {
+    setPermissionsMap((prev) => ({ ...prev, [roleCode]: permIds }));
+    if (typeof window !== "undefined") {
+      try {
+        const storedPerms = { ...getInitialPermissions(), [roleCode]: permIds };
+        window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(storedPerms));
+        syncCurrentUserPermissions(storedPerms);
+      } catch (err) {
+        console.error("Lỗi khi lưu quyền chức danh:", err);
+      }
+    }
+  }, []);
+
 
   // Khôi phục mặc định
   const resetToDefault = useCallback(() => {
     setRoles(SYSTEM_MATRIX_ROLES);
     setPermissionsMap(DEFAULT_ROLE_PERMISSIONS_MAP);
+    setLockedRoleCodes([]);
+    if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY_ROLE_NAMES);
+    saveLockedRoleCodes([]);
     if (typeof window !== "undefined") {
       try {
         window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(SYSTEM_MATRIX_ROLES));
@@ -413,6 +522,10 @@ export function useRoleMatrix() {
     applyBaseMemberToAllMembers,
     addCustomRole,
     deleteCustomRole,
+    lockedRoleCodes,
+    setRoleLocked,
+    renameRole,
+    updateRolePermissions,
     resetToDefault,
     saveMatrix,
   };

@@ -113,7 +113,7 @@ export function canUpdateProjectProgress(
   return {
     allowed: false,
     reason:
-      "Chỉ người phụ trách dự án hoặc vai trò được cấp quyền cập nhật tiến độ trong Ma trận phân quyền mới có thể thực hiện.",
+      "Chỉ người phụ trách dự án hoặc chức danh được cấp quyền cập nhật tiến độ trong Ma trận phân quyền mới có thể thực hiện.",
     roleDescription: "Chỉ xem (Không có quyền cập nhật)",
   };
 }
@@ -171,7 +171,7 @@ export function getProjectExportScope(user: AuthUser | null): ProjectExportScope
   return {
     canExport: false,
     scope: "NONE",
-    reason: "Vai trò của bạn chưa được cấp quyền xuất báo cáo dự án trong Ma trận phân quyền.",
+    reason: "Chức danh của bạn chưa được cấp quyền xuất báo cáo dự án trong Ma trận phân quyền.",
   };
 }
 

@@ -1,25 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  DeleteOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  SaveOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
-import {
-  Button,
-  Modal,
-  Select,
-  Text,
-  Title,
-  Tooltip,
-} from "@/components/ui";
-import { normalizeSearchText } from "@/utils/search-text";
+import { useCallback, useMemo, useState } from "react";
+import { Modal, toast } from "@/components/ui";
+import { App } from "antd";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
-import type { MatrixPermission } from "../constants/role-matrix-data";
-import AddRoleModal from "./AddRoleModal";
+import RoleEditorView from "./RoleEditorView";
 
 interface RolePermissionMatrixModalProps {
   open: boolean;
@@ -27,23 +12,26 @@ interface RolePermissionMatrixModalProps {
   canManage?: boolean;
 }
 
+/** "main" = chọn chức danh, sửa tên / trạng thái / quyền ngay tại chỗ; "create" = màn Thêm chức danh (có quay lại) */
+type MatrixView = "main" | "create";
+
 export default function RolePermissionMatrixModal({
   open,
   onClose,
   canManage = true,
 }: RolePermissionMatrixModalProps) {
+  const { modal } = App.useApp();
   const {
     roles,
     modules,
     permissions,
-    isDirty,
     hasPermission,
-    togglePermission,
-    toggleModuleForRole,
-    resetToDefault,
-    saveMatrix,
     addCustomRole,
     deleteCustomRole,
+    lockedRoleCodes,
+    setRoleLocked,
+    renameRole,
+    updateRolePermissions,
   } = useRoleMatrix();
 
   // Danh sách chức vụ thực tế trong cơ quan (ẩn base roles dùng để kế thừa)
@@ -52,7 +40,7 @@ export default function RolePermissionMatrixModal({
   }, [roles]);
 
   // Danh sách chức danh trong dropdown: một danh sách liền (không chia nhóm theo phòng ban),
-  // vẫn sắp theo thứ tự Ban Giám đốc → Phó Giám đốc → các tổ → vai trò khác → vai trò tùy chỉnh.
+  // vẫn sắp theo thứ tự Ban Giám đốc → Phó Giám đốc → các tổ → chức danh khác → chức danh tự thêm.
   const roleSelectOptions = useMemo(() => {
     const departmentOrder: ((d: string) => boolean)[] = [
       (d) => /Ban Giám đốc/i.test(d),
@@ -72,7 +60,7 @@ export default function RolePermissionMatrixModal({
       .sort((a, b) => orderOf(a.role.department) - orderOf(b.role.department) || a.idx - b.idx)
       .map(({ role }) => role);
 
-    // Vai trò tùy chỉnh (loại bỏ trùng tên)
+    // Chức danh tự thêm (loại bỏ trùng tên)
     const seenCustomNames = new Set<string>();
     const customRoles = visibleRoles.filter((r) => {
       if (!r.isCustom) return false;
@@ -89,90 +77,81 @@ export default function RolePermissionMatrixModal({
       nameCount.set(key, (nameCount.get(key) ?? 0) + 1);
     });
 
+    // Chức danh đang tắt vẫn hiện để xem / bật lại, kèm nhãn "(Đã tắt)"
+    const lockedSuffix = (code: string) => (lockedRoleCodes.includes(code) ? " (Đã tắt)" : "");
     return [
       ...standardRoles.map((r) => {
         const isShared = (nameCount.get(r.name.trim().toLowerCase()) ?? 0) > 1;
-        const label = isShared && r.department ? `${r.name} (${r.department})` : r.name;
+        const label = (isShared && r.department ? `${r.name} (${r.department})` : r.name) + lockedSuffix(r.code);
         return { value: r.code, label, searchText: `${label} ${r.department ?? ""}` };
       }),
       ...customRoles.map((r) => ({
         value: r.code,
-        label: `${r.name} (Tùy chỉnh)`,
-        searchText: `${r.name} Tùy chỉnh ${r.department ?? ""}`,
+        label: `${r.name}${lockedSuffix(r.code)}`,
+        searchText: `${r.name} ${r.department ?? ""}`,
       })),
     ];
-  }, [visibleRoles]);
+  }, [visibleRoles, lockedRoleCodes]);
 
-  // Vai trò đang được chọn để cấu hình phân quyền
-  const [selectedRoleCode, setSelectedRoleCode] = useState<string>(() => {
-    return visibleRoles[0]?.code || "ADMIN";
-  });
-
-  const [selectedModuleId, setSelectedModuleId] = useState<string>("ALL");
-  const [addRoleModalOpen, setAddRoleModalOpen] = useState(false);
-
-  // Đảm bảo selectedRoleCode luôn hợp lệ nếu danh sách roles thay đổi
-  const currentRole = useMemo(() => {
-    return visibleRoles.find((r) => r.code === selectedRoleCode) || visibleRoles[0];
-  }, [visibleRoles, selectedRoleCode]);
-
-  const activeRoleCode = currentRole?.code || visibleRoles[0]?.code || "ADMIN";
-
-  // Thống kê số quyền đã cấp cho role hiện tại
-  const roleGrantedCount = useMemo(() => {
-    return permissions.filter((p) => hasPermission(activeRoleCode, p.id)).length;
-  }, [permissions, hasPermission, activeRoleCode]);
-
-  // Lọc quyền theo màn hình / phân hệ
-  const filteredPermissions = useMemo(() => {
-    return permissions.filter((perm) => {
-      if (selectedModuleId !== "ALL" && perm.moduleId !== selectedModuleId) {
-        return false;
-      }
-      return true;
-    });
-  }, [permissions, selectedModuleId]);
-
-  // Gom nhóm quyền theo Module / Màn hình
-  const permissionsByModule = useMemo(() => {
-    const map = new Map<string, MatrixPermission[]>();
-    filteredPermissions.forEach((perm) => {
-      const list = map.get(perm.moduleId) || [];
-      list.push(perm);
-      map.set(perm.moduleId, list);
-    });
-    return map;
-  }, [filteredPermissions]);
-
-  // Badge phân loại hành động (chuyển đồng bộ tông màu vàng/amber cho dễ nhìn)
-  const getCategoryBadge = (category: MatrixPermission["category"]) => {
-    switch (category) {
-      case "read":
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Xem
-          </span>
-        );
-      case "write":
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Nhập/Sửa
-          </span>
-        );
-      case "approve":
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Phê duyệt
-          </span>
-        );
-      case "admin":
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Quản trị
-          </span>
-        );
+  const [view, setView] = useState<MatrixView>("main");
+  // Chức danh đang chọn (nhớ lại khi quay về từ màn Thêm chức danh)
+  const [selectedRoleCode, setSelectedRoleCode] = useState<string>(() => visibleRoles[0]?.code || "ADMIN");
+  const activeRoleCode = visibleRoles.some((r) => r.code === selectedRoleCode)
+    ? selectedRoleCode
+    : visibleRoles[0]?.code;
+  // Tắt chức danh: hỏi xác nhận trước; bật lại thì làm ngay
+  const handleToggleLock = (roleCode: string) => {
+    const role = visibleRoles.find((r) => r.code === roleCode);
+    if (!role) return;
+    if (lockedRoleCodes.includes(roleCode)) {
+      setRoleLocked(roleCode, false);
+      return;
     }
+    modal.confirm({
+      centered: true,
+      width: 440,
+      icon: null,
+      title: `Tắt chức danh "${role.name}"?`,
+      content: (
+        <p className="m-0 text-xs leading-relaxed text-slate-600">
+          Sau khi tắt, cán bộ đang giữ chức danh này tạm thời không còn chức danh và quyền hạn, và không ai chọn được
+          chức danh này. Bật lại thì mọi người có lại chức danh như cũ.
+        </p>
+      ),
+      okText: "Tắt chức danh",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: () => setRoleLocked(roleCode, true),
+    });
   };
+
+  // Lưu: thêm mới (không có mã) hoặc đổi tên + quyền (lưu ngay), rồi chọn chức danh đó
+  const handleSubmitRole = (roleCode: string | undefined, name: string, permIds: string[]) => {
+    if (!roleCode) {
+      const created = addCustomRole({
+        name,
+        shortName: name,
+        group: "member",
+        description: `Chức danh ${name} trong hệ thống`,
+        initialPermissions: permIds,
+      });
+      if (!created?.code) return null;
+      setSelectedRoleCode(created.code);
+      return created.code;
+    }
+    if (!renameRole(roleCode, name)) return null;
+    updateRolePermissions(roleCode, permIds);
+    setSelectedRoleCode(roleCode);
+    toast.success(`Đã lưu chức danh "${name}".`);
+    // Lưu xong thì đóng luôn form phân quyền
+    onClose();
+    return roleCode;
+  };
+
+  const getRolePermIds = useCallback(
+    (roleCode: string) => permissions.filter((p) => hasPermission(roleCode, p.id)).map((p) => p.id),
+    [permissions, hasPermission]
+  );
 
   return (
     <Modal
@@ -187,297 +166,30 @@ export default function RolePermissionMatrixModal({
       className="m-0 max-w-[calc(100vw-32px)] [&_.ant-modal-content]:!p-0 [&_.ant-modal-content]:!rounded-2xl overflow-hidden shadow-2xl"
     >
       <div className="flex flex-col h-[min(88vh,780px)] max-h-[calc(100vh-48px)] bg-white text-slate-900 overflow-hidden">
-        {/* 1. Header Modal */}
-        <div className="px-6 py-3.5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-4 shrink-0">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Title level={4} className="!m-0 text-slate-900 font-bold text-base sm:text-lg">
-                Cấu hình phân quyền hệ thống BQL ĐTXD
-              </Title>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. THANH CÔNG CỤ & BỘ LỌC TINH GỌN (CĂN GỌN TRÊN 1 DÒNG) */}
-        <div className="px-6 py-2.5 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
-            {/* Chọn Chức danh */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">Chức danh:</span>
-              <div className="w-56 sm:w-80 flex items-center gap-1.5">
-                <Select
-                  showSearch
-                  value={activeRoleCode}
-                  onChange={(val) => setSelectedRoleCode(val)}
-                  className="w-full text-xs font-semibold"
-                  options={roleSelectOptions}
-                  filterOption={(input, option) =>
-                    normalizeSearchText(String(option?.searchText ?? "")).includes(normalizeSearchText(input))
-                  }
-                  popupMatchSelectWidth={false}
-                />
-                {currentRole?.isCustom && canManage && (
-                  <Tooltip title={`Xóa vai trò tùy chỉnh "${currentRole.name}"`}>
-                    <Button
-                      intent="outline"
-                      scale="compact"
-                      icon={<DeleteOutlined className="text-rose-500" />}
-                      className="text-xs h-8 px-2 !border-rose-200 text-rose-600 hover:!border-rose-400 hover:!bg-rose-50 shrink-0 shadow-2xs"
-                      onClick={() => {
-                        deleteCustomRole(currentRole.code);
-                        setSelectedRoleCode(visibleRoles[0]?.code || "ADMIN");
-                      }}
-                    >
-                      Xóa
-                    </Button>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-
-            {/* Đường ngăn cách nhẹ */}
-            <div className="h-4 w-px bg-slate-300 hidden sm:block mx-0.5" />
-
-            {/* Lọc màn hình / phân hệ */}
-            <div className="w-48 sm:w-56">
-              <Select
-                value={selectedModuleId}
-                onChange={(val) => setSelectedModuleId(val)}
-                className="w-full text-xs h-8"
-                options={[
-                  { value: "ALL", label: `Tất cả ${modules.length} Màn hình` },
-                  ...modules.map((m) => ({
-                    value: m.id,
-                    label: `${m.code} - ${m.shortName}`,
-                  })),
-                ]}
-              />
-            </div>
-
-            {selectedModuleId !== "ALL" && (
-              <Button
-                intent="outline"
-                scale="compact"
-                className="text-xs h-8 text-slate-600 hover:text-[#DC2626]"
-                onClick={() => setSelectedModuleId("ALL")}
-              >
-                Xóa lọc
-              </Button>
-            )}
-          </div>
-
-          {/* Góc phải: Nút Thêm vai trò & Nút Khôi phục mặc định */}
-          <div className="flex items-center gap-2 shrink-0">
-            {canManage && (
-              <Button
-                intent="outline"
-                scale="compact"
-                icon={<PlusOutlined className="text-[#DC2626]" />}
-                className="text-xs font-semibold !border-slate-300 text-slate-700 hover:text-[#DC2626] hover:!border-red-200 h-8 px-3"
-                onClick={() => setAddRoleModalOpen(true)}
-              >
-                Thêm vai trò
-              </Button>
-            )}
-
-            <Tooltip title="Khôi phục phân quyền về chuẩn mặc định ban đầu của BQL">
-              <Button
-                intent="outline"
-                scale="compact"
-                icon={<ReloadOutlined className="text-slate-400" />}
-                className="text-xs !border-slate-300 text-slate-700 hover:text-[#DC2626] hover:!border-red-200 h-8"
-                onClick={resetToDefault}
-              >
-                Khôi phục mặc định
-              </Button>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* 3. DANH SÁCH QUYỀN HẠN CÁC MÀN HÌNH ĐỂ TÍCH CHỌN */}
-        <div className="flex-1 overflow-auto [scrollbar-width:thin] min-h-0 p-6 space-y-4 bg-slate-50/50">
-          {filteredPermissions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white p-12 text-center">
-              <SearchOutlined className="text-slate-300 text-3xl mb-3" />
-              <div className="text-sm font-semibold text-slate-700">Không tìm thấy quyền hạn phù hợp</div>
-              <div className="text-xs text-slate-400 mt-1">
-                Thử thay đổi từ khóa tìm kiếm hoặc bỏ chọn bộ lọc màn hình
-              </div>
-            </div>
-          ) : (
-            modules.map((mod) => {
-              const modPerms = permissionsByModule.get(mod.id);
-              if (!modPerms || modPerms.length === 0) return null;
-
-              const modGrantedCount = modPerms.filter((p) => hasPermission(activeRoleCode, p.id)).length;
-
-              return (
-                <div
-                  key={`group-${mod.id}`}
-                  className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden"
-                >
-                  {/* Tiêu đề Màn hình / Phân hệ */}
-                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800 font-bold">
-                        {mod.code}
-                      </span>
-                      <span className="font-bold text-xs sm:text-sm text-slate-900">{mod.name}</span>
-                    </div>
-
-                    <label
-                      onClick={(e) => e.stopPropagation()}
-                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-colors select-none ${
-                        canManage
-                          ? "cursor-pointer text-slate-700 hover:text-[#DC2626] hover:bg-slate-200/60"
-                          : "cursor-default text-slate-400"
-                      }`}
-                      title="Chọn toàn bộ quyền trong màn hình này"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={modPerms.length > 0 && modGrantedCount === modPerms.length}
-                        ref={(el) => {
-                          if (el) {
-                            el.indeterminate = modGrantedCount > 0 && modGrantedCount < modPerms.length;
-                          }
-                        }}
-                        disabled={!canManage}
-                        onChange={() => {
-                          if (canManage) {
-                            toggleModuleForRole(
-                              activeRoleCode,
-                              mod.id,
-                              modPerms.map((p) => p.id)
-                            );
-                          }
-                        }}
-                        className="h-4 w-4 rounded accent-[#DC2626] cursor-pointer disabled:cursor-not-allowed"
-                      />
-                      <span>Chọn tất cả</span>
-                    </label>
-                  </div>
-
-                  {/* Danh sách các quyền của màn hình để tích */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {modPerms.map((perm) => {
-                      const isChecked = hasPermission(activeRoleCode, perm.id);
-
-                      return (
-                        <div
-                          key={perm.id}
-                          role="checkbox"
-                          aria-checked={isChecked}
-                          tabIndex={canManage ? 0 : -1}
-                          onClick={() => {
-                            if (canManage) {
-                              togglePermission(activeRoleCode, perm.id);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (canManage && (e.key === " " || e.key === "Enter")) {
-                              e.preventDefault();
-                              togglePermission(activeRoleCode, perm.id);
-                            }
-                          }}
-                          className={`flex items-start gap-3 p-3 rounded-lg border bg-white transition-all select-none ${
-                            isChecked
-                              ? "border-slate-300 shadow-2xs"
-                              : "border-slate-200/80"
-                          } ${canManage ? "cursor-pointer hover:border-slate-300 hover:bg-slate-50/50" : "cursor-default"}`}
-                        >
-                          <div className="pt-0.5 shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              disabled={!canManage}
-                              readOnly
-                              tabIndex={-1}
-                              aria-hidden="true"
-                              className="h-4.5 w-4.5 rounded accent-[#DC2626] pointer-events-none cursor-pointer"
-                            />
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              {getCategoryBadge(perm.category)}
-                              <span className="font-bold text-xs text-slate-900 leading-snug">
-                                {perm.name}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-500 leading-normal mb-1 line-clamp-2">
-                              {perm.description}
-                            </div>
-                            <span className="font-mono text-[9.5px] text-slate-400">
-                              {perm.code}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* 4. Footer */}
-        <div className="px-6 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <span
-              className=""
-            />
-            <span>
-              Đang xem chức danh: <strong className="text-slate-900">{currentRole?.name}</strong>{" "}
-              {currentRole?.department && (
-                <span className="text-slate-500 font-medium">({currentRole.department})</span>
-              )}{" "}
-              · Đã cấp <strong className="text-[#DC2626]">{roleGrantedCount}</strong>/{permissions.length} quyền.
-              {isDirty && (
-                <span className="text-amber-600 font-semibold ml-1.5">
-                  (Chưa lưu — bấm &quot;Lưu cấu hình&quot; để áp dụng)
-                </span>
-              )}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              intent="outline"
-              className="!border-slate-300 text-xs h-8.5 rounded-lg text-slate-700 hover:text-slate-900"
-              onClick={onClose}
-            >
-              Đóng
-            </Button>
-            <Button
-              intent="primary"
-              icon={<SaveOutlined />}
-              className="h-8.5 text-xs font-semibold bg-[#DC2626] hover:bg-red-700 text-white rounded-lg shadow-xs"
-              onClick={() => {
-                saveMatrix();
-                onClose();
-              }}
-            >
-              Lưu cấu hình
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal Thêm vai trò mới */}
-      {addRoleModalOpen && (
-        <AddRoleModal
-          open={addRoleModalOpen}
-          onClose={() => setAddRoleModalOpen(false)}
-          onAddRole={(roleData) => {
-            const newRole = addCustomRole(roleData);
-            if (newRole?.code) {
-              setSelectedRoleCode(newRole.code);
-            }
-          }}
+        <RoleEditorView
+          key={view}
+          mode={view === "create" ? "create" : "edit"}
+          title={view === "create" ? "Thêm chức danh" : "Cấu hình phân quyền hệ thống BQL ĐTXD"}
+          roles={visibleRoles}
+          roleOptions={roleSelectOptions}
+          initialRoleCode={activeRoleCode}
+          modules={modules}
+          permissions={permissions}
+          getRolePermIds={getRolePermIds}
+          lockedRoleCodes={lockedRoleCodes}
+          onToggleLock={handleToggleLock}
+          onSubmit={handleSubmitRole}
+          {...(view === "create"
+            ? { onBack: () => setView("main") }
+            : {
+                onClose,
+                onRoleChange: setSelectedRoleCode,
+                onDeleteRole: deleteCustomRole,
+                onCreateNew: () => setView("create"),
+                readOnly: !canManage,
+              })}
         />
-      )}
+      </div>
     </Modal>
   );
 }

@@ -365,7 +365,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
     id: "sys.config_permissions",
     code: "system:permissions",
     name: "Cấu hình phân quyền hệ thống",
-    description: "Toàn quyền điều chỉnh ma trận quyền cho các vai trò và chức danh",
+    description: "Toàn quyền điều chỉnh ma trận quyền cho các chức danh",
     moduleId: "SYS",
     moduleName: "Quản trị Hệ thống",
     category: "admin",

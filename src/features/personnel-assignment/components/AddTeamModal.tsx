@@ -37,7 +37,7 @@ export default function AddTeamModal({
 
   const isEdit = Boolean(editingTeam);
 
-  // Vai trò hiện có trong phòng ban: tự tổng hợp từ vai trò đã cấp cho cán bộ thuộc phòng ban
+  // Chức danh hiện có trong phòng ban: tự tổng hợp từ vai trò đã cấp cho cán bộ thuộc phòng ban
   // (phòng ban không tự định nghĩa vai trò — vai trò được cấp ở hồ sơ từng cán bộ)
   const teamRoleSummary = useMemo(() => {
     if (!editingTeam) return [];
@@ -180,7 +180,7 @@ export default function AddTeamModal({
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 space-y-3">
             <div className="flex items-center gap-2 border-b border-slate-200/70 pb-2">
               <span className="text-sm font-bold text-slate-800">
-                Thông tin phòng ban / tổ chuyên môn
+                Thông tin phòng ban
               </span>
             </div>
 
@@ -202,20 +202,20 @@ export default function AddTeamModal({
 
           </div>
 
-          {/* Vai trò hiện có trong phòng ban (chỉ xem, tự tổng hợp từ cán bộ) */}
+          {/* Chức danh hiện có trong phòng ban (chỉ xem, tự tổng hợp từ cán bộ) */}
           {isEdit && (
             <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5">
               <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
-                <span className="text-sm font-bold text-slate-800">Vai trò hiện có trong phòng ban</span>
+                <span className="text-sm font-bold text-slate-800">Chức danh hiện có trong phòng ban</span>
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                  {teamRoleSummary.length} vai trò
+                  {teamRoleSummary.length} chức danh
                 </span>
               </div>
               <p className="m-0 mb-3 text-[13px] text-slate-500">
-                Tự tổng hợp từ vai trò đã cấp cho cán bộ trong phòng ban. Cấp / đổi / thu hồi vai trò tại hồ sơ từng cán bộ.
+                Tự tổng hợp từ chức danh của cán bộ trong phòng ban. Đổi chức danh tại hồ sơ từng cán bộ.
               </p>
               {teamRoleSummary.length === 0 ? (
-                <p className="m-0 text-sm italic text-slate-400">Phòng ban chưa có cán bộ nào được cấp vai trò.</p>
+                <p className="m-0 text-sm italic text-slate-400">Phòng ban chưa có cán bộ nào được gán chức danh.</p>
               ) : (
                 <ul className="m-0 list-none divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white p-0">
                   {teamRoleSummary.map(({ role, names }) => (

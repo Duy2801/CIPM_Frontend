@@ -12,6 +12,8 @@ interface StaffInfoCardProps {
   staff: Staff;
   team?: Team;
   relatedProjects: { project: PersonnelProject; roleText: string }[];
+  /** Chức danh của cán bộ đang tắt → hiện "Chưa có chức danh" */
+  titleLocked?: boolean;
   /** Có truyền thì các ô thông tin bấm vào sửa trực tiếp được, lưu sau khi xác nhận */
   onSave?: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => Promise<boolean>;
 }
@@ -55,7 +57,7 @@ function FieldBox({ label, editable, children }: { label: string; editable?: boo
 const isEmptyValue = (val: unknown) => val === undefined || val === null || val === "";
 const sameValue = (a: unknown, b: unknown) => (isEmptyValue(a) && isEmptyValue(b)) || String(a ?? "").trim() === String(b ?? "").trim();
 
-export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: StaffInfoCardProps) {
+export default function StaffInfoCard({ staff, team, relatedProjects, titleLocked, onSave }: StaffInfoCardProps) {
   const { modal } = App.useApp();
   const [form] = Form.useForm<StaffInfoFormValues>();
   const [saving, setSaving] = useState(false);
@@ -173,7 +175,7 @@ export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: 
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
       <Text className="mb-1 block text-xs font-bold text-slate-800 uppercase tracking-wide">
-        Thông tin cá nhân & vị trí công tác
+        Thông tin cá nhân & công tác
       </Text>
       {editable && <p className="m-0 mb-3 text-[11px] text-slate-500">Bấm vào ô thông tin để sửa trực tiếp.</p>}
 
@@ -181,7 +183,13 @@ export default function StaffInfoCard({ staff, team, relatedProjects, onSave }: 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           {/* Phòng ban, chức danh đổi qua tab "Chức danh" nên luôn chỉ đọc */}
           <FieldBox label="Phòng ban / Tổ chuyên môn">{team?.name || EMPTY_TEXT}</FieldBox>
-          <FieldBox label="Chức danh">{staff.title || EMPTY_TEXT}</FieldBox>
+          <FieldBox label="Chức danh">
+            {titleLocked ? (
+              <span className="font-normal italic text-slate-400">Chưa có chức danh ({staff.title} đang tắt)</span>
+            ) : (
+              staff.title || EMPTY_TEXT
+            )}
+          </FieldBox>
 
           <FieldBox label="Email công vụ" editable={editable}>
             {editable ? (

@@ -904,7 +904,7 @@ export function createMockPersonnelRepository(): PersonnelRepository {
     async createStaff(input) {
       if (!input.name?.trim()) throw new Error("Vui lòng nhập họ và tên cán bộ.");
       if (!input.teamId) throw new Error("Vui lòng chọn tổ / bộ phận.");
-      if (!input.roleCode) throw new Error("Vui lòng chọn vai trò hệ thống.");
+      if (!input.roleCode) throw new Error("Vui lòng chọn chức danh.");
 
       const nextNum = dataset.staff.length + 1;
       const staffId = `ST-${String(nextNum).padStart(3, "0")}`;

@@ -13,6 +13,8 @@ import type { PersonnelDataset, StaffInput, Team, TeamId } from "../types/person
 import type { CustomFieldDefinition, CustomFieldType } from "../types/custom-fields.types";
 import { getCustomFields, saveCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
 import { mockPersonnelRepository } from "../services/mock-personnel.repository";
+import { useRoleMatrix } from "../hooks/useRoleMatrix";
+import { getLockedTitles } from "../utils/assignable-roles";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
   title?: string;
@@ -115,6 +117,7 @@ function getLocalStorageCustomRoles(): { title: string; roleCode: string; isLead
 export default function StaffModal({ data, errorText, onClose, onCreate }: StaffModalProps) {
   const [form] = Form.useForm<StaffFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const { roles: matrixRoles, lockedRoleCodes } = useRoleMatrix();
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [appliedFieldIds, setAppliedFieldIds] = useState<Record<string, boolean>>({});
 
@@ -252,7 +255,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
         title: cr.title,
         roleCode: cr.roleCode,
         isLeader: Boolean(cr.isLeader),
-        searchText: `${cr.title} Vai trò tùy chỉnh`,
+        searchText: `${cr.title} Chức danh tùy chỉnh`,
         label: null,
       });
     });
@@ -272,8 +275,11 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
       o.searchText = `${displayTitle} ${o.searchText}`;
     });
 
-    return { roleSelectOptions: allLeafOptions, allRoleOptions: allLeafOptions };
-  }, [teams, data.staff]);
+    // Chức danh đã khóa trong ma trận phân quyền không cho chọn khi thêm nhân sự
+    const lockedTitles = getLockedTitles(matrixRoles, lockedRoleCodes);
+    const assignable = allLeafOptions.filter((o) => !lockedTitles.has(o.title.toLowerCase()));
+    return { roleSelectOptions: assignable, allRoleOptions: assignable };
+  }, [teams, data.staff, matrixRoles, lockedRoleCodes]);
 
   // Xử lý thêm phòng ban mới trực tiếp từ dropdown
   const handleAddDepartment = async () => {
@@ -312,7 +318,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
   const handleAddRole = async () => {
     const trimmed = newRoleTitle.trim();
     if (!trimmed) {
-      toast.warning("Chưa nhập tên vị trí", "Vui lòng nhập tên vị trí / chức vụ mới.");
+      toast.warning("Chưa nhập tên chức danh", "Vui lòng nhập tên chức danh mới.");
       return;
     }
 
@@ -326,7 +332,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
       currentRoles.some((r) => normalizeSearchText(r) === normalizeSearchText(trimmed)) ||
       allRoleOptions.some((opt) => normalizeSearchText(opt.title) === normalizeSearchText(trimmed))
     ) {
-      toast.warning("Trùng tên vị trí", "Vị trí này đã tồn tại trong danh mục.");
+      toast.warning("Trùng tên chức danh", "Chức danh này đã tồn tại trong danh mục.");
       return;
     }
 
@@ -368,12 +374,12 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
       form.setFieldValue("title", trimmed);
       form.setFieldValue("roleCode", roleCode);
 
-      toast.success("Thành công", `Đã thêm vị trí "${trimmed}" cho ${currentTeam?.name || "phòng ban"}.`);
+      toast.success("Thành công", `Đã thêm chức danh "${trimmed}" cho ${currentTeam?.name || "phòng ban"}.`);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cipm_personnel_dataset_updated"));
       }
     } catch (err: any) {
-      toast.error("Lỗi", err?.message || "Không thể thêm vị trí mới.");
+      toast.error("Lỗi", err?.message || "Không thể thêm chức danh mới.");
     } finally {
       setIsAddingRoleLoading(false);
     }
@@ -550,7 +556,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
             Thêm nhân sự mới
           </Text>
           <Text className="block text-xs font-normal text-slate-500">
-            Khởi tạo thông tin hồ sơ và phân quyền vai trò trên hệ thống
+            Khởi tạo hồ sơ và chức danh của cán bộ trên hệ thống
           </Text>
         </div>
       }
@@ -655,7 +661,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
             <Col xs={24} sm={12}>
               <Form.Item
                 name="teamId"
-                label="Bộ phận trực thuộc"
+                label="Tất cả phòng ban"
                 rules={[{ required: true, message: "Vui lòng chọn tổ công tác." }]}
               >
                 <Select
@@ -716,7 +722,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                     handleTeamRoleChange(val);
                   }}
                   notFoundContent={
-                    <div className="py-1 text-xs text-slate-400">Chưa có vị trí này trong hệ thống.</div>
+                    <div className="py-1 text-xs text-slate-400">Chưa có chức danh này trong hệ thống.</div>
                   }
                   popupRender={(menu) => (
                     <>
@@ -724,7 +730,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                       <Divider style={{ margin: "6px 0" }} />
                       <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
                         <span className="text-[11px] text-slate-500">
-                          {canAddRole ? "Chưa có, có thể thêm mới:" : "Không thấy vị trí? Gõ tên để thêm mới."}
+                          {canAddRole ? "Chưa có, có thể thêm mới:" : "Không thấy chức danh? Gõ tên để thêm mới."}
                         </span>
                         <Button
                           type="primary"

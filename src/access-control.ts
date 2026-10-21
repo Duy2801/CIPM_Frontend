@@ -105,6 +105,18 @@ export function canDo(
 }
 
 export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v2";
+/** Mã các chức danh đang tắt trong ma trận phân quyền: người giữ chức danh này tạm thời không có quyền nào */
+export const STORAGE_KEY_LOCKED_ROLES = "cipm_locked_roles_v1";
+
+export function getLockedRoleCodes(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY_LOCKED_ROLES) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((code): code is string => typeof code === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 import type { AuthUser } from "@/types/auth";
 import {
@@ -173,6 +185,8 @@ export function getRoleEffectivePermissions(roleCode?: string): Permission[] {
 export function getUserEffectivePermissions(user: AuthUser | null): Permission[] {
   if (!user) return [];
   const roleId = (user as any).roleId;
+  // Chức danh của tài khoản đang tắt → không có quyền nào cho tới khi bật lại
+  if (roleId && getLockedRoleCodes().includes(roleId)) return [];
   if (roleId) {
     const roleIdPerms = getRoleEffectivePermissions(roleId);
     if (roleIdPerms && roleIdPerms.length > 0) return roleIdPerms;

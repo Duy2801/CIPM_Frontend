@@ -112,7 +112,7 @@ const BLOCKED_PROFILE: WarrantyRoleProfile = {
   canManageBond: false,
   exportScope: "NONE",
   defaultTab: "warranties",
-  scopeDescription: "Theo Ma trận phân quyền BRD Mục 5, vai trò của bạn không có quyền truy cập phân hệ M8 – Bảo hành & Bảo trì.",
+  scopeDescription: "Theo Ma trận phân quyền BRD Mục 5, chức danh của bạn không có quyền truy cập phân hệ M8 – Bảo hành & Bảo trì.",
   allowedDuties: ["Không có quyền thao tác hoặc xem dữ liệu"],
   readingGuide: "Vui lòng liên hệ Quản trị hệ thống nếu cần phân công nhiệm vụ.",
 };
