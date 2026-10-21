@@ -343,6 +343,7 @@ export function useRoleMatrix() {
         description: newRole.description.trim(),
         color: newRole.color || "#0F4C81",
         isCustom: true,
+        createdAt: new Date().toISOString(),
       };
 
       const nextRoles = deduplicateRoles([roleObj, ...roles]);

@@ -1,97 +1,65 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeftOutlined, DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import { App } from "antd";
-import { Button, Input, Select, Switch, Title, Tooltip } from "@/components/ui";
+import { Button, Input, Switch, Title, Tooltip } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import type { MatrixModule, MatrixPermission, MatrixRole } from "../constants/role-matrix-data";
 import PermissionChecklist from "./PermissionChecklist";
 
-interface RoleOption {
-  value: string;
-  label: string;
-  searchText: string;
-}
-
 interface RoleEditorViewProps {
-  /** "create" = thêm chức danh mới, "edit" = chọn một chức danh để cập nhật */
+  /** "create" = tạo chức danh mới, "edit" = chỉnh sửa chức danh `role` */
   mode: "create" | "edit";
-  /** Tất cả chức danh hiện có (để chọn khi cập nhật và kiểm tra trùng tên) */
+  role?: MatrixRole;
+  /** Tất cả chức danh hiện có (để kiểm tra trùng tên) */
   roles: MatrixRole[];
-  roleOptions: RoleOption[];
-  /** Chức danh chọn sẵn khi mở màn cập nhật */
-  initialRoleCode?: string;
   modules: MatrixModule[];
   permissions: MatrixPermission[];
-  /** Quyền hiện có của một chức danh */
-  getRolePermIds: (roleCode: string) => string[];
-  lockedRoleCodes: string[];
-  onToggleLock: (roleCode: string) => void;
-  /** Tiêu đề màn hình (mặc định: "Thêm chức danh" / "Cập nhật chức danh") */
-  title?: string;
-  /** Có truyền thì hiện icon quay lại trên tiêu đề; lưu xong cũng quay lại */
-  onBack?: () => void;
-  /** Có truyền thì hiện nút "Thêm chức danh" ở góc phải tiêu đề */
-  onCreateNew?: () => void;
+  /** Quyền ban đầu (chỉnh sửa: quyền hiện có; tạo mới: rỗng) */
+  initialPermIds: string[];
+  isLocked?: boolean;
+  onToggleLock?: () => void;
   /** Chỉ xem: không sửa tên, trạng thái, quyền */
   readOnly?: boolean;
-  /** Có truyền thì hiện nút "Đóng" ở thanh dưới */
-  onClose?: () => void;
-  /** Báo chức danh đang chọn để màn cha nhớ lại */
-  onRoleChange?: (roleCode: string) => void;
-  /** Xóa chức danh tự thêm */
-  onDeleteRole?: (roleCode: string) => void;
-  /** Lưu tên + quyền (roleCode trống = thêm mới); trả về mã chức danh đã lưu, hoặc null nếu không lưu được */
-  onSubmit: (roleCode: string | undefined, name: string, permIds: string[]) => string | null;
+  onBack: () => void;
+  /** Lưu tên + quyền; trả về false nếu không lưu được (giữ nguyên màn hình) */
+  onSubmit: (name: string, permIds: string[]) => boolean;
 }
 
-/** Màn Thêm / Cập nhật chức danh: chọn chức danh (khi cập nhật), nhập tên, tick quyền rồi lưu */
+/** Màn Tạo / Chỉnh sửa chức danh: nhập tên, tick quyền theo nhóm rồi lưu; có icon quay lại danh sách */
 export default function RoleEditorView({
   mode,
+  role,
   roles,
-  roleOptions,
-  initialRoleCode,
   modules,
   permissions,
-  getRolePermIds,
-  lockedRoleCodes,
+  initialPermIds,
+  isLocked = false,
   onToggleLock,
-  title,
-  onBack,
-  onCreateNew,
   readOnly = false,
-  onClose,
-  onRoleChange,
-  onDeleteRole,
+  onBack,
   onSubmit,
 }: RoleEditorViewProps) {
   const { modal } = App.useApp();
   const isCreating = mode === "create";
-
-  const [roleCode, setRoleCode] = useState<string | undefined>(isCreating ? undefined : initialRoleCode);
-  const role = roles.find((r) => r.code === roleCode);
-  // Giá trị gốc để biết có thay đổi chưa lưu
   const baselineName = role?.name ?? "";
-  const baselinePerms = useMemo(() => (roleCode ? getRolePermIds(roleCode) : []), [roleCode, getRolePermIds]);
 
   const [name, setName] = useState(baselineName);
   // Quyền đang tick là bản nháp: chỉ lưu khi bấm nút ở dưới
-  const [draftPerms, setDraftPerms] = useState<string[]>(baselinePerms);
+  const [draftPerms, setDraftPerms] = useState<string[]>(initialPermIds);
 
   const trimmedName = name.trim();
   const isNameTaken = roles.some(
-    (r) => r.code !== roleCode && normalizeSearchText(r.name) === normalizeSearchText(trimmedName)
+    (r) => r.code !== role?.code && normalizeSearchText(r.name) === normalizeSearchText(trimmedName)
   );
-  const canEdit = !readOnly && (isCreating || Boolean(role));
-  const canSubmit = canEdit && Boolean(trimmedName) && !isNameTaken;
-  const isLocked = Boolean(roleCode) && lockedRoleCodes.includes(roleCode!);
+  const canSubmit = !readOnly && Boolean(trimmedName) && !isNameTaken;
 
   const isDirty = useMemo(() => {
     if (trimmedName !== baselineName.trim()) return true;
-    const initial = new Set(baselinePerms);
+    const initial = new Set(initialPermIds);
     return draftPerms.length !== initial.size || draftPerms.some((id) => !initial.has(id));
-  }, [trimmedName, baselineName, draftPerms, baselinePerms]);
+  }, [trimmedName, baselineName, draftPerms, initialPermIds]);
 
   const togglePerm = (permId: string) =>
     setDraftPerms((prev) => (prev.includes(permId) ? prev.filter((id) => id !== permId) : [...prev, permId]));
@@ -102,10 +70,10 @@ export default function RoleEditorView({
         : Array.from(new Set([...prev, ...permIds]))
     );
 
-  // Còn thay đổi chưa lưu thì hỏi trước khi bỏ
-  const confirmDiscard = (onConfirm: () => void) => {
-    if (!isDirty) {
-      onConfirm();
+  // Quay lại: còn thay đổi chưa lưu thì hỏi trước khi bỏ
+  const handleBack = () => {
+    if (readOnly || !isDirty) {
+      onBack();
       return;
     }
     modal.confirm({
@@ -119,150 +87,73 @@ export default function RoleEditorView({
       okText: "Bỏ thay đổi",
       cancelText: "Ở lại",
       okButtonProps: { danger: true },
-      onOk: onConfirm,
+      onOk: onBack,
     });
   };
-
-  // Nạp tên và quyền của chức danh được chọn
-  const loadRole = (code: string | undefined) => {
-    setRoleCode(code);
-    setName(roles.find((r) => r.code === code)?.name ?? "");
-    setDraftPerms(code ? getRolePermIds(code) : []);
-    if (code) onRoleChange?.(code);
-  };
-  const selectRole = (code: string) => confirmDiscard(() => loadRole(code));
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    if (onSubmit(roleCode, trimmedName, draftPerms)) onBack?.();
+    if (onSubmit(trimmedName, draftPerms)) onBack();
   };
 
-  // Xóa chức danh tự thêm: hỏi xác nhận, xóa xong chuyển sang chức danh đầu danh sách
-  const handleDelete = () => {
-    if (!role || !onDeleteRole) return;
-    modal.confirm({
-      centered: true,
-      width: 420,
-      icon: null,
-      title: `Xóa chức danh "${role.name}"?`,
-      content: (
-        <p className="m-0 text-xs leading-relaxed text-slate-600">
-          Chức danh và các quyền đã cấu hình cho chức danh này sẽ bị xóa khỏi hệ thống.
-        </p>
-      ),
-      okText: "Xóa chức danh",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk: () => {
-        onDeleteRole(role.code);
-        loadRole(roles.find((r) => r.code !== role.code)?.code);
-      },
-    });
-  };
+  const title = readOnly ? "Xem chức danh" : isCreating ? "Tạo chức danh mới" : "Chỉnh sửa chức danh";
 
   return (
     <>
-      {/* Tiêu đề: (icon quay lại) + tên màn hình + nút góc phải */}
-      <div className="px-6 py-3.5 border-b border-slate-200 bg-white flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {onBack && (
-            <Tooltip title="Quay lại">
-              <Button
-                intent="ghost"
-                scale="compact"
-                aria-label="Quay lại"
-                icon={<ArrowLeftOutlined />}
-                onClick={() => confirmDiscard(onBack)}
-                className="!h-8 !w-8 !p-0 text-slate-600 hover:!text-[#DC2626] hover:!bg-slate-100"
-              />
-            </Tooltip>
-          )}
-          <Title level={4} className="!m-0 text-slate-900 font-bold text-base sm:text-lg">
-            {title ?? (isCreating ? "Thêm chức danh" : "Cập nhật chức danh")}
-          </Title>
-        </div>
-        {onCreateNew && !readOnly && (
+      {/* Tiêu đề: icon quay lại + tên thao tác */}
+      <div className="px-6 py-3.5 border-b border-slate-200 bg-white flex items-center gap-2.5 shrink-0">
+        <Tooltip title="Quay lại danh sách">
           <Button
-            intent="outline"
+            intent="ghost"
             scale="compact"
-            icon={<PlusOutlined className="text-[#DC2626]" />}
-            onClick={() => confirmDiscard(onCreateNew)}
-            className="text-xs font-semibold !border-slate-300 text-slate-700 hover:text-[#DC2626] hover:!border-red-200 h-8 px-3"
-          >
-            Thêm chức danh
-          </Button>
-        )}
+            aria-label="Quay lại"
+            icon={<ArrowLeftOutlined />}
+            onClick={handleBack}
+            className="!h-8 !w-8 !p-0 text-slate-600 hover:!text-[#DC2626] hover:!bg-slate-100"
+          />
+        </Tooltip>
+        <Title level={4} className="!m-0 text-slate-900 font-bold text-base sm:text-lg">
+          {title}
+        </Title>
       </div>
 
-      {/* Chọn chức danh (khi cập nhật), tên, trạng thái & bộ lọc màn hình */}
-      <div className="px-6 py-3 border-b border-slate-200 bg-slate-50/70 shrink-0">
-        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-          {!isCreating && (
-            <div className="shrink-0">
-              <span className="block text-xs font-semibold text-slate-700 mb-1">Chức danh</span>
-              <div className="flex items-center gap-1.5">
-              <Select
-                showSearch
-                value={roleCode}
-                onChange={selectRole}
-                placeholder="Chọn chức danh..."
-                className="w-60 text-xs font-semibold"
-                options={roleOptions}
-                filterOption={(input, option) =>
-                  normalizeSearchText(String(option?.searchText ?? "")).includes(normalizeSearchText(input))
-                }
-                popupMatchSelectWidth={false}
-                notFoundContent={<div className="py-1 text-xs text-slate-400">Không tìm thấy chức danh.</div>}
-              />
-              {role?.isCustom && onDeleteRole && !readOnly && (
-                <Tooltip title={`Xóa chức danh "${role.name}"`}>
-                  <Button
-                    intent="outline"
-                    scale="compact"
-                    aria-label="Xóa chức danh"
-                    icon={<DeleteOutlined className="text-rose-500" />}
-                    onClick={handleDelete}
-                    className="!h-8 !w-8 !p-0 shrink-0 !border-rose-200 hover:!border-rose-400 hover:!bg-rose-50"
-                  />
-                </Tooltip>
-              )}
-              </div>
-            </div>
-          )}
-
-          <div className="w-full sm:w-80">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              {isCreating ? "Tên chức danh mới" : "Tên chức danh"} <span className="text-red-500">*</span>
+      {/* Nội dung: tên chức danh + phân quyền (cuộn chung) */}
+      <div className="flex-1 overflow-auto [scrollbar-width:thin] min-h-0 px-6 py-5">
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+          <div className="min-w-0 flex-1 basis-80">
+            <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+              Tên chức danh {!readOnly && <span className="text-red-500">*</span>}
             </label>
             <Input
-              autoFocus={isCreating}
+              autoFocus={!readOnly}
               intent="clean"
               value={name}
-              disabled={!canEdit}
+              disabled={readOnly}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Cán bộ Pháp chế, Tổ phó Kỹ thuật, Giám sát viên..."
+              placeholder="Nhập tên chức danh..."
               status={trimmedName && isNameTaken ? "error" : undefined}
-              className="w-full text-xs h-8"
+              className="w-full h-10 text-sm"
             />
           </div>
 
-          {/* Bật / tắt chức danh (chỉ khi cập nhật): áp dụng ngay, tắt thì hỏi xác nhận trước */}
-          {!isCreating && role && (
-            <div className="ml-auto mr-8">
-              <span className="block text-xs font-semibold text-slate-700 mb-1">Trạng thái</span>
-              <div className="flex h-8 items-center gap-2">
-                <Switch checked={!isLocked} disabled={readOnly} onChange={() => onToggleLock(role.code)} />
-                <span className="text-[11px] text-slate-500">{isLocked ? "Đang tắt" : "Đang bật"}</span>
+          {/* Bật / tắt chức danh (khi chỉnh sửa): áp dụng ngay, tắt thì hỏi xác nhận trước */}
+          {!isCreating && onToggleLock && (
+            <div className="shrink-0">
+              <span className="block text-sm font-semibold text-slate-800 mb-1.5">Trạng thái</span>
+              <div className="flex h-10 items-center gap-2">
+                <Switch checked={!isLocked} disabled={readOnly} onChange={onToggleLock} />
+                <span className="text-xs text-slate-500">{isLocked ? "Đang tắt" : "Đang bật"}</span>
               </div>
             </div>
           )}
         </div>
-      </div>
+        {trimmedName && isNameTaken && <div className="mt-1 text-xs text-rose-600">Tên chức danh này đã tồn tại.</div>}
 
-      {/* Danh sách quyền (bản nháp) */}
-      <div className="flex-1 overflow-auto [scrollbar-width:thin] min-h-0 p-6 space-y-4 bg-slate-50/50">
-        <div className="text-xs font-bold uppercase tracking-wide text-slate-700">
-          Quyền hạn <span className="font-semibold normal-case text-slate-500">({draftPerms.length}/{permissions.length})</span>
+        <div className="mt-6 mb-2.5 text-sm font-semibold text-slate-800">
+          Phân quyền{" "}
+          <span className="font-normal text-slate-500">
+            ({draftPerms.length}/{permissions.length})
+          </span>
         </div>
         <PermissionChecklist
           modules={modules}
@@ -270,28 +161,20 @@ export default function RoleEditorView({
           isChecked={(id) => draftPerms.includes(id)}
           onToggle={togglePerm}
           onToggleModule={toggleModule}
-          canManage={canEdit}
+          canManage={!readOnly}
         />
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <span className="text-xs text-slate-600">
-          {isCreating ? "Chức danh mới" : "Chức danh"}: <strong className="text-slate-900">{trimmedName || "…"}</strong> ·
-          Đã chọn <strong className="text-[#DC2626]">{draftPerms.length}</strong>/{permissions.length} quyền.
-          {isDirty && <span className="text-amber-600 font-semibold ml-1.5">(Chưa lưu)</span>}
-        </span>
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button
-              intent="outline"
-              className="!border-slate-300 text-xs h-8.5 rounded-lg text-slate-700 hover:text-slate-900"
-              onClick={() => confirmDiscard(onClose)}
-            >
-              Đóng
-            </Button>
-          )}
-          {!readOnly && (
+      <div className="px-6 py-3 border-t border-slate-200 bg-white flex items-center justify-end gap-2 shrink-0">
+        <Button
+          intent="outline"
+          className="!border-slate-300 text-xs h-8.5 rounded-lg text-slate-700 hover:text-slate-900"
+          onClick={handleBack}
+        >
+          {readOnly ? "Quay lại" : "Hủy"}
+        </Button>
+        {!readOnly && (
           <Button
             intent="primary"
             icon={isCreating ? <PlusOutlined /> : <SaveOutlined />}
@@ -299,10 +182,9 @@ export default function RoleEditorView({
             className="h-8.5 text-xs font-semibold bg-[#DC2626] hover:bg-red-700 text-white rounded-lg shadow-xs disabled:opacity-50"
             onClick={handleSubmit}
           >
-            {isCreating ? "Thêm chức danh" : "Lưu thay đổi"}
+            {isCreating ? "Tạo chức danh" : "Lưu thay đổi"}
           </Button>
-          )}
-        </div>
+        )}
       </div>
     </>
   );

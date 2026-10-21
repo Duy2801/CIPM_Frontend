@@ -21,6 +21,8 @@ export interface MatrixRole {
   description: string;
   color: string;
   isCustom?: boolean;
+  /** Ngày tạo (ISO). Chức danh hệ thống dùng ngày giả lập cố định (dữ liệu mẫu) */
+  createdAt?: string;
 }
 
 export interface MatrixModule {
@@ -381,7 +383,10 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   },
 ];
 
-export const SYSTEM_MATRIX_ROLES: MatrixRole[] = MOCK_ROLES.map((r) => {
+/** Ngày tạo giả lập cho chức danh hệ thống (dữ liệu mẫu): bắt đầu 06/01/2025, mỗi chức danh cách nhau 3 ngày */
+const mockSystemRoleCreatedAt = (index: number) => new Date(Date.UTC(2025, 0, 6 + index * 3)).toISOString();
+
+export const SYSTEM_MATRIX_ROLES: MatrixRole[] = MOCK_ROLES.map((r, index) => {
   let group: MatrixRole["group"] = "member";
   if (r.id === "role_admin" || r.roleCode === "ADMIN" || r.id === "role_deputy") {
     group = "director";
@@ -411,6 +416,7 @@ export const SYSTEM_MATRIX_ROLES: MatrixRole[] = MOCK_ROLES.map((r) => {
         : r.badgeColor === "gold"
         ? "#D97706"
         : "#475569",
+    createdAt: mockSystemRoleCreatedAt(index),
   };
 });
 
