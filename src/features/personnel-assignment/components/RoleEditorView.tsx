@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeftOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import { App } from "antd";
-import { Button, Input, Switch, Title, Tooltip } from "@/components/ui";
+import { Button, Input, Switch, Title } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import type { MatrixModule, MatrixPermission, MatrixRole } from "../constants/role-matrix-data";
 import PermissionChecklist from "./PermissionChecklist";
@@ -27,7 +27,7 @@ interface RoleEditorViewProps {
   onSubmit: (name: string, permIds: string[]) => boolean;
 }
 
-/** Màn Tạo / Chỉnh sửa chức danh: nhập tên, tick quyền theo nhóm rồi lưu; có icon quay lại danh sách */
+/** Màn Tạo / Chỉnh sửa chức danh: nhập tên, tick quyền theo nhóm rồi lưu; "Hủy" để quay lại danh sách */
 export default function RoleEditorView({
   mode,
   role,
@@ -100,18 +100,8 @@ export default function RoleEditorView({
 
   return (
     <>
-      {/* Tiêu đề: icon quay lại + tên thao tác */}
+      {/* Tiêu đề (quay lại danh sách bằng nút "Hủy" ở dưới) */}
       <div className="px-6 py-3.5 border-b border-slate-200 bg-white flex items-center gap-2.5 shrink-0">
-        <Tooltip title="Quay lại danh sách">
-          <Button
-            intent="ghost"
-            scale="compact"
-            aria-label="Quay lại"
-            icon={<ArrowLeftOutlined />}
-            onClick={handleBack}
-            className="!h-8 !w-8 !p-0 text-slate-600 hover:!text-[#DC2626] hover:!bg-slate-100"
-          />
-        </Tooltip>
         <Title level={4} className="!m-0 text-slate-900 font-bold text-base sm:text-lg">
           {title}
         </Title>

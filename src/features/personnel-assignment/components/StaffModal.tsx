@@ -71,6 +71,9 @@ const BASE_TEAM_POSITIONS: Record<
   ],
 };
 
+/** Danh sách xổ xuống hiện khoảng 5 mục, còn lại cuộn chuột */
+const DROPDOWN_LIST_HEIGHT = 5 * 36;
+
 function getLocalStorageCustomRoles(): { title: string; roleCode: string; isLeader?: boolean }[] {
   if (typeof window === "undefined") return [];
   const results: { title: string; roleCode: string; isLeader?: boolean }[] = [];
@@ -666,13 +669,9 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                   showSearch
                   placeholder="Gõ để tìm phòng ban..."
                   options={teamOptions}
-                  searchValue={newDeptName}
-                  onSearch={setNewDeptName}
+                  listHeight={DROPDOWN_LIST_HEIGHT}
                   filterOption={filterBySearchText}
-                  onChange={(val) => {
-                    setNewDeptName("");
-                    handleTeamChange(val);
-                  }}
+                  onChange={(val) => handleTeamChange(val)}
                   notFoundContent={
                     <div className="py-1 text-xs text-slate-400">Chưa có phòng ban này trong hệ thống.</div>
                   }
@@ -680,13 +679,27 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                     <>
                       {menu}
                       <Divider style={{ margin: "6px 0" }} />
-                      <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
-                        <span className="text-[11px] text-slate-500">
-                          {canAddDept ? "Chưa có, có thể thêm mới:" : "Không thấy phòng ban? Gõ tên để thêm mới."}
-                        </span>
+                      {/* Ô nhập tên mới ngay trong danh sách: gõ rồi bấm "Thêm" (hoặc Enter) */}
+                      <div className="flex items-center gap-2 px-2 pb-1.5">
+                        <Input
+                          size="small"
+                          value={newDeptName}
+                          onChange={(e) => setNewDeptName(e.target.value)}
+                          onKeyDown={(e) => {
+                            // Không để phím gõ trong ô này điều khiển danh sách chọn
+                            e.stopPropagation();
+                            if (e.key === "Enter" && canAddDept) {
+                              e.preventDefault();
+                              handleAddDepartment();
+                            }
+                          }}
+                          placeholder="Nhập tên phòng ban mới..."
+                          className="flex-1 text-xs"
+                        />
                         <Button
                           type="primary"
                           size="small"
+                          icon={<PlusOutlined />}
                           disabled={!canAddDept}
                           loading={isAddingDeptLoading}
                           onClick={handleAddDepartment}
@@ -712,13 +725,9 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                   showSearch
                   placeholder="Gõ để tìm chức danh..."
                   options={roleSelectOptions}
-                  searchValue={newRoleTitle}
-                  onSearch={setNewRoleTitle}
+                  listHeight={DROPDOWN_LIST_HEIGHT}
                   filterOption={filterBySearchText}
-                  onChange={(val) => {
-                    setNewRoleTitle("");
-                    handleTeamRoleChange(val);
-                  }}
+                  onChange={(val) => handleTeamRoleChange(val)}
                   notFoundContent={
                     <div className="py-1 text-xs text-slate-400">Chưa có chức danh này trong hệ thống.</div>
                   }
@@ -726,13 +735,27 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                     <>
                       {menu}
                       <Divider style={{ margin: "6px 0" }} />
-                      <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
-                        <span className="text-[11px] text-slate-500">
-                          {canAddRole ? "Chưa có, có thể thêm mới:" : "Không thấy chức danh? Gõ tên để thêm mới."}
-                        </span>
+                      {/* Ô nhập tên mới ngay trong danh sách: gõ rồi bấm "Thêm" (hoặc Enter) */}
+                      <div className="flex items-center gap-2 px-2 pb-1.5">
+                        <Input
+                          size="small"
+                          value={newRoleTitle}
+                          onChange={(e) => setNewRoleTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            // Không để phím gõ trong ô này điều khiển danh sách chọn
+                            e.stopPropagation();
+                            if (e.key === "Enter" && canAddRole) {
+                              e.preventDefault();
+                              handleAddRole();
+                            }
+                          }}
+                          placeholder="Nhập tên chức danh mới..."
+                          className="flex-1 text-xs"
+                        />
                         <Button
                           type="primary"
                           size="small"
+                          icon={<PlusOutlined />}
                           disabled={!canAddRole}
                           loading={isAddingRoleLoading}
                           onClick={handleAddRole}
