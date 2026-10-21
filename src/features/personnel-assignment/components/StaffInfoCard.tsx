@@ -22,7 +22,6 @@ interface StaffInfoCardProps {
 interface StaffInfoFormValues {
   teamId: TeamId;
   email: string;
-  phone?: string;
   employment: Employment;
   gender?: "Nam" | "Nữ";
   dob?: string;
@@ -73,7 +72,6 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
   const initialValues: StaffInfoFormValues = {
     teamId: staff.teamId,
     email: staff.email,
-    phone: staff.phone,
     employment: staff.employment,
     gender: staff.gender,
     dob: staff.dob,
@@ -85,7 +83,6 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
   const fieldLabels: { key: keyof Omit<StaffInfoFormValues, "customFields">; label: string }[] = [
     { key: "teamId", label: "Phòng ban" },
     { key: "email", label: "Email công vụ" },
-    { key: "phone", label: "Số điện thoại" },
     { key: "employment", label: "Hình thức tuyển dụng" },
     { key: "gender", label: "Giới tính" },
     { key: "dob", label: "Ngày sinh" },
@@ -131,7 +128,6 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
         {
           teamId: values.teamId,
           email: values.email.trim(),
-          phone: values.phone?.trim() || "",
           employment: values.employment,
           gender: values.gender,
           dob: values.dob?.trim() || "",
@@ -232,19 +228,6 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
             )}
           </FieldBox>
 
-          <FieldBox label="Số điện thoại" editable={editable}>
-            {editable ? (
-              <Form.Item
-                name="phone"
-                className={formItemClass}
-                rules={[{ pattern: /^[0-9+\s.-]{8,15}$/, message: "Số điện thoại không hợp lệ." }]}
-              >
-                <Input size="small" variant="borderless" className={INLINE_INPUT_CLASS} placeholder="Chưa cập nhật" />
-              </Form.Item>
-            ) : (
-              staff.phone || EMPTY_TEXT
-            )}
-          </FieldBox>
 
           <FieldBox label="Hình thức tuyển dụng" editable={editable}>
             {editable ? (
