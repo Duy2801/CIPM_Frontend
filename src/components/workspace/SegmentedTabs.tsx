@@ -26,7 +26,7 @@ const BADGE_CLASSES = {
 };
 
 /**
- * Thanh tab dạng phân đoạn: rãnh xám, các tab chia đều, icon nằm trên nhãn,
+ * Thanh tab dạng phân đoạn: rãnh xám, các tab chia đều, icon nằm cạnh nhãn,
  * tab đang chọn nổi lên thành thẻ trắng có bóng. Cuộn ngang khi màn hình hẹp.
  */
 export default function SegmentedTabs<K extends string>({
@@ -48,7 +48,7 @@ export default function SegmentedTabs<K extends string>({
               aria-selected={isActive}
               onClick={() => onChange(item.key)}
               className={cn(
-                "relative flex min-w-[104px] flex-1 cursor-pointer select-none flex-col items-center justify-center gap-1 rounded-lg px-3 py-2 text-[13px] transition-all duration-200",
+                "relative flex min-w-[104px] flex-1 cursor-pointer select-none items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-[13px] transition-all duration-200",
                 isActive
                   ? "bg-white font-semibold text-slate-900 shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/80"
                   : "font-medium text-slate-500 hover:bg-white/70 hover:text-slate-800",
@@ -56,7 +56,7 @@ export default function SegmentedTabs<K extends string>({
             >
               <span
                 className={cn(
-                  "text-base leading-none transition-colors [&_.anticon]:!m-0",
+                  "text-sm leading-none transition-colors [&_.anticon]:!m-0",
                   isActive ? "text-[#DC2626]" : "text-slate-400",
                 )}
               >
@@ -66,7 +66,7 @@ export default function SegmentedTabs<K extends string>({
               {item.badge ? (
                 <span
                   className={cn(
-                    "absolute right-2 top-1.5 rounded-full px-1.5 text-[11px] font-bold leading-4 text-white",
+                    "rounded-full px-1.5 text-[11px] font-bold leading-4 text-white",
                     BADGE_CLASSES[item.badgeTone ?? "neutral"],
                   )}
                 >

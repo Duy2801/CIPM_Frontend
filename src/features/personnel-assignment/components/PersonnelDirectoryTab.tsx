@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AppstoreOutlined,
-  CrownOutlined,
   EditOutlined,
   InfoCircleOutlined,
   RightOutlined,
@@ -13,7 +12,7 @@ import {
   UserAddOutlined,
 } from "@ant-design/icons";
 import { App } from "antd";
-import { Button, Card, Flex, Input, Select, Table, Tag, Text, Tooltip } from "@/components/ui";
+import { Button, Card, Flex, Input, Select, Table, Text, Tooltip } from "@/components/ui";
 import type { ColumnsType } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
 import { getInitials } from "@/utils/initials";
@@ -353,16 +352,15 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
     });
   };
 
-  const getColumns = (team: Team): ColumnsType<Staff> => {
+  const getColumns = (): ColumnsType<Staff> => {
     const columns: ColumnsType<Staff> = [
       {
         title: "Cán bộ",
         key: "name",
         width: "26%",
         render: (_, person) => {
-          const isLeader = team.leaderId === person.id;
           return (
-            // Một dòng: avatar · tên · (phụ trách)
+            // Một dòng: avatar · tên
             <div className="flex min-w-0 items-center gap-2.5 whitespace-nowrap" title={person.name}>
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-[10px] font-bold text-white shadow-xs">
                 {getInitials(person.name)}
@@ -370,14 +368,6 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
               <Text className="min-w-0 truncate text-[13px] font-bold text-slate-900 group-hover:text-[#DC2626] transition-colors">
                 {person.name}
               </Text>
-              {isLeader && team.id !== "PGD" && (
-                <Tooltip title={team.id === "BGD" ? "Giám đốc Ban QLDA" : "Phụ trách tổ / Tổ trưởng"}>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
-                    <CrownOutlined className="text-amber-500 text-[10px]" />
-                    {team.id === "BGD" ? "Trưởng ban" : "Phụ trách"}
-                  </span>
-                </Tooltip>
-              )}
             </div>
           );
         },
@@ -406,24 +396,15 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
           if (!mainRole) {
             return (
               <div className="flex w-full items-center justify-center">
-                <span className="inline-flex w-full max-w-[240px] items-center justify-center rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs italic text-slate-400">
-                  Chưa có chức danh
-                </span>
+                <span className="text-xs italic text-slate-400">Chưa có chức danh</span>
               </div>
             );
           }
           return (
-            <div className="flex w-full items-center justify-center gap-1.5">
+            // Chỉ hiện tên chức danh (không nền), tên dài thì cắt "…" và rê chuột xem đủ
+            <div className="flex w-full min-w-0 items-center justify-center gap-1.5">
               <Tooltip title={mainRole}>
-                <Tag
-                  intent="brand"
-                  scale="md"
-                  className={`m-0 !inline-flex !items-center !justify-center !rounded-full !py-0.5 !px-2.5 text-xs font-semibold leading-snug ${
-                    otherRoles.length > 0 ? "!w-full !max-w-[200px]" : "!w-full !max-w-[240px]"
-                  }`}
-                >
-                  <span className="w-full truncate text-center">{mainRole}</span>
-                </Tag>
+                <span className="min-w-0 truncate text-[13px] font-semibold text-slate-800">{mainRole}</span>
               </Tooltip>
               {otherRoles.length > 0 && (
                 <Tooltip
@@ -440,7 +421,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                 >
                   <span
                     aria-label={`Còn ${otherRoles.length} chức danh khác: ${otherRoles.join(", ")}`}
-                    className="inline-flex h-[22px] min-w-[34px] shrink-0 cursor-help items-center justify-center rounded-full border border-red-200 bg-white px-2 text-xs font-bold text-[#DC2626]"
+                    className="inline-flex h-[20px] min-w-[30px] shrink-0 cursor-help items-center justify-center rounded-full border border-slate-200 bg-white px-1.5 text-[11px] font-semibold text-slate-500"
                   >
                     +{otherRoles.length}
                   </span>
@@ -744,7 +725,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                   ) : (
                     <Table
                       rowKey="id"
-                      columns={getColumns(team)}
+                      columns={getColumns()}
                       dataSource={members}
                       pagination={false}
                       size="middle"
