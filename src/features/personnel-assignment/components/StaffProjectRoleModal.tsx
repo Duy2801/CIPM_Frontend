@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  CheckCircleFilled,
   CrownOutlined,
   InfoCircleOutlined,
   LockOutlined,
@@ -30,6 +29,8 @@ import { resolveStaffRbac } from "../utils/personnel-rbac";
 import { isStaffTitleLocked, useLockedTitles } from "../hooks/useLockedTitles";
 import RoleAdjustPanel from "./RoleAdjustPanel";
 import StaffInfoCard from "./StaffInfoCard";
+import StaffPermissionPanel from "./StaffPermissionPanel";
+import StaffActivityHistory from "./StaffActivityHistory";
 import type {
   GrantActingDirectorInput,
   PersonnelDataset,
@@ -38,6 +39,7 @@ import type {
   StaffInput,
   TeamId,
 } from "../types/personnel.types";
+import { useConfirmAction } from "../hooks/useConfirmAction";
 
 /** 1. Danh mục quyền ủy quyền điều hành theo từng Dự án phụ trách (Project-Level Delegation) */
 export const PROJECT_DELEGATION_PERMISSIONS: Array<{
@@ -225,6 +227,7 @@ export default function StaffProjectRoleModal({
   initialPromoting = false,
 }: StaffProjectRoleModalProps) {
   const { modal } = App.useApp();
+  const confirmAction = useConfirmAction();
   // Thăng chức / Điều chỉnh vai trò khi lên chức
   const [isPromoting, setIsPromoting] = useState(Boolean(initialPromoting));
   const [editTeamId, setEditTeamId] = useState<TeamId>(staff?.teamId || "GSKT");
@@ -257,7 +260,7 @@ export default function StaffProjectRoleModal({
   if (!staff) return null;
 
   const team = data.teams.find((t) => t.id === staff.teamId);
-  // Chức danh đang tắt → cán bộ tạm thời không có chức danh / quyền (bật lại thì có lại như cũ)
+  // Chức danh đang tắt → tài khoản tạm không có quyền (cán bộ vẫn giữ chức danh; bật lại thì có lại quyền)
   const titleLocked = isStaffTitleLocked(staff.title, lockedTitles);
   const rbacProfile = resolveStaffRbac(staff, team, data.projects, titleLocked);
 
@@ -564,6 +567,13 @@ export default function StaffProjectRoleModal({
   // Lưu thông tin thăng chức / điều chỉnh chức vụ khi viên chức lên chức
   const handleSavePromotion = async () => {
     if (!onUpdateStaff) return;
+    if (
+      !(await confirmAction({
+        title: `Cập nhật chức danh & phòng ban của ${staff.name}?`,
+        okText: "Lưu thay đổi",
+      }))
+    )
+      return;
     setSavingStaff(true);
     try {
       const activeRole = departmentRoles.find((r) => r.id === selectedRoleId) || departmentRoles[0];
@@ -641,11 +651,13 @@ export default function StaffProjectRoleModal({
                 <Text className="text-sm font-semibold text-slate-900">{staff.name}</Text>
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
-                {titleLocked || !staff.title ? "Chưa có chức danh" : staff.title} · {team?.name}
+                {staff.title || "Chưa có chức danh"} · {team?.name}
                 {titleLocked && (
-                  <span className="ml-1.5 inline-block whitespace-nowrap rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-500">
-                    {staff.title} đã tắt / xóa
-                  </span>
+                  <Tooltip title="Chức danh đang tắt: tài khoản tạm không có quyền, cán bộ vẫn giữ chức danh">
+                    <span className="ml-1.5 inline-block cursor-help whitespace-nowrap rounded border border-amber-200 bg-amber-50 px-1.5 text-[11px] text-amber-700">
+                      Chức danh đang tắt
+                    </span>
+                  </Tooltip>
                 )}
               </div>
               <div className="text-xs text-slate-500 mt-0.5">
@@ -657,7 +669,7 @@ export default function StaffProjectRoleModal({
           {/* Thu hồi chức danh & Khóa / Mở lại tài khoản cán bộ */}
           <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
             {/* Thu hồi chức danh: chỉ hiện khi cán bộ đang có chức danh (chức danh đang tắt thì coi như chưa có) */}
-            {canManageRole && onUpdateStaff && normalizeTitle(staff.title) !== "" && !titleLocked && (
+            {canManageRole && onUpdateStaff && normalizeTitle(staff.title) !== "" && (
               <Button
                 intent="outline"
                 scale="compact"
@@ -797,6 +809,8 @@ export default function StaffProjectRoleModal({
           onSave={canEditInfo ? onUpdateStaff : undefined}
         />
       )}
+      {/* Lịch sử thao tác: thay đổi trên hồ sơ + việc cán bộ đã thực hiện */}
+      {!isPromoting && currentTab === "info" && <StaffActivityHistory key={`history-${staff.id}`} staff={staff} />}
 
       {/* 2b. CHỨC DANH (mỗi cán bộ một chức danh) + QUYỀN HẠN theo chức danh, cùng một tab */}
       {!isPromoting && currentTab === "role" && canChangeTitle && onUpdateStaff && (
@@ -805,36 +819,13 @@ export default function StaffProjectRoleModal({
         </div>
       )}
       {!isPromoting && currentTab === "role" && (
-        <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="mb-1 flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Text className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                Quyền hạn hệ thống & Nghiệp vụ chuyên môn
-              </Text>
-            </div>
-            <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
-              {unifiedSystemPermissions.length} quyền khả dụng
-            </span>
-          </div>
-          <div className="text-[11px] text-slate-500 mb-3.5">
-            Toàn bộ quyền hạn phân hệ được cấp tự động theo chức danh của cán bộ trong hệ thống.
-          </div>
-
-          {/* Danh sách quyền hệ thống & chuyên môn thống nhất */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {unifiedSystemPermissions.map((perm) => (
-              <div
-                key={perm.code}
-                className="flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/50 p-2.5 text-xs hover:border-slate-300 hover:bg-slate-50 transition-colors"
-              >
-                <CheckCircleFilled className="text-amber-500 text-sm shrink-0" />
-                <span className="font-medium text-xs text-slate-800 leading-snug">
-                  {perm.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        // Quyền theo chức danh + chỉnh quyền riêng cán bộ này (người có quyền quản lý chức danh mới chỉnh được)
+        <StaffPermissionPanel
+          key={`perms-${staff.id}`}
+          staff={staff}
+          basePermissions={unifiedSystemPermissions}
+          onUpdateStaff={canChangeTitle ? onUpdateStaff : undefined}
+        />
       )}
 
       {/* 4. DỰ ÁN ĐƯỢC ỦY QUYỀN ĐIỀU HÀNH (QUYỀN CNDA) NẾU CÓ */}

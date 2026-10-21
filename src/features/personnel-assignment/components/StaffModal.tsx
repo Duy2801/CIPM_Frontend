@@ -15,6 +15,7 @@ import { getCustomFields, saveCustomFields, subscribeCustomFieldsChange } from "
 import { mockPersonnelRepository } from "../services/mock-personnel.repository";
 import { dobGetValueProps, dobInputProps, dobNormalize } from "../utils/dob-date";
 import { useLockedTitles } from "../hooks/useLockedTitles";
+import { useConfirmAction } from "../hooks/useConfirmAction";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
   title?: string;
@@ -120,6 +121,7 @@ function getLocalStorageCustomRoles(): { title: string; roleCode: string; isLead
 export default function StaffModal({ data, errorText, onClose, onCreate }: StaffModalProps) {
   const [form] = Form.useForm<StaffFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const confirmAction = useConfirmAction();
   const lockedTitles = useLockedTitles();
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [appliedFieldIds, setAppliedFieldIds] = useState<Record<string, boolean>>({});
@@ -296,6 +298,15 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
       return;
     }
 
+    if (
+      !(await confirmAction({
+        title: `Thêm phòng ban "${trimmed}"?`,
+        description: "Phòng ban mới sẽ được thêm vào danh mục phòng ban của hệ thống.",
+        okText: "Thêm phòng ban",
+      }))
+    )
+      return;
+
     setIsAddingDeptLoading(true);
     try {
       const createdTeam = await mockPersonnelRepository.createTeam({
@@ -337,6 +348,15 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
       toast.warning("Trùng tên chức danh", "Chức danh này đã tồn tại trong danh mục.");
       return;
     }
+
+    if (
+      !(await confirmAction({
+        title: `Thêm chức danh "${trimmed}"?`,
+        description: `Chức danh mới sẽ được thêm vào ${currentTeam?.name || "phòng ban đang chọn"}.`,
+        okText: "Thêm chức danh",
+      }))
+    )
+      return;
 
     setIsAddingRoleLoading(true);
     try {
@@ -388,7 +408,7 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
   };
 
   // Xử lý thêm trường thông tin tùy biến (custom field) trực tiếp trên form
-  const handleAddCustomField = () => {
+  const handleAddCustomField = async () => {
     const trimmed = newFieldLabel.trim();
     if (!trimmed) {
       toast.warning("Chưa nhập tên trường", "Vui lòng nhập tên trường dữ liệu mới.");
@@ -399,6 +419,15 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
       toast.warning("Trùng tên trường", "Trường thông tin này đã có trong danh mục.");
       return;
     }
+
+    if (
+      !(await confirmAction({
+        title: `Thêm trường thông tin "${trimmed}"?`,
+        description: "Trường mới sẽ dùng cho hồ sơ tất cả cán bộ.",
+        okText: "Thêm trường",
+      }))
+    )
+      return;
 
     const fieldId = `cf_${Date.now()}`;
     const fieldName = `field_${Date.now()}`;
@@ -442,6 +471,21 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
   }, [allRoleOptions, form]);
 
   const handleFinish = async (values: StaffFormValues) => {
+    if (
+      !(await confirmAction({
+        title: `Thêm cán bộ "${values.name.trim()}"?`,
+        description: (
+          <>
+            Cán bộ sẽ được thêm vào hệ thống và tạo tài khoản đăng nhập theo email công vụ. Thông tin đăng nhập gồm{" "}
+            <strong>email</strong> và <strong>mật khẩu</strong> sẽ được gửi về địa chỉ{" "}
+            <strong className="text-slate-800">{values.email?.trim()}</strong>. Cán bộ nên đổi mật khẩu sau lần đăng
+            nhập đầu tiên.
+          </>
+        ),
+        okText: "Thêm nhân sự",
+      }))
+    )
+      return;
     setSubmitting(true);
     try {
       const matchedOpt = allRoleOptions.find((o) => o.value === values.teamRole);

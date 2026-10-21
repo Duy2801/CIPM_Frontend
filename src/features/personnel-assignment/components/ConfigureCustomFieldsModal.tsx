@@ -24,6 +24,7 @@ import {
   getCustomFields,
   saveCustomFields,
 } from "../utils/custom-fields-storage";
+import { useConfirmAction } from "../hooks/useConfirmAction";
 
 interface ConfigureCustomFieldsModalProps {
   open: boolean;
@@ -58,6 +59,7 @@ export default function ConfigureCustomFieldsModal({
 }: ConfigureCustomFieldsModalProps) {
   const [fields, setFields] = useState<CustomFieldDefinition[]>([]);
   const [form] = Form.useForm();
+  const confirmAction = useConfirmAction();
   const selectedType = Form.useWatch("type", form);
 
   useEffect(() => {
@@ -105,6 +107,15 @@ export default function ConfigureCustomFieldsModal({
       options,
       active: true,
     };
+
+    if (
+      !(await confirmAction({
+        title: `Thêm trường thông tin "${label}"?`,
+        description: "Trường mới sẽ được thêm vào cấu hình thông tin bổ sung.",
+        okText: "Thêm trường",
+      }))
+    )
+      return;
 
     const updated = [...fields, newField];
     setFields(updated);

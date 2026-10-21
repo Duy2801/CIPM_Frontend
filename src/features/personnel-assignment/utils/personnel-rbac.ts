@@ -252,3 +252,36 @@ export function resolveStaffRbac(
     actingDirectorProjects: actingProjects,
   };
 }
+
+/** Toàn bộ quyền có thể cấp cho cán bộ (gộp quyền theo cấp bậc và theo tổ, mỗi mã quyền một dòng) */
+export function getAllRbacPermissions(): RbacPermissionItem[] {
+  const byCode = new Map<string, RbacPermissionItem>();
+  [...Object.values(ROLE_PERMISSION_DEFS), ...Object.values(TEAM_PERMISSION_DEFS)].forEach((def) =>
+    def.permissions.forEach((perm) => {
+      if (!byCode.has(perm.code)) byCode.set(perm.code, perm);
+    })
+  );
+  return Array.from(byCode.values());
+}
+
+/**
+ * Quyền hiệu lực của riêng một cán bộ = quyền mặc định theo chức danh, bỏ các quyền bị thu hồi riêng,
+ * thêm các quyền được cấp thêm riêng (Staff.revokedPermissions / Staff.permissions).
+ */
+export function getStaffEffectivePermissions(
+  staff: Pick<Staff, "permissions" | "revokedPermissions">,
+  basePermissions: RbacPermissionItem[]
+): RbacPermissionItem[] {
+  const revoked = new Set(staff.revokedPermissions ?? []);
+  const result = basePermissions.filter((p) => !revoked.has(p.code));
+  const seen = new Set(result.map((p) => p.code));
+  const catalog = new Map(getAllRbacPermissions().map((p) => [p.code, p]));
+  (staff.permissions ?? []).forEach((code) => {
+    const perm = catalog.get(code);
+    if (perm && !seen.has(code)) {
+      seen.add(code);
+      result.push(perm);
+    }
+  });
+  return result;
+}

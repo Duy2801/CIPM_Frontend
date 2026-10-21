@@ -21,6 +21,32 @@ export const modalVariants = cva(
   },
 );
 
+/**
+ * Kích thước popup lớn dùng chung (VD: Quản lý chức danh, Cấu hình quy trình thủ tục):
+ * rộng tối đa 1600px, cả khung popup cao min(92vh, 1000px) — tính cả tiêu đề, thân và thanh nút.
+ * Thân popup tự giãn lấp phần còn lại.
+ */
+export const LARGE_MODAL_PROPS = {
+  width: "min(1600px, calc(100vw - 32px))",
+  style: { maxWidth: 1600, top: 0, paddingBottom: 0 },
+  wrapClassName: "cipm-centered-modal-wrap",
+  centered: true,
+} as const;
+
+export const LARGE_MODAL_CONTAINER_STYLE: React.CSSProperties = {
+  height: "min(92vh, 1000px)",
+  maxHeight: "calc(100vh - 48px)",
+  display: "flex",
+  flexDirection: "column",
+};
+
+export const LARGE_MODAL_BODY_STYLE: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  flexDirection: "column",
+};
+
 export interface ModalProps
   extends
     Omit<AntModalProps, "destroyOnClose">,

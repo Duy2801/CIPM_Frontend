@@ -5,8 +5,9 @@ import {
   AppstoreOutlined,
   CrownOutlined,
   EditOutlined,
-  LockOutlined,
+  InfoCircleOutlined,
   RightOutlined,
+  SaveOutlined,
   SearchOutlined,
   UnlockOutlined,
   UserAddOutlined,
@@ -19,16 +20,16 @@ import { getInitials } from "@/utils/initials";
 import { normalizeSearchText } from "@/utils/search-text";
 import { SYSTEM_ROLE_META } from "../constants/personnel-labels";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
-import { useLockedTitles } from "../hooks/useLockedTitles";
+import { isStaffTitleLocked, useLockedTitles } from "../hooks/useLockedTitles";
 import type { PersonnelController } from "../hooks/usePersonnelAssignment";
 import type { CustomFieldDefinition } from "../types/custom-fields.types";
 import type { PersonnelProject, Staff, Team } from "../types/personnel.types";
 import { getCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
 import { sortStaffByRank } from "../utils/personnel-sorting";
-import AddTeamModal from "./AddTeamModal";
 import RolePermissionMatrixModal from "./RolePermissionMatrixModal";
 import StaffModal from "./StaffModal";
 import StaffProjectRoleModal from "./StaffProjectRoleModal";
+import { useConfirmAction } from "../hooks/useConfirmAction";
 
 interface PersonnelDirectoryTabProps {
   controller: PersonnelController;
@@ -72,11 +73,22 @@ function loadAllCustomRolesMap(): Map<string, string> {
   return map;
 }
 
+/** Chú thích chấm màu ở cột Tài khoản */
+const ACCOUNT_STATUS_LEGEND = [
+  { key: "active", label: "Đang hoạt động", dotClass: "bg-emerald-500", ringClass: "ring-emerald-100" },
+  {
+    key: "noAccess",
+    label: "Đang hoạt động nhưng tài khoản chưa có quyền (chưa có chức danh hoặc chức danh đang tắt)",
+    dotClass: "bg-amber-400",
+    ringClass: "ring-amber-100",
+  },
+  { key: "locked", label: "Đang khóa", dotClass: "bg-rose-500", ringClass: "ring-rose-100" },
+] as const;
+
 function getStaffDisplayRoles(
   staff: Staff,
   rolesMap: Map<string, string>,
-  projects: PersonnelProject[],
-  lockedTitles: Set<string> = new Set()
+  projects: PersonnelProject[]
 ): string[] {
   const result: string[] = [];
   const seen = new Set<string>();
@@ -122,13 +134,11 @@ function getStaffDisplayRoles(
       .split(/\s*·\s*|\s*;\s*|\r?\n/)
       .map((p) => p.trim())
       .filter(Boolean)
-      // Chức danh đang tắt → không tính (cán bộ tạm thời không có chức danh đó)
-      .filter((p) => !lockedTitles.has(p.toLowerCase()))
       .forEach((p) => addRole(p));
   }
 
   // 2. Nếu cán bộ được gán vai trò tùy chỉnh qua roleCode (dạng CUSTOM_...)
-  if (staff.roleCode && !lockedTitles.has((rolesMap.get(staff.roleCode.trim()) || "").toLowerCase())) {
+  if (staff.roleCode) {
     const rCode = staff.roleCode.trim();
     if (/CUSTOM_\d+/i.test(rCode)) {
       const customName = rolesMap.get(rCode) || "Chức danh tùy chỉnh";
@@ -158,6 +168,7 @@ function getStaffDisplayRoles(
 
 export default function PersonnelDirectoryTab({ controller, onLockAccount }: PersonnelDirectoryTabProps) {
   const { modal } = App.useApp();
+  const confirmAction = useConfirmAction();
   const { data, staff, permissions } = controller;
   const canManageAccounts = permissions.canManageAccounts;
   const canManageTeams = permissions.canManageAccounts || permissions.canManageOrganization;
@@ -200,7 +211,58 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
   // Modal / Drawer — lưu id để drawer luôn hiển thị dữ liệu mới nhất sau khi cập nhật
   const [staffModalOpen, setStaffModalOpen] = useState(false);
   const [matrixModalOpen, setMatrixModalOpen] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  // Đổi tên phòng ban ngay trên tiêu đề phòng ban (Lưu / Hủy), không mở drawer riêng
+  const [renamingTeamId, setRenamingTeamId] = useState<string | null>(null);
+  const [teamNameDraft, setTeamNameDraft] = useState("");
+  const [teamNameError, setTeamNameError] = useState("");
+  const [savingTeamName, setSavingTeamName] = useState(false);
+
+  const startRenameTeam = (team: Team) => {
+    setRenamingTeamId(team.id);
+    setTeamNameDraft(team.name);
+    setTeamNameError("");
+  };
+  const cancelRenameTeam = () => {
+    setRenamingTeamId(null);
+    setTeamNameError("");
+  };
+  const saveRenameTeam = async (team: Team) => {
+    const name = teamNameDraft.trim();
+    if (!name) {
+      setTeamNameError("Vui lòng nhập tên phòng ban.");
+      return;
+    }
+    const duplicated = data.teams.some(
+      (t) => t.id !== team.id && normalizeSearchText(t.name) === normalizeSearchText(name)
+    );
+    if (duplicated) {
+      setTeamNameError("Tên phòng ban này đã tồn tại.");
+      return;
+    }
+    if (name === team.name) {
+      cancelRenameTeam();
+      return;
+    }
+    if (
+      !(await confirmAction({
+        title: "Đổi tên phòng ban?",
+        description: (
+          <>
+            Đổi <strong>{team.name}</strong> thành <strong>{name}</strong>.
+          </>
+        ),
+        okText: "Đổi tên",
+      }))
+    )
+      return;
+    setSavingTeamName(true);
+    try {
+      const ok = await controller.updateTeam(team.id, { name });
+      if (ok) cancelRenameTeam();
+    } finally {
+      setSavingTeamName(false);
+    }
+  };
   const [detailStaffId, setDetailStaffId] = useState<string | null>(null);
 
   const detailStaff = staff.find((s) => s.id === detailStaffId) ?? null;
@@ -296,48 +358,55 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
       {
         title: "Cán bộ",
         key: "name",
-        width: 300,
+        width: "26%",
         render: (_, person) => {
           const isLeader = team.leaderId === person.id;
           return (
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-xs font-bold text-white shadow-xs">
+            // Một dòng: avatar · tên · (phụ trách)
+            <div className="flex min-w-0 items-center gap-2.5 whitespace-nowrap" title={person.name}>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#DC2626] to-[#991B1B] text-[10px] font-bold text-white shadow-xs">
                 {getInitials(person.name)}
               </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Text className="truncate text-[13px] font-bold text-slate-900 group-hover:text-[#DC2626] transition-colors">
-                    {person.name}
-                  </Text>
-                  {isLeader && team.id !== "PGD" && (
-                    <Tooltip title={team.id === "BGD" ? "Giám đốc Ban QLDA" : "Phụ trách tổ / Tổ trưởng"}>
-                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
-                        <CrownOutlined className="text-amber-500 text-[10px]" />
-                        {team.id === "BGD" ? "Trưởng ban" : "Phụ trách"}
-                      </span>
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="mt-0.5 truncate text-xs text-slate-500">
-                  {person.employment || "Viên chức"} · {person.email}
-                </div>
-              </div>
+              <Text className="min-w-0 truncate text-[13px] font-bold text-slate-900 group-hover:text-[#DC2626] transition-colors">
+                {person.name}
+              </Text>
+              {isLeader && team.id !== "PGD" && (
+                <Tooltip title={team.id === "BGD" ? "Giám đốc Ban QLDA" : "Phụ trách tổ / Tổ trưởng"}>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                    <CrownOutlined className="text-amber-500 text-[10px]" />
+                    {team.id === "BGD" ? "Trưởng ban" : "Phụ trách"}
+                  </span>
+                </Tooltip>
+              )}
             </div>
           );
         },
       },
       {
+        title: "Hình thức",
+        key: "employment",
+        width: "11%",
+        render: (_, person) => <span className="text-xs text-slate-600">{person.employment || "Viên chức"}</span>,
+      },
+      {
+        title: "Email",
+        key: "email",
+        width: "24%",
+        ellipsis: { showTitle: true },
+        render: (_, person) => <span className="text-xs text-slate-600">{person.email}</span>,
+      },
+      {
         title: "Chức danh",
         key: "role",
-        width: 280,
+        width: "21%",
         align: "center",
         render: (_, person) => {
           // Dòng gọn: chỉ hiện vai trò chính (chức danh trong phòng ban), các vai trò còn lại gom vào "+N"
-          const [mainRole, ...otherRoles] = getStaffDisplayRoles(person, resolvedRolesMap, data.projects, lockedTitles);
+          const [mainRole, ...otherRoles] = getStaffDisplayRoles(person, resolvedRolesMap, data.projects);
           if (!mainRole) {
             return (
               <div className="flex w-full items-center justify-center">
-                <span className="inline-flex !w-[240px] items-center justify-center rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs italic text-slate-400">
+                <span className="inline-flex w-full max-w-[240px] items-center justify-center rounded-full border border-dashed border-slate-300 px-2.5 py-0.5 text-xs italic text-slate-400">
                   Chưa có chức danh
                 </span>
               </div>
@@ -349,8 +418,8 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                 <Tag
                   intent="brand"
                   scale="md"
-                  className={`m-0 !inline-flex !items-center !justify-center !rounded-full !py-1 !px-2.5 text-xs font-semibold leading-snug ${
-                    otherRoles.length > 0 ? "!w-[200px]" : "!w-[240px]"
+                  className={`m-0 !inline-flex !items-center !justify-center !rounded-full !py-0.5 !px-2.5 text-xs font-semibold leading-snug ${
+                    otherRoles.length > 0 ? "!w-full !max-w-[200px]" : "!w-full !max-w-[240px]"
                   }`}
                 >
                   <span className="w-full truncate text-center">{mainRole}</span>
@@ -371,7 +440,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                 >
                   <span
                     aria-label={`Còn ${otherRoles.length} chức danh khác: ${otherRoles.join(", ")}`}
-                    className="inline-flex h-[26px] min-w-[34px] shrink-0 cursor-help items-center justify-center rounded-full border border-red-200 bg-white px-2 text-xs font-bold text-[#DC2626]"
+                    className="inline-flex h-[22px] min-w-[34px] shrink-0 cursor-help items-center justify-center rounded-full border border-red-200 bg-white px-2 text-xs font-bold text-[#DC2626]"
                   >
                     +{otherRoles.length}
                   </span>
@@ -382,27 +451,53 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
         },
       },
       {
-        title: "Tài khoản",
-        key: "account",
-        width: 150,
-        align: "center",
-        render: (_, person) => (
-          <Tooltip title={!person.accountActive ? person.lockReason || "Tài khoản đang bị khóa" : undefined}>
-            <Tag
-              scale="md"
-              className={`m-0 !w-[116px] !inline-flex !items-center !justify-center !text-center !rounded-full font-semibold ${
-                person.accountActive
-                  ? "!bg-sky-50 !text-[#0F4C81] !border-sky-300"
-                  : "!bg-slate-100 !text-slate-600 !border-slate-300 cursor-help"
-              }`}
+        title: (
+          <span className="inline-flex items-center gap-1">
+            Tài khoản
+            <Tooltip
+              title={
+                <div className="space-y-1 py-0.5 text-xs">
+                  {ACCOUNT_STATUS_LEGEND.map((item) => (
+                    <div key={item.key} className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.dotClass}`} />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              }
             >
-              <span className="inline-flex w-full items-center justify-center gap-1">
-                {!person.accountActive && <LockOutlined className="text-[10px]" />}
-                {person.accountActive ? "Đang hoạt động" : "Đang khóa"}
-              </span>
-            </Tag>
-          </Tooltip>
+              <InfoCircleOutlined className="cursor-help text-slate-400" />
+            </Tooltip>
+          </span>
         ),
+        key: "account",
+        width: "9%",
+        align: "center",
+        render: (_, person) => {
+          // Chấm màu trạng thái tài khoản, rê chuột để xem chú thích
+          // Chức danh đang tắt chỉ ảnh hưởng tài khoản (tạm không có quyền); cán bộ vẫn giữ chức danh
+          const hasTitle = getStaffDisplayRoles(person, resolvedRolesMap, data.projects).length > 0;
+          const titleLocked = isStaffTitleLocked(person.title, lockedTitles);
+          const status = !person.accountActive ? "locked" : hasTitle && !titleLocked ? "active" : "noAccess";
+          const legend = ACCOUNT_STATUS_LEGEND.find((item) => item.key === status)!;
+          const tooltip =
+            status === "locked"
+              ? `${legend.label}${person.lockReason ? `: ${person.lockReason}` : ""}`
+              : status === "noAccess"
+              ? titleLocked
+                ? `Chức danh "${person.title}" đang tắt — tài khoản tạm không có quyền`
+                : "Chưa có chức danh — tài khoản chưa có quyền"
+              : legend.label;
+          return (
+            <Tooltip title={tooltip}>
+              <span
+                role="img"
+                aria-label={tooltip}
+                className={`inline-block h-3 w-3 cursor-help rounded-full ring-4 ${legend.dotClass} ${legend.ringClass}`}
+              />
+            </Tooltip>
+          );
+        },
       },
     ];
 
@@ -410,21 +505,23 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
       columns.push({
         title: "Thao tác",
         key: "action",
-        width: 130,
+        width: "9%",
         align: "center",
         render: (_, person) => (
-          <Button
-            intent="outline"
-            scale="compact"
-            icon={<EditOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              setDetailStaffId(person.id);
-            }}
-            className="!h-7 !px-3 text-xs font-semibold !border-[#DC2626] !text-[#DC2626] hover:!bg-red-50/60"
-          >
-            Cập nhật
-          </Button>
+          // Chỉ còn biểu tượng bút chì; bấm để mở hồ sơ cán bộ và cập nhật
+          <Tooltip title="Cập nhật hồ sơ cán bộ">
+            <Button
+              intent="outline"
+              scale="compact"
+              aria-label={`Cập nhật hồ sơ ${person.name}`}
+              icon={<EditOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDetailStaffId(person.id);
+              }}
+              className="!h-7 !w-7 !p-0 !border-[#DC2626] !text-[#DC2626] hover:!bg-red-50/60"
+            />
+          </Tooltip>
         ),
       });
     }
@@ -555,7 +652,31 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                         <RightOutlined
                           className={`text-[11px] text-slate-500 transition-transform duration-200 ${collapsed ? "" : "rotate-90"}`}
                         />
-                        <Text className="text-sm font-bold text-slate-900">{team.name}</Text>
+                        {renamingTeamId === team.id ? (
+                          <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
+                            <Input
+                              autoFocus
+                              value={teamNameDraft}
+                              disabled={savingTeamName}
+                              onChange={(e) => {
+                                setTeamNameDraft(e.target.value);
+                                if (teamNameError) setTeamNameError("");
+                              }}
+                              onKeyDown={(e) => {
+                                // Không để phím gõ trong ô thu gọn / mở rộng phòng ban
+                                e.stopPropagation();
+                                if (e.key === "Enter") saveRenameTeam(team);
+                                if (e.key === "Escape") cancelRenameTeam();
+                              }}
+                              placeholder="Tên phòng ban"
+                              status={teamNameError ? "error" : undefined}
+                              className="h-8 w-64 sm:w-80 text-sm font-semibold"
+                            />
+                            {teamNameError && <span className="mt-0.5 text-[11px] text-rose-600">{teamNameError}</span>}
+                          </div>
+                        ) : (
+                          <Text className="text-sm font-bold text-slate-900">{team.name}</Text>
+                        )}
                         <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                           {members.length} người
                         </span>
@@ -578,19 +699,43 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                       )}
                     </div>
 
-                    {canManageTeams && (
-                      <Button
-                        intent="outline"
-                        scale="compact"
-                        icon={<EditOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingTeam(team);
-                        }}
-                        className="shrink-0 text-xs font-semibold !text-[#DC2626] !border-[#DC2626] hover:!border-[#B91C1C] hover:!text-[#B91C1C] hover:!bg-red-50/60 bg-white shadow-2xs"
-                      >
-                        Cập nhật phòng ban
-                      </Button>
+                    {canManageTeams && renamingTeamId === team.id && (
+                      <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          intent="outline"
+                          scale="compact"
+                          disabled={savingTeamName}
+                          onClick={cancelRenameTeam}
+                          className="text-xs font-semibold"
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          intent="primary"
+                          scale="compact"
+                          icon={<SaveOutlined />}
+                          loading={savingTeamName}
+                          onClick={() => saveRenameTeam(team)}
+                          className="text-xs font-semibold"
+                        >
+                          Lưu
+                        </Button>
+                      </div>
+                    )}
+                    {canManageTeams && renamingTeamId !== team.id && (
+                      <Tooltip title="Cập nhật phòng ban">
+                        <Button
+                          intent="outline"
+                          scale="compact"
+                          aria-label={`Cập nhật phòng ban ${team.name}`}
+                          icon={<EditOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startRenameTeam(team);
+                          }}
+                          className="shrink-0 !h-8 !w-8 !p-0 !text-[#DC2626] !border-[#DC2626] hover:!border-[#B91C1C] hover:!text-[#B91C1C] hover:!bg-red-50/60 bg-white shadow-2xs"
+                        />
+                      </Tooltip>
                     )}
                   </div>
 
@@ -604,9 +749,9 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                       pagination={false}
                       size="middle"
                       tableLayout="fixed"
-                      scroll={{ x: canManageAccounts ? 860 : 730 }}
+                      scroll={{ x: canManageAccounts ? 900 : 810 }}
                       rowClassName={(person) => (person.accountActive ? "" : "[&>td]:!bg-rose-50/40")}
-                      className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-2.5 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-2 [&_.ant-table-tbody>tr>td]:!align-middle [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none"
+                      className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-2.5 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:!py-1.5 [&_.ant-table-tbody>tr>td]:!align-middle [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none"
                       onRow={(person) => ({
                         onClick: () => setDetailStaffId(person.id),
                         className: "cursor-pointer hover:bg-slate-50/70 transition-colors group",
@@ -619,16 +764,6 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
           )}
         </div>
       </Card>
-
-      {editingTeam && (
-        <AddTeamModal
-          open
-          data={controller.data}
-          editingTeam={editingTeam}
-          onClose={() => setEditingTeam(null)}
-          onSubmit={(input) => controller.updateTeam(editingTeam.id, input)}
-        />
-      )}
 
       {staffModalOpen && (
         <StaffModal

@@ -101,7 +101,7 @@ export { Spin } from "./spin";
 export type { SpinProps } from "./spin";
 
 /* ── Feedback & Overlays ─────────────────────────────────── */
-export { Modal, modalVariants } from "./modal";
+export { LARGE_MODAL_BODY_STYLE, LARGE_MODAL_CONTAINER_STYLE, LARGE_MODAL_PROPS, Modal, modalVariants } from "./modal";
 export { Drawer, STANDARD_DRAWER_WIDTH } from "./drawer";
 export type { DrawerProps } from "./drawer";
 export type { ModalProps } from "./modal";

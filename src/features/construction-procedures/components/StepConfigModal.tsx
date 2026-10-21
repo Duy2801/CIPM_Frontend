@@ -4,17 +4,30 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BranchesOutlined,
   CheckOutlined,
+  CloseOutlined,
   DeleteOutlined,
+  EditOutlined,
   FolderAddOutlined,
   InfoCircleOutlined,
   PlusOutlined,
   SaveOutlined,
   SettingOutlined,
-  UndoOutlined,
 } from "@ant-design/icons";
-import { Button, Input, Modal, Select, Switch, Tag, Tooltip, toast } from "@/components/ui";
-import { MASTER_PROCEDURE_STEPS } from "../constants/procedure-steps-master";
-import type { ProcedureStep, StepStatus } from "../types/procedure.types";
+import {
+  Button,
+  Input,
+  LARGE_MODAL_BODY_STYLE,
+  LARGE_MODAL_CONTAINER_STYLE,
+  LARGE_MODAL_PROPS,
+  Modal,
+  Select,
+  Switch,
+  Tag,
+  Tooltip,
+  toast,
+} from "@/components/ui";
+import { App } from "antd";
+import type { ProcedureStep, StepStatus, StepType } from "../types/procedure.types";
 
 interface StepConfigModalProps {
   open: boolean;
@@ -27,7 +40,6 @@ interface StepConfigModalProps {
 }
 
 import {
-  BUILTIN_PROCEDURE_TEMPLATES,
   loadCustomProfiles,
   saveCustomProfiles,
   type CustomProcedureProfile,
@@ -89,6 +101,15 @@ const fromRoman = (str: string): number => {
   return sum;
 };
 
+// Cấp của bước theo mã: "III" = 0 (bước chính), "III.1" = 1, "III.1.1" = 2... (không giới hạn số cấp)
+const getStepDepth = (code: string): number => code.split(".").length - 1;
+
+// Bước gốc (cấp 1) chứa bước này: "III.1.1" → "III"
+const getRootCode = (code: string): string => code.split(".")[0];
+
+// Bước con / cháu... của một bước (mọi cấp bên dưới)
+const isDescendantOf = (code: string, ancestorCode: string): boolean => code.startsWith(`${ancestorCode}.`);
+
 // Gợi ý mã bước cha tiếp theo (I, II, III...)
 const getNextParentCode = (steps: ProcedureStep[]): string => {
   const parents = steps.filter((s) => !s.code.includes("."));
@@ -101,13 +122,14 @@ const getNextParentCode = (steps: ProcedureStep[]): string => {
   return toRoman(maxRoman > 0 ? maxRoman + 1 : parents.length + 1);
 };
 
-// Gợi ý mã bước con tiếp theo (ví dụ bước cha II -> II.1, II.2...)
+// Gợi ý mã bước con tiếp theo, ở bất kỳ cấp nào (II → II.1, II.2...; III.1 → III.1.1, III.1.2...)
 const getNextSubCode = (parentCode: string, steps: ProcedureStep[]): string => {
-  const children = steps.filter((s) => s.code.startsWith(`${parentCode}.`));
+  const childDepth = getStepDepth(parentCode) + 1;
+  // Chỉ xét bước con trực tiếp (đúng 1 cấp bên dưới), bỏ qua các cấp sâu hơn
+  const children = steps.filter((s) => isDescendantOf(s.code, parentCode) && getStepDepth(s.code) === childDepth);
   let maxChildNum = 0;
   for (const c of children) {
-    const parts = c.code.split(".");
-    const childNum = parseInt(parts[1], 10);
+    const childNum = parseInt(c.code.split(".")[childDepth], 10);
     if (!isNaN(childNum) && childNum > maxChildNum) {
       maxChildNum = childNum;
     }
@@ -138,6 +160,69 @@ const insertStepHierarchically = (
   return result.map((s, idx) => ({ ...s, order: idx + 1 }));
 };
 
+/** Mỗi cấp bước thụt vào thêm (px) */
+const STEP_INDENT_PX = 14;
+
+/** Số ngày từ ngày bắt đầu đến ngày kết thúc (tính cả hai đầu); thiếu ngày thì null */
+const countPlannedDays = (start?: string, end?: string): number | null => {
+  if (!start || !end) return null;
+  const diff = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000) + 1;
+  return diff > 0 ? diff : null;
+};
+
+/** Thông tin thời gian của bước suy ra từ ngày bắt đầu / kết thúc */
+const buildDateFields = (
+  start?: string,
+  end?: string
+): Pick<
+  ProcedureStep,
+  "startDatePlanned" | "endDatePlanned" | "plannedDays" | "durationMargin" | "durationDaysMin" | "durationDaysMax"
+> => {
+  const days = countPlannedDays(start, end);
+  return {
+    startDatePlanned: start || undefined,
+    endDatePlanned: end || undefined,
+    plannedDays: days ?? undefined,
+    durationMargin: days ? `${days} ngày` : "Theo quy định",
+    durationDaysMin: days,
+    durationDaysMax: days,
+  };
+};
+
+/** Ô chọn ngày của trình duyệt: chỉ chọn trên lịch (không gõ tay), bấm vào là mở lịch */
+function StepDateInput({
+  value,
+  min,
+  max,
+  disabled,
+  onChange,
+}: {
+  value?: string;
+  min?: string;
+  max?: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      type="date"
+      value={value || ""}
+      min={min}
+      max={max}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.currentTarget.showPicker?.();
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Tab") e.preventDefault();
+      }}
+      className="h-7 w-full cursor-pointer rounded-md border border-slate-200 bg-white px-1.5 text-xs text-slate-700 focus:border-[#DC2626] focus:outline-none focus:ring-1 focus:ring-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+    />
+  );
+}
+
 export default function StepConfigModal({
   open,
   steps,
@@ -147,6 +232,7 @@ export default function StepConfigModal({
   onClose,
   onSaveConfig,
 }: StepConfigModalProps) {
+  const { modal } = App.useApp();
   const [localSteps, setLocalSteps] = useState<ProcedureStep[]>(steps);
   const [filterType, setFilterType] = useState<"ALL" | "MANDATORY" | "CONDITIONAL" | "DISABLED">("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -154,13 +240,13 @@ export default function StepConfigModal({
   // Quản lý quy trình (kịch bản)
   const [customProfiles, setCustomProfiles] = useState<CustomProcedureProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>(
-    currentProcedureId || (steps.length > 0 ? "standard-16" : "")
+    currentProcedureId || ""
   );
 
   // Modal 1: Tạo quy trình mới
   const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
-  const [newProfileSource, setNewProfileSource] = useState<"CURRENT" | "DEPT_TEMPLATE" | "STANDARD_16" | "EMPTY">("CURRENT");
+  const [newProfileSource, setNewProfileSource] = useState<"CURRENT" | "DEPT_TEMPLATE" | "EMPTY">("CURRENT");
   const [createProfileError, setCreateProfileError] = useState("");
 
   // Tìm quy trình mẫu chuẩn tương ứng với phòng ban (nếu có)
@@ -195,8 +281,8 @@ export default function StepConfigModal({
   const [inlineParentName, setInlineParentName] = useState<string>("");
   const [inlineParentUnit, setInlineParentUnit] = useState<string>("Chủ đầu tư");
   const [inlineParentAssignee, setInlineParentAssignee] = useState<string>("");
-  const [inlineParentMinDays, setInlineParentMinDays] = useState<number>(5);
-  const [inlineParentMaxDays, setInlineParentMaxDays] = useState<number>(10);
+  const [inlineParentStart, setInlineParentStart] = useState<string>("");
+  const [inlineParentEnd, setInlineParentEnd] = useState<string>("");
   const [inlineParentType, setInlineParentType] = useState<"MANDATORY" | "CONDITIONAL">("MANDATORY");
   const [inlineParentError, setInlineParentError] = useState<string>("");
 
@@ -206,8 +292,8 @@ export default function StepConfigModal({
   const [inlineChildName, setInlineChildName] = useState<string>("");
   const [inlineChildUnit, setInlineChildUnit] = useState<string>("Chủ đầu tư");
   const [inlineChildAssignee, setInlineChildAssignee] = useState<string>("");
-  const [inlineChildMinDays, setInlineChildMinDays] = useState<number>(3);
-  const [inlineChildMaxDays, setInlineChildMaxDays] = useState<number>(7);
+  const [inlineChildStart, setInlineChildStart] = useState<string>("");
+  const [inlineChildEnd, setInlineChildEnd] = useState<string>("");
   const [inlineChildType, setInlineChildType] = useState<"MANDATORY" | "CONDITIONAL">("MANDATORY");
   const [inlineChildError, setInlineChildError] = useState<string>("");
 
@@ -228,7 +314,7 @@ export default function StepConfigModal({
       const loaded = loadCustomProfiles();
       setCustomProfiles(loaded);
       setLocalSteps(steps);
-      setSelectedProfileId(currentProcedureId || (steps.length > 0 ? "standard-16" : ""));
+      setSelectedProfileId(currentProcedureId || "");
       setNewlyAddedStepIds(new Set()); // Reset danh sách bước mới khi mở modal
       if (departmentTitle) {
         setInlineParentUnit(departmentTitle);
@@ -237,11 +323,6 @@ export default function StepConfigModal({
     }
   }, [open, steps, currentProcedureId, departmentTitle]);
 
-  const masterStepsMap = useMemo(() => {
-    const map = new Map<string, (typeof MASTER_PROCEDURE_STEPS)[number]>();
-    MASTER_PROCEDURE_STEPS.forEach((m) => map.set(m.id, m));
-    return map;
-  }, []);
 
   // Danh sách các bước cha hiện có (không chứa dấu chấm)
   const parentSteps = useMemo(() => {
@@ -270,8 +351,11 @@ export default function StepConfigModal({
   // Bật/Tắt bước điều kiện
   const handleToggle = (stepId: string, enabled: boolean) => {
     setLocalSteps((prev) => {
+      const target = prev.find((s) => s.id === stepId);
+      if (!target || target.type !== "CONDITIONAL") return prev;
+      // Bật / tắt một bước thì các bước con (mọi cấp) bên dưới đi theo
       const updated: ProcedureStep[] = prev.map((s) => {
-        if (s.id === stepId && s.type === "CONDITIONAL") {
+        if (s.id === stepId || isDescendantOf(s.code, target.code)) {
           const newStatus: StepStatus = enabled
             ? s.status === "DISABLED"
               ? "NOT_STARTED"
@@ -295,10 +379,10 @@ export default function StepConfigModal({
     setLocalSteps((prev) => {
       const updated = prev.map((s) => {
         if (s.id === stepId) {
-          const master = masterStepsMap.get(s.id);
-          const current = s.plannedDays || master?.defaultDays || 10;
-          const min = master?.durationDaysMin || 1;
-          const max = master?.durationDaysMax || 180;
+          // Giới hạn số ngày theo biên độ của chính bước đó (không có thì 1–180 ngày)
+          const current = s.plannedDays || s.durationDaysMin || 10;
+          const min = s.durationDaysMin || 1;
+          const max = s.durationDaysMax || 180;
           const updatedDays = Math.min(max, Math.max(min, current + delta));
           return {
             ...s,
@@ -323,7 +407,7 @@ export default function StepConfigModal({
     }
   };
 
-  // Chuyển đổi quy trình đang áp dụng
+  // Chọn quy trình để xem / chỉnh trong hộp cấu hình (chỉ áp dụng khi bấm "Lưu cấu hình" nên không thông báo)
   const handleSelectProfile = (profileId: string) => {
     setSelectedProfileId(profileId);
 
@@ -333,31 +417,15 @@ export default function StepConfigModal({
       const loadedSteps = deptTpl.createSteps();
       setLocalSteps(loadedSteps);
       setNewlyAddedStepIds(new Set());
-      toast.success("Áp dụng quy trình", `Đã tải ${deptTpl.name} (${loadedSteps.length} bước)!`);
       return;
     }
 
-    // 2. Kiểm tra template chuẩn hệ thống
-    const builtin = BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === profileId);
-    if (builtin) {
-      if (profileId === currentProcedureId && steps.length > 0) {
-        setLocalSteps(steps);
-      } else {
-        const loadedSteps = builtin.createSteps();
-        setLocalSteps(loadedSteps);
-        toast.success("Áp dụng quy trình", `Đã tải ${builtin.name} (${loadedSteps.length} bước)!`);
-      }
-      setNewlyAddedStepIds(new Set());
-      return;
-    }
-
-    // 3. Kiểm tra custom profile
+    // 2. Kiểm tra custom profile
     const target = customProfiles.find((p) => p.id === profileId);
     if (target) {
       const loadedSteps = target.steps || [];
       setLocalSteps(loadedSteps);
       setNewlyAddedStepIds(new Set());
-      toast.success("Áp dụng quy trình", `Đã tải quy trình "${target.name}" (${loadedSteps.length} bước)!`);
     }
   };
 
@@ -370,14 +438,11 @@ export default function StepConfigModal({
     saveCustomProfiles(updated);
     toast.info("Đã xóa quy trình tùy chỉnh", `Đã xóa quy trình "${target?.name || ""}".`);
     if (selectedProfileId === profileId) {
-      const fallbackId = currentProcedureId || (deptTemplate ? deptTemplate.id : "standard-16");
+      const fallbackId = currentProcedureId || (deptTemplate ? deptTemplate.id : "");
       setSelectedProfileId(fallbackId);
-      const builtin = BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === fallbackId);
       const deptT = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((d) => d.id === fallbackId);
       if (deptT) {
         setLocalSteps(deptT.createSteps());
-      } else if (builtin) {
-        setLocalSteps(builtin.createSteps());
       } else {
         setLocalSteps(steps);
       }
@@ -405,9 +470,6 @@ export default function StepConfigModal({
       initialSteps = localSteps.map((s) => ({ ...s }));
     } else if (newProfileSource === "DEPT_TEMPLATE" && deptTemplate) {
       initialSteps = deptTemplate.createSteps();
-    } else if (newProfileSource === "STANDARD_16") {
-      const std = BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === "standard-16");
-      initialSteps = std ? std.createSteps() : [];
     } else {
       initialSteps = [];
     }
@@ -433,32 +495,6 @@ export default function StepConfigModal({
     );
   };
 
-  // Sao chép 16 bước chuẩn hóa vào quy trình hiện tại
-  const handleLoadMasterSteps = () => {
-    const masterSteps: ProcedureStep[] = MASTER_PROCEDURE_STEPS.map((m) => ({
-      id: `dept-step-${Date.now()}-${m.code}`,
-      order: m.order,
-      code: m.code,
-      groupCode: m.groupCode,
-      groupTitle: m.groupTitle,
-      name: m.name,
-      type: m.type,
-      responsibleUnit: m.responsibleUnit,
-      durationMargin: m.durationMargin,
-      durationDaysMin: m.durationDaysMin,
-      durationDaysMax: m.durationDaysMax,
-      isContractBased: m.isContractBased,
-      isSpecialRequest: m.isSpecialRequest,
-      isEnabled: true,
-      status: "NOT_STARTED",
-      plannedDays: m.defaultDays,
-      attachments: [],
-      notes: "",
-    }));
-    setLocalSteps(masterSteps);
-    syncToCurrentProfile(masterSteps);
-  };
-
   // Mở dòng nhập inline thêm bước chính (Cha)
   const handleOpenAddParentStep = () => {
     if (isAddingParentInline) {
@@ -470,8 +506,8 @@ export default function StepConfigModal({
     setInlineParentName("");
     setInlineParentUnit(departmentTitle || "Chủ đầu tư");
     setInlineParentAssignee("");
-    setInlineParentMinDays(5);
-    setInlineParentMaxDays(10);
+    setInlineParentStart("");
+    setInlineParentEnd("");
     setInlineParentType("MANDATORY");
     setInlineParentError("");
     // Đóng inline bước con nếu đang mở
@@ -484,10 +520,6 @@ export default function StepConfigModal({
       setInlineParentError("Vui lòng nhập tên bước chính");
       return;
     }
-    const minD = Math.max(1, inlineParentMinDays || 1);
-    const maxD = Math.max(minD, inlineParentMaxDays || minD);
-    const durText = minD === maxD ? `${minD} ngày` : `${minD}–${maxD} ngày`;
-    const defaultPlanned = Math.round((minD + maxD) / 2);
     const finalCode = inlineParentCode.trim() || getNextParentCode(localSteps);
     const assigneeStaff = staffList.find((s) => s.name === inlineParentAssignee);
     const newStep: ProcedureStep = {
@@ -504,12 +536,9 @@ export default function StepConfigModal({
       assignedToId: assigneeStaff?.id,
       assignedBy: inlineParentAssignee && departmentTitle ? `Lead ${departmentTitle}` : undefined,
       assignedAt: inlineParentAssignee ? new Date().toISOString().slice(0, 10) : undefined,
-      durationMargin: durText,
-      durationDaysMin: minD,
-      durationDaysMax: maxD,
+      ...buildDateFields(inlineParentStart, inlineParentEnd),
       isEnabled: true,
       status: "NOT_STARTED",
-      plannedDays: defaultPlanned,
       attachments: [],
       notes: "",
     };
@@ -542,8 +571,8 @@ export default function StepConfigModal({
     setInlineChildName("");
     setInlineChildUnit(parentObj?.responsibleUnit || departmentTitle || "Chủ đầu tư");
     setInlineChildAssignee("");
-    setInlineChildMinDays(3);
-    setInlineChildMaxDays(7);
+    setInlineChildStart("");
+    setInlineChildEnd("");
     setInlineChildType("MANDATORY");
     setInlineChildError("");
   };
@@ -556,21 +585,18 @@ export default function StepConfigModal({
       return;
     }
 
-    const minD = Math.max(1, inlineChildMinDays || 1);
-    const maxD = Math.max(minD, inlineChildMaxDays || minD);
-    const durText = minD === maxD ? `${minD} ngày` : `${minD}–${maxD} ngày`;
-    const defaultPlanned = Math.round((minD + maxD) / 2);
     const finalCode = inlineChildCode.trim() || getNextSubCode(activeParentForSub, localSteps);
 
-    const parentObj = localSteps.find((p) => p.code === activeParentForSub);
+    const rootCode = getRootCode(activeParentForSub);
+    const rootObj = localSteps.find((p) => p.code === rootCode);
     const assigneeStaff = staffList.find((s) => s.name === inlineChildAssignee);
 
     const newStep: ProcedureStep = {
       id: `dept-step-${Date.now()}-${finalCode}`,
       order: localSteps.length + 1,
       code: finalCode,
-      groupCode: activeParentForSub,
-      groupTitle: parentObj?.name || "Quy trình thực hiện",
+      groupCode: rootCode,
+      groupTitle: rootObj?.name || "Quy trình thực hiện",
       name: inlineChildName.trim(),
       type: inlineChildType,
       responsibleUnit: inlineChildUnit || departmentTitle || "Chủ đầu tư",
@@ -579,12 +605,9 @@ export default function StepConfigModal({
       assignedToId: assigneeStaff?.id,
       assignedBy: inlineChildAssignee && departmentTitle ? `Lead ${departmentTitle}` : undefined,
       assignedAt: inlineChildAssignee ? new Date().toISOString().slice(0, 10) : undefined,
-      durationMargin: durText,
-      durationDaysMin: minD,
-      durationDaysMax: maxD,
+      ...buildDateFields(inlineChildStart, inlineChildEnd),
       isEnabled: true,
       status: "NOT_STARTED",
-      plannedDays: defaultPlanned,
       attachments: [],
       notes: "",
     };
@@ -619,22 +642,92 @@ export default function StepConfigModal({
 
   // Xóa bước khỏi quy trình
   const handleRemoveStep = (stepId: string) => {
-    const updated = localSteps.filter((s) => s.id !== stepId);
+    const target = localSteps.find((s) => s.id === stepId);
+    if (!target) return;
+    // Xóa bước kèm toàn bộ bước con bên dưới để không còn bước con mồ côi
+    const removedIds = new Set(
+      localSteps.filter((s) => s.id === stepId || isDescendantOf(s.code, target.code)).map((s) => s.id)
+    );
+    const updated = localSteps.filter((s) => !removedIds.has(s.id)).map((s, idx) => ({ ...s, order: idx + 1 }));
     setLocalSteps(updated);
     syncToCurrentProfile(updated);
     setNewlyAddedStepIds((prev) => {
       const next = new Set(prev);
-      next.delete(stepId);
+      removedIds.forEach((id) => next.delete(id));
       return next;
     });
+    if (activeParentForSub && (activeParentForSub === target.code || isDescendantOf(activeParentForSub, target.code))) {
+      setActiveParentForSub(null);
+    }
   };
 
-  // Đặt lại mặc định
-  const handleReset = () => {
-    setLocalSteps(steps);
-    setSelectedProfileId(currentProcedureId || (steps.length > 0 ? "standard-16" : ""));
+  // Sửa bước ngay trên dòng (bút chì): tên, đơn vị thực hiện, loại
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{ name: string; responsibleUnit: string; type: StepType }>({
+    name: "",
+    responsibleUnit: "",
+    type: "MANDATORY",
+  });
+  const [editError, setEditError] = useState("");
+
+  const startEditStep = (step: ProcedureStep) => {
     setActiveParentForSub(null);
-    setIsAddingParentInline(false);
+    setEditingStepId(step.id);
+    setEditDraft({ name: step.name, responsibleUnit: step.responsibleUnit, type: step.type });
+    setEditError("");
+  };
+  const cancelEditStep = () => {
+    setEditingStepId(null);
+    setEditError("");
+  };
+  const saveEditStep = () => {
+    if (!editingStepId) return;
+    const name = editDraft.name.trim();
+    if (!name) {
+      setEditError("Vui lòng nhập tên bước");
+      return;
+    }
+    const isMandatory = editDraft.type === "MANDATORY";
+    const current = localSteps.find((s) => s.id === editingStepId);
+    handleUpdateStep(editingStepId, {
+      name,
+      // Bước chính: tên nhóm hiển thị ở màn hình chính đi theo tên bước
+      ...(current && !current.code.includes(".") ? { groupTitle: name } : {}),
+      responsibleUnit: editDraft.responsibleUnit.trim() || current?.responsibleUnit || "",
+      type: editDraft.type,
+      // Đổi sang bắt buộc thì bước luôn được áp dụng
+      ...(isMandatory && current && !current.isEnabled
+        ? { isEnabled: true, status: current.status === "DISABLED" ? "NOT_STARTED" : current.status }
+        : {}),
+    });
+    setEditingStepId(null);
+    setEditError("");
+  };
+
+  // Bấm thùng rác: luôn hỏi trước khi xóa (bước có bước con thì xóa luôn các bước con); chỉ áp dụng khi bấm "Lưu cấu hình"
+  const confirmRemoveStep = (step: ProcedureStep) => {
+    const childCount = localSteps.filter((s) => isDescendantOf(s.code, step.code)).length;
+    modal.confirm({
+      centered: true,
+      width: 440,
+      icon: null,
+      zIndex: 1400,
+      title: `Xóa bước [${step.code}] ${step.name}?`,
+      content: (
+        <p className="m-0 text-xs leading-relaxed text-slate-600">
+          {childCount > 0 && (
+            <>
+              Bước này có <strong>{childCount}</strong> bước con bên dưới, tất cả sẽ bị xóa cùng.{" "}
+            </>
+          )}
+          Thay đổi chỉ áp dụng cho dự án khi bạn bấm &quot;Lưu cấu hình&quot;.
+        </p>
+      ),
+      okText: "Xóa bước",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: () => handleRemoveStep(step.id),
+    });
   };
 
   // Lưu cấu hình
@@ -680,17 +773,18 @@ export default function StepConfigModal({
   // Render dòng nhập bước con trực tiếp bên dưới bước cha
   const renderInlineChildRow = () => {
     if (!activeParentForSub) return null;
+    const childDepth = getStepDepth(activeParentForSub) + 1;
 
     return (
       <div className="flex flex-col gap-1 px-3.5 py-2 bg-red-50/70 border-y border-red-200 border-l-[3px] border-l-[#DC2626] shadow-2xs transition-all">
         <div className="flex items-center gap-3 w-full">
-          {/* Mã bước */}
-          <div className="w-16 shrink-0 text-center flex items-center justify-center gap-0.5">
+          {/* Mã bước (thụt lề theo cấp) */}
+          <div className="w-28 shrink-0 flex items-center gap-0.5" style={{ paddingLeft: STEP_INDENT_PX * childDepth }}>
             <span className="text-[#DC2626] font-mono text-xs select-none">└</span>
             <Input
               value={inlineChildCode}
               onChange={(e) => setInlineChildCode(e.target.value)}
-              className="h-7 w-12 text-center font-mono font-bold text-[11px] bg-white border-red-200 p-0.5"
+              className="h-7 w-16 text-center font-mono font-bold text-[11px] bg-white border-red-200 p-0.5"
               placeholder="Mã"
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSaveInlineChild(false);
@@ -739,7 +833,7 @@ export default function StepConfigModal({
 
           {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
           {!departmentTitle && (
-            <div className="w-44 shrink-0 hidden md:block">
+            <div className="w-44 xl:w-56 2xl:w-72 shrink-0 hidden md:block">
               <Select
                 value={inlineChildUnit}
                 onChange={setInlineChildUnit}
@@ -750,28 +844,12 @@ export default function StepConfigModal({
             </div>
           )}
 
-          {/* Thời gian */}
-          <div className="w-40 shrink-0 hidden sm:block text-center">
-            <div className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={inlineChildMinDays}
-                onChange={(e) => setInlineChildMinDays(Math.max(1, Number(e.target.value) || 1))}
-                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
-              />
-              <span className="text-slate-400 font-bold shrink-0">–</span>
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={inlineChildMaxDays}
-                onChange={(e) => setInlineChildMaxDays(Math.max(1, Number(e.target.value) || 1))}
-                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
-              />
-              <span className="text-xs text-slate-600 font-medium shrink-0">ngày</span>
-            </div>
+          {/* Ngày bắt đầu / Ngày kết thúc */}
+          <div className="w-32 xl:w-36 shrink-0 hidden sm:block">
+            <StepDateInput value={inlineChildStart} max={inlineChildEnd || undefined} onChange={setInlineChildStart} />
+          </div>
+          <div className="w-32 xl:w-36 shrink-0 hidden sm:block">
+            <StepDateInput value={inlineChildEnd} min={inlineChildStart || undefined} onChange={setInlineChildEnd} />
           </div>
 
           {/* Phân loại */}
@@ -839,7 +917,7 @@ export default function StepConfigModal({
       <div className="flex flex-col gap-1 px-3.5 py-2 bg-indigo-50/60 border-y border-indigo-300 border-l-[3px] border-l-indigo-500 shadow-2xs">
         <div className="flex items-center gap-3 w-full">
           {/* Mã bước */}
-          <div className="w-16 shrink-0 text-center">
+          <div className="w-28 shrink-0 text-left">
             <Input
               value={inlineParentCode}
               onChange={(e) => setInlineParentCode(e.target.value)}
@@ -892,7 +970,7 @@ export default function StepConfigModal({
 
           {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
           {!departmentTitle && (
-            <div className="w-44 shrink-0 hidden md:block">
+            <div className="w-44 xl:w-56 2xl:w-72 shrink-0 hidden md:block">
               <Select
                 value={inlineParentUnit}
                 onChange={setInlineParentUnit}
@@ -903,28 +981,12 @@ export default function StepConfigModal({
             </div>
           )}
 
-          {/* Thời gian */}
-          <div className="w-40 shrink-0 hidden sm:block text-center">
-            <div className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs">
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={inlineParentMinDays}
-                onChange={(e) => setInlineParentMinDays(Math.max(1, Number(e.target.value) || 1))}
-                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
-              />
-              <span className="text-slate-400 font-bold shrink-0">–</span>
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={inlineParentMaxDays}
-                onChange={(e) => setInlineParentMaxDays(Math.max(1, Number(e.target.value) || 1))}
-                className="w-10 h-7 text-center font-bold text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded px-0.5 focus:bg-white focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors"
-              />
-              <span className="text-xs text-slate-600 font-medium shrink-0">ngày</span>
-            </div>
+          {/* Ngày bắt đầu / Ngày kết thúc */}
+          <div className="w-32 xl:w-36 shrink-0 hidden sm:block">
+            <StepDateInput value={inlineParentStart} max={inlineParentEnd || undefined} onChange={setInlineParentStart} />
+          </div>
+          <div className="w-32 xl:w-36 shrink-0 hidden sm:block">
+            <StepDateInput value={inlineParentEnd} min={inlineParentStart || undefined} onChange={setInlineParentEnd} />
           </div>
 
           {/* Phân loại */}
@@ -987,8 +1049,8 @@ export default function StepConfigModal({
 
   const activeProfile =
     customProfiles.find((p) => p.id === selectedProfileId) ||
-    BUILTIN_PROCEDURE_TEMPLATES.find((b) => b.id === selectedProfileId) ||
-    (deptTemplate?.id === selectedProfileId ? deptTemplate : null);
+    Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((d) => d.id === selectedProfileId) ||
+    null;
 
   const profileSelectOptions = useMemo(() => {
     const groups: Array<{
@@ -1003,7 +1065,7 @@ export default function StepConfigModal({
       }>;
     }> = [];
 
-    // 1. Nhóm Quy trình theo Phòng ban
+    // 1. Nhóm Quy trình thủ tục ĐTXD theo dự thảo (chuẩn bị đầu tư, đấu thầu, giám sát, quy hoạch)
     const deptTemplatesList = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES);
     if (deptTemplatesList.length > 0) {
       const sortedDeptTemplates = deptTemplate
@@ -1013,7 +1075,7 @@ export default function StepConfigModal({
       groups.push({
         label: departmentTitle
           ? `Quy trình chuyên môn: ${departmentTitle}`
-          : "Quy trình theo Tổ / Phòng ban",
+          : "Quy trình thủ tục ĐTXD (theo dự thảo)",
         options: sortedDeptTemplates.map((d) => ({
           value: d.id,
           label: isSameDepartment(d.department, departmentTitle)
@@ -1042,19 +1104,6 @@ export default function StepConfigModal({
       });
     }
 
-    // 3. Nhóm Quy trình mẫu chuẩn chung
-    groups.push({
-      label: "Quy trình mẫu chuẩn hệ thống",
-      options: BUILTIN_PROCEDURE_TEMPLATES.map((b) => ({
-        value: b.id,
-        label: b.shortName,
-        name: b.name,
-        stepCount: b.stepCount,
-        isCustom: false,
-        badge: b.badge,
-      })),
-    });
-
     return groups;
   }, [customProfiles, departmentTitle, deptTemplate]);
 
@@ -1064,8 +1113,9 @@ export default function StepConfigModal({
         open={open}
         onCancel={onClose}
         destroyOnHidden
-        width={1200}
-        centered
+        // Cùng kích thước với popup Quản lý chức danh
+        {...LARGE_MODAL_PROPS}
+        styles={{ container: LARGE_MODAL_CONTAINER_STYLE, body: LARGE_MODAL_BODY_STYLE }}
         title={
           <div className="flex items-center justify-between pr-6 w-full">
             <div className="flex items-center gap-2.5">
@@ -1106,7 +1156,7 @@ export default function StepConfigModal({
                 className="bg-[#DC2626] border-[#DC2626] text-white"
                 onClick={handleSave}
               >
-                Lưu cấu hình ({stats.totalActiveSteps} bước)
+                Lưu cấu hình
               </Button>
               <Button key="cancel" scale="compact" onClick={onClose}>
                 Đóng
@@ -1115,7 +1165,7 @@ export default function StepConfigModal({
           </div>,
         ]}
       >
-        <div className="h-[520px] flex flex-col gap-3 pr-1 pb-2 text-xs">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 pr-1 pb-2 text-xs">
           {/* Thanh công cụ 2 dòng chuyên nghiệp, thông thoáng */}
           <div className="flex flex-col gap-2.5 bg-slate-50/90 p-3 rounded-lg border border-slate-200/80 shrink-0">
             {/* Dòng 1: Quản lý Quy trình & Thao tác chính */}
@@ -1135,8 +1185,13 @@ export default function StepConfigModal({
                 </div>
 
                 <Select
-                  value={selectedProfileId || undefined}
-                  placeholder="-- Chọn quy trình cũ để dùng ngay --"
+                  // Quy trình đang áp dụng không còn trong danh sách (VD: mẫu chuẩn hệ thống đã bỏ) → hiện gợi ý thay vì mã
+                  value={
+                    profileSelectOptions.some((g) => g.options.some((o) => o.value === selectedProfileId))
+                      ? selectedProfileId
+                      : undefined
+                  }
+                  placeholder="-- Chọn quy trình để dùng ngay --"
                   onChange={handleSelectProfile}
                   className="w-72 sm:w-80 text-xs"
                   size="small"
@@ -1256,16 +1311,6 @@ export default function StepConfigModal({
                     Điều kiện ({stats.conditionalCount})
                   </button>
                 </div>
-
-                <Tooltip title="Đặt lại cấu hình ban đầu">
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
-                  >
-                    <UndoOutlined />
-                  </button>
-                </Tooltip>
               </div>
             </div>
           </div>
@@ -1274,18 +1319,19 @@ export default function StepConfigModal({
           <div className="flex-1 flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white min-h-0">
             {/* Header bảng */}
             <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-100/80 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 shrink-0">
-              <div className="w-16 shrink-0 text-center">Mã bước</div>
+              <div className="w-28 shrink-0 text-left pl-1">Mã bước</div>
               <div className="min-w-0 flex-1">Tên bước / Bước con</div>
               {departmentTitle && (
                 <div className="w-48 shrink-0 text-center text-slate-700">Người thực hiện</div>
               )}
               {!departmentTitle && (
-                <div className="w-44 shrink-0 hidden md:block">Đơn vị thực hiện</div>
+                <div className="w-44 xl:w-56 2xl:w-72 shrink-0 hidden md:block">Đơn vị thực hiện</div>
               )}
-              <div className="w-40 shrink-0 hidden sm:block text-center">Thời gian</div>
+              <div className="w-32 xl:w-36 shrink-0 hidden sm:block text-center">Ngày bắt đầu</div>
+              <div className="w-32 xl:w-36 shrink-0 hidden sm:block text-center">Ngày kết thúc</div>
               <div className="w-28 shrink-0 text-center">Loại</div>
               <div className="w-20 shrink-0 text-center">Áp dụng</div>
-              <div className="w-24 shrink-0 text-center">Thao tác</div>
+              <div className="w-28 shrink-0 text-center">Thao tác</div>
             </div>
 
             {/* Danh sách các hàng */}
@@ -1336,15 +1382,6 @@ export default function StepConfigModal({
                       <Button
                         intent="outline"
                         scale="compact"
-                        icon={<BranchesOutlined />}
-                        onClick={() => handleSelectProfile("standard-16")}
-                        className="font-semibold h-8.5 px-4 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]"
-                      >
-                        Quy trình chuẩn (16 bước)
-                      </Button>
-                      <Button
-                        intent="outline"
-                        scale="compact"
                         icon={<PlusOutlined />}
                         onClick={handleOpenAddParentStep}
                         className="font-semibold h-8.5 px-4 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]"
@@ -1358,19 +1395,24 @@ export default function StepConfigModal({
                 filteredSteps.map((step) => {
                   const isMandatory = step.type === "MANDATORY";
                   const isEnabled = step.isEnabled;
-                  const isSubStep = step.code.includes(".");
-                  const master = masterStepsMap.get(step.id);
-                  const isCurrentParentActive = !isSubStep && activeParentForSub === step.code;
+                  const depth = getStepDepth(step.code);
+                  const isSubStep = depth > 0;
+                  // Bước nào cũng có thể thêm bước con (không giới hạn số cấp)
+                  const isCurrentParentActive = activeParentForSub === step.code;
+                  const isEditing = editingStepId === step.id;
 
                   return (
                     <div key={step.id}>
                       <div
                         onClick={() => {
-                          if (!isSubStep) {
+                          if (!isSubStep && !isEditing) {
                             handleParentRowClick(step.code);
                           }
                         }}
-                        className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${!isEnabled
+                        className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${isEditing
+                          ? // Đang sửa: luôn sáng rõ và nổi bật, kể cả bước đang tắt
+                            "bg-red-50/70 border-l-[3px] border-l-[#DC2626] ring-1 ring-inset ring-red-200"
+                          : !isEnabled
                           ? "bg-slate-50/70 opacity-60"
                           : isSubStep
                             ? "bg-slate-50/30 hover:bg-red-50/20 border-l-[3px] border-l-red-300/80"
@@ -1380,10 +1422,10 @@ export default function StepConfigModal({
                           }`}
                         title={!isSubStep ? "Nhấn vào bước chính này để thêm bước con bên dưới" : undefined}
                       >
-                        {/* Mã bước */}
-                        <div className="w-16 shrink-0 text-center">
+                        {/* Mã bước (thụt lề theo cấp) */}
+                        <div className="w-28 shrink-0" style={{ paddingLeft: STEP_INDENT_PX * depth }}>
                           {isSubStep ? (
-                            <div className="flex items-center justify-center gap-0.5">
+                            <div className="flex items-center gap-0.5">
                               <span className="text-[#DC2626] font-mono text-xs select-none">└</span>
                               <span className="inline-block min-w-8 rounded border border-red-200 bg-red-50 px-1 py-0.5 text-center text-[11px] font-bold font-mono text-red-800 shadow-2xs">
                                 {step.code}
@@ -1397,7 +1439,28 @@ export default function StepConfigModal({
                         </div>
 
                         {/* Tên bước */}
-                        <div className={`min-w-0 flex-1 pr-2 ${isSubStep ? "pl-3" : ""}`}>
+                        <div className="min-w-0 flex-1 pr-2" style={{ paddingLeft: STEP_INDENT_PX * depth }}>
+                          {isEditing ? (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                autoFocus
+                                value={editDraft.name}
+                                onChange={(e) => {
+                                  setEditDraft((d) => ({ ...d, name: e.target.value }));
+                                  if (editError) setEditError("");
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEditStep();
+                                  if (e.key === "Escape") cancelEditStep();
+                                }}
+                                placeholder="Tên bước (nhấn Enter để lưu)..."
+                                className={`h-7 text-xs bg-white w-full ${
+                                  editError ? "border-rose-500 ring-1 ring-rose-200" : "border-red-300 focus:border-[#DC2626]"
+                                }`}
+                              />
+                              {editError && <div className="mt-0.5 text-[11px] text-rose-600">{editError}</div>}
+                            </div>
+                          ) : (
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`leading-snug truncate ${isSubStep ? "text-xs font-medium text-slate-700" : "text-xs font-bold text-slate-900"
@@ -1406,8 +1469,8 @@ export default function StepConfigModal({
                             >
                               {step.name}
                             </span>
-                            {master?.description && (
-                              <Tooltip title={master.description} placement="topLeft">
+                            {step.notes && (
+                              <Tooltip title={<span className="whitespace-pre-line">{step.notes}</span>} placement="topLeft">
                                 <InfoCircleOutlined className="text-slate-400 hover:text-slate-600 text-xs cursor-help shrink-0" />
                               </Tooltip>
                             )}
@@ -1417,6 +1480,7 @@ export default function StepConfigModal({
                               </span>
                             )}
                           </div>
+                          )}
 
                           {/* Hiện phụ đơn vị & thời gian trên màn hình nhỏ */}
                           <div className="flex flex-wrap gap-x-3 text-[11px] text-slate-400 md:hidden mt-0.5">
@@ -1458,21 +1522,59 @@ export default function StepConfigModal({
 
                         {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
                         {!departmentTitle && (
-                          <div className="w-44 shrink-0 hidden md:block text-xs text-slate-700 truncate" title={step.responsibleUnit}>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium max-w-full truncate">
-                              {step.responsibleUnit}
-                            </span>
+                          <div className="w-44 xl:w-56 2xl:w-72 shrink-0 hidden md:block text-xs text-slate-700 truncate" title={step.responsibleUnit}>
+                            {isEditing ? (
+                              <Input
+                                value={editDraft.responsibleUnit}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setEditDraft((d) => ({ ...d, responsibleUnit: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEditStep();
+                                  if (e.key === "Escape") cancelEditStep();
+                                }}
+                                placeholder="Đơn vị thực hiện"
+                                className="h-7 text-xs bg-white w-full border-red-300 focus:border-[#DC2626]"
+                              />
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium max-w-full truncate">
+                                {step.responsibleUnit}
+                              </span>
+                            )}
                           </div>
                         )}
 
-                        {/* Thời gian */}
-                        <div className="w-40 shrink-0 hidden sm:block text-xs font-semibold text-slate-700 text-center">
-                          {step.durationMargin}
+                        {/* Ngày bắt đầu / Ngày kết thúc (số ngày kế hoạch tự tính theo 2 ngày này) */}
+                        <div className="w-32 xl:w-36 shrink-0 hidden sm:block" onClick={(e) => e.stopPropagation()}>
+                          <StepDateInput
+                            value={step.startDatePlanned}
+                            max={step.endDatePlanned}
+                            disabled={!isEnabled}
+                            onChange={(val) => handleUpdateStep(step.id, buildDateFields(val, step.endDatePlanned))}
+                          />
+                        </div>
+                        <div className="w-32 xl:w-36 shrink-0 hidden sm:block" onClick={(e) => e.stopPropagation()}>
+                          <StepDateInput
+                            value={step.endDatePlanned}
+                            min={step.startDatePlanned}
+                            disabled={!isEnabled}
+                            onChange={(val) => handleUpdateStep(step.id, buildDateFields(step.startDatePlanned, val))}
+                          />
                         </div>
 
                         {/* Phân loại */}
-                        <div className="w-28 shrink-0 flex items-center justify-center">
-                          {isMandatory ? (
+                        <div className="w-28 shrink-0 flex items-center justify-center" onClick={(e) => isEditing && e.stopPropagation()}>
+                          {isEditing ? (
+                            <Select
+                              value={editDraft.type}
+                              onChange={(val) => setEditDraft((d) => ({ ...d, type: val as StepType }))}
+                              size="small"
+                              className="w-24 text-xs"
+                              options={[
+                                { value: "MANDATORY", label: "Bắt buộc" },
+                                { value: "CONDITIONAL", label: "Điều kiện" },
+                              ]}
+                            />
+                          ) : isMandatory ? (
                             <Tag intent="brand" scale="sm">
                               Bắt buộc
                             </Tag>
@@ -1511,18 +1613,43 @@ export default function StepConfigModal({
                           )}
                         </div>
 
-                        {/* Thao tác: Thêm bước con (chỉ cha), Xóa bước */}
+                        {/* Thao tác: Thêm bước con, Sửa, Xóa (đang sửa: Lưu / Hủy) */}
                         <div
-                          className="w-24 shrink-0 flex items-center justify-center gap-1.5"
+                          className="w-28 shrink-0 flex items-center justify-center gap-1.5"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {/* 1. Nút thêm quy trình con (Chỉ bước cha mới có) */}
-                          {!isSubStep && (
+                          {isEditing && (
+                            <>
+                              <Tooltip title="Lưu thay đổi (Enter)">
+                                <button
+                                  type="button"
+                                  onClick={saveEditStep}
+                                  aria-label="Lưu thay đổi"
+                                  className="flex h-7 w-7 items-center justify-center rounded-md border border-[#DC2626] bg-[#DC2626] text-white shadow-2xs transition-colors cursor-pointer hover:bg-[#B91C1C]"
+                                >
+                                  <CheckOutlined className="text-xs" />
+                                </button>
+                              </Tooltip>
+                              <Tooltip title="Hủy sửa (Esc)">
+                                <button
+                                  type="button"
+                                  onClick={cancelEditStep}
+                                  aria-label="Hủy sửa"
+                                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-2xs transition-colors cursor-pointer hover:bg-slate-100"
+                                >
+                                  <CloseOutlined className="text-xs" />
+                                </button>
+                              </Tooltip>
+                            </>
+                          )}
+
+                          {/* 1. Nút thêm bước con (mọi cấp) */}
+                          {!isEditing && (
                             <Tooltip
                               title={
                                 isCurrentParentActive
-                                  ? "Đang mở thêm quy trình con (nhấn để đóng)"
-                                  : "Thêm quy trình con"
+                                  ? "Đang mở thêm bước con (nhấn để đóng)"
+                                  : `Thêm bước con cho [${step.code}]`
                               }
                             >
                               <button
@@ -1543,30 +1670,37 @@ export default function StepConfigModal({
                             </Tooltip>
                           )}
 
-                          {/* 2. Nút xóa bước — hiện khi trong profile tự tạo HOẶC bước vừa thêm chưa lưu */}
-                          {(selectedProfileId.startsWith("custom_") || newlyAddedStepIds.has(step.id)) && (
-                            <Tooltip title={newlyAddedStepIds.has(step.id) ? "Xóa bước vừa thêm (chưa lưu)" : "Xóa bước này khỏi quy trình"}>
+                          {/* 2. Nút sửa bước ngay trên dòng */}
+                          {!isEditing && (
+                            <Tooltip title={`Sửa bước [${step.code}]`}>
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveStep(step.id);
-                                }}
-                                className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer ${
-                                  newlyAddedStepIds.has(step.id)
-                                    ? "text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200"
-                                    : "text-slate-400 hover:text-rose-600 hover:bg-slate-100"
-                                }`}
+                                onClick={() => startEditStep(step)}
+                                aria-label={`Sửa bước ${step.code}`}
+                                className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-2xs transition-colors cursor-pointer hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
                               >
-                                <DeleteOutlined className="text-xs" />
+                                <EditOutlined className="text-xs" />
                               </button>
                             </Tooltip>
                           )}
 
-                          {/* Nếu là bước con và không có nút xóa, hiển thị dấu gạch ngang mờ */}
-                          {isSubStep && !(selectedProfileId.startsWith("custom_") || newlyAddedStepIds.has(step.id)) && (
-                            <span className="text-xs text-slate-300 select-none font-medium">—</span>
+                          {/* 3. Nút xóa bước (mọi bước, luôn hỏi trước khi xóa) */}
+                          {!isEditing && (
+                          <Tooltip title={`Xóa bước [${step.code}]`}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                confirmRemoveStep(step);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 shadow-2xs transition-colors cursor-pointer hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+                              aria-label={`Xóa bước ${step.code}`}
+                            >
+                              <DeleteOutlined className="text-xs" />
+                            </button>
+                          </Tooltip>
                           )}
+
                         </div>
                       </div>
 
@@ -1690,31 +1824,6 @@ export default function StepConfigModal({
                   </div>
                 </label>
               )}
-
-              <label
-                className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                  newProfileSource === "STANDARD_16"
-                    ? "border-[#DC2626] bg-red-50/50"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
-                }`}
-                onClick={() => setNewProfileSource("STANDARD_16")}
-              >
-                <input
-                  type="radio"
-                  name="newProfileSource"
-                  checked={newProfileSource === "STANDARD_16"}
-                  onChange={() => setNewProfileSource("STANDARD_16")}
-                  className="mt-0.5 text-[#DC2626] focus:ring-[#DC2626]"
-                />
-                <div>
-                  <div className="font-semibold text-slate-800">
-                    Khởi tạo từ Quy trình chuẩn ĐTXD (16 bước)
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    Quy trình chuẩn hóa theo Nghị định 15/2021/NĐ-CP.
-                  </div>
-                </div>
-              </label>
 
               <label
                 className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${

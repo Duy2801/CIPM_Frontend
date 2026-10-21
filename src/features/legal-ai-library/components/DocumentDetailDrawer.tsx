@@ -106,15 +106,6 @@ export default function DocumentDetailDrawer({
       title={
         <div className="py-1">
           <div className="flex items-center gap-2">
-            {document.fileType === "PDF" ? (
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-                <FilePdfOutlined className="text-sm" />
-              </span>
-            ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                <FileWordOutlined className="text-sm" />
-              </span>
-            )}
             <span className="text-base font-bold text-slate-800">
               {document.code}
             </span>

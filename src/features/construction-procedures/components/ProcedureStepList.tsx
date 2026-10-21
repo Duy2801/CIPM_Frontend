@@ -162,26 +162,13 @@ export default function ProcedureStepList({
         <h3 className="text-base font-bold text-slate-800 mb-1.5">
           Dự án chưa có quy trình thủ tục nào
         </h3>
-        <p className="text-xs text-slate-500 max-w-lg mx-auto mb-6 leading-relaxed">
+        <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
           {canConfigureProcedure
             ? "Bạn có toàn quyền thiết lập, cấu hình quy trình thủ tục và phân công nhiệm vụ vào dự án."
             : canApprove
             ? "Lãnh đạo có quyền phê duyệt quy trình hoặc phân công cho các bộ phận chủ động thiết lập thủ tục chuyên môn."
             : "Quy trình thủ tục của dự án sẽ do các Tổ trưởng/Trưởng phòng ban được phân công chủ động thiết lập và phân công nhiệm vụ cho từng cán bộ."}
         </p>
-        {(isLeadOfDept || canApprove || canConfigureProcedure || canUpdateProcedure) && onOpenAddDeptProcedure && (
-          <div className="flex items-center justify-center gap-3">
-            <Button
-              intent="primary"
-              scale="compact"
-              icon={<PlusOutlined />}
-              onClick={onOpenAddDeptProcedure}
-              className="!bg-[#DC2626] !border-[#DC2626] text-white font-semibold h-9 px-5 shadow-2xs hover:!bg-[#B91C1C]"
-            >
-              Thêm quy trình
-            </Button>
-          </div>
-        )}
       </Card>
     );
   }

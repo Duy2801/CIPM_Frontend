@@ -17,7 +17,7 @@ export function useLockedTitles(): Set<string> {
   }, [roles, lockedRoleCodes, deletedRoleCodes]);
 }
 
-/** Chức danh của cán bộ đang tắt → coi như cán bộ tạm thời không có chức danh */
+/** Chức danh của cán bộ đang tắt → tài khoản tạm không có quyền (cán bộ vẫn giữ chức danh) */
 export function isStaffTitleLocked(title: string | undefined, lockedTitles: Set<string>): boolean {
   const parts = (title || "")
     .split(/\s*·\s*|\s*;\s*/)

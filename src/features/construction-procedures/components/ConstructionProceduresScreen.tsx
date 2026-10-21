@@ -10,9 +10,8 @@ import {
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { Button, Input, Modal, Select, Tag, toast } from "@/components/ui";
-import { INITIAL_PROCEDURE_PROJECTS, createBaseSteps } from "../constants/procedure-mock-data";
+import { INITIAL_PROCEDURE_PROJECTS } from "../constants/procedure-mock-data";
 import {
-  BUILTIN_PROCEDURE_TEMPLATES,
   loadCustomProfiles,
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
@@ -21,6 +20,7 @@ import {
   isDirectorUser,
   isLeadOfDepartment,
   isSameDepartment,
+  DEPARTMENT_PROCEDURE_TEMPLATES,
 } from "../constants/procedure-department-templates";
 import type {
   DepartmentProcedureStatus,
@@ -44,8 +44,9 @@ import { useAuth } from "@/features/auth";
 import { useProjectStore } from "@/stores/project.store";
 import { canUserDo, getUserEffectivePermissions, hasMatrixPermission } from "@/access-control";
 
-const PROCEDURE_PROJECTS_STORAGE_KEY = "cipm_procedure_projects_data_v5";
-const PROCEDURE_MAPPINGS_STORAGE_KEY = "cipm_project_procedures_map_v5";
+// v6: bỏ quy trình chuẩn 16 bước dựng sẵn → dữ liệu cũ (v5) có 16 bước được xóa
+const PROCEDURE_PROJECTS_STORAGE_KEY = "cipm_procedure_projects_data_v6";
+const PROCEDURE_MAPPINGS_STORAGE_KEY = "cipm_project_procedures_map_v6";
 
 export default function ConstructionProceduresScreen() {
   const { user } = useAuth();
@@ -63,6 +64,8 @@ export default function ConstructionProceduresScreen() {
         localStorage.removeItem("cipm_project_procedures_map_v3");
         localStorage.removeItem("cipm_procedure_projects_data_v4");
         localStorage.removeItem("cipm_project_procedures_map_v4");
+        localStorage.removeItem("cipm_procedure_projects_data_v5");
+        localStorage.removeItem("cipm_project_procedures_map_v5");
         localStorage.removeItem("cipm_custom_procedure_profiles");
         const saved = localStorage.getItem(PROCEDURE_PROJECTS_STORAGE_KEY);
         if (saved) return JSON.parse(saved);
@@ -129,7 +132,7 @@ export default function ConstructionProceduresScreen() {
           departmentStatuses: existing.departmentStatuses || {},
           directorApproval: existing.directorApproval || { status: "PENDING" },
           stageApprovals: existing.stageApprovals || {},
-          steps: currentSteps.length > 0 ? currentSteps : createBaseSteps(),
+          steps: currentSteps,
           history: existing.history || [],
         };
       }
@@ -150,7 +153,8 @@ export default function ConstructionProceduresScreen() {
         departmentStatuses: {},
         directorApproval: { status: "PENDING" },
         stageApprovals: {},
-        steps: createBaseSteps(),
+        // Dự án mới chưa có quy trình: chờ chọn quy trình khi cấu hình
+        steps: [],
         history: [],
       };
     });
@@ -225,11 +229,7 @@ export default function ConstructionProceduresScreen() {
         console.error("Error loading procedure mappings", e);
       }
     }
-    return {
-      "PRJ-001": "standard-16",
-      "PRJ-002": "standard-16",
-      "PRJ-003": "bcktkt-11",
-    };
+    return {};
   });
 
   useEffect(() => {
@@ -260,12 +260,23 @@ export default function ConstructionProceduresScreen() {
       isSystem: false,
       createSteps: () => cp.steps,
     }));
-    return [...BUILTIN_PROCEDURE_TEMPLATES, ...customAsProfiles];
+    // Quy trình thủ tục ĐTXD theo dự thảo + quy trình tùy chỉnh đã lưu
+    const draftProfiles = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).map((tpl) => ({
+      id: tpl.id,
+      name: tpl.name,
+      shortName: tpl.shortName,
+      description: tpl.description,
+      stepCount: tpl.createSteps().length,
+      badge: tpl.badge,
+      tagColor: tpl.tagColor === "red" ? ("slate" as const) : tpl.tagColor,
+      isSystem: true,
+      createSteps: tpl.createSteps,
+    }));
+    return [...draftProfiles, ...customAsProfiles];
   }, [customProfiles]);
 
   const selectedProcedureId =
-    (currentProject && projectProcedures[currentProject.projectId]) ||
-    "standard-16";
+    (currentProject && projectProcedures[currentProject.projectId]) || "";
 
   const handleSelectProcedure = (procedureId: string) => {
     if (!currentProject) return;
@@ -1393,7 +1404,7 @@ export default function ConstructionProceduresScreen() {
       {isConfigOpen && canConfigureProcedure && (
         <StepConfigModal
           open
-          steps={currentProject?.steps || createBaseSteps()}
+          steps={currentProject?.steps || []}
           currentProcedureId={selectedProcedureId}
           projectName={currentProject?.projectName || "Dự án"}
           onClose={() => setIsConfigOpen(false)}

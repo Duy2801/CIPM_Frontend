@@ -7,6 +7,7 @@ import { Button, Input, Switch, Title } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import type { MatrixModule, MatrixPermission, MatrixRole } from "../constants/role-matrix-data";
 import PermissionChecklist from "./PermissionChecklist";
+import { useConfirmAction } from "../hooks/useConfirmAction";
 
 interface RoleEditorViewProps {
   /** "create" = tạo chức danh mới, "edit" = chỉnh sửa chức danh `role` */
@@ -42,6 +43,7 @@ export default function RoleEditorView({
   onSubmit,
 }: RoleEditorViewProps) {
   const { modal } = App.useApp();
+  const confirmAction = useConfirmAction();
   const isCreating = mode === "create";
   const baselineName = role?.name ?? "";
 
@@ -91,8 +93,18 @@ export default function RoleEditorView({
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
+    if (
+      !(await confirmAction({
+        title: isCreating ? `Tạo chức danh "${trimmedName}"?` : `Lưu thay đổi chức danh "${trimmedName}"?`,
+        description: isCreating
+          ? `Chức danh mới có ${draftPerms.length} quyền.`
+          : `Chức danh sẽ có ${draftPerms.length} quyền. Mọi cán bộ giữ chức danh này đều cập nhật theo.`,
+        okText: isCreating ? "Tạo chức danh" : "Lưu thay đổi",
+      }))
+    )
+      return;
     if (onSubmit(trimmedName, draftPerms)) onBack();
   };
 

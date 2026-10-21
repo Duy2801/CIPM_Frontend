@@ -8,6 +8,7 @@ import { useRoleMatrix } from "../hooks/useRoleMatrix";
 import type { PersonnelDataset, Staff, StaffInput, TeamId } from "../types/personnel.types";
 import { buildAssignableRoles, resolveRoleCodeFromTitle } from "../utils/assignable-roles";
 import { useLockedTitles } from "../hooks/useLockedTitles";
+import { useConfirmAction } from "../hooks/useConfirmAction";
 
 interface RoleAdjustPanelProps {
   staff: Staff;
@@ -23,18 +24,18 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
   const { roles: matrixRoles } = useRoleMatrix();
   const lockedTitles = useLockedTitles();
   const [saving, setSaving] = useState(false);
+  const confirmAction = useConfirmAction();
 
   const roles = useMemo(() => buildAssignableRoles(data.teams, matrixRoles), [data.teams, matrixRoles]);
 
   // Chức danh hiện tại: dữ liệu cũ có thể ghép nhiều chức danh bằng "·" → lấy chức danh đầu tiên
   const currentTitle = (staff.title || "").split(/\s*·\s*|\s*;\s*/)[0]?.trim() ?? "";
-  // Chức danh hiện tại đang tắt → coi như chưa có chức danh
+  // Chức danh hiện tại đang tắt → chỉ báo tài khoản tạm không có quyền, cán bộ vẫn giữ chức danh
   const currentTitleLocked = Boolean(currentTitle) && lockedTitles.has(normalizeTitle(currentTitle));
   const currentRoleId = useMemo(() => {
-    if (currentTitleLocked) return undefined;
     const sameTitle = roles.filter((r) => normalizeTitle(r.title) === normalizeTitle(currentTitle));
     return (sameTitle.find((r) => r.teamId === staff.teamId) ?? sameTitle[0])?.id;
-  }, [roles, currentTitle, staff.teamId, currentTitleLocked]);
+  }, [roles, currentTitle, staff.teamId]);
 
   const [selectedId, setSelectedId] = useState<string | undefined>(currentRoleId);
   const selectedRole = roles.find((r) => r.id === selectedId);
@@ -45,8 +46,8 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
   const options = useMemo(() => {
     const byTitle = new Map<string, (typeof roles)[number]>();
     roles.forEach((r) => {
-      // Chức danh đang tắt không cho chọn
-      if (lockedTitles.has(normalizeTitle(r.title))) return;
+      // Chức danh đang tắt không cho chọn mới (chức danh cán bộ đang giữ vẫn hiện)
+      if (lockedTitles.has(normalizeTitle(r.title)) && r.id !== currentRoleId) return;
       const key = normalizeTitle(r.title);
       const existing = byTitle.get(key);
       const preferred = r.id === currentRoleId || (r.teamId === staff.teamId && existing?.id !== currentRoleId);
@@ -57,6 +58,18 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
 
   const handleSave = async () => {
     if (!selectedRole) return;
+    if (
+      !(await confirmAction({
+        title: `Đổi chức danh của ${staff.name}?`,
+        description: (
+          <>
+            Chức danh mới: <strong>{selectedRole.title}</strong>. Quyền hạn của cán bộ sẽ cập nhật theo chức danh này.
+          </>
+        ),
+        okText: "Lưu chức danh",
+      }))
+    )
+      return;
     setSaving(true);
     try {
       // Chức danh độc lập giữ nguyên phòng ban hiện tại; chức danh phòng ban thì chuyển cán bộ sang phòng ban đó
@@ -101,21 +114,21 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
         notFoundContent={<div className="py-1 text-xs text-slate-400">Không tìm thấy chức danh.</div>}
       />
 
-      {!currentRoleId && currentTitle && (
+      {currentTitleLocked && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-700">
+          <InfoCircleOutlined className="text-amber-500" />
+          <span>
+            Chức danh <strong>{currentTitle}</strong> đang tắt: tài khoản cán bộ tạm không có quyền cho tới khi bật lại
+            chức danh ở màn phân quyền.
+          </span>
+        </div>
+      )}
+      {!currentRoleId && currentTitle && !currentTitleLocked && (
         <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
           <InfoCircleOutlined className="text-slate-400" />
           <span>
-            {currentTitleLocked ? (
-              <>
-                Chức danh <strong className="text-slate-700">{currentTitle}</strong> đã tắt hoặc bị xóa nên cán bộ không
-                có chức danh. Hãy chọn chức danh mới (hoặc bật lại chức danh ở màn phân quyền nếu chỉ đang tắt).
-              </>
-            ) : (
-              <>
-                Chức danh hiện tại <strong className="text-slate-700">{currentTitle}</strong> không còn trong danh mục,
-                hãy chọn chức danh mới.
-              </>
-            )}
+            Chức danh hiện tại <strong className="text-slate-700">{currentTitle}</strong> không còn trong danh mục, hãy
+            chọn chức danh mới.
           </span>
         </div>
       )}
