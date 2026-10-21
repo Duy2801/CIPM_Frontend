@@ -646,7 +646,7 @@ export default function StaffProjectRoleModal({
                 {titleLocked || !staff.title ? "Chưa có chức danh" : staff.title} · {team?.name}
                 {titleLocked && (
                   <span className="ml-1.5 inline-block whitespace-nowrap rounded border border-slate-200 bg-slate-50 px-1.5 text-[11px] text-slate-500">
-                    {staff.title} đang tắt
+                    {staff.title} đã tắt / xóa
                   </span>
                 )}
               </div>

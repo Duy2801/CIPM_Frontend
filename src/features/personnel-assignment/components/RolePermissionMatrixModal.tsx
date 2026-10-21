@@ -51,7 +51,7 @@ export default function RolePermissionMatrixModal({
     permissions,
     hasPermission,
     addCustomRole,
-    deleteCustomRole,
+    deleteRole,
     lockedRoleCodes,
     setRoleLocked,
     renameRole,
@@ -125,13 +125,14 @@ export default function RolePermissionMatrixModal({
       title: `Xóa chức danh "${role.name}"?`,
       content: (
         <p className="m-0 text-xs leading-relaxed text-slate-600">
-          Chức danh và các quyền đã cấu hình cho chức danh này sẽ bị xóa khỏi hệ thống.
+          Chức danh và các quyền đã cấu hình cho chức danh này sẽ bị xóa khỏi hệ thống. Cán bộ đang giữ chức danh này
+          sẽ không còn chức danh và quyền hạn.
         </p>
       ),
       okText: "Xóa chức danh",
       cancelText: "Hủy",
       okButtonProps: { danger: true },
-      onOk: () => deleteCustomRole(role.code),
+      onOk: () => deleteRole(role.code),
     });
   };
 
@@ -225,13 +226,12 @@ export default function RolePermissionMatrixModal({
             />
           </Tooltip>
           {canManage && (
-            <Tooltip title={role.isCustom ? "Xóa" : "Chức danh mặc định của hệ thống, không xóa được"}>
+            <Tooltip title="Xóa">
               <Button
                 intent="outline"
                 scale="compact"
                 aria-label="Xóa"
-                disabled={!role.isCustom}
-                icon={<DeleteOutlined className={role.isCustom ? "text-rose-500" : undefined} />}
+                icon={<DeleteOutlined className="text-rose-500" />}
                 onClick={() => handleDelete(role)}
                 className="!h-8 !w-8 !p-0 hover:!border-rose-300 hover:!bg-rose-50"
               />

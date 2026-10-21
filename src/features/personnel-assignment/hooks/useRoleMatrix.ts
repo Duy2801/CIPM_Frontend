@@ -15,7 +15,9 @@ import {
 
 import {
   convertMatrixPermIdsToPermissionCodes,
+  getDeletedRoleCodes,
   getLockedRoleCodes,
+  STORAGE_KEY_DELETED_ROLES,
   STORAGE_KEY_LOCKED_ROLES,
   STORAGE_KEY_PERMISSIONS,
 } from "@/access-control";
@@ -34,7 +36,7 @@ function getRoleNameOverrides(): Record<string, string> {
   }
 }
 
-function applyRoleNameOverrides(roleList: MatrixRole[]): MatrixRole[] {
+export function applyRoleNameOverrides(roleList: MatrixRole[]): MatrixRole[] {
   const overrides = getRoleNameOverrides();
   return roleList.map((r) => (overrides[r.code] ? { ...r, name: overrides[r.code], shortName: overrides[r.code] } : r));
 }
@@ -100,7 +102,13 @@ export function deduplicateRoles(roleList: MatrixRole[]): MatrixRole[] {
   return result;
 }
 
+/** Danh sách chức danh đang dùng: bỏ các chức danh đã xóa */
 function getInitialRoles(): MatrixRole[] {
+  const deleted = new Set(getDeletedRoleCodes());
+  return loadRoles().filter((r) => !deleted.has(r.code));
+}
+
+function loadRoles(): MatrixRole[] {
   if (typeof window === "undefined") return SYSTEM_MATRIX_ROLES;
   try {
     const storedRoles = window.localStorage.getItem(STORAGE_KEY_ROLES);
@@ -160,6 +168,7 @@ export function useRoleMatrix() {
   const [roles, setRoles] = useState<MatrixRole[]>(getInitialRoles);
   const [permissionsMap, setPermissionsMap] = useState<Record<string, string[]>>(getInitialPermissions);
   const [lockedRoleCodes, setLockedRoleCodes] = useState<string[]>(getInitialLockedRoleCodes);
+  const [deletedRoleCodes, setDeletedRoleCodes] = useState<string[]>(getDeletedRoleCodes);
   const [isDirty, setIsDirty] = useState(false);
 
   // Lắng nghe sự kiện đồng bộ khi có vai trò tùy chỉnh mới được thêm/sửa/xóa ở modal khác
@@ -168,6 +177,7 @@ export function useRoleMatrix() {
       setRoles(getInitialRoles());
       setPermissionsMap(getInitialPermissions());
       setLockedRoleCodes(getInitialLockedRoleCodes());
+      setDeletedRoleCodes(getDeletedRoleCodes());
     };
     const handleLockSync = () => setLockedRoleCodes(getInitialLockedRoleCodes());
     if (typeof window !== "undefined") {
@@ -388,7 +398,10 @@ export function useRoleMatrix() {
   );
 
   // Xóa vai trò tùy chỉnh
-  const deleteCustomRole = useCallback((roleCode: string) => {
+  // Xóa chức danh (cả chức danh mặc định): chức danh mặc định được ghi nhớ là đã xóa để không bị nạp lại.
+  // Cán bộ đang giữ chức danh đã xóa coi như không còn chức danh và quyền.
+  const deleteRole = useCallback((roleCode: string) => {
+    const target = roles.find((r) => r.code === roleCode);
     const nextRoles = roles.filter((r) => r.code !== roleCode);
     setRoles(nextRoles);
 
@@ -396,18 +409,22 @@ export function useRoleMatrix() {
     delete nextPerms[roleCode];
     setPermissionsMap(nextPerms);
 
+    const nextDeleted = target && !target.isCustom ? Array.from(new Set([...deletedRoleCodes, roleCode])) : deletedRoleCodes;
+    setDeletedRoleCodes(nextDeleted);
+
     if (typeof window !== "undefined") {
       try {
         window.localStorage.setItem(STORAGE_KEY_ROLES, JSON.stringify(nextRoles));
         window.localStorage.setItem(STORAGE_KEY_PERMISSIONS, JSON.stringify(nextPerms));
+        window.localStorage.setItem(STORAGE_KEY_DELETED_ROLES, JSON.stringify(nextDeleted));
         window.dispatchEvent(new CustomEvent("cipm-roles-updated"));
+        window.dispatchEvent(new CustomEvent("cipm-permissions-updated"));
       } catch (err) {
-        console.error("Lỗi khi xóa vai trò khỏi localStorage:", err);
+        console.error("Lỗi khi xóa chức danh khỏi localStorage:", err);
       }
     }
-    setIsDirty(true);
-    toast.success("Đã xóa chức danh tùy chỉnh.");
-  }, [roles, permissionsMap]);
+    toast.success(`Đã xóa chức danh "${target?.name ?? ""}".`);
+  }, [roles, permissionsMap, deletedRoleCodes]);
 
   // Bật / tắt chức danh: áp dụng ngay (không chờ "Lưu cấu hình").
   // Chức danh bị tắt không được chọn khi thêm nhân sự hay đổi chức danh; cán bộ đang giữ vẫn giữ nguyên.
@@ -482,7 +499,11 @@ export function useRoleMatrix() {
     setRoles(SYSTEM_MATRIX_ROLES);
     setPermissionsMap(DEFAULT_ROLE_PERMISSIONS_MAP);
     setLockedRoleCodes([]);
-    if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY_ROLE_NAMES);
+    setDeletedRoleCodes([]);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY_ROLE_NAMES);
+      window.localStorage.removeItem(STORAGE_KEY_DELETED_ROLES);
+    }
     saveLockedRoleCodes([]);
     if (typeof window !== "undefined") {
       try {
@@ -522,7 +543,8 @@ export function useRoleMatrix() {
     applyBaseLeadToAllLeads,
     applyBaseMemberToAllMembers,
     addCustomRole,
-    deleteCustomRole,
+    deleteRole,
+    deletedRoleCodes,
     lockedRoleCodes,
     setRoleLocked,
     renameRole,

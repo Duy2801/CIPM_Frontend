@@ -6,7 +6,8 @@ import { Button, Select, Text } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import { useRoleMatrix } from "../hooks/useRoleMatrix";
 import type { PersonnelDataset, Staff, StaffInput, TeamId } from "../types/personnel.types";
-import { buildAssignableRoles, getLockedTitles, resolveRoleCodeFromTitle } from "../utils/assignable-roles";
+import { buildAssignableRoles, resolveRoleCodeFromTitle } from "../utils/assignable-roles";
+import { useLockedTitles } from "../hooks/useLockedTitles";
 
 interface RoleAdjustPanelProps {
   staff: Staff;
@@ -19,14 +20,14 @@ const normalizeTitle = (title: string) => title.trim().toLowerCase();
 /** Mục "Chức danh" trong drawer chi tiết cán bộ: mỗi cán bộ chỉ giữ MỘT chức danh, chọn trong danh sách là xong.
  *  Quyền hạn của cán bộ được suy ra từ chức danh (xem tab "Quyền hạn"). */
 export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdjustPanelProps) {
-  const { roles: matrixRoles, lockedRoleCodes } = useRoleMatrix();
+  const { roles: matrixRoles } = useRoleMatrix();
+  const lockedTitles = useLockedTitles();
   const [saving, setSaving] = useState(false);
 
   const roles = useMemo(() => buildAssignableRoles(data.teams, matrixRoles), [data.teams, matrixRoles]);
 
   // Chức danh hiện tại: dữ liệu cũ có thể ghép nhiều chức danh bằng "·" → lấy chức danh đầu tiên
   const currentTitle = (staff.title || "").split(/\s*·\s*|\s*;\s*/)[0]?.trim() ?? "";
-  const lockedTitles = useMemo(() => getLockedTitles(matrixRoles, lockedRoleCodes), [matrixRoles, lockedRoleCodes]);
   // Chức danh hiện tại đang tắt → coi như chưa có chức danh
   const currentTitleLocked = Boolean(currentTitle) && lockedTitles.has(normalizeTitle(currentTitle));
   const currentRoleId = useMemo(() => {
@@ -106,8 +107,8 @@ export default function RoleAdjustPanel({ staff, data, onUpdateStaff }: RoleAdju
           <span>
             {currentTitleLocked ? (
               <>
-                Chức danh <strong className="text-slate-700">{currentTitle}</strong> đang tắt nên cán bộ tạm thời không
-                có chức danh. Bật lại chức danh ở màn phân quyền, hoặc chọn chức danh mới.
+                Chức danh <strong className="text-slate-700">{currentTitle}</strong> đã tắt hoặc bị xóa nên cán bộ không
+                có chức danh. Hãy chọn chức danh mới (hoặc bật lại chức danh ở màn phân quyền nếu chỉ đang tắt).
               </>
             ) : (
               <>

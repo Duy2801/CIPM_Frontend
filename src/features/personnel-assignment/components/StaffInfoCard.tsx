@@ -185,7 +185,7 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
           <FieldBox label="Phòng ban / Tổ chuyên môn">{team?.name || EMPTY_TEXT}</FieldBox>
           <FieldBox label="Chức danh">
             {titleLocked ? (
-              <span className="font-normal italic text-slate-400">Chưa có chức danh ({staff.title} đang tắt)</span>
+              <span className="font-normal italic text-slate-400">Chưa có chức danh ({staff.title} đã tắt / xóa)</span>
             ) : (
               staff.title || EMPTY_TEXT
             )}

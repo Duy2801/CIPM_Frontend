@@ -108,6 +108,23 @@ export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v2";
 /** Mã các chức danh đang tắt trong ma trận phân quyền: người giữ chức danh này tạm thời không có quyền nào */
 export const STORAGE_KEY_LOCKED_ROLES = "cipm_locked_roles_v1";
 
+/** Mã các chức danh đã xóa (kể cả chức danh mặc định của hệ thống) */
+export const STORAGE_KEY_DELETED_ROLES = "cipm_deleted_roles_v1";
+
+function readCodeList(key: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((code): code is string => typeof code === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getDeletedRoleCodes(): string[] {
+  return readCodeList(STORAGE_KEY_DELETED_ROLES);
+}
+
 export function getLockedRoleCodes(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -186,7 +203,7 @@ export function getUserEffectivePermissions(user: AuthUser | null): Permission[]
   if (!user) return [];
   const roleId = (user as any).roleId;
   // Chức danh của tài khoản đang tắt → không có quyền nào cho tới khi bật lại
-  if (roleId && getLockedRoleCodes().includes(roleId)) return [];
+  if (roleId && (getLockedRoleCodes().includes(roleId) || getDeletedRoleCodes().includes(roleId))) return [];
   if (roleId) {
     const roleIdPerms = getRoleEffectivePermissions(roleId);
     if (roleIdPerms && roleIdPerms.length > 0) return roleIdPerms;

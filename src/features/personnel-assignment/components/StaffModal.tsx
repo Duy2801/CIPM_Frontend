@@ -13,8 +13,7 @@ import type { PersonnelDataset, StaffInput, Team, TeamId } from "../types/person
 import type { CustomFieldDefinition, CustomFieldType } from "../types/custom-fields.types";
 import { getCustomFields, saveCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
 import { mockPersonnelRepository } from "../services/mock-personnel.repository";
-import { useRoleMatrix } from "../hooks/useRoleMatrix";
-import { getLockedTitles } from "../utils/assignable-roles";
+import { useLockedTitles } from "../hooks/useLockedTitles";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
   title?: string;
@@ -117,7 +116,7 @@ function getLocalStorageCustomRoles(): { title: string; roleCode: string; isLead
 export default function StaffModal({ data, errorText, onClose, onCreate }: StaffModalProps) {
   const [form] = Form.useForm<StaffFormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const { roles: matrixRoles, lockedRoleCodes } = useRoleMatrix();
+  const lockedTitles = useLockedTitles();
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [appliedFieldIds, setAppliedFieldIds] = useState<Record<string, boolean>>({});
 
@@ -276,10 +275,9 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
     });
 
     // Chức danh đã khóa trong ma trận phân quyền không cho chọn khi thêm nhân sự
-    const lockedTitles = getLockedTitles(matrixRoles, lockedRoleCodes);
     const assignable = allLeafOptions.filter((o) => !lockedTitles.has(o.title.toLowerCase()));
     return { roleSelectOptions: assignable, allRoleOptions: assignable };
-  }, [teams, data.staff, matrixRoles, lockedRoleCodes]);
+  }, [teams, data.staff, lockedTitles]);
 
   // Xử lý thêm phòng ban mới trực tiếp từ dropdown
   const handleAddDepartment = async () => {

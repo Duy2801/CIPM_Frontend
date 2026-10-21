@@ -1,13 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
+import { SYSTEM_MATRIX_ROLES } from "../constants/role-matrix-data";
 import { getLockedTitles } from "../utils/assignable-roles";
-import { useRoleMatrix } from "./useRoleMatrix";
+import { applyRoleNameOverrides, useRoleMatrix } from "./useRoleMatrix";
 
-/** Tên (viết thường) các chức danh đang tắt; tự cập nhật khi bật / tắt ở màn phân quyền */
+/** Tên (viết thường) các chức danh đang tắt hoặc đã xóa; tự cập nhật khi thay đổi ở màn phân quyền */
 export function useLockedTitles(): Set<string> {
-  const { roles, lockedRoleCodes } = useRoleMatrix();
-  return useMemo(() => getLockedTitles(roles, lockedRoleCodes), [roles, lockedRoleCodes]);
+  const { roles, lockedRoleCodes, deletedRoleCodes } = useRoleMatrix();
+  return useMemo(() => {
+    // Chức danh mặc định đã xóa không còn trong `roles` nên lấy lại tên từ danh mục gốc
+    const deletedSystemRoles = applyRoleNameOverrides(
+      SYSTEM_MATRIX_ROLES.filter((r) => deletedRoleCodes.includes(r.code))
+    );
+    return getLockedTitles([...roles, ...deletedSystemRoles], [...lockedRoleCodes, ...deletedRoleCodes]);
+  }, [roles, lockedRoleCodes, deletedRoleCodes]);
 }
 
 /** Chức danh của cán bộ đang tắt → coi như cán bộ tạm thời không có chức danh */
