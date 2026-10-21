@@ -329,7 +329,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
       {
         title: "Chức danh",
         key: "role",
-        width: 220,
+        width: 280,
         align: "center",
         render: (_, person) => {
           // Dòng gọn: chỉ hiện vai trò chính (chức danh trong phòng ban), các vai trò còn lại gom vào "+N"
@@ -337,7 +337,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
           if (!mainRole) {
             return (
               <div className="flex w-full items-center justify-center">
-                <span className="inline-flex !w-[160px] items-center justify-center rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs italic text-slate-400">
+                <span className="inline-flex !w-[240px] items-center justify-center rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs italic text-slate-400">
                   Chưa có chức danh
                 </span>
               </div>
@@ -350,7 +350,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                   intent="brand"
                   scale="md"
                   className={`m-0 !inline-flex !items-center !justify-center !rounded-full !py-1 !px-2.5 text-xs font-semibold leading-snug ${
-                    otherRoles.length > 0 ? "!w-[140px]" : "!w-[160px]"
+                    otherRoles.length > 0 ? "!w-[200px]" : "!w-[240px]"
                   }`}
                 >
                   <span className="w-full truncate text-center">{mainRole}</span>
@@ -437,7 +437,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
       <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm">
         <SectionIntro
           title="Cơ cấu tổ chức, tài khoản & phân quyền"
-          description="Cán bộ theo từng phòng ban / tổ chuyên môn. Quản lý thông tin, trạng thái tài khoản và chức danh của cán bộ."
+          description="Cán bộ theo từng phòng ban. Quản lý thông tin, trạng thái tài khoản và chức danh của cán bộ."
           countLabel={
             filteredStaff.length === staff.length
               ? `${staff.length} cán bộ · ${data.teams.length} phòng ban`
@@ -604,7 +604,7 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                       pagination={false}
                       size="middle"
                       tableLayout="fixed"
-                      scroll={{ x: canManageAccounts ? 800 : 670 }}
+                      scroll={{ x: canManageAccounts ? 860 : 730 }}
                       rowClassName={(person) => (person.accountActive ? "" : "[&>td]:!bg-rose-50/40")}
                       className="[&_.ant-table-thead>tr>th]:bg-slate-50/90 [&_.ant-table-thead>tr>th]:py-2.5 [&_.ant-table-thead>tr>th]:text-[13px] [&_.ant-table-thead>tr>th]:font-bold [&_.ant-table-thead>tr>th]:text-slate-600 [&_.ant-table-tbody>tr>td]:py-2 [&_.ant-table-tbody>tr>td]:!align-middle [&_.ant-table-thead_th::before]:!hidden [&_.ant-table-thead_th:before]:!content-none"
                       onRow={(person) => ({
