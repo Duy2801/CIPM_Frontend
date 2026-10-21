@@ -13,6 +13,7 @@ import type { PersonnelDataset, StaffInput, Team, TeamId } from "../types/person
 import type { CustomFieldDefinition, CustomFieldType } from "../types/custom-fields.types";
 import { getCustomFields, saveCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
 import { mockPersonnelRepository } from "../services/mock-personnel.repository";
+import { dobGetValueProps, dobInputProps, dobNormalize } from "../utils/dob-date";
 import { useLockedTitles } from "../hooks/useLockedTitles";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
@@ -637,8 +638,11 @@ export default function StaffModal({ data, errorText, onClose, onCreate }: Staff
                 name="dob"
                 label="Ngày sinh"
                 rules={[{ required: true, message: "Vui lòng chọn ngày sinh." }]}
+                getValueProps={dobGetValueProps}
+                normalize={dobNormalize}
               >
-                <Input type="date" className="w-full" />
+                {/* Ô ngày của trình duyệt: chọn trên lịch, không cho gõ tay; lưu dạng dd/mm/yyyy như hồ sơ cán bộ */}
+                <Input {...dobInputProps()} className="w-full cursor-pointer" />
               </Form.Item>
             </Col>
 

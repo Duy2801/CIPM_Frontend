@@ -4,21 +4,23 @@ import { useState } from "react";
 import { CalendarOutlined, FormOutlined } from "@ant-design/icons";
 import { App } from "antd";
 import { Button, Form, Input, Select, Text } from "@/components/ui";
-import type { Employment, PersonnelProject, Staff, StaffInput, Team } from "../types/personnel.types";
+import type { Employment, PersonnelProject, Staff, StaffInput, Team, TeamId } from "../types/personnel.types";
 import type { CustomFieldDefinition } from "../types/custom-fields.types";
 import { getCustomFields } from "../utils/custom-fields-storage";
+import { dobGetValueProps, dobInputProps, dobNormalize } from "../utils/dob-date";
 
 interface StaffInfoCardProps {
   staff: Staff;
   team?: Team;
+  /** Danh sách phòng ban để đổi phòng ban của cán bộ */
+  teams: Team[];
   relatedProjects: { project: PersonnelProject; roleText: string }[];
-  /** Chức danh của cán bộ đang tắt → hiện "Chưa có chức danh" */
-  titleLocked?: boolean;
   /** Có truyền thì các ô thông tin bấm vào sửa trực tiếp được, lưu sau khi xác nhận */
   onSave?: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => Promise<boolean>;
 }
 
 interface StaffInfoFormValues {
+  teamId: TeamId;
   email: string;
   phone?: string;
   employment: Employment;
@@ -29,16 +31,19 @@ interface StaffInfoFormValues {
 
 const EMPTY_TEXT = <span className="font-normal italic text-slate-400">Chưa cập nhật</span>;
 
-/** Ô nhập "trong suốt": trông như giá trị đang hiển thị, bấm vào là sửa được ngay */
-const INLINE_INPUT_CLASS = "!px-0 !font-semibold !text-slate-800 placeholder:!font-normal placeholder:!italic";
+/** Ô nhập "trong suốt": trông như giá trị đang hiển thị, bấm vào là sửa được ngay.
+ *  Ô nhập và ô chọn cùng đệm 8px; phần điều khiển nới ra 8px mỗi bên (-mx-2) để chữ thẳng với nhãn
+ *  mà viền khi đang nhập vẫn có khoảng thở, không dính sát chữ. */
+const INLINE_INPUT_CLASS =
+  "!px-2 !rounded-md !font-semibold !text-slate-800 placeholder:!font-normal placeholder:!italic";
 const INLINE_SELECT_CLASS =
-  "w-full [&_.ant-select-selector]:!px-0 [&_.ant-select-content]:!font-semibold [&_.ant-select-content]:!text-slate-800";
+  "w-full !px-2 !rounded-md [&_.ant-select-selector]:!px-0 [&_.ant-select-content]:!font-semibold [&_.ant-select-content]:!text-slate-800";
 
 function FieldBox({ label, editable, children }: { label: string; editable?: boolean; children: React.ReactNode }) {
   return (
     // Dùng <label> để bấm vào bất kỳ đâu trong ô (kể cả biểu tượng bút) là con trỏ vào ô nhập luôn
     <label
-      className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-colors ${
+      className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
         editable
           ? "cursor-text border-slate-200/70 bg-slate-50/50 hover:border-[#DC2626]/40 hover:bg-white focus-within:border-[#DC2626]/60 focus-within:bg-white focus-within:shadow-xs"
           : "border-slate-200/70 bg-slate-50/50"
@@ -57,14 +62,16 @@ function FieldBox({ label, editable, children }: { label: string; editable?: boo
 const isEmptyValue = (val: unknown) => val === undefined || val === null || val === "";
 const sameValue = (a: unknown, b: unknown) => (isEmptyValue(a) && isEmptyValue(b)) || String(a ?? "").trim() === String(b ?? "").trim();
 
-export default function StaffInfoCard({ staff, team, relatedProjects, titleLocked, onSave }: StaffInfoCardProps) {
+export default function StaffInfoCard({ staff, team, teams, relatedProjects, onSave }: StaffInfoCardProps) {
   const { modal } = App.useApp();
   const [form] = Form.useForm<StaffInfoFormValues>();
   const [saving, setSaving] = useState(false);
   const [customFieldDefs] = useState<CustomFieldDefinition[]>(() => getCustomFields("staff"));
   const editable = Boolean(onSave);
+  const teamName = (id?: string) => teams.find((t) => t.id === id)?.name ?? id;
 
   const initialValues: StaffInfoFormValues = {
+    teamId: staff.teamId,
     email: staff.email,
     phone: staff.phone,
     employment: staff.employment,
@@ -76,6 +83,7 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
   // So sánh giá trị đang nhập với hồ sơ để biết có thay đổi nào chưa lưu
   const watched = Form.useWatch([], form) as StaffInfoFormValues | undefined;
   const fieldLabels: { key: keyof Omit<StaffInfoFormValues, "customFields">; label: string }[] = [
+    { key: "teamId", label: "Phòng ban" },
     { key: "email", label: "Email công vụ" },
     { key: "phone", label: "Số điện thoại" },
     { key: "employment", label: "Hình thức tuyển dụng" },
@@ -86,7 +94,12 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
     ? [
         ...fieldLabels
           .filter(({ key }) => key in watched && !sameValue(watched[key], staff[key]))
-          .map(({ key, label }) => ({ label, from: staff[key], to: watched[key] })),
+          .map(({ key, label }) => ({
+            label,
+            // Phòng ban: hiện tên thay vì mã
+            from: key === "teamId" ? teamName(staff.teamId) : staff[key],
+            to: key === "teamId" ? teamName(watched.teamId) : watched[key],
+          })),
         ...customFieldDefs
           .filter((def) => watched.customFields && !sameValue(watched.customFields[def.name], staff.customFields?.[def.name]))
           .map((def) => ({ label: def.label, from: staff.customFields?.[def.name], to: watched.customFields?.[def.name] })),
@@ -116,6 +129,7 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
       await onSave(
         staff.id,
         {
+          teamId: values.teamId,
           email: values.email.trim(),
           phone: values.phone?.trim() || "",
           employment: values.employment,
@@ -170,7 +184,7 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
     });
   };
 
-  const formItemClass = "!mb-0 [&_.ant-form-item-explain]:text-[11px]";
+  const formItemClass = "!mb-0 mt-0.5 -mx-2 [&_.ant-form-item-explain]:px-2 [&_.ant-form-item-explain]:text-[11px]";
 
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
@@ -181,13 +195,23 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
 
       <Form form={form} layout="vertical" requiredMark={false} initialValues={initialValues}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          {/* Phòng ban, chức danh đổi qua tab "Chức danh" nên luôn chỉ đọc */}
-          <FieldBox label="Phòng ban / Tổ chuyên môn">{team?.name || EMPTY_TEXT}</FieldBox>
-          <FieldBox label="Chức danh">
-            {titleLocked ? (
-              <span className="font-normal italic text-slate-400">Chưa có chức danh ({staff.title} đã tắt / xóa)</span>
+          {/* Chức danh đổi ở tab "Chức danh & quyền hạn"; phòng ban đổi trực tiếp tại đây */}
+          <FieldBox label="Phòng ban / Tổ chuyên môn" editable={editable}>
+            {editable ? (
+              <Form.Item name="teamId" className={formItemClass} rules={[{ required: true, message: "Vui lòng chọn phòng ban." }]}>
+                <Select
+                  size="small"
+                  variant="borderless"
+                  showSearch
+                  suffixIcon={null}
+                  className={INLINE_SELECT_CLASS}
+                  optionFilterProp="label"
+                  popupMatchSelectWidth={false}
+                  options={teams.map((t) => ({ value: t.id, label: t.name }))}
+                />
+              </Form.Item>
             ) : (
-              staff.title || EMPTY_TEXT
+              team?.name || EMPTY_TEXT
             )}
           </FieldBox>
 
@@ -263,18 +287,9 @@ export default function StaffInfoCard({ staff, team, relatedProjects, titleLocke
 
           <FieldBox label="Ngày sinh" editable={editable}>
             {editable ? (
-              <Form.Item
-                name="dob"
-                className={formItemClass}
-                rules={[{ pattern: /^\d{2}\/\d{2}\/\d{4}$/, message: "Nhập theo dạng dd/mm/yyyy." }]}
-              >
-                <Input
-                  size="small"
-                  variant="borderless"
-                  className={INLINE_INPUT_CLASS}
-                  prefix={<CalendarOutlined className="text-slate-400" />}
-                  placeholder="dd/mm/yyyy"
-                />
+              <Form.Item name="dob" className={formItemClass} getValueProps={dobGetValueProps} normalize={dobNormalize}>
+                {/* Ô ngày của trình duyệt: chọn trên lịch, không cho gõ tay */}
+                <Input size="small" variant="borderless" {...dobInputProps()} className={`cursor-pointer ${INLINE_INPUT_CLASS}`} />
               </Form.Item>
             ) : staff.dob ? (
               <span className="inline-flex items-center gap-1.5">

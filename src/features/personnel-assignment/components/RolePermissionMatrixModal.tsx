@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { App } from "antd";
-import { Button, Input, Modal, Table, Title, Tooltip, toast } from "@/components/ui";
+import { Button, Input, Modal, Switch, Table, Title, Tooltip, toast } from "@/components/ui";
 import type { ColumnsType } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import type { MatrixRole } from "../constants/role-matrix-data";
@@ -51,7 +51,6 @@ export default function RolePermissionMatrixModal({
     permissions,
     hasPermission,
     addCustomRole,
-    deleteRole,
     lockedRoleCodes,
     setRoleLocked,
     renameRole,
@@ -114,25 +113,6 @@ export default function RolePermissionMatrixModal({
       cancelText: "Hủy",
       okButtonProps: { danger: true },
       onOk: () => setRoleLocked(role.code, true),
-    });
-  };
-
-  const handleDelete = (role: MatrixRole) => {
-    modal.confirm({
-      centered: true,
-      width: 420,
-      icon: null,
-      title: `Xóa chức danh "${role.name}"?`,
-      content: (
-        <p className="m-0 text-xs leading-relaxed text-slate-600">
-          Chức danh và các quyền đã cấu hình cho chức danh này sẽ bị xóa khỏi hệ thống. Cán bộ đang giữ chức danh này
-          sẽ không còn chức danh và quyền hạn.
-        </p>
-      ),
-      okText: "Xóa chức danh",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk: () => deleteRole(role.code),
     });
   };
 
@@ -225,18 +205,19 @@ export default function RolePermissionMatrixModal({
               className="!h-8 !w-8 !p-0"
             />
           </Tooltip>
-          {canManage && (
-            <Tooltip title="Xóa">
-              <Button
-                intent="outline"
-                scale="compact"
-                aria-label="Xóa"
-                icon={<DeleteOutlined className="text-rose-500" />}
-                onClick={() => handleDelete(role)}
-                className="!h-8 !w-8 !p-0 hover:!border-rose-300 hover:!bg-rose-50"
-              />
-            </Tooltip>
-          )}
+          {/* Bật / tắt chức danh ngay trên dòng: tắt thì hỏi xác nhận trước */}
+          <Tooltip
+            title={
+              lockedRoleCodes.includes(role.code) ? "Chức danh đang tắt, bấm để bật lại" : "Chức danh đang bật, bấm để tắt"
+            }
+          >
+            <Switch
+              aria-label="Bật / tắt chức danh"
+              checked={!lockedRoleCodes.includes(role.code)}
+              disabled={!canManage}
+              onChange={() => handleToggleLock(role)}
+            />
+          </Tooltip>
         </div>
       ),
     },
@@ -266,8 +247,6 @@ export default function RolePermissionMatrixModal({
             modules={modules}
             permissions={permissions}
             initialPermIds={editingRole ? getRolePermIds(editingRole.code) : []}
-            isLocked={editingRole ? lockedRoleCodes.includes(editingRole.code) : false}
-            onToggleLock={editingRole ? () => handleToggleLock(editingRole) : undefined}
             readOnly={!canManage}
             onBack={() => setView({ mode: "list" })}
             onSubmit={(name, permIds) =>

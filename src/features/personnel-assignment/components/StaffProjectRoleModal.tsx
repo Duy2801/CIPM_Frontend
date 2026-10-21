@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircleFilled,
   CrownOutlined,
-  IdcardOutlined,
   InfoCircleOutlined,
   LockOutlined,
   ProjectOutlined,
@@ -191,7 +190,7 @@ export const GRANTABLE_PERMISSION_OPTIONS = [
 
 const normalizeTitle = (title?: string) => (title || "").trim().toLowerCase();
 
-type StaffDetailTab = "info" | "title" | "permissions" | "cnda";
+type StaffDetailTab = "info" | "role" | "cnda";
 
 interface StaffProjectRoleModalProps {
   staff: Staff | null;
@@ -591,8 +590,7 @@ export default function StaffProjectRoleModal({
   const hasCndaProjects = rbacProfile.actingDirectorProjects.length > 0;
   const tabItems: SegmentedTabItem<StaffDetailTab>[] = [
     { key: "info", icon: <UserOutlined />, label: "Thông tin cá nhân" },
-    ...(canChangeTitle ? [{ key: "title" as const, icon: <IdcardOutlined />, label: "Chức danh" }] : []),
-    { key: "permissions", icon: <SafetyCertificateOutlined />, label: "Quyền hạn" },
+    { key: "role", icon: <SafetyCertificateOutlined />, label: "Chức danh & quyền hạn" },
     ...(hasCndaProjects
       ? [
           {
@@ -783,7 +781,7 @@ export default function StaffProjectRoleModal({
         )}
       </div>
 
-      {/* THANH TAB: Thông tin cá nhân / Chức danh / Quyền hạn / Quyền CNDA */}
+      {/* THANH TAB: Thông tin cá nhân / Chức danh & quyền hạn / Quyền CNDA */}
       {!isPromoting && (
         <SegmentedTabs className="mb-4" activeKey={currentTab} onChange={setActiveTab} items={tabItems} />
       )}
@@ -794,19 +792,19 @@ export default function StaffProjectRoleModal({
           key={`info-${staff.id}`}
           staff={staff}
           team={team}
+          teams={data.teams}
           relatedProjects={relatedProjects}
-          titleLocked={titleLocked}
           onSave={canEditInfo ? onUpdateStaff : undefined}
         />
       )}
 
-      {/* 2b. CHỨC DANH: mỗi cán bộ một chức danh, chọn trong danh sách */}
-      {!isPromoting && currentTab === "title" && canChangeTitle && onUpdateStaff && (
-        <RoleAdjustPanel key={`roles-${staff.id}`} staff={staff} data={data} onUpdateStaff={onUpdateStaff} />
+      {/* 2b. CHỨC DANH (mỗi cán bộ một chức danh) + QUYỀN HẠN theo chức danh, cùng một tab */}
+      {!isPromoting && currentTab === "role" && canChangeTitle && onUpdateStaff && (
+        <div className="mb-4">
+          <RoleAdjustPanel key={`roles-${staff.id}`} staff={staff} data={data} onUpdateStaff={onUpdateStaff} />
+        </div>
       )}
-
-      {/* 3. QUYỀN HẠN HỆ THỐNG & NGHIỆP VỤ CHUYÊN MÔN */}
-      {!isPromoting && currentTab === "permissions" && (
+      {!isPromoting && currentTab === "role" && (
         <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
           <div className="mb-1 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
