@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Flex, Form, Input, Text, useForm } from "@/components/ui";
 import type { LoginCredentials } from "../types/auth.types";
@@ -8,26 +7,13 @@ import type { LoginCredentials } from "../types/auth.types";
 interface LoginFormProps {
   onSubmit: (values: LoginCredentials) => void;
   loading?: boolean;
-  initialUsername?: string;
-  initialPassword?: string;
 }
 
 export default function LoginForm({
   onSubmit,
   loading = false,
-  initialUsername = "",
-  initialPassword = "",
 }: LoginFormProps) {
   const [form] = useForm<LoginCredentials>();
-
-  React.useEffect(() => {
-    if (initialUsername) {
-      form.setFieldsValue({
-        username: initialUsername,
-        password: initialPassword || "123456",
-      });
-    }
-  }, [initialUsername, initialPassword, form]);
 
   const onFinish = (values: LoginCredentials) => {
     onSubmit({

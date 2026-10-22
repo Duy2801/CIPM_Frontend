@@ -62,13 +62,6 @@ export function useAuth() {
     }
   }, [clearAuth]);
 
-  const handleQuickLogin = useCallback(
-    async (username: string, password: string = "123456") => {
-      return handleLogin({ username, password, rememberMe: true });
-    },
-    [handleLogin],
-  );
-
   return {
     accessToken,
     currentUser: user,
@@ -76,7 +69,6 @@ export function useAuth() {
     loading,
     login: handleLogin,
     logout: handleLogout,
-    quickLogin: handleQuickLogin,
     user,
   };
 }

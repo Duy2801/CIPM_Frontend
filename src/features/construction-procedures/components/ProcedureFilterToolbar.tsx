@@ -8,7 +8,6 @@ import {
   CheckOutlined,
   DollarCircleOutlined,
   FilterOutlined,
-  HistoryOutlined,
   PlusOutlined,
   ProjectOutlined,
   SearchOutlined,
@@ -45,7 +44,6 @@ interface ProcedureFilterToolbarProps {
   availableDepartments?: string[];
   viewMode: ProcedureViewMode;
   onViewModeChange: (mode: ProcedureViewMode) => void;
-  onOpenAuditLog: () => void;
   onOpenStepConfig?: () => void;
   onOpenAddDeptProcedure?: () => void;
   userDepartment?: string;
@@ -87,7 +85,6 @@ export default function ProcedureFilterToolbar({
   availableDepartments = [],
   viewMode,
   onViewModeChange,
-  onOpenAuditLog,
   onOpenStepConfig,
   onOpenAddDeptProcedure,
   userDepartment,
@@ -163,16 +160,6 @@ export default function ProcedureFilterToolbar({
               Cấu hình quy trình
             </Button>
           )}
-
-          <Button
-            intent="outline"
-            scale="compact"
-            icon={<HistoryOutlined />}
-            onClick={onOpenAuditLog}
-            className="h-9 text-xs font-semibold text-slate-700 hover:border-[#DC2626] hover:text-[#DC2626] shadow-2xs"
-          >
-            Nhật ký thay đổi
-          </Button>
         </div>
       </div>
 

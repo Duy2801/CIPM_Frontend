@@ -33,5 +33,4 @@ export { useAuth } from "./hooks/useAuth";
 
 // Components
 export { default as LoginForm } from "./components/LoginForm";
-export { default as QuickRoleSelector } from "./components/QuickRoleSelector";
 export { default as LoginView } from "./components/LoginView";

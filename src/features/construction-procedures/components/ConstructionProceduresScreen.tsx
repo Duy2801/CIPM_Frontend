@@ -6,6 +6,8 @@ import {
   CheckCircleFilled,
   CheckOutlined,
   CloseOutlined,
+  FileTextOutlined,
+  HistoryOutlined,
   HourglassOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
@@ -36,7 +38,7 @@ import ProcedureFilterToolbar from "./ProcedureFilterToolbar";
 import ProcedureStepList from "./ProcedureStepList";
 import CompleteStepModal from "./CompleteStepModal";
 import DocumentManagerModal from "./DocumentManagerModal";
-import ProcedureAuditLogModal from "./ProcedureAuditLogModal";
+import ProcedureHistoryPanel from "./ProcedureHistoryPanel";
 import ProcedureStepDetailDrawer from "./ProcedureStepDetailDrawer";
 import SkipStepModal from "./SkipStepModal";
 import StepConfigModal from "./StepConfigModal";
@@ -321,7 +323,8 @@ export default function ConstructionProceduresScreen() {
     useState<ProcedureStep | null>(null);
   const [docsOriginStep, setDocsOriginStep] = useState<ProcedureStep | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
-  const [isAuditLogOpen, setIsAuditLogOpen] = useState<boolean>(false);
+  // 2 tab trên cùng: danh sách hồ sơ thủ tục / lịch sử thay đổi
+  const [screenTab, setScreenTab] = useState<"procedures" | "history">("procedures");
   const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState<boolean>(false);
   const [isDirectorRejectModalOpen, setIsDirectorRejectModalOpen] = useState<boolean>(false);
   const [directorRejectReason, setDirectorRejectReason] = useState<string>("");
@@ -1305,84 +1308,116 @@ export default function ConstructionProceduresScreen() {
 
   return (
     <section className="w-full max-w-[2560px] mx-auto space-y-3">
-      {/* 2. Banner Thông báo cho Lead nếu phòng ban đã xong hết bước nhưng chưa xác nhận */}
-      <ProcedureFilterToolbar
-        projects={mergedProjectsData}
-        selectedProjectId={selectedProjectId}
-        onSelectProject={setSelectedProjectId}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        departmentFilter={departmentFilter}
-        onDepartmentFilterChange={setDepartmentFilter}
-        availableDepartments={projectDepartments}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onOpenAuditLog={() => setIsAuditLogOpen(true)}
-        onOpenStepConfig={() => setIsConfigOpen(true)}
-        onOpenAddDeptProcedure={() => setIsAddDeptModalOpen(true)}
-        userDepartment={userDept}
-        isLeadOfDept={isLeadOfUserDept}
-        canConfirmDeptComplete={allStepsInDeptDone && !isDeptCompletedByLead}
-        isDeptCompletedByLead={isDeptCompletedByLead}
-        onConfirmDeptComplete={() => userDept && handleConfirmDepartmentComplete(userDept)}
-        procedureProfiles={allProcedureProfiles}
-        selectedProcedureId={selectedProcedureId}
-        onSelectProcedure={handleSelectProcedure}
-        canUpdateProcedure={canUpdateProcedure}
-        canConfigureProcedure={canConfigureProcedure}
-      />
+      {/* Tab nhỏ gọn: rộng vừa chữ, icon cùng hàng với chữ (đồng bộ các phân hệ) */}
+      <div role="tablist" className="inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-100/70 p-0.5">
+        {(
+          [
+            { key: "procedures", icon: <FileTextOutlined />, label: "Danh sách hồ sơ" },
+            { key: "history", icon: <HistoryOutlined />, label: "Lịch sử thay đổi" },
+          ] as const
+        ).map((tab) => {
+          const active = screenTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setScreenTab(tab.key)}
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors ${
+                active ? "bg-white font-semibold text-slate-900 shadow-xs" : "font-medium text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span className={active ? "text-[#DC2626]" : "text-slate-400"}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* 4. Danh sách các bước thủ tục */}
-      <div className="pt-2 sm:pt-3">
-        {!currentProject ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-500 shadow-2xs">
-            <p className="text-sm font-semibold text-slate-700 m-0">Chưa có dự án nào trong hệ thống</p>
-            <p className="text-xs text-slate-400 mt-1 mb-0">Vui lòng tạo dự án mới tại phân hệ Quản lý dự án để theo dõi quy trình thủ tục</p>
-          </div>
-        ) : (
-          <ProcedureStepList
-            steps={displayedSteps}
+      {screenTab === "history" ? (
+        <ProcedureHistoryPanel projects={mergedProjectsData} />
+      ) : (
+        <>
+          {/* 2. Banner Thông báo cho Lead nếu phòng ban đã xong hết bước nhưng chưa xác nhận */}
+          <ProcedureFilterToolbar
+            projects={mergedProjectsData}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
             searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
             statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            departmentFilter={departmentFilter}
+            onDepartmentFilterChange={setDepartmentFilter}
+            availableDepartments={projectDepartments}
             viewMode={viewMode}
-            onStartStep={handleStartStep}
-            onOpenCompleteModal={(step) => setActiveStepForComplete(step)}
-            onConfirmCompleteStep={(stepId) => {
-              handleConfirmComplete(stepId, {
-                actualEndDate: new Date().toISOString().slice(0, 10),
-              });
-            }}
-            onOpenSkipModal={(step) => setActiveStepForSkip(step)}
-            onOpenDocsModal={(step) => setActiveStepForDocs(step)}
-            onOpenDetailStep={(step) => setDetailStep(step)}
-            canUpdateProcedure={canUpdateProcedure}
-            canConfigureProcedure={canConfigureProcedure}
-            canApproveProcedure={canApproveProcedure}
+            onViewModeChange={setViewMode}
             onOpenStepConfig={() => setIsConfigOpen(true)}
             onOpenAddDeptProcedure={() => setIsAddDeptModalOpen(true)}
-            isLeadOfDept={isLeadOfUserDept}
             userDepartment={userDept}
-            isDirector={canApproveProcedure}
+            isLeadOfDept={isLeadOfUserDept}
+            canConfirmDeptComplete={allStepsInDeptDone && !isDeptCompletedByLead}
             isDeptCompletedByLead={isDeptCompletedByLead}
-            onAssignMember={handleAssignMember}
-            onApproveStep={handleApproveStep}
-            onRejectStep={handleRejectStep}
-            onLeadApproveStage={handleLeadApproveStage}
-            onLeadRejectStage={handleLeadRejectStage}
-            stageApprovals={currentProject?.stageApprovals}
-            onDirectorApproveStage={(stageCode, stageTitle) => handleDirectorApprove(stageCode, stageTitle)}
-            onDirectorRejectStage={(stageCode, stageTitle) => {
-              setDirectorRejectStageKey(stageCode);
-              setDirectorRejectStageTitle(stageTitle);
-              setDirectorRejectDept(departmentFilter || "ALL");
-              setDirectorRejectReason(`Yêu cầu rà soát và hoàn thiện lại giai đoạn [${stageTitle}]`);
-              setIsDirectorRejectModalOpen(true);
-            }}
+            onConfirmDeptComplete={() => userDept && handleConfirmDepartmentComplete(userDept)}
+            procedureProfiles={allProcedureProfiles}
+            selectedProcedureId={selectedProcedureId}
+            onSelectProcedure={handleSelectProcedure}
+            canUpdateProcedure={canUpdateProcedure}
+            canConfigureProcedure={canConfigureProcedure}
           />
-        )}
-      </div>
+
+          {/* 4. Danh sách các bước thủ tục */}
+          <div className="pt-2 sm:pt-3">
+            {!currentProject ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-500 shadow-2xs">
+                <p className="text-sm font-semibold text-slate-700 m-0">Chưa có dự án nào trong hệ thống</p>
+                <p className="text-xs text-slate-400 mt-1 mb-0">Vui lòng tạo dự án mới tại phân hệ Quản lý dự án để theo dõi quy trình thủ tục</p>
+              </div>
+            ) : (
+              <ProcedureStepList
+                steps={displayedSteps}
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                viewMode={viewMode}
+                onStartStep={handleStartStep}
+                onOpenCompleteModal={(step) => setActiveStepForComplete(step)}
+                onConfirmCompleteStep={(stepId) => {
+                  handleConfirmComplete(stepId, {
+                    actualEndDate: new Date().toISOString().slice(0, 10),
+                  });
+                }}
+                onOpenSkipModal={(step) => setActiveStepForSkip(step)}
+                onOpenDocsModal={(step) => setActiveStepForDocs(step)}
+                onOpenDetailStep={(step) => setDetailStep(step)}
+                canUpdateProcedure={canUpdateProcedure}
+                canConfigureProcedure={canConfigureProcedure}
+                canApproveProcedure={canApproveProcedure}
+                onOpenStepConfig={() => setIsConfigOpen(true)}
+                onOpenAddDeptProcedure={() => setIsAddDeptModalOpen(true)}
+                isLeadOfDept={isLeadOfUserDept}
+                userDepartment={userDept}
+                isDirector={canApproveProcedure}
+                isDeptCompletedByLead={isDeptCompletedByLead}
+                onAssignMember={handleAssignMember}
+                onApproveStep={handleApproveStep}
+                onRejectStep={handleRejectStep}
+                onLeadApproveStage={handleLeadApproveStage}
+                onLeadRejectStage={handleLeadRejectStage}
+                stageApprovals={currentProject?.stageApprovals}
+                onDirectorApproveStage={(stageCode, stageTitle) => handleDirectorApprove(stageCode, stageTitle)}
+                onDirectorRejectStage={(stageCode, stageTitle) => {
+                  setDirectorRejectStageKey(stageCode);
+                  setDirectorRejectStageTitle(stageTitle);
+                  setDirectorRejectDept(departmentFilter || "ALL");
+                  setDirectorRejectReason(`Yêu cầu rà soát và hoàn thiện lại giai đoạn [${stageTitle}]`);
+                  setIsDirectorRejectModalOpen(true);
+                }}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {/* 5. Modal Hoàn thành bước (Quy tắc 10) */}
       <CompleteStepModal
@@ -1433,15 +1468,6 @@ export default function ConstructionProceduresScreen() {
             : undefined
         }
         onAddDocument={handleAddDocument}
-      />
-
-      {/* 9. Modal Nhật ký Kiểm toán Lưu vết Vĩnh viễn (Quy tắc 11) */}
-      <ProcedureAuditLogModal
-        open={isAuditLogOpen}
-        onClose={() => setIsAuditLogOpen(false)}
-        history={currentProject?.history || []}
-        steps={currentProject?.steps || []}
-        projectName={currentProject?.projectName || ""}
       />
 
       {/* 10. Drawer Chi tiết bước thủ tục */}
