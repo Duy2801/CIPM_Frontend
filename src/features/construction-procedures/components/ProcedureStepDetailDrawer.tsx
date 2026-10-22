@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { App } from "antd";
 import {
   AlertFilled,
   CalendarOutlined,
@@ -21,9 +22,6 @@ import {
   ReloadOutlined,
   StopOutlined,
   TeamOutlined,
-  UploadOutlined,
-  UserOutlined,
-  WarningOutlined,
 } from "@ant-design/icons";
 import { Button, Drawer, Flex, Input, Modal, Select, Tag, Text, Tooltip, toast } from "@/components/ui";
 import {
@@ -35,10 +33,38 @@ import type { ProcedureDocument, ProcedureStep } from "../types/procedure.types"
 import { useAuth } from "@/features/auth";
 import {
   getDepartmentStaff,
-  isDirectorUser,
   isLeadOfDepartment,
 } from "../constants/procedure-department-templates";
 import { canUserDo, hasMatrixPermission } from "@/access-control";
+import { InlineEditField } from "@/components/workspace";
+
+/** Thông tin bước sửa nhanh bằng bút chì trong drawer */
+export type ProcedureStepInfoPatch = Partial<
+  Pick<
+    ProcedureStep,
+    "name" | "type" | "startDatePlanned" | "endDatePlanned" | "plannedDays" | "durationMargin" | "durationDaysMin" | "durationDaysMax"
+  >
+>;
+
+/** Số ngày kế hoạch (tính cả ngày đầu và ngày cuối) từ 2 ngày yyyy-mm-dd */
+function countPlannedDays(start?: string, end?: string): number | undefined {
+  if (!start || !end) return undefined;
+  const diff = (new Date(end).getTime() - new Date(start).getTime()) / 86_400_000;
+  return Number.isFinite(diff) && diff >= 0 ? Math.round(diff) + 1 : undefined;
+}
+
+/** Ngày kế hoạch mới kèm số ngày / biên độ tự tính */
+function buildPlannedDates(start?: string, end?: string): ProcedureStepInfoPatch {
+  const days = countPlannedDays(start, end);
+  return {
+    startDatePlanned: start || undefined,
+    endDatePlanned: end || undefined,
+    plannedDays: days,
+    durationMargin: days ? `${days} ngày` : "Theo quy định",
+    durationDaysMin: days,
+    durationDaysMax: days,
+  };
+}
 
 interface ProcedureStepDetailDrawerProps {
   step: ProcedureStep | null;
@@ -50,13 +76,14 @@ interface ProcedureStepDetailDrawerProps {
   onOpenCompleteModal: (step: ProcedureStep) => void;
   onConfirmCompleteStep?: (stepId: string) => void;
   onOpenSkipModal: (step: ProcedureStep) => void;
-  onOpenDocsModal: (step: ProcedureStep) => void;
   canUpdateProcedure?: boolean;
   onAssignMember?: (stepId: string, memberName: string) => void;
   onApproveStep?: (stepId: string) => void;
   onRejectStep?: (stepId: string, reason: string) => void;
   onAddDocument?: (stepId: string, doc: ProcedureDocument) => void;
   onDeleteDocument?: (stepId: string, docId: string) => void;
+  /** Lưu thông tin bước sửa bằng bút chì (tên, phân loại, ngày kế hoạch); không truyền = chỉ xem */
+  onUpdateStep?: (stepId: string, patch: ProcedureStepInfoPatch) => void;
 }
 
 function formatDate(value?: string) {
@@ -73,17 +100,20 @@ export default function ProcedureStepDetailDrawer({
   onOpenCompleteModal,
   onConfirmCompleteStep,
   onOpenSkipModal,
-  onOpenDocsModal,
   canUpdateProcedure = true,
   onAssignMember,
   onApproveStep,
   onRejectStep,
   onAddDocument,
   onDeleteDocument,
+  onUpdateStep,
 }: ProcedureStepDetailDrawerProps) {
   const { user } = useAuth();
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const { modal } = App.useApp();
+  // Các trường đã sửa bằng bút chì nhưng chưa bấm "Lưu thay đổi" (gắn với mã bước: đổi bước là bỏ)
+  const [pending, setPending] = useState<{ stepId: string; patch: ProcedureStepInfoPatch } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!step) return null;
@@ -192,7 +222,6 @@ export default function ProcedureStepDetailDrawer({
   const isDisabled = !step.isEnabled;
 
   // Xác định vai trò & quyền hạn theo Ma trận phân quyền
-  const isDirector = isDirectorUser(user);
   const isLeadOfThisStep = isLeadOfDepartment(user, step.department);
   const userName = (user?.displayName || user?.name || "").trim().toLowerCase();
   const assignedName = (step.assignedTo || "").trim().toLowerCase();
@@ -256,23 +285,114 @@ export default function ProcedureStepDetailDrawer({
     return <Tag intent="subtle">Chưa bắt đầu</Tag>;
   };
 
-  const facts = [
-    { label: "Dự án áp dụng", value: projectName, wide: true },
-    { label: "Phòng ban phụ trách", value: step.department || step.responsibleUnit, wide: true },
-    { label: "Nhóm giai đoạn", value: `${step.groupCode}. ${step.groupTitle}`, wide: true },
-    { label: "Mã bước", value: `Bước ${step.code}` },
-    { label: "Phân loại", value: step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện" },
-    { label: "Biên độ thời gian", value: step.durationMargin },
-    { label: "Thời gian kế hoạch", value: step.plannedDays ? `${step.plannedDays} ngày` : step.durationMargin },
-    { label: "Bắt đầu kế hoạch", value: formatDate(step.startDatePlanned) },
-    { label: "Hạn kế hoạch", value: formatDate(step.endDatePlanned) },
-    { label: "Bắt đầu thực tế", value: formatDate(step.actualStartDate) },
-    ...(step.actualEndDate ? [{ label: "Hoàn thành thực tế", value: formatDate(step.actualEndDate) }] : []),
-    {
-      label: "Hồ sơ pháp lý đính kèm",
-      value: `${step.attachments.length} văn bản`,
-    },
-  ];
+  // Người phê duyệt chỉ có khi bước đã được duyệt (bị từ chối / nộp lại thì chưa có)
+  const approverName = step.submissionStatus === "APPROVED" || isCompleted ? step.approvedBy : undefined;
+
+  // Sửa thông tin bước: người có quyền phân công / cấu hình, bước chưa xong và chưa tắt
+  const canEditInfo = Boolean(onUpdateStep) && canAssignStep && !isCompleted && !isDisabled;
+  const pendingPatch: ProcedureStepInfoPatch = pending?.stepId === step.id ? pending.patch : {};
+  // Bước đang hiển thị = bản gốc + các trường đang sửa
+  const view: ProcedureStep = { ...step, ...pendingPatch };
+  const isChanged = (field: "name" | "type" | "startDatePlanned" | "endDatePlanned") => field in pendingPatch;
+
+  // Ghi nhận trường vừa sửa; sửa về đúng giá trị cũ thì bỏ khỏi danh sách chờ lưu
+  const saveInfo = canEditInfo
+    ? (patch: ProcedureStepInfoPatch) => {
+        const next: ProcedureStepInfoPatch = { ...pendingPatch, ...patch };
+        if (next.name === step.name) delete next.name;
+        if (next.type === step.type) delete next.type;
+        const sameDates =
+          (next.startDatePlanned ?? step.startDatePlanned) === step.startDatePlanned &&
+          (next.endDatePlanned ?? step.endDatePlanned) === step.endDatePlanned;
+        if (sameDates) {
+          for (const key of [
+            "startDatePlanned",
+            "endDatePlanned",
+            "plannedDays",
+            "durationMargin",
+            "durationDaysMin",
+            "durationDaysMax",
+          ] as const) {
+            delete next[key];
+          }
+        }
+        setPending({ stepId: step.id, patch: next });
+      }
+    : undefined;
+
+  // Danh sách thay đổi "cũ → mới" để xác nhận trước khi lưu
+  const typeLabel = (t?: string) => (t === "MANDATORY" ? "Bắt buộc" : t === "CONDITIONAL" ? "Điều kiện" : "");
+  const pendingChanges = [
+    "name" in pendingPatch ? { label: "Tên bước", from: step.name, to: view.name } : null,
+    "type" in pendingPatch ? { label: "Phân loại", from: typeLabel(step.type), to: typeLabel(view.type) } : null,
+    "startDatePlanned" in pendingPatch && pendingPatch.startDatePlanned !== step.startDatePlanned
+      ? { label: "Bắt đầu kế hoạch", from: formatDate(step.startDatePlanned), to: formatDate(view.startDatePlanned) }
+      : null,
+    "endDatePlanned" in pendingPatch && pendingPatch.endDatePlanned !== step.endDatePlanned
+      ? { label: "Hạn kế hoạch", from: formatDate(step.endDatePlanned), to: formatDate(view.endDatePlanned) }
+      : null,
+  ].filter((c): c is { label: string; from: string; to: string } => Boolean(c));
+  const isDirty = Object.keys(pendingPatch).length > 0;
+
+  const discardChanges = () => setPending(null);
+
+  const confirmSaveChanges = () =>
+    modal.confirm({
+      centered: true,
+      width: 480,
+      title: "Xác nhận thay đổi thông tin bước",
+      content: (
+        <div className="space-y-2.5 text-xs">
+          <p className="m-0 text-slate-600">
+            Bạn có đồng ý cập nhật {pendingChanges.length} thông tin sau cho bước{" "}
+            <strong className="text-slate-900">{step.code}</strong>?
+          </p>
+          <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+            {pendingChanges.map((c) => (
+              <div key={c.label} className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="font-semibold text-slate-700">{c.label}:</span>
+                <span className="text-slate-500 line-through">{c.from || "Trống"}</span>
+                <span className="text-slate-400">→</span>
+                <span className="font-semibold text-[#DC2626]">{c.to || "Trống"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+      okText: "Đồng ý lưu",
+      cancelText: "Xem lại",
+      okButtonProps: { className: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C]" },
+      onOk: () => {
+        onUpdateStep?.(step.id, pendingPatch);
+        setPending(null);
+      },
+    });
+
+  // Đóng khi còn thay đổi chưa lưu: hỏi trước để không mất dữ liệu
+  const handleClose = () => {
+    if (!isDirty) {
+      onClose();
+      return;
+    }
+    modal.confirm({
+      centered: true,
+      width: 420,
+      title: "Bỏ các thay đổi chưa lưu?",
+      content: (
+        <p className="m-0 text-xs text-slate-600">
+          Có thay đổi thông tin bước chưa lưu. Đóng lại sẽ bỏ các thay đổi này.
+        </p>
+      ),
+      okText: "Bỏ thay đổi",
+      cancelText: "Tiếp tục sửa",
+      okButtonProps: { danger: true },
+      onOk: () => {
+        setPending(null);
+        onClose();
+      },
+    });
+  };
+
 
   return (
     <>
@@ -280,8 +400,24 @@ export default function ProcedureStepDetailDrawer({
         open={open}
         width="min(680px, 100vw)"
         closable={false}
-        onClose={onClose}
+        onClose={handleClose}
         footer={
+          isDirty ? (
+            // Có thay đổi chưa lưu: chỉ còn "Lưu thay đổi" · "Hủy thay đổi"; lưu/hủy xong các nút khác hiện lại
+            <div className="flex items-center gap-2.5 px-1 py-1">
+              <Button
+                intent="primary"
+                scale="sm"
+                onClick={confirmSaveChanges}
+                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] px-5 font-semibold"
+              >
+                Lưu thay đổi
+              </Button>
+              <Button intent="outline" scale="sm" onClick={discardChanges} className="px-5">
+                Hủy thay đổi
+              </Button>
+            </div>
+          ) : (
           <div className="flex items-center justify-between gap-2.5 flex-wrap px-1 py-1">
             <div className="flex items-center gap-2 flex-wrap">
               {/* Thao tác của Thành viên được giao việc hoặc có quyền nhập/sửa */}
@@ -378,14 +514,8 @@ export default function ProcedureStepDetailDrawer({
               )}
 
               {/* Thao tác Bỏ qua bước: Chỉ cho phép khi CHƯA có ai nộp hồ sơ/nộp duyệt */}
-              {canUpdateProcedure &&
-                !isDisabled &&
-                !isCompleted &&
-                !isSkipped &&
-                (isNotStarted || isInProgress) &&
-                sequence.canOperate &&
-                step.submissionStatus !== "SUBMITTED" &&
-                step.submissionStatus !== "APPROVED" && (
+              {/* Chỉ bước điều kiện mới bỏ qua được (luôn hiện); bước bắt buộc không có nút bỏ qua */}
+              {canUpdateProcedure && step.type === "CONDITIONAL" && !isDisabled && !isSkipped && (
                   <Button
                     intent="outline"
                     scale="sm"
@@ -401,28 +531,16 @@ export default function ProcedureStepDetailDrawer({
                 )}
             </div>
 
-            <Button intent="outline" scale="sm" onClick={onClose}>
+            <Button intent="outline" scale="sm" onClick={handleClose}>
               Đóng
             </Button>
           </div>
+          )
         }
         title={
           <span>
             <span className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-bold text-[#102A43]">Bước {step.code}</span>
-              <Tag intent={step.type === "MANDATORY" ? "info" : "warning"} scale="md">
-                {step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
-              </Tag>
-              {step.department && (
-                <Tag className="!bg-blue-50 !text-blue-700 !border-blue-200 text-xs">
-                  {step.department}
-                </Tag>
-              )}
-              {isDirector && (
-                <Tag className="!bg-red-50 !text-red-700 !border-red-200 text-xs font-semibold">
-                  Ban Giám đốc
-                </Tag>
-              )}
               {renderStatusBadge()}
             </span>
             <span className="block text-xs font-normal text-slate-500 mt-0.5">
@@ -450,35 +568,14 @@ export default function ProcedureStepDetailDrawer({
           </aside>
         )}
 
-        {/* Trạng thái giao việc & Phân quyền nghiệp vụ */}
-        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <UserOutlined className="text-[#DC2626]" />
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-800">
-                Phân công & Phân quyền thực hiện
-              </span>
-            </div>
-            {isAssigned && (
-              <Tag className="!bg-red-50 !text-[#DC2626] !border-red-200 font-semibold text-xs">
-                Bạn là người phụ trách bước này
-              </Tag>
-            )}
-            {!isAssigned && !isLeadOfThisStep && !canOperateStep && !canApproveStep && (
-              <Tag className="!bg-slate-100 !text-slate-600 !border-slate-300 text-xs">
-                Chỉ có quyền xem (Chỉ người được giao mới có quyền cập nhật)
-              </Tag>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div>
-              <span className="text-xs text-slate-500 font-medium block mb-1">
-                Người thực hiện:
-              </span>
+        {/* Phân công & trạng thái nộp / duyệt */}
+        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-slate-500">Người thực hiện</div>
               {canAssignStep && !isCompleted ? (
                 <Select
-                  className="w-full text-xs"
+                  className="mt-1 w-full text-xs"
                   placeholder="Chọn thành viên thực hiện..."
                   value={step.assignedTo || undefined}
                   onChange={(val) => onAssignMember?.(step.id, val)}
@@ -488,54 +585,132 @@ export default function ProcedureStepDetailDrawer({
                   }))}
                 />
               ) : (
-                <span className="text-xs font-semibold text-slate-800 bg-white px-2.5 py-1.5 rounded-md border border-slate-200 block">
-                  {step.assignedTo || "Chưa phân công"}
-                </span>
+                <div className="mt-1 flex min-h-7 items-center">
+                  <span
+                    className={`truncate text-[13px] ${
+                      step.assignedTo ? "font-semibold text-slate-900" : "italic text-slate-400"
+                    }`}
+                  >
+                    {step.assignedTo || "Chưa phân công"}
+                  </span>
+                </div>
+              )}
+              {isAssigned && (
+                <div className="mt-1 text-[11px] font-medium text-[#DC2626]">Bạn là người phụ trách bước này</div>
               )}
             </div>
 
-            <div>
-              <span className="text-xs text-slate-500 font-medium block mb-1">
-                Trạng thái nộp / phê duyệt:
-              </span>
-              <div className="text-xs font-semibold text-slate-800 bg-white px-2.5 py-1.5 rounded-md border border-slate-200 flex items-center justify-between">
-                <span>
-                  {step.submissionStatus === "SUBMITTED"
-                    ? "Đã nộp - Chờ Lead duyệt"
-                    : step.submissionStatus === "APPROVED"
-                    ? "Lead đã phê duyệt hoàn thành"
-                    : step.submissionStatus === "REJECTED"
-                    ? "Lead từ chối duyệt"
-                    : "Chưa nộp hoàn thành"}
+            {/* Người phê duyệt: người đã duyệt hoàn thành bước (Tổ trưởng / Ban Giám đốc) */}
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-slate-500">Người phê duyệt</div>
+              <div className="mt-1 flex min-h-7 items-center">
+                <span
+                  className={`truncate text-[13px] ${approverName ? "font-semibold text-slate-900" : "italic text-slate-400"}`}
+                  title={approverName && step.approvedAt ? `Duyệt ngày ${formatDate(step.approvedAt)}` : undefined}
+                >
+                  {approverName || (step.submissionStatus === "SUBMITTED" ? "Đang chờ duyệt" : "Chưa phê duyệt")}
                 </span>
-                {renderStatusBadge()}
               </div>
+            </div>
+
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-slate-500">Trạng thái</div>
+              <div className="mt-1">{renderStatusBadge()}</div>
             </div>
           </div>
 
           {step.submissionStatus === "SUBMITTED" && step.submissionNote && (
-            <div className="mt-3 pt-2.5 border-t border-blue-200/60 text-xs text-blue-950">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs text-slate-700">
               <span className="font-semibold">Ghi chú nộp:</span> {step.submissionNote}
             </div>
           )}
 
           {step.submissionStatus === "REJECTED" && step.rejectionReason && (
             <div className="mt-3 p-2.5 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-800">
-              <strong className="block font-semibold mb-0.5">Lý do từ chối từ Lead:</strong>
+              <strong className="block font-semibold mb-0.5">Lý do từ chối:</strong>
               {step.rejectionReason}
             </div>
           )}
         </div>
 
-        {/* Thông tin chính của bước thủ tục */}
-        <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          {facts.map((fact) => (
-            <div key={fact.label} className={fact.wide ? "col-span-2" : undefined}>
-              <dt className="text-xs text-slate-500 font-medium">{fact.label}</dt>
-              <dd className="m-0 text-[13px] font-semibold text-slate-800 mt-0.5">{fact.value}</dd>
+        {/* Thông tin chính của bước: bấm bút chì để sửa từng trường */}
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+          <InlineEditField
+            className="sm:col-span-2"
+            label="Tên bước"
+            changed={isChanged("name")}
+            value={view.name}
+            display={view.name}
+            editor={{ kind: "text", placeholder: "Tên bước thủ tục" }}
+            onSave={saveInfo && ((name) => saveInfo({ name }))}
+          />
+          <div className="sm:col-span-2">
+            <span className="text-[11px] font-medium text-slate-500">Giai đoạn</span>
+            <div className="mt-0.5 text-xs font-semibold text-slate-900">
+              {view.groupCode}. {view.groupTitle}
             </div>
-          ))}
-        </dl>
+          </div>
+          <InlineEditField
+            label="Phân loại"
+            changed={isChanged("type")}
+            value={view.type}
+            display={view.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
+            editor={{
+              kind: "select",
+              options: [
+                { value: "MANDATORY", label: "Bắt buộc" },
+                { value: "CONDITIONAL", label: "Điều kiện" },
+              ],
+            }}
+            onSave={saveInfo && ((type) => saveInfo({ type: type as ProcedureStep["type"] }))}
+          />
+          <div>
+            <span className="text-[11px] font-medium text-slate-500">Thời gian kế hoạch</span>
+            <div className="mt-0.5 text-xs font-semibold text-slate-900">
+              {view.plannedDays ? `${view.plannedDays} ngày` : view.durationMargin || "Theo quy định"}
+            </div>
+          </div>
+          <InlineEditField
+            label="Bắt đầu kế hoạch"
+            changed={isChanged("startDatePlanned")}
+            value={view.startDatePlanned || ""}
+            display={formatDate(view.startDatePlanned)}
+            editor={{ kind: "date" }}
+            allowEmpty
+            validate={(next) =>
+              next && view.endDatePlanned && next > view.endDatePlanned
+                ? "Ngày bắt đầu không được sau hạn kế hoạch."
+                : undefined
+            }
+            onSave={saveInfo && ((start) => saveInfo(buildPlannedDates(start, view.endDatePlanned)))}
+          />
+          <InlineEditField
+            label="Hạn kế hoạch"
+            changed={isChanged("endDatePlanned")}
+            value={view.endDatePlanned || ""}
+            display={formatDate(view.endDatePlanned)}
+            editor={{ kind: "date" }}
+            allowEmpty
+            validate={(next) =>
+              next && view.startDatePlanned && next < view.startDatePlanned
+                ? "Hạn kế hoạch không được trước ngày bắt đầu."
+                : undefined
+            }
+            onSave={saveInfo && ((end) => saveInfo(buildPlannedDates(view.startDatePlanned, end)))}
+          />
+          {view.actualStartDate && (
+            <div>
+              <span className="text-[11px] font-medium text-slate-500">Bắt đầu thực tế</span>
+              <div className="mt-0.5 text-xs font-semibold text-slate-900">{formatDate(view.actualStartDate)}</div>
+            </div>
+          )}
+          {view.actualEndDate && (
+            <div>
+              <span className="text-[11px] font-medium text-slate-500">Hoàn thành thực tế</span>
+              <div className="mt-0.5 text-xs font-semibold text-slate-900">{formatDate(view.actualEndDate)}</div>
+            </div>
+          )}
+        </div>
 
         {/* Ràng buộc tuần tự & Khóa bước */}
         {!sequence.canOperate && sequence.blockingStep && (
@@ -566,51 +741,9 @@ export default function ProcedureStepDetailDrawer({
             className="hidden"
           />
 
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <Text className="text-xs font-bold uppercase tracking-wide text-slate-800">
-                  Hồ sơ & Tài liệu đính kèm ({step.attachments.length})
-                </Text>
-                {hasAttachments ? (
-                  <Tag className="!bg-red-50 !text-red-700 !border-red-200 text-[11px] font-semibold">
-                    Đã đủ điều kiện
-                  </Tag>
-                ) : (
-                  <Tag className="!bg-amber-50 !text-amber-700 !border-amber-200 text-[11px] font-semibold">
-                    Bắt buộc có tệp
-                  </Tag>
-                )}
-              </div>
-              <span className="text-[11px] text-slate-500 block mt-0.5">
-                Đính kèm hồ sơ, bản vẽ, quyết định pháp lý để nghiệm thu bước
-              </span>
-            </div>
-
-            {/* Nút Tải tệp trực tiếp từ máy tính */}
-            <div>
-              <Button
-                intent="primary"
-                scale="xs"
-                icon={<UploadOutlined />}
-                className="!bg-[#DC2626] hover:!bg-[#B91C1C] !border-[#DC2626] text-white font-medium shadow-sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Tải tệp lên
-              </Button>
-            </div>
-          </div>
-
-          {/* Banner trạng thái điều kiện hồ sơ (chỉ hiện cảnh báo vàng khi chưa có tệp) */}
-          {!hasAttachments && (
-            <div className="mb-3.5 p-3 rounded-xl bg-amber-50/90 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-800">
-              <WarningOutlined className="text-amber-600 text-sm mt-0.5 shrink-0" />
-              <div>
-                <span className="font-bold text-amber-900 block mb-0.5">Yêu cầu tệp tài liệu đính kèm</span>
-                Để đảm bảo tính pháp lý và quy trình nghiệm thu, bước này bắt buộc phải có ít nhất <strong>01 tệp tài liệu</strong> được tải lên trước khi cho phép bấm <strong>&ldquo;Xác nhận hoàn thành&rdquo;</strong>.
-              </div>
-            </div>
-          )}
+          <Text className="mb-3 block text-xs font-bold uppercase tracking-wide text-slate-800">
+            Hồ sơ & Tài liệu đính kèm ({step.attachments.length})
+          </Text>
 
           {/* Vùng kéo thả / Nhấp để chọn tệp */}
           <div
@@ -624,18 +757,11 @@ export default function ProcedureStepDetailDrawer({
               <span className="text-xs font-semibold text-slate-800 group-hover:text-red-600 transition-colors">
                 Nhấn hoặc kéo thả để tải lên tệp tài liệu số hóa
               </span>
-              <span className="text-[11px] text-slate-500 mt-1">
-                Tự động nhận diện cả .pdf, .docx, .doc · Hỗ trợ chọn nhiều tệp cùng lúc (Tối đa 50MB/tệp)
-              </span>
             </div>
           </div>
 
           {/* Danh sách tệp tài liệu trực tiếp */}
-          {step.attachments.length === 0 ? (
-            <div className="py-6 text-center text-xs text-slate-400 border border-slate-100 rounded-xl bg-slate-50/50">
-              Chưa có tài liệu nào. Vui lòng tải tệp từ máy tính.
-            </div>
-          ) : (
+          {step.attachments.length === 0 ? null : (
             <div className="space-y-2.5">
               {step.attachments.map((doc) => (
                 <div
@@ -701,7 +827,7 @@ export default function ProcedureStepDetailDrawer({
                           icon={<DeleteOutlined />}
                           className="!text-rose-600 hover:!bg-rose-50 !border-rose-200"
                           onClick={() => {
-                            Modal.confirm({
+                            modal.confirm({
                               title: "Xác nhận xóa tài liệu",
                               content: `Bạn có chắc muốn xóa văn bản/tệp "${doc.title || doc.documentCode}"?`,
                               okText: "Xóa",

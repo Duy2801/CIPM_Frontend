@@ -22,7 +22,7 @@ import { formatDateVi } from "@/utils/date";
 import { STATUS_META, STATUS_ORDER, getCategoryLabel } from "../constants/legal-mock-data";
 import type { AttachedDocumentFile, LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types";
 import FilePreviewModal from "./FilePreviewModal";
-import InlineEditField from "./InlineEditField";
+import { InlineEditField } from "@/components/workspace";
 import {
   describeLegalChanges,
   isSameFieldValue,

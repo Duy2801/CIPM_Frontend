@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { App } from "antd";
 import {
   AlertFilled,
   CheckCircleFilled,
@@ -37,9 +38,10 @@ import type {
 import ProcedureFilterToolbar from "./ProcedureFilterToolbar";
 import ProcedureStepList from "./ProcedureStepList";
 import CompleteStepModal from "./CompleteStepModal";
-import DocumentManagerModal from "./DocumentManagerModal";
 import ProcedureHistoryPanel from "./ProcedureHistoryPanel";
-import ProcedureStepDetailDrawer from "./ProcedureStepDetailDrawer";
+import ProcedureStageProgressChart from "./ProcedureStageProgressChart";
+import { getWorkSteps } from "../utils/procedure-rules";
+import ProcedureStepDetailDrawer, { type ProcedureStepInfoPatch } from "./ProcedureStepDetailDrawer";
 import SkipStepModal from "./SkipStepModal";
 import StepConfigModal from "./StepConfigModal";
 import { useAuth } from "@/features/auth";
@@ -49,6 +51,29 @@ import { canUserDo, getUserEffectivePermissions, hasMatrixPermission } from "@/a
 // v6: bỏ quy trình chuẩn 16 bước dựng sẵn → dữ liệu cũ (v5) có 16 bước được xóa
 const PROCEDURE_PROJECTS_STORAGE_KEY = "cipm_procedure_projects_data_v6";
 const PROCEDURE_MAPPINGS_STORAGE_KEY = "cipm_project_procedures_map_v6";
+
+/**
+ * Quyết định nghiệm thu / yêu cầu rà soát của BGĐ gắn theo mã giai đoạn (I, II...).
+ * Khi bộ bước của một giai đoạn thay đổi (đổi quy trình, thêm / xóa bước) thì quyết định cũ không còn đúng → bỏ đi.
+ */
+function pruneStageApprovals(
+  approvals: ProjectProcedureData["stageApprovals"],
+  oldSteps: ProcedureStep[],
+  newSteps: ProcedureStep[],
+): ProjectProcedureData["stageApprovals"] {
+  if (!approvals) return approvals;
+  const stepIdsOf = (steps: ProcedureStep[], group: string) =>
+    steps
+      .filter((s) => s.groupCode === group)
+      .map((s) => s.id)
+      .sort()
+      .join("|");
+  return Object.fromEntries(
+    Object.entries(approvals).filter(
+      ([group]) => stepIdsOf(oldSteps, group) !== "" && stepIdsOf(oldSteps, group) === stepIdsOf(newSteps, group),
+    ),
+  );
+}
 
 export default function ConstructionProceduresScreen() {
   const { user } = useAuth();
@@ -246,8 +271,11 @@ export default function ConstructionProceduresScreen() {
 
   const [customProfiles, setCustomProfiles] = useState<CustomProcedureProfile[]>([]);
 
+  // Đọc lại quy trình tự tạo (sau khi thêm / sửa / xóa trong hộp Cấu hình quy trình)
+  const refreshProcedureProfiles = () => setCustomProfiles(loadCustomProfiles());
+
   useEffect(() => {
-    setCustomProfiles(loadCustomProfiles());
+    refreshProcedureProfiles();
   }, []);
 
   const allProcedureProfiles = useMemo(() => {
@@ -319,10 +347,8 @@ export default function ConstructionProceduresScreen() {
     useState<ProcedureStep | null>(null);
   const [activeStepForSkip, setActiveStepForSkip] =
     useState<ProcedureStep | null>(null);
-  const [activeStepForDocs, setActiveStepForDocs] =
-    useState<ProcedureStep | null>(null);
-  const [docsOriginStep, setDocsOriginStep] = useState<ProcedureStep | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
+  const { modal } = App.useApp();
   // 2 tab trên cùng: danh sách hồ sơ thủ tục / lịch sử thay đổi
   const [screenTab, setScreenTab] = useState<"procedures" | "history">("procedures");
   const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState<boolean>(false);
@@ -405,6 +431,9 @@ export default function ConstructionProceduresScreen() {
           {
             ...currentProject,
             ...extraData,
+            stageApprovals:
+              extraData?.stageApprovals ??
+              pruneStageApprovals(currentProject.stageApprovals, currentProject.steps || [], newSteps),
             steps: newSteps,
             history: [...newLogs, ...(currentProject.history || [])],
           },
@@ -415,6 +444,9 @@ export default function ConstructionProceduresScreen() {
             return {
               ...proj,
               ...extraData,
+              // Quyết định nghiệm thu truyền vào thì dùng luôn; còn lại bỏ quyết định của giai đoạn đã đổi bước
+              stageApprovals:
+                extraData?.stageApprovals ?? pruneStageApprovals(proj.stageApprovals, proj.steps || [], newSteps),
               steps: newSteps,
               history: [...newLogs, ...(proj.history || [])],
             };
@@ -434,14 +466,25 @@ export default function ConstructionProceduresScreen() {
   };
 
   // Danh sách các phòng ban tham gia dự án (chỉ lấy đúng các phòng ban được phân bổ trong dự án)
+  // + các phòng ban đã có bước trong quy trình (VD: áp dụng quy trình mẫu của tổ khác) để lọc vẫn xem được
   const projectDepartments = useMemo(() => {
-    return currentProject?.departments || [];
+    const assigned = currentProject?.departments || [];
+    const fromSteps = (currentProject?.steps || [])
+      .map((s) => s.department)
+      .filter((dept): dept is string => Boolean(dept));
+    return [...assigned, ...fromSteps].filter(
+      (dept, index, all) => all.findIndex((other) => isSameDepartment(other, dept)) === index,
+    );
   }, [currentProject]);
 
   // Đảm bảo departmentFilter luôn chọn một phòng ban cụ thể trong project (bỏ hoàn toàn "ALL")
   useEffect(() => {
     if (projectDepartments.length > 0) {
-      if (!departmentFilter || departmentFilter === "ALL" || !projectDepartments.includes(departmentFilter)) {
+      if (
+        !departmentFilter ||
+        departmentFilter === "ALL" ||
+        !projectDepartments.some((dept) => isSameDepartment(dept, departmentFilter))
+      ) {
         const defaultDept =
           userDept && projectDepartments.includes(userDept)
             ? userDept
@@ -456,7 +499,7 @@ export default function ConstructionProceduresScreen() {
   // Kiểm tra tiến độ hoàn thành các bước của phòng ban hiện tại của Lead
   const userDeptSteps = useMemo(() => {
     if (!currentProject?.steps || !userDept) return [];
-    return currentProject.steps.filter(
+    return getWorkSteps(currentProject.steps).filter(
       (s) => isSameDepartment(s.department, userDept) && s.isEnabled
     );
   }, [currentProject?.steps, userDept]);
@@ -496,7 +539,8 @@ export default function ConstructionProceduresScreen() {
     if (!departmentFilter) {
       return currentProject.steps;
     }
-    return currentProject.steps.filter((s) => isSameDepartment(s.department, departmentFilter));
+    // Bước chưa gán phòng ban (thêm từ "Cấu hình quy trình" chung của dự án) là bước chung → hiện ở mọi phòng ban
+    return currentProject.steps.filter((s) => !s.department || isSameDepartment(s.department, departmentFilter));
   }, [currentProject?.steps, departmentFilter]);
 
   // Thao tác: Bắt đầu bước
@@ -554,10 +598,13 @@ export default function ConstructionProceduresScreen() {
     }
 
     const isStepLead = Boolean(step.department && isLeadOfDepartment(user, step.department));
+    // Bước đã bị từ chối khi nộp lại luôn phải chờ người có quyền xác nhận lại (kể cả lãnh đạo tự nộp)
+    const isResubmission = step.submissionStatus === "REJECTED";
+    const autoApprove = (isStepLead || canApproveProcedure) && !isResubmission;
 
     const newSteps = currentProject.steps.map((s) => {
       if (s.id === stepId) {
-        if (isStepLead || canApproveProcedure) {
+        if (autoApprove) {
           return {
             ...s,
             status: "COMPLETED" as const,
@@ -587,7 +634,7 @@ export default function ConstructionProceduresScreen() {
       return s;
     });
 
-    const isMemberSubmit = !isStepLead && !canApproveProcedure;
+    const isMemberSubmit = !autoApprove;
     const newLog: ProcedureHistoryLog = {
       id: `LOG-${Date.now()}`,
       stepId: step.id,
@@ -597,13 +644,15 @@ export default function ConstructionProceduresScreen() {
       performedBy: operatorName,
       role: operatorRole,
       action: isMemberSubmit ? "START_STEP" : "COMPLETE_STEP",
-      actionLabel: isMemberSubmit ? "Xác nhận nộp duyệt" : "Hoàn thành bước",
+      actionLabel: isResubmission ? "Nộp lại sau khi bị từ chối" : isMemberSubmit ? "Xác nhận nộp duyệt" : "Hoàn thành bước",
       previousStatus: step.status,
       newStatus: isMemberSubmit ? "IN_PROGRESS" : "COMPLETED",
       documentReference:
         completionData.newDocument?.documentCode ||
         step.attachments[0]?.documentCode,
-      details: isMemberSubmit
+      details: isResubmission
+        ? `${operatorName} đã chỉnh sửa theo ý kiến và nộp lại bước [${step.code}] ${step.name}, chờ người có quyền xác nhận.`
+        : isMemberSubmit
         ? `Thành viên ${operatorName} đã hoàn thành công việc và gửi xác nhận nộp bước [${step.code}] ${step.name} chờ Tổ trưởng duyệt.`
         : `Xác nhận hoàn thành bước [${step.code}] ${step.name} ngày ${completionData.actualEndDate}. Đã kiểm tra đầy đủ hồ sơ văn bản đính kèm.`,
     };
@@ -619,8 +668,10 @@ export default function ConstructionProceduresScreen() {
 
     if (isMemberSubmit) {
       toast.success(
-        "Đã gửi xác nhận hoàn thành",
-        `Đã nộp kết quả thực hiện bước [${step.code}] ${step.name} cho Tổ trưởng phê duyệt.`
+        isResubmission ? "Đã nộp lại" : "Đã gửi xác nhận hoàn thành",
+        isResubmission
+          ? `Đã nộp lại bước [${step.code}] ${step.name}, chờ xác nhận.`
+          : `Đã nộp kết quả thực hiện bước [${step.code}] ${step.name} cho Tổ trưởng phê duyệt.`
       );
     } else {
       toast.success(
@@ -643,11 +694,9 @@ export default function ConstructionProceduresScreen() {
     const step = currentProject.steps.find((s) => s.id === stepId);
     if (!step) return;
 
-    if (step.submissionStatus === "SUBMITTED" || step.submissionStatus === "APPROVED") {
-      toast.warning(
-        "Không thể bỏ qua bước",
-        "Bước này đã có nhân sự nộp kết quả thực hiện, vui lòng xem xét phê duyệt hoặc từ chối thay vì bỏ qua!"
-      );
+    // Chỉ bước điều kiện mới được bỏ qua (kể cả đã nộp / đã duyệt); bước bắt buộc thì không
+    if (step.type !== "CONDITIONAL") {
+      toast.warning("Không thể bỏ qua bước", "Bước bắt buộc không được bỏ qua.");
       return;
     }
 
@@ -669,6 +718,7 @@ export default function ConstructionProceduresScreen() {
         return {
           ...s,
           status: "SKIPPED" as const,
+          submissionStatus: undefined,
           skipReason: skipData.reason,
           skipDocumentCode: skipData.skipDocumentCode,
           skipIssuer: skipData.skipIssuer,
@@ -831,6 +881,13 @@ export default function ConstructionProceduresScreen() {
       return s;
     });
 
+    // Giai đoạn chứa bước bị từ chối không còn được coi là đã duyệt → khi nộp lại sẽ phải duyệt lại giai đoạn
+    const remainingStageApprovals = Object.fromEntries(
+      Object.entries(currentProject.stageApprovals || {}).filter(
+        ([key]) => key !== step.groupCode && key !== step.groupTitle,
+      ),
+    );
+
     const newLog: ProcedureHistoryLog = {
       id: `LOG-${Date.now()}`,
       stepId: step.id,
@@ -840,11 +897,14 @@ export default function ConstructionProceduresScreen() {
       performedBy: operatorName,
       role: operatorRole,
       action: "START_STEP",
-      actionLabel: "Tổ trưởng từ chối duyệt",
-      details: `Tổ trưởng ${operatorName} từ chối phê duyệt bước [${step.code}] ${step.name}. Lý do: ${reason}`,
+      actionLabel: "Từ chối kết quả bước",
+      previousStatus: step.status,
+      newStatus: "IN_PROGRESS",
+      reason,
+      details: `${operatorName} (${operatorRole}) từ chối kết quả bước [${step.code}] ${step.name}, trả về để thực hiện lại.`,
     };
 
-    updateCurrentProjectState(newSteps, [newLog]);
+    updateCurrentProjectState(newSteps, [newLog], { stageApprovals: remainingStageApprovals });
 
     const rejectedStep = newSteps.find((s) => s.id === stepId);
     if (rejectedStep) {
@@ -868,7 +928,7 @@ export default function ConstructionProceduresScreen() {
   const handleConfirmDepartmentComplete = (deptName: string) => {
     if (!currentProject) return;
 
-    const deptSteps = currentProject.steps.filter(
+    const deptSteps = getWorkSteps(currentProject.steps).filter(
       (s) => isSameDepartment(s.department, deptName) && s.isEnabled
     );
     const incomplete = deptSteps.filter(
@@ -1068,7 +1128,23 @@ export default function ConstructionProceduresScreen() {
         : `Ban Giám đốc (${operatorName}) đã phê duyệt nghiệm thu tiến độ các phòng ban hoàn thành (${completedDepartments.join(", ")}) của dự án ${currentProject.projectName}.`,
     };
 
-    updateCurrentProjectState(currentProject.steps, [newLog], {
+    // Duyệt giai đoạn: các bước đang chờ duyệt (VD vừa nộp lại) trong giai đoạn cũng được duyệt hoàn thành
+    const stageSteps = currentProject.steps.map((s) => {
+      const inStage = Boolean(stageCode || stageTitle) && (s.groupCode === stageCode || s.groupTitle === stageTitle);
+      if (inStage && s.submissionStatus === "SUBMITTED") {
+        return {
+          ...s,
+          status: "COMPLETED" as const,
+          submissionStatus: "APPROVED" as const,
+          approvedBy: operatorName,
+          approvedAt: today,
+          actualEndDate: s.actualEndDate || today,
+        };
+      }
+      return s;
+    });
+
+    updateCurrentProjectState(stageSteps, [newLog], {
       directorApproval: updatedApproval,
       stageApprovals: updatedStageApprovals,
     });
@@ -1200,8 +1276,58 @@ export default function ConstructionProceduresScreen() {
     };
 
     updateCurrentProjectState(updatedSteps, [newLog]);
-    setCustomProfiles(loadCustomProfiles());
+    refreshProcedureProfiles();
+
+    // Phòng ban đang lọc không có bước nào của cấu hình vừa lưu → chuyển sang phòng ban có bước để thấy ngay
+    const hasStepsInFilter = updatedSteps.some(
+      (s) => !s.department || !departmentFilter || isSameDepartment(s.department, departmentFilter),
+    );
+    if (!hasStepsInFilter) {
+      const firstDept = updatedSteps.find((s) => s.department)?.department;
+      if (firstDept) setDepartmentFilter(firstDept);
+    }
     toast.success("Cấu hình quy trình", "Đã lưu cấu hình quy trình dự án thành công!");
+  };
+
+  // Bấm "Lưu thay đổi" trong drawer chi tiết bước: lưu các trường đã sửa, ghi lịch sử "cũ → mới"
+  const handleUpdateStepInfo = (stepId: string, patch: ProcedureStepInfoPatch) => {
+    if (!currentProject) return;
+    const step = currentProject.steps.find((s) => s.id === stepId);
+    if (!step) return;
+
+    const updatedStep: ProcedureStep = { ...step, ...patch };
+    const newSteps = currentProject.steps.map((s) => (s.id === stepId ? updatedStep : s));
+
+    const typeLabel = (t?: string) => (t === "MANDATORY" ? "Bắt buộc" : t === "CONDITIONAL" ? "Điều kiện" : "");
+    const fmt = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "Trống");
+    const changes = [
+      patch.name !== undefined && patch.name !== step.name ? `Tên bước: ${step.name} → ${patch.name}` : null,
+      patch.type !== undefined && patch.type !== step.type ? `Phân loại: ${typeLabel(step.type)} → ${typeLabel(patch.type)}` : null,
+      "startDatePlanned" in patch && patch.startDatePlanned !== step.startDatePlanned
+        ? `Bắt đầu kế hoạch: ${fmt(step.startDatePlanned)} → ${fmt(patch.startDatePlanned)}`
+        : null,
+      "endDatePlanned" in patch && patch.endDatePlanned !== step.endDatePlanned
+        ? `Hạn kế hoạch: ${fmt(step.endDatePlanned)} → ${fmt(patch.endDatePlanned)}`
+        : null,
+    ].filter(Boolean);
+    if (changes.length === 0) return;
+
+    const newLog: ProcedureHistoryLog = {
+      id: `LOG-${Date.now()}`,
+      stepId: step.id,
+      stepCode: step.code,
+      stepName: updatedStep.name,
+      timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+      performedBy: operatorName,
+      role: operatorRole,
+      action: "CONFIG_DURATION",
+      actionLabel: "Cập nhật thông tin bước",
+      details: changes.join("; "),
+    };
+
+    updateCurrentProjectState(newSteps, [newLog]);
+    if (detailStep && detailStep.id === stepId) setDetailStep(updatedStep);
+    toast.success("Đã lưu thay đổi", `Đã lưu ${changes.length} thay đổi của bước [${step.code}].`);
   };
 
   // Thao tác: Thêm văn bản mới
@@ -1236,24 +1362,10 @@ export default function ConstructionProceduresScreen() {
 
     updateCurrentProjectState(newSteps, [newLog]);
 
-    if (activeStepForDocs && activeStepForDocs.id === stepId) {
-      setActiveStepForDocs({
-        ...activeStepForDocs,
-        attachments: [doc, ...activeStepForDocs.attachments],
-      });
-    }
-
     if (detailStep && detailStep.id === stepId) {
       setDetailStep({
         ...detailStep,
         attachments: [doc, ...detailStep.attachments],
-      });
-    }
-
-    if (docsOriginStep && docsOriginStep.id === stepId) {
-      setDocsOriginStep({
-        ...docsOriginStep,
-        attachments: [doc, ...docsOriginStep.attachments],
       });
     }
   };
@@ -1296,15 +1408,80 @@ export default function ConstructionProceduresScreen() {
       });
     }
 
-    if (activeStepForDocs && activeStepForDocs.id === stepId) {
-      setActiveStepForDocs({
-        ...activeStepForDocs,
-        attachments: activeStepForDocs.attachments.filter((d) => d.id !== docId),
-      });
-    }
-
     toast.success("Xóa tài liệu", "Đã xóa tài liệu đính kèm.");
   };
+
+  // ---- Mọi nút thao tác trên bước / giai đoạn đều hỏi xác nhận trước khi thực hiện ----
+  const stepLabel = (stepId: string) => {
+    const st = currentProject?.steps.find((s) => s.id === stepId);
+    return st ? `[${st.code}] ${st.name}` : "";
+  };
+  const askConfirm = (title: string, content: React.ReactNode, okText: string, onOk: () => void) =>
+    modal.confirm({
+      centered: true,
+      width: 460,
+      title,
+      content: <div className="text-xs leading-relaxed text-slate-600">{content}</div>,
+      okText,
+      cancelText: "Hủy",
+      okButtonProps: { className: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C]" },
+      onOk,
+    });
+
+  const confirmStartStep = (stepId: string) =>
+    askConfirm(
+      "Bắt đầu thực hiện bước?",
+      <>
+        Bắt đầu thực hiện bước <strong className="text-slate-800">{stepLabel(stepId)}</strong>?
+      </>,
+      "Bắt đầu",
+      () => handleStartStep(stepId),
+    );
+
+  const confirmCompleteStep = (stepId: string) => {
+    const isResubmit = currentProject?.steps.find((s) => s.id === stepId)?.submissionStatus === "REJECTED";
+    askConfirm(
+      isResubmit ? "Nộp lại bước?" : "Xác nhận hoàn thành bước?",
+      <>
+        {isResubmit ? "Nộp lại kết quả bước " : "Xác nhận đã hoàn thành bước "}
+        <strong className="text-slate-800">{stepLabel(stepId)}</strong>?
+      </>,
+      isResubmit ? "Nộp lại" : "Xác nhận",
+      () => handleConfirmComplete(stepId, { actualEndDate: new Date().toISOString().slice(0, 10) }),
+    );
+  };
+
+  const confirmApproveStep = (stepId: string) =>
+    askConfirm(
+      "Duyệt bước?",
+      <>
+        Duyệt hoàn thành bước <strong className="text-slate-800">{stepLabel(stepId)}</strong>?
+      </>,
+      "Duyệt",
+      () => handleApproveStep(stepId),
+    );
+
+  const confirmLeadApproveStage = (stageCode: string, stageTitle: string) =>
+    askConfirm(
+      "Xác nhận hoàn thành giai đoạn?",
+      <>
+        Xác nhận hoàn thành giai đoạn <strong className="text-slate-800">{stageTitle || stageCode}</strong>? Các bước đang
+        chờ duyệt trong giai đoạn sẽ được duyệt hoàn thành.
+      </>,
+      "Xác nhận",
+      () => handleLeadApproveStage(stageCode, stageTitle),
+    );
+
+  const confirmDirectorApproveStage = (stageCode: string, stageTitle: string) =>
+    askConfirm(
+      "Duyệt giai đoạn?",
+      <>
+        Duyệt giai đoạn <strong className="text-slate-800">{stageTitle || stageCode}</strong>? Các bước đang chờ duyệt
+        trong giai đoạn cũng sẽ được duyệt hoàn thành.
+      </>,
+      "Duyệt",
+      () => handleDirectorApprove(stageCode, stageTitle),
+    );
 
   return (
     <section className="w-full max-w-[2560px] mx-auto space-y-3">
@@ -1374,21 +1551,20 @@ export default function ConstructionProceduresScreen() {
                 <p className="text-sm font-semibold text-slate-700 m-0">Chưa có dự án nào trong hệ thống</p>
                 <p className="text-xs text-slate-400 mt-1 mb-0">Vui lòng tạo dự án mới tại phân hệ Quản lý dự án để theo dõi quy trình thủ tục</p>
               </div>
+            ) : viewMode === "chart" && displayedSteps.length > 0 ? (
+              // Biểu đồ tiến độ: mỗi giai đoạn (I, II...) đã làm tới đâu
+              <ProcedureStageProgressChart steps={displayedSteps} />
             ) : (
               <ProcedureStepList
                 steps={displayedSteps}
+                appliedProcedureName={allProcedureProfiles.find((p) => p.id === selectedProcedureId)?.name}
                 searchTerm={searchTerm}
                 statusFilter={statusFilter}
                 viewMode={viewMode}
-                onStartStep={handleStartStep}
+                onStartStep={confirmStartStep}
                 onOpenCompleteModal={(step) => setActiveStepForComplete(step)}
-                onConfirmCompleteStep={(stepId) => {
-                  handleConfirmComplete(stepId, {
-                    actualEndDate: new Date().toISOString().slice(0, 10),
-                  });
-                }}
+                onConfirmCompleteStep={confirmCompleteStep}
                 onOpenSkipModal={(step) => setActiveStepForSkip(step)}
-                onOpenDocsModal={(step) => setActiveStepForDocs(step)}
                 onOpenDetailStep={(step) => setDetailStep(step)}
                 canUpdateProcedure={canUpdateProcedure}
                 canConfigureProcedure={canConfigureProcedure}
@@ -1400,12 +1576,12 @@ export default function ConstructionProceduresScreen() {
                 isDirector={canApproveProcedure}
                 isDeptCompletedByLead={isDeptCompletedByLead}
                 onAssignMember={handleAssignMember}
-                onApproveStep={handleApproveStep}
+                onApproveStep={confirmApproveStep}
                 onRejectStep={handleRejectStep}
-                onLeadApproveStage={handleLeadApproveStage}
+                onLeadApproveStage={confirmLeadApproveStage}
                 onLeadRejectStage={handleLeadRejectStage}
                 stageApprovals={currentProject?.stageApprovals}
-                onDirectorApproveStage={(stageCode, stageTitle) => handleDirectorApprove(stageCode, stageTitle)}
+                onDirectorApproveStage={confirmDirectorApproveStage}
                 onDirectorRejectStage={(stageCode, stageTitle) => {
                   setDirectorRejectStageKey(stageCode);
                   setDirectorRejectStageTitle(stageTitle);
@@ -1442,63 +1618,35 @@ export default function ConstructionProceduresScreen() {
           steps={currentProject?.steps || []}
           currentProcedureId={selectedProcedureId}
           projectName={currentProject?.projectName || "Dự án"}
-          onClose={() => setIsConfigOpen(false)}
+          onClose={() => {
+            setIsConfigOpen(false);
+            refreshProcedureProfiles();
+          }}
           onSaveConfig={handleSaveConfig}
         />
       )}
 
-      {/* 8. Drawer Quản lý Hồ sơ Văn bản (Quy tắc 10) */}
-      <DocumentManagerModal
-        open={Boolean(activeStepForDocs)}
-        step={activeStepForDocs}
-        onClose={() => {
-          setActiveStepForDocs(null);
-          setDocsOriginStep(null);
-        }}
-        onBackToDetail={
-          docsOriginStep && currentProject
-            ? () => {
-                const refreshed =
-                  currentProject.steps.find((s) => s.id === docsOriginStep.id) ||
-                  docsOriginStep;
-                setActiveStepForDocs(null);
-                setDetailStep(refreshed);
-                setDocsOriginStep(null);
-              }
-            : undefined
-        }
-        onAddDocument={handleAddDocument}
-      />
-
       {/* 10. Drawer Chi tiết bước thủ tục */}
       <ProcedureStepDetailDrawer
         step={detailStep}
+        onUpdateStep={handleUpdateStepInfo}
         allSteps={currentProject?.steps || []}
         projectName={currentProject?.projectName || ""}
         open={Boolean(detailStep)}
         onClose={() => setDetailStep(null)}
-        onStartStep={handleStartStep}
+        onStartStep={confirmStartStep}
         onOpenCompleteModal={(step) => {
           setDetailStep(null);
           setActiveStepForComplete(step);
         }}
-        onConfirmCompleteStep={(stepId: string) => {
-          handleConfirmComplete(stepId, {
-            actualEndDate: new Date().toISOString().slice(0, 10),
-          });
-        }}
+        onConfirmCompleteStep={confirmCompleteStep}
         onOpenSkipModal={(step) => {
           setDetailStep(null);
           setActiveStepForSkip(step);
         }}
-        onOpenDocsModal={(step) => {
-          setDocsOriginStep(step);
-          setDetailStep(null);
-          setActiveStepForDocs(step);
-        }}
         canUpdateProcedure={canUpdateProcedure}
         onAssignMember={handleAssignMember}
-        onApproveStep={handleApproveStep}
+        onApproveStep={confirmApproveStep}
         onRejectStep={handleRejectStep}
         onAddDocument={handleAddDocument}
         onDeleteDocument={handleDeleteDocument}
@@ -1524,7 +1672,10 @@ export default function ConstructionProceduresScreen() {
             currentProcedureId={selectedProcedureId}
             departmentTitle={targetDept}
             projectName={currentProject?.projectName || ""}
-            onClose={() => setIsAddDeptModalOpen(false)}
+            onClose={() => {
+              setIsAddDeptModalOpen(false);
+              refreshProcedureProfiles();
+            }}
             onSaveConfig={async (updatedSteps, profileId) => {
               if (!currentProject) return;
               const currentDepts = currentProject.departments || [];

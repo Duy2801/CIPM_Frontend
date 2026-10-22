@@ -3,6 +3,7 @@
 import React from "react";
 import {
   AppstoreOutlined,
+  BarChartOutlined,
   CalendarOutlined,
   CheckCircleFilled,
   CheckOutlined,
@@ -70,6 +71,7 @@ const statusOptions: { value: ProcedureFilterStatus; label: string }[] = [
 
 const viewModes: Array<{ value: ProcedureViewMode; label: string; icon: React.ReactNode }> = [
   { value: "tree", label: "Phân cấp", icon: <AppstoreOutlined /> },
+  { value: "chart", label: "Biểu đồ", icon: <BarChartOutlined /> },
 ];
 
 export default function ProcedureFilterToolbar({
@@ -92,6 +94,8 @@ export default function ProcedureFilterToolbar({
   canConfirmDeptComplete = false,
   isDeptCompletedByLead = false,
   onConfirmDeptComplete,
+  procedureProfiles = [],
+  selectedProcedureId = "",
   canUpdateProcedure = true,
   canConfigureProcedure,
 }: ProcedureFilterToolbarProps) {
@@ -99,6 +103,9 @@ export default function ProcedureFilterToolbar({
   const currentProject =
     projects.find((project) => project.projectId === selectedProjectId) ||
     projects[0];
+
+  // Quy trình dự án đang áp dụng (đã lưu khi cấu hình, kể cả khi quy trình chưa có bước nào)
+  const appliedProcedure = procedureProfiles.find((p) => p.id === selectedProcedureId);
 
   const hasConfigPerm = canConfigureProcedure !== undefined ? canConfigureProcedure : canUpdateProcedure;
 
@@ -163,9 +170,9 @@ export default function ProcedureFilterToolbar({
         </div>
       </div>
 
-      {/* 2. Dải thông tin dự án (4 cột đều tăm tắp có đường phân tách) */}
+      {/* 2. Dải thông tin dự án (5 cột đều có đường phân tách) */}
       {currentProject && (
-        <div className="grid grid-cols-2 divide-y divide-slate-200/60 border-b border-slate-200/80 bg-slate-50/70 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+        <div className="grid grid-cols-2 divide-y divide-slate-200/60 border-b border-slate-200/80 bg-slate-50/70 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
           {/* Cột 1: Loại công trình */}
           <div className="flex flex-col justify-center px-4 py-2.5">
             <span className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -215,6 +222,21 @@ export default function ProcedureFilterToolbar({
             <span className="text-xs font-semibold text-slate-800">
               {new Date(currentProject.expectedFinishDate).toLocaleDateString("vi-VN")}
             </span>
+          </div>
+
+          {/* Cột 5: Quy trình áp dụng */}
+          <div className="col-span-2 flex min-w-0 flex-col justify-center px-4 py-2.5 sm:col-span-2 lg:col-span-1">
+            <span className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <ProjectOutlined className="text-[#DC2626]" />
+              Quy trình áp dụng
+            </span>
+            {appliedProcedure ? (
+              <span className="truncate text-xs font-semibold text-slate-800" title={appliedProcedure.name}>
+                {appliedProcedure.name}
+              </span>
+            ) : (
+              <span className="text-xs italic text-slate-400">Chưa áp dụng quy trình</span>
+            )}
           </div>
         </div>
       )}

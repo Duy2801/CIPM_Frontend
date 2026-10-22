@@ -77,9 +77,6 @@ export default function CompleteStepModal({
       width="min(680px, 100vw)"
       title={
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[#DC2626]">
-            <CheckCircleFilled className="text-base" />
-          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-bold text-[#102A43]">

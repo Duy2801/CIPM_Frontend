@@ -165,4 +165,5 @@ export type ProcedureFilterStatus =
   | "SKIPPED"
   | "DISABLED";
 
-export type ProcedureViewMode = "tree";
+/** Chế độ xem: phân cấp (danh sách bước) · biểu đồ tiến độ theo giai đoạn */
+export type ProcedureViewMode = "tree" | "chart";

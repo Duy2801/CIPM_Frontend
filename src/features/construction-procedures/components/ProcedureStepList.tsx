@@ -13,7 +13,7 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 import { Button, Card, Input, Modal, Tag, Text, toast } from "@/components/ui";
-import { getStepAlertLevel } from "../utils/procedure-rules";
+import { getStepAlertLevel, getWorkSteps } from "../utils/procedure-rules";
 import ProcedureStepCard from "./ProcedureStepCard";
 import type {
   ProcedureFilterStatus,
@@ -31,7 +31,6 @@ interface ProcedureStepListProps {
   onOpenCompleteModal: (step: ProcedureStep) => void;
   onConfirmCompleteStep?: (stepId: string) => void;
   onOpenSkipModal: (step: ProcedureStep) => void;
-  onOpenDocsModal: (step: ProcedureStep) => void;
   onOpenDetailStep?: (step: ProcedureStep) => void;
   highlightedStepId?: string | null;
   canUpdateProcedure?: boolean;
@@ -51,6 +50,8 @@ interface ProcedureStepListProps {
   onDirectorApproveStage?: (stageCode: string, stageTitle: string) => void;
   onDirectorRejectStage?: (stageCode: string, stageTitle: string) => void;
   stageApprovals?: Record<string, StageApprovalStatus>;
+  /** Tên quy trình dự án đã áp dụng (đã lưu cấu hình), kể cả khi quy trình chưa có bước */
+  appliedProcedureName?: string;
 }
 
 export default function ProcedureStepList({
@@ -62,7 +63,6 @@ export default function ProcedureStepList({
   onOpenCompleteModal,
   onConfirmCompleteStep,
   onOpenSkipModal,
-  onOpenDocsModal,
   onOpenDetailStep,
   highlightedStepId,
   canUpdateProcedure = true,
@@ -82,6 +82,7 @@ export default function ProcedureStepList({
   onDirectorApproveStage,
   onDirectorRejectStage,
   stageApprovals,
+  appliedProcedureName,
 }: ProcedureStepListProps) {
   const canApprove = canApproveProcedure !== undefined ? canApproveProcedure : isDirector;
   // Lọc theo search và status
@@ -130,6 +131,9 @@ export default function ProcedureStepList({
       .filter((g) => g.steps.length > 0);
   }, [filteredSteps, steps, dynamicGroupCodes]);
 
+  // Bước cần làm của một nhóm: mục lớn đã có bước con chỉ là tiêu mục → không hiện thẻ, không tính tiến độ
+  const workOf = (list: ProcedureStep[]) => getWorkSteps(list, steps);
+
   // Nhóm đang được chọn xem (mặc định mở nhóm đang thực hiện, hoặc nhóm đầu tiên)
   const [activeGroupCode, setActiveGroupCode] = useState<string>(() => {
     const inProgressStep = steps.find((s) => s.isEnabled && s.status === "IN_PROGRESS");
@@ -141,7 +145,6 @@ export default function ProcedureStepList({
     return steps[0]?.groupCode || "I";
   });
 
-  const [showAllStages, setShowAllStages] = useState<boolean>(false);
 
 
   // Khi tìm kiếm có từ khóa, tự động mở toàn bộ kết quả
@@ -160,15 +163,36 @@ export default function ProcedureStepList({
           <FolderAddOutlined className="text-3xl" />
         </div>
         <h3 className="text-base font-bold text-slate-800 mb-1.5">
-          Dự án chưa có quy trình thủ tục nào
+          {appliedProcedureName ? (
+            <>
+              Dự án đã áp dụng quy trình <span className="text-[#DC2626]">{appliedProcedureName}</span>
+            </>
+          ) : (
+            "Dự án chưa có quy trình thủ tục nào"
+          )}
         </h3>
         <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
-          {canConfigureProcedure
+          {appliedProcedureName
+            ? "Quy trình này chưa có bước nào. Vào Cấu hình quy trình để thêm bước chính, bước con và phân công thực hiện."
+            : canConfigureProcedure
             ? "Bạn có toàn quyền thiết lập, cấu hình quy trình thủ tục và phân công nhiệm vụ vào dự án."
             : canApprove
             ? "Lãnh đạo có quyền phê duyệt quy trình hoặc phân công cho các bộ phận chủ động thiết lập thủ tục chuyên môn."
             : "Quy trình thủ tục của dự án sẽ do các Tổ trưởng/Trưởng phòng ban được phân công chủ động thiết lập và phân công nhiệm vụ cho từng cán bộ."}
         </p>
+        {appliedProcedureName && canConfigureProcedure && onOpenStepConfig && (
+          <div className="mt-4 flex justify-center">
+            <Button
+              intent="primary"
+              scale="compact"
+              icon={<PlusOutlined />}
+              onClick={onOpenStepConfig}
+              className="!bg-[#DC2626] !border-[#DC2626] text-white font-semibold h-9 px-5 shadow-2xs hover:!bg-[#B91C1C]"
+            >
+              Thêm bước cho quy trình
+            </Button>
+          </div>
+        )}
       </Card>
     );
   }
@@ -199,34 +223,24 @@ export default function ProcedureStepList({
     );
   }
 
-  // Bố cục phân cấp 7 giai đoạn (Mặc định)
-  // Nếu người dùng chọn "Mở tất cả" hoặc đang tìm kiếm: hiển thị toàn bộ
-  if (isSearching || showAllStages) {
+  // Đang tìm kiếm / lọc trạng thái: hiển thị kết quả trên toàn bộ giai đoạn
+  if (isSearching) {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between pb-1 text-xs">
           <span className="text-slate-600 font-semibold">
-            {isSearching ? "Kết quả tìm kiếm trên toàn bộ 7 giai đoạn:" : "Đang hiển thị toàn bộ 7 giai đoạn quy trình:"}
+            Kết quả tìm kiếm trên toàn bộ {groupedSteps.length} giai đoạn:
           </span>
-          {!isSearching && (
-            <button
-              type="button"
-              onClick={() => setShowAllStages(false)}
-              className="text-xs text-[#DC2626] hover:underline font-medium cursor-pointer"
-            >
-              Chuyển sang chế độ chọn từng giai đoạn
-            </button>
-          )}
         </div>
 
         {groupedSteps.map((group) => {
-          const completedInGroup = group.steps.filter(
+          const completedInGroup = workOf(group.steps).filter(
             (s) => s.isEnabled && s.status === "COMPLETED"
           ).length;
-          const skippedInGroup = group.steps.filter(
+          const skippedInGroup = workOf(group.steps).filter(
             (s) => s.isEnabled && s.status === "SKIPPED"
           ).length;
-          const totalActiveInGroup = group.steps.filter((s) => s.isEnabled).length;
+          const totalActiveInGroup = workOf(group.steps).filter((s) => s.isEnabled).length;
           const isGroupCompleted =
             totalActiveInGroup > 0 &&
             completedInGroup + skippedInGroup === totalActiveInGroup;
@@ -256,7 +270,7 @@ export default function ProcedureStepList({
                       className="!border-red-200 !bg-red-50 !text-[#DC2626] font-semibold text-xs"
                       icon={<SafetyCertificateOutlined className="text-[#DC2626]" />}
                     >
-                      Ban Giám đốc đã nghiệm thu
+                      Đã hoàn thành
                     </Tag>
                   ) : stageApproval?.status === "REJECTED" ? (
                     <div className="flex items-center gap-2">
@@ -313,7 +327,7 @@ export default function ProcedureStepList({
               </div>
 
               <div className="flex flex-col gap-2.5">
-                {group.steps.map((step) => (
+                {workOf(group.steps).map((step) => (
                   <section id={`procedure-step-${step.id}`} key={step.id} className="scroll-mt-20">
                     <ProcedureStepCard
                       step={step}
@@ -321,7 +335,6 @@ export default function ProcedureStepList({
                       onStartStep={onStartStep}
                       onOpenCompleteModal={onOpenCompleteModal}
                       onOpenSkipModal={onOpenSkipModal}
-                      onOpenDocsModal={onOpenDocsModal}
                       onOpenDetail={onOpenDetailStep}
                       highlight={highlightedStepId === step.id}
                       canUpdateProcedure={canUpdateProcedure}
@@ -343,59 +356,51 @@ export default function ProcedureStepList({
   const activeGroup =
     groupedSteps.find((g) => g.code === activeGroupCode) || groupedSteps[0];
 
-  const activeCompletedInGroup = activeGroup.steps.filter(
+  const activeCompletedInGroup = workOf(activeGroup.steps).filter(
     (s) => s.isEnabled && s.status === "COMPLETED"
   ).length;
-  const activeSkippedInGroup = activeGroup.steps.filter(
+  const activeSkippedInGroup = workOf(activeGroup.steps).filter(
     (s) => s.isEnabled && s.status === "SKIPPED"
   ).length;
-  const activeTotalInGroup = activeGroup.steps.filter((s) => s.isEnabled).length;
+  const activeTotalInGroup = workOf(activeGroup.steps).filter((s) => s.isEnabled).length;
   const activeIsCompleted =
     activeTotalInGroup > 0 &&
     activeCompletedInGroup + activeSkippedInGroup === activeTotalInGroup;
 
   const totalFinishedStages = groupedSteps.filter((g) => {
-    const c = g.steps.filter((s) => s.isEnabled && s.status === "COMPLETED").length;
-    const sk = g.steps.filter((s) => s.isEnabled && s.status === "SKIPPED").length;
-    const tot = g.steps.filter((s) => s.isEnabled).length;
+    const c = workOf(g.steps).filter((s) => s.isEnabled && s.status === "COMPLETED").length;
+    const sk = workOf(g.steps).filter((s) => s.isEnabled && s.status === "SKIPPED").length;
+    const tot = workOf(g.steps).filter((s) => s.isEnabled).length;
     return tot > 0 && c + sk === tot;
   }).length;
 
   return (
     <div className="flex flex-col lg:flex-row items-start gap-4 w-full">
-      {/* CỘT TRÁI: Bảng điều hướng 7 Giai đoạn lớn (Lộ trình chuẩn) */}
+      {/* CỘT TRÁI: Bảng điều hướng các giai đoạn lớn */}
       <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-2 bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              7 Giai đoạn quy trình
+              {groupedSteps.length} Giai đoạn quy trình
             </span>
             <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[11px] font-semibold text-[#DC2626]">
-              {totalFinishedStages}/7 hoàn thành
+              {totalFinishedStages}/{groupedSteps.length} hoàn thành
             </span>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowAllStages(true)}
-            className="text-[11px] text-[#DC2626] hover:underline font-medium cursor-pointer"
-          >
-            Mở xem tất cả
-          </button>
         </div>
 
         {/* Danh sách 7 thẻ giai đoạn */}
         <div className="flex flex-col gap-1.5">
           {groupedSteps.map((group) => {
-            const completed = group.steps.filter(
+            const completed = workOf(group.steps).filter(
               (s) => s.isEnabled && s.status === "COMPLETED"
             ).length;
-            const skipped = group.steps.filter(
+            const skipped = workOf(group.steps).filter(
               (s) => s.isEnabled && s.status === "SKIPPED"
             ).length;
-            const total = group.steps.filter((s) => s.isEnabled).length;
+            const total = workOf(group.steps).filter((s) => s.isEnabled).length;
             const isCompleted = total > 0 && completed + skipped === total;
-            const hasInProg = group.steps.some((s) => s.isEnabled && s.status === "IN_PROGRESS");
+            const hasInProg = workOf(group.steps).some((s) => s.isEnabled && s.status === "IN_PROGRESS");
             const isSelected = activeGroupCode === group.code;
             const itemStageApproval = stageApprovals?.[group.code] || stageApprovals?.[group.title];
 
@@ -440,7 +445,7 @@ export default function ProcedureStepList({
                   {itemStageApproval?.status === "APPROVED" ? (
                     <span className="inline-flex items-center gap-1 font-semibold text-red-700">
                       <CheckCircleFilled className="text-[11px] text-[#DC2626]" />
-                      Đã nghiệm thu
+                      Đã hoàn thành
                     </span>
                   ) : itemStageApproval?.status === "REJECTED" ? (
                     <span className="inline-flex items-center gap-1 font-medium text-rose-700">
@@ -491,13 +496,6 @@ export default function ProcedureStepList({
               <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">
                 {activeGroup.title}
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Bao gồm {activeGroup.steps.length} bước thủ tục • Tiến độ:{" "}
-                <strong className="text-slate-800">
-                  {activeCompletedInGroup + activeSkippedInGroup}/{activeTotalInGroup}
-                </strong>{" "}
-                bước đã xử lý
-              </p>
             </div>
           </div>
 
@@ -507,9 +505,38 @@ export default function ProcedureStepList({
                 stageApprovals?.[activeGroup.code] || stageApprovals?.[activeGroup.title];
 
               if (!activeIsCompleted) {
-                const hasSubmittedSteps = activeGroup.steps.some(
-                  (s) => s.isEnabled && s.submissionStatus === "SUBMITTED"
-                );
+                const activeWork = workOf(activeGroup.steps).filter((s) => s.isEnabled);
+                const hasSubmittedSteps = activeWork.some((s) => s.submissionStatus === "SUBMITTED");
+                // Các bước còn lại đều đã xong, chỉ còn bước vừa nộp (lại) chờ duyệt → hiện lại nút duyệt / từ chối giai đoạn
+                const readyForStageReview =
+                  hasSubmittedSteps &&
+                  activeWork.every(
+                    (s) => s.status === "COMPLETED" || s.status === "SKIPPED" || s.submissionStatus === "SUBMITTED"
+                  );
+                if (canApprove && readyForStageReview) {
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        intent="primary"
+                        scale="compact"
+                        icon={<CheckOutlined />}
+                        className="!bg-[#DC2626] hover:!bg-[#B91C1C] text-white font-semibold text-xs shadow-2xs h-8 px-3"
+                        onClick={() => onDirectorApproveStage?.(activeGroup.code, activeGroup.title)}
+                      >
+                        Duyệt giai đoạn
+                      </Button>
+                      <Button
+                        intent="outline"
+                        scale="compact"
+                        icon={<CloseOutlined />}
+                        className="!border-rose-300 !text-rose-700 hover:!bg-rose-50 text-xs font-semibold h-8 px-2.5"
+                        onClick={() => onDirectorRejectStage?.(activeGroup.code, activeGroup.title)}
+                      >
+                        Từ chối
+                      </Button>
+                    </div>
+                  );
+                }
                 if (isLeadOfDept && hasSubmittedSteps) {
                   return (
                     <div className="flex items-center gap-2">
@@ -539,7 +566,7 @@ export default function ProcedureStepList({
                     className="!border-red-200 !bg-red-50 !text-[#DC2626] font-semibold text-xs"
                     icon={<SafetyCertificateOutlined className="text-[#DC2626]" />}
                   >
-                    Ban Giám đốc đã nghiệm thu
+                    Đã hoàn thành
                   </Tag>
                 );
               }
@@ -633,7 +660,7 @@ export default function ProcedureStepList({
 
         {/* Danh sách các thẻ bước của giai đoạn này */}
         <div className="flex flex-col gap-2.5">
-          {activeGroup.steps.map((step) => (
+          {workOf(activeGroup.steps).map((step) => (
             <section id={`procedure-step-${step.id}`} key={step.id} className="scroll-mt-20">
               <ProcedureStepCard
                 step={step}
@@ -642,7 +669,6 @@ export default function ProcedureStepList({
                 onOpenCompleteModal={onOpenCompleteModal}
                 onConfirmCompleteStep={onConfirmCompleteStep}
                 onOpenSkipModal={onOpenSkipModal}
-                onOpenDocsModal={onOpenDocsModal}
                 onOpenDetail={onOpenDetailStep}
                 highlight={highlightedStepId === step.id}
                 canUpdateProcedure={canUpdateProcedure}

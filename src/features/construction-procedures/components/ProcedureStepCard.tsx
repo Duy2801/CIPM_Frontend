@@ -11,11 +11,9 @@ import {
   DownOutlined,
   FilePdfOutlined,
   LockOutlined,
-  PaperClipOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
   StopOutlined,
-  TeamOutlined,
   UpOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -37,7 +35,6 @@ interface ProcedureStepCardProps {
   onOpenCompleteModal: (step: ProcedureStep) => void;
   onConfirmCompleteStep?: (stepId: string) => void;
   onOpenSkipModal: (step: ProcedureStep) => void;
-  onOpenDocsModal: (step: ProcedureStep) => void;
   onOpenDetail?: (step: ProcedureStep) => void;
   highlight?: boolean;
   canUpdateProcedure?: boolean;
@@ -57,7 +54,6 @@ export default function ProcedureStepCard({
   onOpenCompleteModal,
   onConfirmCompleteStep,
   onOpenSkipModal,
-  onOpenDocsModal,
   onOpenDetail,
   highlight = false,
   onAssignMember,
@@ -77,7 +73,6 @@ export default function ProcedureStepCard({
   const isInProgress = step.status === "IN_PROGRESS";
   const isNotStarted = step.status === "NOT_STARTED";
   const isDisabled = !step.isEnabled;
-  const documentsCount = step.attachments.length;
 
   // Xác định vai trò của người dùng đối với bước này
   const isDirector = isDirectorUser(user);
@@ -206,14 +201,6 @@ export default function ProcedureStepCard({
                 {step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
               </span>
 
-              {/* Tag Phòng ban phụ trách */}
-              {step.department && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
-                  <TeamOutlined className="text-[10px]" />
-                  {step.department}
-                </span>
-              )}
-
               {/* Tag người dùng được giao */}
               {isAssigned && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shrink-0">
@@ -248,6 +235,32 @@ export default function ProcedureStepCard({
                     Từ chối
                   </Button>
                 </div>
+              )}
+
+              {/* Bước điều kiện: luôn có nút Bỏ qua (trừ khi đã bỏ qua / đã tắt) */}
+              {step.type === "CONDITIONAL" && !isSkipped && !isDisabled && (canOperateStep || canApproveStep) && (
+                <Button
+                  intent="outline"
+                  scale="compact"
+                  icon={<StopOutlined />}
+                  className="border-amber-300 text-amber-800 hover:bg-amber-50 hover:border-amber-400 font-semibold text-xs h-7 px-2"
+                  onClick={() => onOpenSkipModal(step)}
+                >
+                  Bỏ qua
+                </Button>
+              )}
+
+              {/* Người có quyền duyệt kiểm tra lại bước đã hoàn thành: không đạt thì từ chối, trả về để làm lại */}
+              {canApproveStep && isCompleted && !isDisabled && step.submissionStatus !== "SUBMITTED" && onRejectStep && (
+                <Button
+                  intent="outline"
+                  scale="compact"
+                  icon={<CloseOutlined />}
+                  className="border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400 font-semibold text-xs h-7 px-2"
+                  onClick={() => setIsRejectModalOpen(true)}
+                >
+                  Từ chối
+                </Button>
               )}
 
               {/* HÀNH ĐỘNG DÀNH CHO NGƯỜI CÓ QUYỀN NHẬP/SỬA: Bắt đầu hoặc Xác nhận hoàn thành */}
@@ -308,9 +321,8 @@ export default function ProcedureStepCard({
             </h4>
           </div>
 
-          {/* Hàng 3: Người thực hiện + Biên độ + Hồ sơ */}
-          <div className="flex flex-wrap items-center justify-between gap-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {/* Hàng 3: Người thực hiện (trái) · Biên độ + ngày (phải) */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
               {/* Người thực hiện: Người có quyền phân công có thể gán nhanh, người khác chỉ xem */}
               <div
                 className="flex items-center gap-1.5 text-slate-600"
@@ -340,6 +352,7 @@ export default function ProcedureStepCard({
                 )}
               </div>
 
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
               <span className="flex items-center gap-1.5 text-slate-600">
                 <CalendarOutlined className="text-slate-400 text-[11px]" />
                 <span>
@@ -364,33 +377,9 @@ export default function ProcedureStepCard({
                 </span>
               )}
             </div>
-
-            {/* Nút Hồ sơ đính kèm */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenDocsModal(step);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium transition-all cursor-pointer hover:bg-slate-50 text-slate-700"
-            >
-              <PaperClipOutlined className="text-slate-400" />
-              <span>Hồ sơ ({documentsCount})</span>
-            </button>
           </div>
 
           {/* Banner lý do từ chối nếu bị reject */}
-          {step.submissionStatus === "REJECTED" && step.rejectionReason && (
-            <aside className="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-950">
-              <div className="flex items-center gap-1 font-bold text-rose-900 text-xs">
-                <CloseOutlined className="text-rose-600" /> Ý kiến chỉ đạo của Lead (Yêu cầu làm lại):
-              </div>
-              <div className="mt-1 text-[11px] italic text-rose-800 pl-3 border-l-2 border-rose-400">
-                {step.rejectionReason}
-              </div>
-            </aside>
-          )}
-
           {/* Ghi chú nộp của thành viên nếu đang chờ duyệt */}
           {step.submissionStatus === "SUBMITTED" && step.submissionNote && (
             <aside className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
@@ -409,9 +398,8 @@ export default function ProcedureStepCard({
           centered
           width={480}
           title={
-            <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
-              <CloseOutlined />
-              <span>Từ chối bước: [{step.code}] {step.name}</span>
+            <div className="font-bold text-sm text-rose-600">
+              Từ chối bước: [{step.code}] {step.name}
             </div>
           }
           footer={[
@@ -430,10 +418,6 @@ export default function ProcedureStepCard({
           ]}
         >
           <div className="py-2 space-y-3 text-xs">
-            <p className="text-slate-600 leading-relaxed m-0">
-              Bước này sẽ được gửi trả lại cho thành viên phụ trách{" "}
-              <strong>&quot;{step.assignedTo || "người thực hiện"}&quot;</strong> để bổ sung, chỉnh sửa tài liệu.
-            </p>
             <div>
               <label className="block font-semibold text-slate-800 mb-1">
                 Lý do từ chối & Yêu cầu chỉnh sửa <span className="text-rose-500">*</span>

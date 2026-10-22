@@ -202,3 +202,16 @@ export function calculateProcedureKpis(
     completionRate,
   };
 }
+
+/**
+ * Mục lớn (bước cấp 1: I, II...) có bước con chỉ là tiêu mục — không phải việc để giao / thực hiện.
+ * `allSteps` là toàn bộ bước của quy trình để biết mục đó có bước con hay không.
+ */
+export function isHeadingStep(step: ProcedureStep, allSteps: ProcedureStep[]): boolean {
+  return !step.code.includes(".") && allSteps.some((s) => s.code.startsWith(`${step.code}.`));
+}
+
+/** Các bước thực sự phải làm (bỏ mục lớn đã có bước con) — dùng để tính tiến độ và điều kiện duyệt */
+export function getWorkSteps(steps: ProcedureStep[], allSteps: ProcedureStep[] = steps): ProcedureStep[] {
+  return steps.filter((s) => !isHeadingStep(s, allSteps));
+}

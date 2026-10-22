@@ -39,6 +39,29 @@ export const loadCustomProfiles = (): CustomProcedureProfile[] => {
   }
 };
 
+/** Quy trình mẫu (theo dự thảo) người dùng đã xóa khỏi danh sách chọn */
+export const HIDDEN_TEMPLATE_STORAGE_KEY = "cipm_hidden_procedure_templates";
+
+export const loadHiddenTemplateIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(HIDDEN_TEMPLATE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveHiddenTemplateIds = (ids: string[]) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(HIDDEN_TEMPLATE_STORAGE_KEY, JSON.stringify(ids));
+  } catch (e) {
+    console.error("Failed to save hidden procedure templates", e);
+  }
+};
+
 export const saveCustomProfiles = (profiles: CustomProcedureProfile[]) => {
   if (typeof window === "undefined") return;
   try {

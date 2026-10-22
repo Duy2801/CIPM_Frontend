@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  AppstoreAddOutlined,
   CheckOutlined,
   DeleteOutlined,
   InfoCircleOutlined,
@@ -157,9 +156,6 @@ export default function AddDepartmentProcedureModal({
       width={900}
       title={
         <div className="flex items-center gap-2.5 text-slate-900 font-bold text-base">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-[#DC2626] border border-red-200">
-            <AppstoreAddOutlined className="text-base" />
-          </div>
           <div>
             <div className="leading-tight">
               Thêm Quy trình Thủ tục Phòng ban — <span className="text-[#DC2626]">{departmentName}</span>
