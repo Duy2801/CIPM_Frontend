@@ -29,7 +29,7 @@ import {
 import type { ColumnsType } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
 import { formatDateVi } from "@/utils/date";
-import { CATEGORY_LABELS, STATUS_META } from "../constants/legal-mock-data";
+import { CATEGORY_LABELS, STATUS_META, getCategoryLabel } from "../constants/legal-mock-data";
 import type {
   LegalDocument,
   LegalDocumentCategory,
@@ -102,7 +102,7 @@ export default function LegalDocumentTab({
         `VĂN BẢN PHÁP LÝ / BIỂU MẪU BAN QUẢN LÝ DỰ ÁN HÀ TIÊN\n\n` +
           `Số hiệu: ${doc.code}\n` +
           `Trích yếu: ${doc.title}\n` +
-          `Phân loại: ${CATEGORY_LABELS[doc.category]}\n` +
+          `Phân loại: ${getCategoryLabel(doc.category)}\n` +
           `Cơ quan ban hành: ${doc.issuer}\n` +
           `Ngày ban hành: ${doc.issueDate} - Ngày hiệu lực: ${doc.effectiveDate}\n` +
           `Phạm vi áp dụng: ${doc.scope}\n\n` +
@@ -180,7 +180,7 @@ export default function LegalDocumentTab({
         <div className="py-1">
           <div className="flex items-center gap-1.5">
             <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200">
-              {CATEGORY_LABELS[row.category].split("(")[0].trim()}
+              {getCategoryLabel(row.category).split("(")[0].trim()}
             </span>
           </div>
           <div className="mt-1 text-xs font-medium text-slate-800">

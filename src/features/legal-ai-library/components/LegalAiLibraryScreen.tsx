@@ -3,15 +3,21 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LockOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Flex, Input, Pagination, Select, Text, Title } from "@/components/ui";
+import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Flex, Input, Pagination, Select, Text, Title, Tooltip } from "@/components/ui";
 import { todayIso } from "@/utils/date";
 import { normalizeSearchText } from "@/utils/search-text";
 import AiLegalAssistantDrawer from "./AiLegalAssistantDrawer";
 import CreateDocumentDrawer from "./CreateDocumentDrawer";
 import DocumentDetailDrawer from "./DocumentDetailDrawer";
-import { CATEGORY_LABELS, STATUS_META, STATUS_ORDER } from "../constants/legal-mock-data";
+import LegalStatsChart from "./LegalStatsChart";
+import { STATUS_META, STATUS_ORDER, getCategoryLabel } from "../constants/legal-mock-data";
 import { SAMPLE_DECREE_10_2021_CONTENT } from "../constants/legal-sample-content";
-import type { LegalDocument, LegalDocumentCategory, LegalDocumentStatus } from "../types/legal-ai.types";
+import type {
+  BuiltInDocumentCategory,
+  DocumentCategoryKey,
+  LegalDocument,
+  LegalDocumentStatus,
+} from "../types/legal-ai.types";
 import { getLegalAiPermissions } from "../utils/legal-ai-permissions";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -248,10 +254,17 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
   },
 ];
 
-type DocumentCategory = Exclude<LegalDocumentCategory, "ALL">;
 
 /** Thứ tự loại văn bản trong bộ lọc (theo thứ bậc hiệu lực pháp lý) */
-const CATEGORY_FILTER_ORDER: DocumentCategory[] = ["LAW", "RESOLUTION", "DECREE", "CIRCULAR", "DECISION", "LOCAL"];
+const CATEGORY_DISPLAY_ORDER: BuiltInDocumentCategory[] = [
+  "LAW",
+  "RESOLUTION",
+  "DECREE",
+  "CIRCULAR",
+  "DECISION",
+  "LOCAL",
+  "TEMPLATE",
+];
 
 /** "2024-06-01" → "01/06/2024" */
 function formatDate(isoDate: string | undefined): string {
@@ -267,13 +280,74 @@ export default function LegalAiLibraryScreen() {
   const canManageDocuments = permissions.canCreateDocument;
 
   const [legalItems, setLegalItems] = useState<LegalItem[]>(INITIAL_LEGAL_ITEMS);
+  // Văn bản thêm trong phiên làm việc — mới nhất đứng đầu, luôn hiển thị trên cùng danh sách
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LegalDocumentStatus | "ALL">("ALL");
-  const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | "ALL">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<DocumentCategoryKey | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+
+  // Lọc văn bản pháp luật: từ khóa (không phân biệt hoa/thường và dấu) + loại văn bản + tình trạng
+  const query = normalizeSearchText(search);
+  const matchesQuery = (item: LegalItem) =>
+    !query ||
+    [item.code, item.title, item.issuer, item.summary, ...item.tags].some((text) =>
+      normalizeSearchText(text).includes(query),
+    );
+
+  const matchesStatus = (item: LegalItem) => statusFilter === "ALL" || item.status === statusFilter;
+
+  // Loại văn bản người dùng tự thêm (đã có văn bản trong thư viện), xếp sau các loại có sẵn
+  const customCategories = useMemo(
+    () =>
+      [...new Set(legalItems.map((item) => item.category))].filter(
+        (cat) => !(CATEGORY_DISPLAY_ORDER as string[]).includes(cat),
+      ),
+    [legalItems],
+  );
+  const categoryOptions: DocumentCategoryKey[] = [...CATEGORY_DISPLAY_ORDER, ...customCategories];
+
+  const matchesCategory = (item: LegalItem) => categoryFilter === "ALL" || item.category === categoryFilter;
+
+  // Danh sách phẳng (không gom nhóm): văn bản vừa thêm lên đầu, còn lại xếp theo thứ bậc loại văn bản rồi ngày cập nhật
+  const filteredItems = useMemo(
+    () =>
+      legalItems
+        .filter((item) => matchesQuery(item) && matchesCategory(item) && matchesStatus(item))
+        .sort((a, b) => {
+          const addedA = recentlyAddedIds.indexOf(a.id);
+          const addedB = recentlyAddedIds.indexOf(b.id);
+          if (addedA !== -1 || addedB !== -1) {
+            if (addedA === -1) return 1;
+            if (addedB === -1) return -1;
+            return addedA - addedB;
+          }
+          const rankA = (CATEGORY_DISPLAY_ORDER as string[]).indexOf(a.category);
+          const rankB = (CATEGORY_DISPLAY_ORDER as string[]).indexOf(b.category);
+          if (rankA !== rankB) return (rankA === -1 ? 999 : rankA) - (rankB === -1 ? 999 : rankB);
+          return b.updatedAt.localeCompare(a.updatedAt);
+        }),
+    [legalItems, recentlyAddedIds, query, statusFilter, categoryFilter],
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / DEFAULT_LIST_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * DEFAULT_LIST_PAGE_SIZE;
+  const pagedItems = filteredItems.slice(pageStart, pageStart + DEFAULT_LIST_PAGE_SIZE);
+
+  const isFiltering = Boolean(query) || statusFilter !== "ALL" || categoryFilter !== "ALL";
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setCategoryFilter("ALL");
+    setPage(1);
+  };
+
+  // Xem chi tiết văn bản: mở đúng dữ liệu đã lưu (phạm vi, tags, tệp đính kèm)
+  const handleOpenDocDetail = (item: LegalItem) => setSelectedDoc(item);
 
   // Chặn truy cập nếu không có quyền theo Ma trận phân quyền BRD Mục 5
   if (!permissions.canAccessModule) {
@@ -308,39 +382,23 @@ export default function LegalAiLibraryScreen() {
     );
   }
 
-  // Lọc văn bản pháp luật: từ khóa (không phân biệt hoa/thường và dấu) + loại văn bản + tình trạng
-  const query = normalizeSearchText(search);
-  const matchesQuery = (item: LegalItem) =>
-    !query ||
-    [item.code, item.title, item.issuer, item.summary, ...item.tags].some((text) =>
-      normalizeSearchText(text).includes(query),
-    );
-
-  const matchesStatus = (item: LegalItem) => statusFilter === "ALL" || item.status === statusFilter;
-  const matchesCategory = (item: LegalItem) => categoryFilter === "ALL" || item.category === categoryFilter;
-
-  const filteredItems = legalItems
-    .filter((item) => matchesQuery(item) && matchesCategory(item) && matchesStatus(item))
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / DEFAULT_LIST_PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pageStart = (currentPage - 1) * DEFAULT_LIST_PAGE_SIZE;
-  const pagedItems = filteredItems.slice(pageStart, pageStart + DEFAULT_LIST_PAGE_SIZE);
-
-  const isFiltering = Boolean(query) || statusFilter !== "ALL" || categoryFilter !== "ALL";
-  const resetFilters = () => {
-    setSearch("");
-    setStatusFilter("ALL");
-    setCategoryFilter("ALL");
-    setPage(1);
-  };
-
-  // Xem chi tiết văn bản: mở đúng dữ liệu đã lưu (phạm vi, tags, tệp đính kèm)
-  const handleOpenDocDetail = (item: LegalItem) => setSelectedDoc(item);
-
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
+      {/* Biểu đồ thống kê toàn thư viện theo tình trạng / loại văn bản */}
+      <LegalStatsChart
+        documents={legalItems}
+        selectedStatus={statusFilter}
+        selectedCategory={categoryFilter}
+        onSelectStatus={(st) => {
+          setStatusFilter(st);
+          setPage(1);
+        }}
+        onSelectCategory={(cat) => {
+          setCategoryFilter(cat);
+          setPage(1);
+        }}
+      />
+
       <Card
         surface="flat"
         padding="none"
@@ -350,12 +408,7 @@ export default function LegalAiLibraryScreen() {
         {/* Hàng 1: tiêu đề · thêm văn bản */}
         <div className="flex items-start justify-between gap-3 px-4 pt-3.5">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="m-0 text-base font-bold text-slate-900">Văn bản pháp luật</h2>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                {legalItems.length}
-              </span>
-            </div>
+            <h2 className="m-0 text-base font-bold text-slate-900">Văn bản pháp luật</h2>
             <p className="m-0 mt-0.5 text-xs text-slate-500">
               Luật, nghị định, thông tư, nghị quyết và quyết định áp dụng cho công tác quản lý dự án.
             </p>
@@ -392,16 +445,13 @@ export default function LegalAiLibraryScreen() {
               aria-label="Lọc theo loại văn bản"
               value={categoryFilter}
               onChange={(val) => {
-                setCategoryFilter(val as DocumentCategory | "ALL");
+                setCategoryFilter(val as DocumentCategoryKey | "ALL");
                 setPage(1);
               }}
               className="h-9 w-full sm:w-52"
               options={[
                 { value: "ALL", label: "Tất cả loại văn bản" },
-                ...CATEGORY_FILTER_ORDER.map((cat) => ({
-                  value: cat,
-                  label: CATEGORY_LABELS[cat],
-                })),
+                ...categoryOptions.map((cat) => ({ value: cat, label: getCategoryLabel(cat) })),
               ]}
             />
             <Select
@@ -427,26 +477,28 @@ export default function LegalAiLibraryScreen() {
               <span className="whitespace-nowrap">
                 Hiển thị {pageStart + 1}–{pageStart + pagedItems.length} / {filteredItems.length} văn bản
               </span>
-              {totalPages > 1 && (
-                <Pagination
-                  current={currentPage}
-                  pageSize={DEFAULT_LIST_PAGE_SIZE}
-                  total={filteredItems.length}
-                  onChange={setPage}
-                  showSizeChanger={false}
-                  size="small"
-                />
-              )}
+              <Pagination
+                current={currentPage}
+                pageSize={DEFAULT_LIST_PAGE_SIZE}
+                total={filteredItems.length}
+                onChange={setPage}
+                showSizeChanger={false}
+                size="small"
+              />
             </div>
           )}
         </div>
 
-        {/* Danh sách văn bản */}
+        {/* Danh sách văn bản (không gom nhóm) */}
         {pagedItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-4 py-14 text-center">
             <SearchOutlined className="mb-2 text-2xl text-slate-300" />
-            <p className="m-0 text-sm font-semibold text-slate-700">Không tìm thấy văn bản phù hợp</p>
-            <p className="m-0 mt-1 text-xs text-slate-500">Thử từ khóa khác hoặc bỏ bớt bộ lọc.</p>
+            <p className="m-0 text-sm font-semibold text-slate-700">
+              Không tìm thấy văn bản phù hợp
+            </p>
+            <p className="m-0 mt-1 text-xs text-slate-500">
+              Thử từ khóa khác hoặc bỏ bớt bộ lọc.
+            </p>
             {isFiltering && (
               <Button intent="outline" scale="compact" className="mt-3" onClick={resetFilters}>
                 Xóa bộ lọc
@@ -454,72 +506,81 @@ export default function LegalAiLibraryScreen() {
             )}
           </div>
         ) : (
-          <ol className="m-0 list-none divide-y divide-slate-100 p-0">
-            {pagedItems.map((item) => {
-              const status = STATUS_META[item.status];
-              return (
-                <li key={item.id}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Xem chi tiết ${item.title ? `${item.code} – ${item.title}` : item.code}`}
-                    onClick={() => handleOpenDocDetail(item)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleOpenDocDetail(item);
-                      }
-                    }}
-                    className="group flex cursor-pointer flex-col gap-3 px-4 py-4 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-start md:gap-6"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div>
-                        <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                          {item.title && (
-                            <>
-                              <span className="font-semibold text-slate-700">{item.code}</span>
-                              <span className="text-slate-300" aria-hidden>
-                                ·
-                              </span>
-                            </>
-                          )}
-                          <span className="text-slate-500">{item.issuer}</span>
-                        </div>
-                        <p className="m-0 text-[15px] font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#DC2626]">
-                          {item.title || item.code}
-                        </p>
-                        {item.tags.length > 0 && (
-                          <ul className="m-0 mt-2 flex list-none flex-wrap gap-1.5 p-0" aria-label="Từ khóa">
-                            {item.tags.map((tag) => (
-                              <li
-                                key={tag}
-                                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs text-slate-600"
-                              >
-                                {tag}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+          <>
+            {/* Tiêu đề cột — khớp độ rộng với từng dòng bên dưới */}
+            <div
+              aria-hidden
+              className="hidden items-center gap-6 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:flex"
+            >
+              <span className="w-52 shrink-0">Số hiệu · Cơ quan ban hành</span>
+              <span className="w-36 shrink-0">Loại văn bản</span>
+              <span className="min-w-0 flex-1">Tên văn bản</span>
+              <span className="w-28 shrink-0 text-center">Tình trạng</span>
+              <span className="ml-auto w-38.75 shrink-0">Ngày ban hành / hiệu lực</span>
+            </div>
+            <ol className="m-0 list-none divide-y divide-slate-100 p-0">
+              {pagedItems.map((item) => {
+                const status = STATUS_META[item.status];
+                return (
+                  <li key={item.id}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Xem chi tiết ${item.title ? `${item.code} – ${item.title}` : item.code}`}
+                      onClick={() => handleOpenDocDetail(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleOpenDocDetail(item);
+                        }
+                      }}
+                      className="group flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-center md:gap-6"
+                    >
+                      {/* Số hiệu · cơ quan ban hành */}
+                      <div className="flex shrink-0 flex-col items-start gap-1 text-xs md:w-52">
+                        <span className="font-semibold text-slate-800">{item.code}</span>
+                        <span className="text-slate-500">{item.issuer}</span>
                       </div>
+
+                      {/* Loại văn bản */}
+                      <div className="shrink-0 md:w-36">
+                        <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                          {getCategoryLabel(item.category)}
+                        </span>
+                      </div>
+
+                      {/* Tên văn bản */}
+                      <p className="m-0 min-w-0 flex-1 text-[15px] font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#DC2626]">
+                        {item.title || item.code}
+                      </p>
+
+                      {/* Tình trạng văn bản */}
+                      <div className="flex shrink-0 items-center justify-start md:w-28 md:justify-center">
+                        <Tooltip title={`Tình trạng: ${status.label}`}>
+                          <div className="inline-flex cursor-help items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 md:border-0 md:bg-transparent md:p-0">
+                            <span
+                              className={`inline-block h-3 w-3 rounded-full ${status.dotClass} shadow-xs ring-4 ring-slate-100`}
+                              aria-label={status.label}
+                            />
+                            <span className="text-xs font-medium text-slate-600 md:hidden">{status.label}</span>
+                          </div>
+                        </Tooltip>
+                      </div>
+
+                      {/* Ban hành & Hiệu lực */}
+                      <dl className="m-0 grid shrink-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs md:ml-auto md:w-38.75">
+                        <dt className="text-slate-500">Ban hành</dt>
+                        <dd className="m-0 font-medium text-slate-800">{formatDate(item.issueDate)}</dd>
+                        <dt className="text-slate-500">Hiệu lực</dt>
+                        <dd className="m-0 font-medium text-slate-800">{formatDate(item.effectiveDate)}</dd>
+                      </dl>
                     </div>
-
-                    <dl className="m-0 grid shrink-0 grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 gap-y-1 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs md:ml-auto md:w-[190px]">
-                      <dt className="text-slate-500">Ban hành</dt>
-                      <dd className="m-0 font-medium text-slate-800">{formatDate(item.issueDate)}</dd>
-                      <dt className="text-slate-500">Hiệu lực</dt>
-                      <dd className="m-0 font-medium text-slate-800">{formatDate(item.effectiveDate)}</dd>
-                      <dt className="text-slate-500">Tình trạng</dt>
-                      <dd className={`m-0 font-semibold leading-snug break-words ${status.textClass}`}>{status.label}</dd>
-                      <dt className="text-slate-500">Cập nhật</dt>
-                      <dd className="m-0 font-medium text-slate-800">{formatDate(item.updatedAt)}</dd>
-                    </dl>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
         )}
-
       </Card>
 
       {/* Drawer xem chi tiết văn bản (closable=false) */}
@@ -533,10 +594,12 @@ export default function LegalAiLibraryScreen() {
       <CreateDocumentDrawer
         open={isCreateOpen}
         knownIssuers={legalItems.map((item) => item.issuer)}
+        knownCategories={customCategories}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={(doc) => {
           const newItem: LegalItem = { ...doc, updatedAt: todayIso() };
           setLegalItems((prev) => [newItem, ...prev]);
+          setRecentlyAddedIds((prev) => [newItem.id, ...prev]);
           resetFilters();
         }}
       />

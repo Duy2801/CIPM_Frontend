@@ -17,6 +17,11 @@ export const CATEGORY_LABELS: Record<LegalDocumentCategory, string> = {
   TEMPLATE: "Biểu mẫu chuẩn",
 };
 
+/** Tên hiển thị của loại văn bản — loại tự thêm dùng luôn khóa làm tên */
+export function getCategoryLabel(category: string): string {
+  return CATEGORY_LABELS[category as LegalDocumentCategory] ?? category;
+}
+
 /** Cơ quan ban hành thường gặp (gợi ý trong ô chọn; văn bản trong thư viện bổ sung thêm) */
 export const COMMON_ISSUERS: string[] = [
   "Quốc hội",
@@ -47,11 +52,34 @@ export const DEFAULT_ISSUER_BY_CATEGORY: Partial<Record<LegalDocumentCategory, s
 /** Thứ tự hiển thị tình trạng hiệu lực (dùng chung cho form, bộ lọc, danh sách) */
 export const STATUS_ORDER: LegalDocumentStatus[] = ["EFFECTIVE", "EXPIRING", "PARTIAL", "EXPIRED"];
 
-export const STATUS_META: Record<LegalDocumentStatus, { label: string; badge: string; textClass: string }> = {
-  EFFECTIVE: { label: "Còn hiệu lực", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", textClass: "text-emerald-700" },
-  EXPIRING: { label: "Sắp hết hiệu lực", badge: "bg-rose-50 text-rose-700 border-rose-200", textClass: "text-rose-700" },
-  PARTIAL: { label: "Hết hiệu lực một phần", badge: "bg-amber-50 text-amber-700 border-amber-200", textClass: "text-amber-700" },
-  EXPIRED: { label: "Hết hiệu lực", badge: "bg-slate-100 text-slate-500 border-slate-200", textClass: "text-slate-500" },
+export const STATUS_META: Record<
+  LegalDocumentStatus,
+  { label: string; badge: string; textClass: string; dotClass: string }
+> = {
+  EFFECTIVE: {
+    label: "Còn hiệu lực",
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    textClass: "text-emerald-700",
+    dotClass: "bg-emerald-500",
+  },
+  EXPIRING: {
+    label: "Sắp hết hiệu lực",
+    badge: "bg-rose-50 text-rose-700 border-rose-200",
+    textClass: "text-rose-700",
+    dotClass: "bg-rose-500",
+  },
+  PARTIAL: {
+    label: "Hết hiệu lực một phần",
+    badge: "bg-amber-50 text-amber-700 border-amber-200",
+    textClass: "text-amber-700",
+    dotClass: "bg-amber-500",
+  },
+  EXPIRED: {
+    label: "Hết hiệu lực",
+    badge: "bg-slate-100 text-slate-500 border-slate-200",
+    textClass: "text-slate-500",
+    dotClass: "bg-slate-400",
+  },
 };
 
 export const REPORT_TYPE_OPTIONS: { value: ReportType; label: string; desc: string }[] = [

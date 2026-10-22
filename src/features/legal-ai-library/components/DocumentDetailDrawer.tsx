@@ -15,7 +15,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Drawer } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
-import { CATEGORY_LABELS, STATUS_META } from "../constants/legal-mock-data";
+import { STATUS_META, getCategoryLabel } from "../constants/legal-mock-data";
 import type { AttachedDocumentFile, LegalDocument } from "../types/legal-ai.types";
 import FilePreviewModal from "./FilePreviewModal";
 
@@ -158,7 +158,7 @@ export default function DocumentDetailDrawer({
                 Phân loại văn bản
               </span>
               <div className="mt-0.5 text-xs font-semibold text-slate-900">
-                {CATEGORY_LABELS[document.category]}
+                {getCategoryLabel(document.category)}
               </div>
             </div>
 

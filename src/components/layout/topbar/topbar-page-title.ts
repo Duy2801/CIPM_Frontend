@@ -8,7 +8,7 @@ const PAGE_TITLES: ReadonlyArray<readonly [string, string]> = [
   ["/bidding-management", "Quản lý Đấu thầu"],
   ["/warranty-maintenance", "Bảo hành & Bảo trì"],
   ["/profile", "Thông tin cá nhân & Tài khoản"],
-  ["/legal-ai-library", "Thư viện Pháp lý + AI"],
+  ["/legal-ai-library", "Thư viện Pháp lý"],
 ];
 
 export function getTopbarPageTitle(pathname: string): string {

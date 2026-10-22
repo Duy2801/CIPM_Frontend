@@ -9,7 +9,7 @@ import {
 } from "@ant-design/icons";
 import { Modal } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
-import { CATEGORY_LABELS, STATUS_META } from "../constants/legal-mock-data";
+import { STATUS_META, getCategoryLabel } from "../constants/legal-mock-data";
 import type {
   AttachedDocumentFile,
   LegalDocument,
@@ -160,7 +160,7 @@ export default function FilePreviewModal({
               </div>
 
               <h4 className="mb-1 mt-10 text-center text-base font-bold uppercase">
-                {CATEGORY_LABELS[document.category]}
+                {getCategoryLabel(document.category)}
               </h4>
               {document.title && (
                 <p className="m-0 text-center text-sm font-semibold">

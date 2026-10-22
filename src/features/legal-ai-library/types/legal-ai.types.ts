@@ -8,6 +8,12 @@ export type LegalDocumentCategory =
   | "LOCAL"
   | "TEMPLATE";
 
+/** Loại văn bản có sẵn */
+export type BuiltInDocumentCategory = Exclude<LegalDocumentCategory, "ALL">;
+
+/** Loại văn bản của một văn bản: loại có sẵn, hoặc loại người dùng tự thêm (lưu bằng chính tên loại) */
+export type DocumentCategoryKey = BuiltInDocumentCategory | (string & {});
+
 /** Tình trạng hiệu lực: Còn hiệu lực · Sắp hết hiệu lực · Hết hiệu lực một phần · Hết hiệu lực */
 export type LegalDocumentStatus = "EFFECTIVE" | "EXPIRING" | "PARTIAL" | "EXPIRED";
 
@@ -31,7 +37,7 @@ export interface LegalDocument {
   id: string;
   code: string; // Số hiệu (vd: 31/2024/QH15)
   title: string; // Tên trích yếu
-  category: Exclude<LegalDocumentCategory, "ALL">;
+  category: DocumentCategoryKey;
   issuer: string; // Cơ quan ban hành
   issueDate: string; // Ngày ban hành (YYYY-MM-DD)
   effectiveDate: string; // Ngày hiệu lực

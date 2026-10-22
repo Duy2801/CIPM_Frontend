@@ -11,6 +11,7 @@ import {
   FolderOpenOutlined,
   InboxOutlined,
   PaperClipOutlined,
+  PlusOutlined,
   SafetyCertificateOutlined,
   TagOutlined,
   UploadOutlined,
@@ -20,16 +21,17 @@ import type { UploadedAttachment } from "@/components/ui/standard-file-upload";
 import { todayIso } from "@/utils/date";
 import { normalizeSearchText } from "@/utils/search-text";
 import {
-  CATEGORY_LABELS,
   COMMON_ISSUERS,
   DEFAULT_ISSUER_BY_CATEGORY,
   STATUS_META,
   STATUS_ORDER,
+  getCategoryLabel,
 } from "../constants/legal-mock-data";
 import type {
   AttachedDocumentFile,
+  BuiltInDocumentCategory,
+  DocumentCategoryKey,
   LegalDocument,
-  LegalDocumentCategory,
   LegalDocumentStatus,
 } from "../types/legal-ai.types";
 
@@ -40,13 +42,11 @@ interface CreateDocumentDrawerProps {
   onSubmit: (doc: LegalDocument) => void;
   /** Cơ quan ban hành của các văn bản đã có trong thư viện (bổ sung vào danh sách gợi ý) */
   knownIssuers?: string[];
+  /** Loại văn bản người dùng đã tự thêm trước đó (bổ sung vào danh sách chọn) */
+  knownCategories?: string[];
 }
 
-type DocumentCategory = Exclude<LegalDocumentCategory, "ALL">;
-
-const CATEGORY_SELECT_OPTIONS = (
-  ["LAW", "DECREE", "CIRCULAR", "RESOLUTION", "DECISION", "LOCAL"] as DocumentCategory[]
-).map((value) => ({ value, label: CATEGORY_LABELS[value] }));
+const BUILT_IN_CATEGORIES: BuiltInDocumentCategory[] = ["LAW", "DECREE", "CIRCULAR", "RESOLUTION", "DECISION", "LOCAL"];
 
 const STATUS_SELECT_OPTIONS = STATUS_ORDER.map((value) => ({ value, label: STATUS_META[value].label }));
 
@@ -66,9 +66,12 @@ export default function CreateDocumentDrawer({
   onClose,
   onSubmit,
   knownIssuers = [],
+  knownCategories = [],
 }: CreateDocumentDrawerProps) {
   const [code, setCode] = useState("");
-  const [category, setCategory] = useState<DocumentCategory>("DECREE");
+  const [category, setCategory] = useState<DocumentCategoryKey>("DECREE");
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [addedCategories, setAddedCategories] = useState<string[]>([]);
   const [issuer, setIssuer] = useState("");
   const [issuerQuery, setIssuerQuery] = useState("");
   const [addedIssuers, setAddedIssuers] = useState<string[]>([]);
@@ -122,6 +125,7 @@ export default function CreateDocumentDrawer({
       setErrorText("");
     }
     setIssuerQuery("");
+    setCategoryQuery("");
   }, [editingDocument, open]);
 
   const issuerOptions = useMemo(() => {
@@ -149,11 +153,37 @@ export default function CreateDocumentDrawer({
     setIssuerQuery("");
   };
 
-  const handleCategoryChange = (next: DocumentCategory) => {
-    setCategory(next);
-    if (!issuer.trim() || DEFAULT_ISSUERS.has(issuer.trim())) {
-      setIssuer(DEFAULT_ISSUER_BY_CATEGORY[next] ?? "");
+  // Loại có sẵn + loại đã thêm trong thư viện + loại vừa thêm trong form (khóa của loại tự thêm là chính tên loại)
+  const categoryOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { value: string; label: string }[] = [];
+    for (const value of [...BUILT_IN_CATEGORIES, ...knownCategories, ...addedCategories, category]) {
+      const label = getCategoryLabel(value).trim();
+      const key = normalizeSearchText(label);
+      if (!label || seen.has(key)) continue;
+      seen.add(key);
+      list.push({ value, label });
     }
+    return list;
+  }, [knownCategories, addedCategories, category]);
+
+  const categoryQueryTrimmed = categoryQuery.trim();
+  const canAddCategory =
+    Boolean(categoryQueryTrimmed) &&
+    !categoryOptions.some((opt) => normalizeSearchText(opt.label) === normalizeSearchText(categoryQueryTrimmed));
+
+  const handleCategoryChange = (next: DocumentCategoryKey) => {
+    setCategory(next);
+    setCategoryQuery("");
+    if (!issuer.trim() || DEFAULT_ISSUERS.has(issuer.trim())) {
+      setIssuer(DEFAULT_ISSUER_BY_CATEGORY[next as BuiltInDocumentCategory] ?? "");
+    }
+  };
+
+  const handleAddCategory = () => {
+    if (!canAddCategory) return;
+    setAddedCategories((prev) => [...prev, categoryQueryTrimmed]);
+    handleCategoryChange(categoryQueryTrimmed);
   };
 
   const handleFilesSelected = (files: FileList | null) => {
@@ -292,9 +322,42 @@ export default function CreateDocumentDrawer({
               <Select
                 aria-label="Nhóm văn bản"
                 value={category}
-                onChange={(val) => handleCategoryChange(val as DocumentCategory)}
+                options={categoryOptions}
+                onChange={(val) => handleCategoryChange(val)}
                 className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-                options={CATEGORY_SELECT_OPTIONS}
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    <Divider style={{ margin: "6px 0" }} />
+                    <div className="flex items-center gap-2 px-2 pb-1.5" onMouseDown={(e) => e.stopPropagation()}>
+                      <Input
+                        intent="clean"
+                        value={categoryQuery}
+                        onChange={(e) => setCategoryQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCategory();
+                          }
+                        }}
+                        placeholder="Nhập nhóm văn bản mới..."
+                        className="h-7 flex-1 text-xs"
+                      />
+                      <Button
+                        htmlType="button"
+                        intent="primary"
+                        scale="xs"
+                        icon={<PlusOutlined />}
+                        disabled={!canAddCategory}
+                        onClick={handleAddCategory}
+                        className="text-xs"
+                      >
+                        Thêm
+                      </Button>
+                    </div>
+                  </>
+                )}
               />
             </div>
 
