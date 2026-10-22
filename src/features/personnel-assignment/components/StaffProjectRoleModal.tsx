@@ -27,7 +27,6 @@ import { cn } from "@/utils/cn";
 import { getInitials } from "@/utils/initials";
 import { resolveStaffRbac } from "../utils/personnel-rbac";
 import { isStaffTitleLocked, useLockedTitles } from "../hooks/useLockedTitles";
-import RoleAdjustPanel from "./RoleAdjustPanel";
 import StaffInfoCard from "./StaffInfoCard";
 import StaffPermissionPanel from "./StaffPermissionPanel";
 import StaffActivityHistory from "./StaffActivityHistory";
@@ -562,7 +561,7 @@ export default function StaffProjectRoleModal({
   const hasCndaProjects = rbacProfile.actingDirectorProjects.length > 0;
   const tabItems: SegmentedTabItem<StaffDetailTab>[] = [
     { key: "info", icon: <UserOutlined />, label: "Thông tin cá nhân" },
-    { key: "role", icon: <SafetyCertificateOutlined />, label: "Chức danh & quyền hạn" },
+    { key: "role", icon: <SafetyCertificateOutlined />, label: "Quyền hạn" },
     ...(hasCndaProjects
       ? [
           {
@@ -755,18 +754,15 @@ export default function StaffProjectRoleModal({
           team={team}
           teams={data.teams}
           relatedProjects={relatedProjects}
-          onSave={canEditInfo ? onUpdateStaff : undefined}
+          onSave={canEditInfo || canChangeTitle ? onUpdateStaff : undefined}
+          canEditInfo={canEditInfo}
+          canChangeTitle={canChangeTitle}
         />
       )}
       {/* Lịch sử thao tác: thay đổi trên hồ sơ + việc cán bộ đã thực hiện */}
       {!isPromoting && currentTab === "info" && <StaffActivityHistory key={`history-${staff.id}`} staff={staff} />}
 
-      {/* 2b. CHỨC DANH (mỗi cán bộ một chức danh) + QUYỀN HẠN theo chức danh, cùng một tab */}
-      {!isPromoting && currentTab === "role" && canChangeTitle && onUpdateStaff && (
-        <div className="mb-4">
-          <RoleAdjustPanel key={`roles-${staff.id}`} staff={staff} data={data} onUpdateStaff={onUpdateStaff} />
-        </div>
-      )}
+      {/* 2b. QUYỀN HẠN theo chức danh (chức danh đổi ở tab "Thông tin cá nhân") */}
       {!isPromoting && currentTab === "role" && (
         // Quyền theo chức danh + chỉnh quyền riêng cán bộ này (người có quyền quản lý chức danh mới chỉnh được)
         <StaffPermissionPanel

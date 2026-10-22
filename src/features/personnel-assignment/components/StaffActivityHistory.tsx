@@ -3,20 +3,19 @@
 import { useMemo, useState } from "react";
 import { Text } from "@/components/ui";
 import type { Staff } from "../types/personnel.types";
-import { getActivitiesByActor, getStaffProfileHistory } from "../utils/activity-log";
+import { getStaffProfileHistory } from "../utils/activity-log";
 import { useActivityLogVersion } from "../hooks/useActivityLogVersion";
 import ActivityDateFilter, { toLocalDate } from "./ActivityDateFilter";
 import ActivityTimeline from "./ActivityTimeline";
 
-/** Lịch sử trong hồ sơ cán bộ: gộp thay đổi trên hồ sơ người này + việc người này đã thực hiện, mới nhất lên đầu */
+/** Lịch sử thay đổi của hồ sơ cán bộ (chỉ thay đổi trên hồ sơ này, không gộp thao tác ở các màn hình khác), mới nhất lên đầu */
 export default function StaffActivityHistory({ staff }: { staff: Staff }) {
   const version = useActivityLogVersion();
   // Lọc theo một ngày cụ thể (yyyy-mm-dd)
   const [filterDate, setFilterDate] = useState("");
 
   const allEntries = useMemo(() => {
-    const merged = new Map([...getStaffProfileHistory(staff.id), ...getActivitiesByActor(staff.name)].map((e) => [e.id, e]));
-    return [...merged.values()].sort((a, b) => b.at.localeCompare(a.at));
+    return [...getStaffProfileHistory(staff.id)].sort((a, b) => b.at.localeCompare(a.at));
     // đọc lại khi hồ sơ hoặc nhật ký thay đổi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staff, version]);
@@ -30,7 +29,7 @@ export default function StaffActivityHistory({ staff }: { staff: Staff }) {
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Text className="text-xs font-bold uppercase tracking-wide text-slate-800">
-          Lịch sử thao tác{" "}
+          Lịch sử thay đổi{" "}
           <span className="font-semibold normal-case text-slate-400">
             ({filterDate ? `${entries.length}/${allEntries.length}` : allEntries.length})
           </span>
@@ -41,8 +40,7 @@ export default function StaffActivityHistory({ staff }: { staff: Staff }) {
       <ActivityTimeline
         key={filterDate}
         entries={entries}
-        showModule
-        emptyText={filterDate ? "Không có thao tác nào trong ngày đã chọn." : "Chưa có thao tác nào được ghi nhận."}
+        emptyText={filterDate ? "Không có thay đổi nào trong ngày đã chọn." : "Chưa có thay đổi nào trên hồ sơ này."}
       />
     </div>
   );

@@ -13,7 +13,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Flex, Input, Pagination, Select, Text, Title, Tooltip } from "@/components/ui";
-import { todayIso } from "@/utils/date";
+import { formatDateVi, todayIso } from "@/utils/date";
 import { normalizeSearchText } from "@/utils/search-text";
 import AiLegalAssistantDrawer from "./AiLegalAssistantDrawer";
 import CreateDocumentDrawer from "./CreateDocumentDrawer";
@@ -631,12 +631,14 @@ export default function LegalAiLibraryScreen() {
                 {/* Tiêu đề cột — khớp độ rộng với từng dòng bên dưới */}
                 <div
                   aria-hidden
-                  className="hidden items-center gap-6 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:flex"
+                  className="hidden items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:flex"
                 >
-                  <span className="w-40 shrink-0">Số hiệu</span>
-                  <span className="w-32 shrink-0">Loại văn bản</span>
+                  <span className="w-36 shrink-0">Số hiệu</span>
+                  <span className="w-28 shrink-0">Loại văn bản</span>
                   <span className="min-w-0 flex-1">Tên văn bản</span>
-                  <span className="w-28 shrink-0 text-center">Tình trạng</span>
+                  <span className="w-24 shrink-0 text-center">Ngày ban hành</span>
+                  <span className="w-24 shrink-0 text-center">Ngày hiệu lực</span>
+                  <span className="w-20 shrink-0 text-center">Tình trạng</span>
                   {canManageDocuments && <span className="ml-auto w-20 shrink-0 text-center">Thao tác</span>}
                 </div>
                 <ol className="m-0 list-none divide-y divide-slate-100 p-0">
@@ -655,16 +657,16 @@ export default function LegalAiLibraryScreen() {
                               handleOpenDocDetail(item);
                             }
                           }}
-                          className="group flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-center md:gap-6"
+                          className="group flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-center md:gap-4"
                         >
                           {/* Số hiệu · cơ quan ban hành */}
-                          <div className="flex shrink-0 flex-col items-start gap-1 text-xs md:w-40">
+                          <div className="flex shrink-0 flex-col items-start gap-1 text-xs md:w-36">
                             <span className="font-semibold text-slate-800">{item.code}</span>
                             <span className="text-slate-500">{item.issuer}</span>
                           </div>
 
                           {/* Loại văn bản */}
-                          <div className="shrink-0 md:w-32">
+                          <div className="shrink-0 md:w-28">
                             <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                               {getCategoryLabel(item.category)}
                             </span>
@@ -678,8 +680,18 @@ export default function LegalAiLibraryScreen() {
                             {item.title || item.code}
                           </p>
 
+                          {/* Ngày ban hành · Ngày hiệu lực (màn hình nhỏ hiện kèm nhãn) */}
+                          <div className="shrink-0 text-xs text-slate-700 md:w-24 md:text-center">
+                            <span className="text-slate-500 md:hidden">Ban hành: </span>
+                            <span className="font-medium tabular-nums">{formatDateVi(item.issueDate)}</span>
+                          </div>
+                          <div className="shrink-0 text-xs text-slate-700 md:w-24 md:text-center">
+                            <span className="text-slate-500 md:hidden">Hiệu lực: </span>
+                            <span className="font-medium tabular-nums">{formatDateVi(item.effectiveDate)}</span>
+                          </div>
+
                           {/* Tình trạng văn bản */}
-                          <div className="flex shrink-0 items-center justify-start md:w-28 md:justify-center">
+                          <div className="flex shrink-0 items-center justify-start md:w-20 md:justify-center">
                             <Tooltip title={`Tình trạng: ${status.label}`}>
                               <div className="inline-flex cursor-help items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 md:border-0 md:bg-transparent md:p-0">
                                 <span

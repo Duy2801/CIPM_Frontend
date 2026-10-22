@@ -655,8 +655,49 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                             />
                             {teamNameError && <span className="mt-0.5 text-[11px] text-rose-600">{teamNameError}</span>}
                           </div>
-                        ) : (
+                        ) : null}
+                        {/* Lưu / Hủy nằm ngay cạnh ô sửa tên phòng ban */}
+                        {canManageTeams && renamingTeamId === team.id && (
+                          <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              intent="primary"
+                              scale="compact"
+                              icon={<SaveOutlined />}
+                              loading={savingTeamName}
+                              onClick={() => saveRenameTeam(team)}
+                              className="text-xs font-semibold"
+                            >
+                              Lưu
+                            </Button>
+                            <Button
+                              intent="outline"
+                              scale="compact"
+                              disabled={savingTeamName}
+                              onClick={cancelRenameTeam}
+                              className="text-xs font-semibold"
+                            >
+                              Hủy
+                            </Button>
+                          </div>
+                        )}
+                        {renamingTeamId === team.id ? null : (
                           <Text className="text-sm font-bold text-slate-900">{team.name}</Text>
+                        )}
+                        {/* Bút chì ngay cạnh tên phòng ban để dễ thấy, dễ sửa */}
+                        {canManageTeams && renamingTeamId !== team.id && (
+                          <Tooltip title="Cập nhật phòng ban">
+                            <button
+                              type="button"
+                              aria-label={`Cập nhật phòng ban ${team.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startRenameTeam(team);
+                              }}
+                              className="inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white p-0 text-xs text-slate-500 shadow-2xs transition-colors hover:border-[#DC2626]/40 hover:bg-red-50 hover:text-[#DC2626]"
+                            >
+                              <EditOutlined />
+                            </button>
+                          </Tooltip>
                         )}
                         <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                           {members.length} người
@@ -680,44 +721,6 @@ export default function PersonnelDirectoryTab({ controller, onLockAccount }: Per
                       )}
                     </div>
 
-                    {canManageTeams && renamingTeamId === team.id && (
-                      <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          intent="outline"
-                          scale="compact"
-                          disabled={savingTeamName}
-                          onClick={cancelRenameTeam}
-                          className="text-xs font-semibold"
-                        >
-                          Hủy
-                        </Button>
-                        <Button
-                          intent="primary"
-                          scale="compact"
-                          icon={<SaveOutlined />}
-                          loading={savingTeamName}
-                          onClick={() => saveRenameTeam(team)}
-                          className="text-xs font-semibold"
-                        >
-                          Lưu
-                        </Button>
-                      </div>
-                    )}
-                    {canManageTeams && renamingTeamId !== team.id && (
-                      <Tooltip title="Cập nhật phòng ban">
-                        <Button
-                          intent="outline"
-                          scale="compact"
-                          aria-label={`Cập nhật phòng ban ${team.name}`}
-                          icon={<EditOutlined />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startRenameTeam(team);
-                          }}
-                          className="shrink-0 !h-8 !w-8 !p-0 !text-[#DC2626] !border-[#DC2626] hover:!border-[#B91C1C] hover:!text-[#B91C1C] hover:!bg-red-50/60 bg-white shadow-2xs"
-                        />
-                      </Tooltip>
-                    )}
                   </div>
 
                   {collapsed ? null : members.length === 0 ? (

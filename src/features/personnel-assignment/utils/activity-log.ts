@@ -3,8 +3,7 @@
  *
  * 1. Sổ nhật ký của phân hệ Nhân sự (lưu trình duyệt): mỗi lần thêm / sửa hồ sơ, khóa / mở tài khoản... ghi ngày giờ,
  *    người thực hiện, đối tượng và từng thay đổi "cũ → mới".
- * 2. "Việc người này đã làm": gom theo tên người thực hiện từ sổ nhật ký Nhân sự + lịch sử duyệt giải ngân (Tài chính)
- *    + lịch sử từng bước (Thủ tục XDCB).
+ * 2. Mỗi màn hình chỉ xem lịch sử của chính nó: hồ sơ cán bộ lọc theo hồ sơ, Phân quyền / Thư viện pháp lý lọc theo phân hệ.
  */
 
 export interface ActivityChange {
@@ -35,8 +34,6 @@ export const ACTIVITY_LOG_EVENT = "cipm-activity-log-updated";
 /** Giữ tối đa số dòng nhật ký gần nhất */
 const MAX_ENTRIES = 1000;
 
-const FINANCE_STORAGE_KEY = "cipm_finance_settlement_store_v1";
-const PROCEDURE_STORAGE_KEY = "cipm_procedure_projects_data_v6";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -81,108 +78,6 @@ export function getPermissionChangeHistory(): ActivityEntry[] {
 /** Thay đổi trên hồ sơ của một cán bộ */
 export function getStaffProfileHistory(staffId: string): ActivityEntry[] {
   return getPersonnelActivities().filter((e) => e.targetType === "staff" && e.targetId === staffId);
-}
-
-// "10:57:00 20/10/2026" (toLocaleString vi-VN) hoặc "20/10/2026, 10:57:00" → ISO
-function parseViDateTime(value: string): string | null {
-  const date = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!date) return null;
-  const time = value.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-  const d = new Date(
-    Number(date[3]),
-    Number(date[2]) - 1,
-    Number(date[1]),
-    time ? Number(time[1]) : 0,
-    time ? Number(time[2]) : 0,
-    time && time[3] ? Number(time[3]) : 0
-  );
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-// "2026-10-20 10:57" → ISO
-function parseIsoLike(value: string): string | null {
-  const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-const sameName = (a?: string, b?: string) => Boolean(a && b) && a!.trim().toLowerCase() === b!.trim().toLowerCase();
-
-interface FinanceStore {
-  disbursements?: {
-    id: string;
-    code: string;
-    content?: string;
-    amount?: number;
-    approvals?: { role?: string; actor: string; at: string; action: string; note?: string }[];
-  }[];
-}
-
-interface ProcedureStore {
-  projectId: string;
-  projectCode?: string;
-  projectName?: string;
-  history?: {
-    id: string;
-    stepCode?: string;
-    stepName?: string;
-    timestamp: string;
-    performedBy: string;
-    role?: string;
-    actionLabel: string;
-    previousStatus?: string;
-    newStatus?: string;
-    details?: string;
-    reason?: string;
-  }[];
-}
-
-/** Việc một người đã thực hiện trên hệ thống (gom từ Nhân sự, Tài chính, Thủ tục XDCB), mới nhất lên đầu */
-export function getActivitiesByActor(actorName: string): ActivityEntry[] {
-  const result: ActivityEntry[] = getPersonnelActivities().filter((e) => sameName(e.actorName, actorName));
-
-  // Tài chính: lịch sử duyệt hồ sơ giải ngân
-  const finance = readJson<FinanceStore>(FINANCE_STORAGE_KEY, {});
-  (finance.disbursements ?? []).forEach((d) =>
-    (d.approvals ?? []).forEach((a, index) => {
-      if (!sameName(a.actor, actorName)) return;
-      result.push({
-        id: `FIN-${d.id}-${index}`,
-        at: parseViDateTime(a.at) ?? new Date(0).toISOString(),
-        actorName: a.actor,
-        actorRole: a.role,
-        module: "Tài chính",
-        action: `${a.action} hồ sơ giải ngân ${d.code}`,
-        targetType: "disbursement",
-        targetId: d.id,
-        targetName: d.content,
-        note: a.note,
-      });
-    })
-  );
-
-  // Thủ tục XDCB: lịch sử từng bước của dự án
-  const procedures = readJson<ProcedureStore[]>(PROCEDURE_STORAGE_KEY, []);
-  (Array.isArray(procedures) ? procedures : []).forEach((p) =>
-    (p.history ?? []).forEach((h) => {
-      if (!sameName(h.performedBy, actorName)) return;
-      result.push({
-        id: `PROC-${p.projectId}-${h.id}`,
-        at: parseIsoLike(h.timestamp) ?? new Date(0).toISOString(),
-        actorName: h.performedBy,
-        actorRole: h.role,
-        module: "Thủ tục XDCB",
-        action: `${h.actionLabel}${h.stepCode ? ` [${h.stepCode}]` : ""}`,
-        targetType: "procedure",
-        targetId: p.projectId,
-        targetName: [p.projectCode, h.stepName].filter(Boolean).join(" · "),
-        changes:
-          h.previousStatus || h.newStatus ? [{ label: "Trạng thái", from: h.previousStatus, to: h.newStatus }] : undefined,
-        note: [h.details, h.reason].filter(Boolean).join(" — ") || undefined,
-      });
-    })
-  );
-
-  return result.sort((a, b) => b.at.localeCompare(a.at));
 }
 
 /** "20/10/2026 10:57" */

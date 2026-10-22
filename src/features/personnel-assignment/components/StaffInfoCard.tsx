@@ -17,9 +17,15 @@ interface StaffInfoCardProps {
   relatedProjects: { project: PersonnelProject; roleText: string }[];
   /** Có truyền thì các ô thông tin bấm vào sửa trực tiếp được, lưu sau khi xác nhận */
   onSave?: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => Promise<boolean>;
+  /** Được sửa các thông tin cá nhân (phòng ban, email, ngày sinh...) */
+  canEditInfo?: boolean;
+  /** Được đổi chức danh — chỉ là tên gọi hiển thị, không ảnh hưởng vai trò / ma trận phân quyền */
+  canChangeTitle?: boolean;
 }
 
 interface StaffInfoFormValues {
+  /** Chức danh: tên gọi hiển thị (độc lập với vai trò phân quyền) */
+  title?: string;
   teamId: TeamId;
   email: string;
   employment: Employment;
@@ -61,15 +67,26 @@ function FieldBox({ label, editable, children }: { label: string; editable?: boo
 const isEmptyValue = (val: unknown) => val === undefined || val === null || val === "";
 const sameValue = (a: unknown, b: unknown) => (isEmptyValue(a) && isEmptyValue(b)) || String(a ?? "").trim() === String(b ?? "").trim();
 
-export default function StaffInfoCard({ staff, team, teams, relatedProjects, onSave }: StaffInfoCardProps) {
+export default function StaffInfoCard({
+  staff,
+  team,
+  teams,
+  relatedProjects,
+  onSave,
+  canEditInfo = true,
+  canChangeTitle = false,
+}: StaffInfoCardProps) {
   const { modal } = App.useApp();
   const [form] = Form.useForm<StaffInfoFormValues>();
   const [saving, setSaving] = useState(false);
   const [customFieldDefs] = useState<CustomFieldDefinition[]>(() => getCustomFields("staff"));
-  const editable = Boolean(onSave);
+  const editable = Boolean(onSave) && canEditInfo;
+  const titleEditable = Boolean(onSave) && canChangeTitle;
+  const anyEditable = editable || titleEditable;
   const teamName = (id?: string) => teams.find((t) => t.id === id)?.name ?? id;
 
   const initialValues: StaffInfoFormValues = {
+    title: staff.title,
     teamId: staff.teamId,
     email: staff.email,
     employment: staff.employment,
@@ -87,8 +104,10 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
     { key: "gender", label: "Giới tính" },
     { key: "dob", label: "Ngày sinh" },
   ];
+  const titleChanged = Boolean(watched) && "title" in watched! && !sameValue(watched!.title, staff.title);
   const changes: { label: string; from: unknown; to: unknown }[] = watched
     ? [
+        ...(titleChanged ? [{ label: "Chức danh", from: staff.title, to: watched.title }] : []),
         ...fieldLabels
           .filter(({ key }) => key in watched && !sameValue(watched[key], staff[key]))
           .map(({ key, label }) => ({
@@ -121,17 +140,26 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
       else nextCustomFields[field.name] = val;
     }
 
+    // Đổi chức danh chỉ đổi tên gọi — không đổi vai trò, phòng ban hay quyền hạn
+    const titleInput =
+      titleEditable && !sameValue(values.title, staff.title) ? { title: (values.title || "").trim() } : null;
+
     setSaving(true);
     try {
       await onSave(
         staff.id,
         {
-          teamId: values.teamId,
-          email: values.email.trim(),
-          employment: values.employment,
-          gender: values.gender,
-          dob: values.dob?.trim() || "",
-          customFields: nextCustomFields,
+          ...(editable
+            ? {
+                teamId: values.teamId,
+                email: values.email.trim(),
+                employment: values.employment,
+                gender: values.gender,
+                dob: values.dob?.trim() || "",
+                customFields: nextCustomFields,
+              }
+            : {}),
+          ...(titleInput ?? {}),
         },
         `Đã lưu ${changes.length} thay đổi trong hồ sơ của cán bộ ${staff.name}.`,
       );
@@ -187,11 +215,25 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
       <Text className="mb-1 block text-xs font-bold text-slate-800 uppercase tracking-wide">
         Thông tin cá nhân & công tác
       </Text>
-      {editable && <p className="m-0 mb-3 text-[11px] text-slate-500">Bấm vào ô thông tin để sửa trực tiếp.</p>}
+      {anyEditable && <p className="m-0 mb-3 text-[11px] text-slate-500">Bấm vào ô thông tin để sửa trực tiếp.</p>}
 
       <Form form={form} layout="vertical" requiredMark={false} initialValues={initialValues}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          {/* Chức danh đổi ở tab "Chức danh & quyền hạn"; phòng ban đổi trực tiếp tại đây */}
+          {/* Chức danh: chỉ là tên gọi hiển thị, đổi không ảnh hưởng vai trò / ma trận phân quyền */}
+          <FieldBox label="Chức danh" editable={titleEditable}>
+            {titleEditable ? (
+              <Form.Item
+                name="title"
+                className={formItemClass}
+                rules={[{ required: true, whitespace: true, message: "Vui lòng nhập chức danh." }]}
+              >
+                <Input size="small" variant="borderless" className={INLINE_INPUT_CLASS} placeholder="VD: Giám đốc" />
+              </Form.Item>
+            ) : (
+              staff.title || EMPTY_TEXT
+            )}
+          </FieldBox>
+
           <FieldBox label="Phòng ban / Tổ chuyên môn" editable={editable}>
             {editable ? (
               <Form.Item name="teamId" className={formItemClass} rules={[{ required: true, message: "Vui lòng chọn phòng ban." }]}>
@@ -349,7 +391,7 @@ export default function StaffInfoCard({ staff, team, teams, relatedProjects, onS
       )}
 
       {/* Thanh lưu chỉ hiện khi có thay đổi chưa lưu */}
-      {editable && isDirty && (
+      {anyEditable && isDirty && (
         <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">
           <span className="text-xs text-amber-900">
             Có <strong>{changes.length}</strong> thay đổi chưa lưu
