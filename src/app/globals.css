@@ -225,7 +225,9 @@ body {
   overflow: hidden !important;
 }
 
-html:has(.ant-modal-wrap:not(.ant-modal-wrap-hidden)),
+/* Chỉ khóa cuộn ở body: overflow của body được trình duyệt chuyển lên viewport nên vẫn giữ vị trí cuộn.
+   Không khóa thêm ở html — html hết "visible" thì body (cao 100%) thành khung cuộn riêng,
+   trang mất phần cuộn và bị nhảy về đầu mỗi khi mở hộp thoại. */
 body:has(.ant-modal-wrap:not(.ant-modal-wrap-hidden)),
 body.ant-scrolling-effect {
   overflow: hidden !important;

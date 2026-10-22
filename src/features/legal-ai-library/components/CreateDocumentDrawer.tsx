@@ -141,6 +141,12 @@ export default function CreateDocumentDrawer({
     return list.map((name) => ({ value: name, label: name }));
   }, [knownIssuers, addedIssuers, issuer]);
 
+  // Ô nhập cuối danh sách vừa lọc (không phân biệt hoa/thường và dấu) vừa dùng để thêm cơ quan mới
+  const filteredIssuerOptions = useMemo(() => {
+    const query = normalizeSearchText(issuerQuery.trim());
+    return query ? issuerOptions.filter((opt) => normalizeSearchText(opt.value).includes(query)) : issuerOptions;
+  }, [issuerOptions, issuerQuery]);
+
   const issuerQueryTrimmed = issuerQuery.trim();
   const canAddIssuer =
     Boolean(issuerQueryTrimmed) &&
@@ -383,17 +389,10 @@ export default function CreateDocumentDrawer({
               Cơ quan ban hành <span className="text-rose-500">*</span>
             </label>
             <Select
-              showSearch
               aria-label="Cơ quan ban hành"
-              placeholder="Gõ để tìm cơ quan ban hành..."
+              placeholder="Chọn cơ quan ban hành..."
               value={issuer || undefined}
-              options={issuerOptions}
-              searchValue={issuerQuery}
-              onSearch={setIssuerQuery}
-              // Tìm không phân biệt hoa/thường và dấu: "ubnd kien giang" khớp "UBND tỉnh Kiên Giang"
-              filterOption={(input, option) =>
-                normalizeSearchText(String(option?.value ?? "")).includes(normalizeSearchText(input))
-              }
+              options={filteredIssuerOptions}
               onChange={(val) => {
                 setIssuer(val);
                 setIssuerQuery("");
@@ -406,14 +405,26 @@ export default function CreateDocumentDrawer({
                 <>
                   {menu}
                   <Divider style={{ margin: "6px 0" }} />
-                  <div className="flex items-center justify-between gap-2 px-2 pb-1.5" onMouseDown={(e) => e.preventDefault()}>
-                    <span className="text-[11px] text-slate-500">
-                      {canAddIssuer ? "Chưa có, có thể thêm mới:" : "Không thấy cơ quan? Gõ tên để thêm mới."}
-                    </span>
+                  <div className="flex items-center gap-2 px-2 pb-1.5" onMouseDown={(e) => e.stopPropagation()}>
+                    <Input
+                      intent="clean"
+                      value={issuerQuery}
+                      onChange={(e) => setIssuerQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddIssuer();
+                        }
+                      }}
+                      placeholder="Tìm hoặc nhập cơ quan mới..."
+                      className="h-7 flex-1 text-xs"
+                    />
                     <Button
                       htmlType="button"
                       intent="primary"
                       scale="xs"
+                      icon={<PlusOutlined />}
                       disabled={!canAddIssuer}
                       onClick={handleAddIssuer}
                       className="text-xs"

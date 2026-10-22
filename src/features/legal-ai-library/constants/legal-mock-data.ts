@@ -17,6 +17,9 @@ export const CATEGORY_LABELS: Record<LegalDocumentCategory, string> = {
   TEMPLATE: "Biểu mẫu chuẩn",
 };
 
+/** Phân hệ ghi trong nhật ký thao tác dùng chung (tab Lịch sử của Thư viện pháp lý) */
+export const LEGAL_LOG_MODULE = "Thư viện pháp lý";
+
 /** Tên hiển thị của loại văn bản — loại tự thêm dùng luôn khóa làm tên */
 export function getCategoryLabel(category: string): string {
   return CATEGORY_LABELS[category as LegalDocumentCategory] ?? category;

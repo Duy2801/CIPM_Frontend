@@ -189,9 +189,6 @@ export const GRANTABLE_PERMISSION_OPTIONS = [
   ...MODULE_GRANTABLE_OPTIONS,
 ];
 
-
-const normalizeTitle = (title?: string) => (title || "").trim().toLowerCase();
-
 type StaffDetailTab = "info" | "role" | "cnda";
 
 interface StaffProjectRoleModalProps {
@@ -239,7 +236,6 @@ export default function StaffProjectRoleModal({
     setIsPromoting(Boolean(initialPromoting));
   }, [initialPromoting, staff?.id]);
 
-  const [savingRevoke, setSavingRevoke] = useState(false);
 
   // Tab đang xem trong drawer; mở cán bộ khác thì quay về tab thông tin cá nhân
   const lockedTitles = useLockedTitles();
@@ -289,40 +285,6 @@ export default function StaffProjectRoleModal({
 
     return !isLead && !isElevatedRole && !hasElevatedTitle && !hasActingProjects;
   }, [staff, team?.leaderId, rbacProfile.actingDirectorProjects.length, rbacProfile.isLeader]);
-
-  // Xử lý thu hồi vai trò cán bộ (đưa về Thành viên cơ bản, không thu hồi quyền thủ công)
-  const handleRevokeStaffRole = () => {
-    if (!staff || !onUpdateStaff) return;
-
-    // Hỏi xác nhận trước; thu hồi xong cán bộ không còn chức danh nào (để trống), không còn quyền theo chức danh
-    modal.confirm({
-      width: 440,
-      centered: true,
-      icon: null,
-      title: `Thu hồi chức danh của ${staff.name}?`,
-      content: (
-        <p className="m-0 text-xs leading-relaxed text-slate-600">
-          Cán bộ sẽ không còn chức danh <strong className="text-slate-800">{staff.title}</strong> và không còn quyền
-          hạn theo chức danh này. Bạn có thể gán chức danh mới tại tab Chức danh.
-        </p>
-      ),
-      okText: "Thu hồi",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        setSavingRevoke(true);
-        try {
-          await onUpdateStaff(
-            staff.id,
-            { title: "", roleCode: "", isLeader: false, revokedRoles: [] },
-            `Đã thu hồi chức danh của cán bộ ${staff.name}.`
-          );
-        } finally {
-          setSavingRevoke(false);
-        }
-      },
-    });
-  };
 
   // Thu hồi quyền CNDA theo từng dự án
   const handleRevokeCnda = (projId: string, projName: string) => {
@@ -666,21 +628,8 @@ export default function StaffProjectRoleModal({
             </div>
           </div>
 
-          {/* Thu hồi chức danh & Khóa / Mở lại tài khoản cán bộ */}
+          {/* Khóa / Mở lại tài khoản cán bộ */}
           <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-            {/* Thu hồi chức danh: chỉ hiện khi cán bộ đang có chức danh (chức danh đang tắt thì coi như chưa có) */}
-            {canManageRole && onUpdateStaff && normalizeTitle(staff.title) !== "" && (
-              <Button
-                intent="outline"
-                scale="compact"
-                loading={savingRevoke}
-                onClick={handleRevokeStaffRole}
-                icon={<RollbackOutlined />}
-                className="!border-amber-300 !text-amber-700 hover:!border-amber-400 hover:!bg-amber-50 text-xs"
-              >
-                Thu hồi chức danh
-              </Button>
-            )}
             {onLockAccount && (
               staff.accountActive ? (
                 <Button
