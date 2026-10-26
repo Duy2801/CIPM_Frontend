@@ -37,14 +37,34 @@ export interface SelectProps
     VariantProps<typeof selectVariants> {}
 
 export const Select = React.forwardRef<RefSelectProps, SelectProps>(
-  ({ intent, scale, className, dropdownStyle, styles, ...props }, ref) => {
+  (
+    {
+      intent,
+      scale,
+      className,
+      dropdownStyle,
+      styles,
+      popupMatchSelectWidth = false,
+      ...props
+    },
+    ref,
+  ) => {
     let resolvedStyles = styles;
-    if (dropdownStyle && typeof styles !== "function") {
+    if (typeof styles !== "function") {
+      const stylesObj = (styles || {}) as Record<string, any>;
+      const existingPopup =
+        typeof stylesObj.popup === "object" && stylesObj.popup !== null
+          ? stylesObj.popup
+          : {};
       resolvedStyles = {
-        ...styles,
+        ...stylesObj,
         popup: {
-          root: dropdownStyle,
-          ...(typeof styles?.popup === "object" ? styles.popup : undefined),
+          ...existingPopup,
+          root: {
+            minWidth: "max-content",
+            ...(existingPopup.root || {}),
+            ...dropdownStyle,
+          },
         },
       } as SelectProps["styles"];
     }
@@ -54,6 +74,7 @@ export const Select = React.forwardRef<RefSelectProps, SelectProps>(
         ref={ref}
         className={cn(selectVariants({ intent, scale }), className)}
         styles={resolvedStyles}
+        popupMatchSelectWidth={popupMatchSelectWidth}
         {...props}
       />
     );

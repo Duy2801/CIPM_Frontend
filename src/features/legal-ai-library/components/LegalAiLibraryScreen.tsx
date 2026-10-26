@@ -47,6 +47,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "LAW",
     status: "EFFECTIVE",
     issuer: "Quốc hội",
+    signer: "Nguyễn Sinh Hùng",
+    gazetteNumber: "693&694/2014",
+    gazetteDate: "2014-07-02",
+    field: "Đầu tư xây dựng",
     issueDate: "2014-06-18",
     effectiveDate: "2015-01-01",
     updatedAt: "2026-09-12",
@@ -66,6 +70,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "LAW",
     status: "EFFECTIVE",
     issuer: "Quốc hội",
+    signer: "Vương Đình Huệ",
+    gazetteNumber: "745&746/2023",
+    gazetteDate: "2023-07-15",
+    field: "Quản lý đấu thầu",
     issueDate: "2023-06-23",
     effectiveDate: "2024-01-01",
     updatedAt: "2026-08-30",
@@ -85,6 +93,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "LAW",
     status: "EFFECTIVE",
     issuer: "Quốc hội",
+    signer: "Vương Đình Huệ",
+    gazetteNumber: "135&136/2024",
+    gazetteDate: "2024-02-05",
+    field: "Đất đai - GPMB & TĐC",
     issueDate: "2024-01-18",
     effectiveDate: "2024-08-01",
     updatedAt: "2026-09-05",
@@ -104,6 +116,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "DECREE",
     status: "PARTIAL",
     issuer: "Chính phủ",
+    signer: "Nguyễn Xuân Phúc",
+    gazetteNumber: "189&190/2021",
+    gazetteDate: "2021-02-25",
+    field: "Tài chính - Quyết toán KBNN",
     issueDate: "2021-02-09",
     effectiveDate: "2021-02-09",
     updatedAt: "2026-10-02",
@@ -125,6 +141,11 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "CIRCULAR",
     status: "EXPIRING",
     issuer: "Bộ Xây dựng",
+    signer: "Lê Quang Hùng",
+    gazetteNumber: "812&813/2021",
+    gazetteDate: "2021-09-20",
+    field: "Đầu tư xây dựng",
+    expiredDate: "2026-12-31",
     issueDate: "2021-08-31",
     effectiveDate: "2021-10-15",
     updatedAt: "2026-10-10",
@@ -144,6 +165,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "RESOLUTION",
     status: "EFFECTIVE",
     issuer: "Quốc hội",
+    signer: "Trần Thanh Mẫn",
+    gazetteNumber: "518&519/2025",
+    gazetteDate: "2025-07-10",
+    field: "Đất đai - GPMB & TĐC",
     issueDate: "2025-06-25",
     effectiveDate: "2025-08-01",
     updatedAt: "2026-07-21",
@@ -163,6 +188,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "DECISION",
     status: "EFFECTIVE",
     issuer: "UBND tỉnh Kiên Giang",
+    signer: "Lâm Minh Thành",
+    gazetteNumber: "Số 28/2024/CB-KG",
+    gazetteDate: "2024-05-25",
+    field: "Đất đai - GPMB & TĐC",
     issueDate: "2024-05-15",
     effectiveDate: "2024-06-01",
     updatedAt: "2026-06-18",
@@ -182,6 +211,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "DECREE",
     status: "EFFECTIVE",
     issuer: "Chính phủ",
+    signer: "Phạm Minh Chính",
+    gazetteNumber: "215&216/2024",
+    gazetteDate: "2024-03-10",
+    field: "Quản lý đấu thầu",
     issueDate: "2024-02-27",
     effectiveDate: "2024-02-27",
     updatedAt: "2026-08-14",
@@ -201,6 +234,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "DECREE",
     status: "EFFECTIVE",
     issuer: "Chính phủ",
+    signer: "Nguyễn Xuân Phúc",
+    gazetteNumber: "128&129/2021",
+    gazetteDate: "2021-02-12",
+    field: "Bảo hành & Bảo trì công trình",
     issueDate: "2021-01-26",
     effectiveDate: "2021-01-26",
     updatedAt: "2026-05-20",
@@ -219,6 +256,11 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "DECREE",
     status: "EXPIRED",
     issuer: "Chính phủ",
+    signer: "Nguyễn Xuân Phúc",
+    gazetteNumber: "235&236/2021",
+    gazetteDate: "2021-03-18",
+    field: "Thủ tục XDCB",
+    expiredDate: "2026-03-01",
     issueDate: "2021-03-03",
     effectiveDate: "2021-03-03",
     updatedAt: "2026-04-08",
@@ -237,6 +279,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "LAW",
     status: "EFFECTIVE",
     issuer: "Quốc hội",
+    signer: "Trần Thanh Mẫn",
+    gazetteNumber: "1152&1153/2024",
+    gazetteDate: "2024-12-15",
+    field: "Tài chính - Quyết toán KBNN",
     issueDate: "2024-11-29",
     effectiveDate: "2025-01-01",
     updatedAt: "2026-03-15",
@@ -255,6 +301,10 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     category: "DECREE",
     status: "EFFECTIVE",
     issuer: "Chính phủ",
+    signer: "Phạm Minh Chính",
+    gazetteNumber: "625&626/2024",
+    gazetteDate: "2024-08-05",
+    field: "Đất đai - GPMB & TĐC",
     issueDate: "2024-07-15",
     effectiveDate: "2024-08-01",
     updatedAt: "2026-02-27",
@@ -296,6 +346,7 @@ export default function LegalAiLibraryScreen() {
   const [page, setPage] = useState(1);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantPrompt, setAssistantPrompt] = useState<string>("");
   const [screenTab, setScreenTab] = useState<"documents" | "history">("documents");
@@ -376,6 +427,11 @@ export default function LegalAiLibraryScreen() {
 
   // Xem chi tiết văn bản: mở đúng dữ liệu đã lưu (phạm vi, tags, tệp đính kèm)
   const handleOpenDocDetail = (item: LegalItem) => setSelectedDoc(item);
+
+
+
+
+
 
   // Xóa văn bản khỏi thư viện: hỏi xác nhận, ghi lịch sử
   const confirmDeleteDocument = (item: LegalItem) =>
@@ -720,7 +776,7 @@ export default function LegalAiLibraryScreen() {
                           {/* Tên văn bản */}
                           <p
                             title={item.title || item.code}
-                            className="m-0 line-clamp-2 min-w-0 flex-1 text-[15px] font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#DC2626]"
+                            className="m-0 line-clamp-2 min-w-0 flex-1 text-sm font-normal leading-snug text-slate-800 transition-colors group-hover:text-[#DC2626]"
                           >
                             {item.title || item.code}
                           </p>
@@ -829,6 +885,7 @@ export default function LegalAiLibraryScreen() {
           setLegalItems((prev) => [newItem, ...prev]);
           setRecentlyAddedIds((prev) => [newItem.id, ...prev]);
           resetFilters();
+          setIsCreateOpen(false);
         }}
       />
 

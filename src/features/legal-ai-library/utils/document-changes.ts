@@ -13,6 +13,7 @@ export type LegalDocumentPatch = Partial<
     | "gazetteNumber"
     | "gazetteDate"
     | "field"
+    | "scope"
     | "issueDate"
     | "effectiveDate"
     | "expiredDate"
@@ -33,6 +34,7 @@ export const LEGAL_FIELD_LABELS: Record<LegalDocumentField, string> = {
   gazetteNumber: "Số công báo",
   gazetteDate: "Ngày đăng công báo",
   field: "Lĩnh vực",
+  scope: "Phạm vi áp dụng",
   issueDate: "Ngày ban hành",
   effectiveDate: "Ngày áp dụng (hiệu lực)",
   expiredDate: "Ngày hết hiệu lực",

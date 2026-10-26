@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BookOutlined,
   CalendarOutlined,
+  ClockCircleOutlined,
   FileTextOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
   TagOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -20,7 +20,7 @@ import {
   STANDARD_DRAWER_WIDTH,
 } from "@/components/ui";
 import type { UploadedAttachment } from "@/components/ui/standard-file-upload";
-import { todayIso } from "@/utils/date";
+import { formatDateVi, todayIso } from "@/utils/date";
 import { normalizeSearchText } from "@/utils/search-text";
 import {
   COMMON_ISSUERS,
@@ -38,7 +38,6 @@ import type {
 
 interface CreateDocumentDrawerProps {
   open: boolean;
-  editingDocument?: LegalDocument | null;
   onClose: () => void;
   onSubmit: (doc: LegalDocument) => void;
   /** Cơ quan ban hành của các văn bản đã có trong thư viện (bổ sung vào danh sách gợi ý) */
@@ -80,7 +79,6 @@ const DEFAULT_ISSUERS = new Set(Object.values(DEFAULT_ISSUER_BY_CATEGORY));
 
 export default function CreateDocumentDrawer({
   open,
-  editingDocument,
   onClose,
   onSubmit,
   knownIssuers = [],
@@ -98,6 +96,8 @@ export default function CreateDocumentDrawer({
   const [gazetteNumber, setGazetteNumber] = useState("");
   const [gazetteDate, setGazetteDate] = useState("");
   const [field, setField] = useState("Lao động-Tiền lương");
+  const [fieldQuery, setFieldQuery] = useState("");
+  const [addedFields, setAddedFields] = useState<string[]>([]);
   const [issueDate, setIssueDate] = useState(todayIso());
   const [effectiveDate, setEffectiveDate] = useState(todayIso());
   const [expiredDate, setExpiredDate] = useState("");
@@ -106,66 +106,28 @@ export default function CreateDocumentDrawer({
   const [attachedFiles, setAttachedFiles] = useState<UploadedAttachment[]>([]);
   const [errorText, setErrorText] = useState("");
 
-  // Đồng bộ dữ liệu khi mở form hoặc chuyển văn bản sửa
+  // Đặt lại dữ liệu form khi mở
   useEffect(() => {
     if (!open) return;
 
-    if (editingDocument) {
-      setCode(editingDocument.code || "");
-      setTitle(editingDocument.title || "");
-      setCategory(editingDocument.category || "DECREE");
-      setIssuer(editingDocument.issuer || "");
-      setSigner(editingDocument.signer || "");
-      setGazetteNumber(editingDocument.gazetteNumber || "");
-      setGazetteDate(editingDocument.gazetteDate || "");
-      setField(editingDocument.field || editingDocument.scope || "Lao động-Tiền lương");
-      setIssueDate(editingDocument.issueDate || todayIso());
-      setEffectiveDate(editingDocument.effectiveDate || todayIso());
-      setExpiredDate(editingDocument.expiredDate || "");
-      setStatus(editingDocument.status || "EFFECTIVE");
-      setTagsStr((editingDocument.tags || []).join(", "));
-      if (editingDocument.files && editingDocument.files.length > 0) {
-        setAttachedFiles(
-          editingDocument.files.map((f) => ({
-            id: f.id,
-            name: f.name,
-            size: f.size,
-            type: f.type,
-          })),
-        );
-      } else if (editingDocument.code) {
-        setAttachedFiles([
-          {
-            id: `doc-file-init-${editingDocument.id}`,
-            name: `${editingDocument.code}.${editingDocument.fileType === "PDF" ? "pdf" : "docx"}`,
-            size: editingDocument.fileSize || "1.8 MB",
-            type: editingDocument.fileType || "PDF",
-          },
-        ]);
-      } else {
-        setAttachedFiles([]);
-      }
-      setErrorText("");
-    } else {
-      setCode("");
-      setTitle("");
-      setCategory("DECREE");
-      setIssuer(DEFAULT_ISSUER_BY_CATEGORY.DECREE ?? "");
-      setSigner("");
-      setGazetteNumber("");
-      setGazetteDate("");
-      setField("Lao động-Tiền lương");
-      setIssueDate(todayIso());
-      setEffectiveDate(todayIso());
-      setExpiredDate("");
-      setStatus("EFFECTIVE");
-      setTagsStr("");
-      setAttachedFiles([]);
-      setErrorText("");
-    }
+    setCode("");
+    setTitle("");
+    setCategory("DECREE");
+    setIssuer(DEFAULT_ISSUER_BY_CATEGORY.DECREE ?? "");
+    setSigner("");
+    setGazetteNumber("");
+    setGazetteDate("");
+    setField("Lao động-Tiền lương");
+    setIssueDate(todayIso());
+    setEffectiveDate(todayIso());
+    setExpiredDate("");
+    setStatus("EFFECTIVE");
+    setTagsStr("");
+    setAttachedFiles([]);
+    setErrorText("");
     setIssuerQuery("");
     setCategoryQuery("");
-  }, [editingDocument, open]);
+  }, [open]);
 
   const issuerOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -199,6 +161,20 @@ export default function CreateDocumentDrawer({
     setAddedIssuers((prev) => [...prev, issuerQueryTrimmed]);
     setIssuer(issuerQueryTrimmed);
     setIssuerQuery("");
+  };
+
+  const allFields = useMemo(() => {
+    return [...COMMON_FIELDS, ...addedFields];
+  }, [addedFields]);
+
+  const handleAddField = () => {
+    const trimmed = fieldQuery.trim();
+    if (!trimmed) return;
+    if (!allFields.includes(trimmed)) {
+      setAddedFields((prev) => [...prev, trimmed]);
+    }
+    setField(trimmed);
+    setFieldQuery("");
   };
 
   const categoryOptions = useMemo(() => {
@@ -267,12 +243,12 @@ export default function CreateDocumentDrawer({
         ? attachedFiles[0].size
         : attachedFiles.length > 1
           ? `${attachedFiles.length} tệp`
-          : editingDocument?.fileSize || "2.4 MB";
+          : "2.4 MB";
 
     const newDoc: LegalDocument = {
-      id: editingDocument ? editingDocument.id : `DOC-${Date.now().toString().slice(-4)}`,
+      id: `DOC-${Date.now().toString().slice(-4)}`,
       code: code.trim(),
-      title: title.trim() || (editingDocument?.title ? editingDocument.title : `${getCategoryLabel(category)} số ${code.trim()}`),
+      title: title.trim() || `${getCategoryLabel(category)} số ${code.trim()}`,
       category,
       issuer: issuer.trim(),
       signer: signer.trim() || undefined,
@@ -283,11 +259,11 @@ export default function CreateDocumentDrawer({
       effectiveDate,
       expiredDate: expiredDate.trim() || undefined,
       status,
-      scope: field.trim() || editingDocument?.scope || "Quản lý dự án",
-      summary: editingDocument?.summary ?? "",
+      scope: field.trim() || "Quản lý dự án",
+      summary: "",
       fileType: primaryType,
       fileSize: totalSizeStr,
-      downloads: editingDocument?.downloads ?? 0,
+      downloads: 0,
       tags: tags.length > 0 ? tags : ["Pháp lý", "Quy chuẩn", "Ban QLDA"],
       files: attachedFiles.map((f) => ({
         id: f.id,
@@ -312,12 +288,10 @@ export default function CreateDocumentDrawer({
         <div className="py-1">
           <div className="flex items-center gap-2 text-base font-bold text-slate-800">
             <SafetyCertificateOutlined className="text-[#DC2626]" />
-            {editingDocument ? "Cập nhật văn bản pháp luật" : "Thêm văn bản pháp luật"}
+            Thêm văn bản pháp luật
           </div>
           <div className="mt-0.5 text-xs font-normal text-slate-500">
-            {editingDocument
-              ? "Chỉnh sửa số hiệu, cơ quan ban hành, hiệu lực và tệp tài liệu số hóa"
-              : "Bổ sung luật, nghị định, thông tư, nghị quyết, quyết định vào thư viện tra cứu"}
+            Bổ sung luật, nghị định, thông tư, nghị quyết, quyết định vào thư viện tra cứu
           </div>
         </div>
       }
@@ -329,7 +303,7 @@ export default function CreateDocumentDrawer({
             onClick={handleSubmit}
             className="!border-[#DC2626] !bg-[#DC2626] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#B91C1C]"
           >
-            {editingDocument ? "Cập nhật văn bản" : "Lưu vào thư viện"}
+            Lưu vào thư viện
           </Button>
           <Button intent="outline" scale="sm" onClick={onClose} className="px-4 text-xs font-medium">
             Đóng
@@ -337,6 +311,15 @@ export default function CreateDocumentDrawer({
         </div>
       }
     >
+      {/* Thông tin thời gian cập nhật vào hệ thống bên ngoài/trên form, nằm bên trái */}
+      <div className="mb-3 flex items-center justify-between border-b border-slate-200/80 pb-2.5 text-xs text-slate-500">
+        <div className="flex items-center gap-1.5 font-medium text-slate-600">
+          <ClockCircleOutlined className="text-slate-400" />
+          <span>Ngày cập nhật hệ thống gần nhất:</span>
+          <strong className="text-slate-800">{formatDateVi(todayIso())}</strong>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-slate-800">
         {errorText && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">
@@ -351,7 +334,21 @@ export default function CreateDocumentDrawer({
             Thông tin định danh & Phân loại văn bản
           </div>
 
-          {/* Hàng 1: Loại văn bản & Số hiệu */}
+          {/* Hàng 1: Tên văn bản / Trích yếu nội dung (đưa lên đầu) */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Tên văn bản / Trích yếu nội dung <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              intent="clean"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="VD: Bộ luật Lao động năm 2019 về hoạt động lao động, tiền lương và chế độ nghỉ ngơi"
+              className="w-full text-xs h-8"
+            />
+          </div>
+
+          {/* Hàng 2: Loại văn bản & Số hiệu */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -416,21 +413,7 @@ export default function CreateDocumentDrawer({
             </div>
           </div>
 
-          {/* Hàng 2: Tên văn bản / Trích yếu nội dung */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Tên văn bản / Trích yếu nội dung
-            </label>
-            <Input
-              intent="clean"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Bộ luật Lao động năm 2019 về hoạt động lao động, tiền lương và chế độ nghỉ ngơi"
-              className="w-full text-xs h-8"
-            />
-          </div>
-
-          {/* Hàng 3: Lĩnh vực & Cơ quan ban hành */}
+          {/* Hàng 3: Lĩnh vực áp dụng & Cơ quan ban hành */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -439,9 +422,45 @@ export default function CreateDocumentDrawer({
               <Select
                 aria-label="Lĩnh vực áp dụng"
                 value={field}
-                options={COMMON_FIELDS.map((f) => ({ value: f, label: f }))}
+                options={allFields.map((f) => ({ value: f, label: f }))}
                 onChange={(val) => setField(val)}
                 className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    <Divider style={{ margin: "6px 0" }} />
+                    <div
+                      className="flex items-center gap-2 px-2 pb-1.5"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <Input
+                        intent="clean"
+                        value={fieldQuery}
+                        onChange={(e) => setFieldQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddField();
+                          }
+                        }}
+                        placeholder="Nhập lĩnh vực mới..."
+                        className="h-7 flex-1 text-xs"
+                      />
+                      <Button
+                        htmlType="button"
+                        intent="primary"
+                        scale="xs"
+                        icon={<PlusOutlined />}
+                        disabled={!fieldQuery.trim()}
+                        onClick={handleAddField}
+                        className="text-xs"
+                      >
+                        Thêm
+                      </Button>
+                    </div>
+                  </>
+                )}
               />
             </div>
 
