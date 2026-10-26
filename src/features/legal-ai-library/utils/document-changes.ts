@@ -5,7 +5,17 @@ import type { LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types
 export type LegalDocumentPatch = Partial<
   Pick<
     LegalDocument,
-    "code" | "title" | "category" | "issuer" | "issueDate" | "effectiveDate" | "status" | "tags" | "files"
+    | "code"
+    | "title"
+    | "category"
+    | "issuer"
+    | "signer"
+    | "issueDate"
+    | "effectiveDate"
+    | "expiredDate"
+    | "status"
+    | "tags"
+    | "files"
   >
 >;
 
@@ -16,8 +26,10 @@ export const LEGAL_FIELD_LABELS: Record<LegalDocumentField, string> = {
   title: "Tên văn bản",
   category: "Phân loại văn bản",
   issuer: "Cơ quan ban hành",
+  signer: "Người ký",
   issueDate: "Ngày ban hành",
-  effectiveDate: "Ngày bắt đầu hiệu lực",
+  effectiveDate: "Ngày áp dụng (hiệu lực)",
+  expiredDate: "Ngày hết hiệu lực",
   status: "Tình trạng hiệu lực",
   tags: "Từ khóa tra cứu",
   files: "Tệp đính kèm",
@@ -33,7 +45,7 @@ const formatIsoDate = (iso: string) => {
 export function formatLegalFieldValue(field: LegalDocumentField, value: unknown): string {
   if (field === "category") return getCategoryLabel(String(value));
   if (field === "status") return STATUS_META[value as LegalDocumentStatus]?.label ?? String(value);
-  if (field === "issueDate" || field === "effectiveDate") return value ? formatIsoDate(String(value)) : "";
+  if (field === "issueDate" || field === "effectiveDate" || field === "expiredDate") return value ? formatIsoDate(String(value)) : "Chưa xác định";
   if (field === "tags") return ((value as string[] | undefined) ?? []).join(", ");
   if (field === "files") {
     // Văn bản mẫu chưa khai báo tệp: chỉ có tệp gốc mang số hiệu văn bản

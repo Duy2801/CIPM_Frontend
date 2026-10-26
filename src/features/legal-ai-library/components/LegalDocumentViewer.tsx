@@ -100,6 +100,8 @@ export default function LegalDocumentViewer({
   const [noteTarget, setNoteTarget] = useState<string | undefined>(undefined);
   const [isReportErrorOpen, setIsReportErrorOpen] = useState(false);
 
+  const knownIssuers = useMemo(() => documents.map((d) => d.issuer), [documents]);
+
   // Xử lý tìm kiếm
   const handleSearch = () => {
     const q = searchQuery.trim().toLowerCase();
@@ -156,10 +158,10 @@ export default function LegalDocumentViewer({
       issuer: doc.issuer,
       gazetteNumber: "Đang cập nhật",
       gazetteDate: doc.issueDate,
-      signer: "Người có thẩm quyền",
+      signer: doc.signer || "Người có thẩm quyền",
       issueDate: doc.issueDate,
       effectiveDate: doc.effectiveDate,
-      expiredDate: doc.status === "EXPIRED" ? doc.effectiveDate : "Đang cập nhật",
+      expiredDate: doc.expiredDate || (doc.status === "EXPIRED" ? doc.effectiveDate : "Đang cập nhật"),
       statusText: STATUS_META[doc.status]?.label ?? "Còn hiệu lực",
       statusCode: doc.status,
       field: doc.scope || "Quản lý dự án xây dựng",
@@ -544,7 +546,7 @@ export default function LegalDocumentViewer({
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleCreateDocument}
-        knownIssuers={useMemo(() => documents.map((d) => d.issuer), [documents])}
+        knownIssuers={knownIssuers}
       />
     </div>
   );

@@ -3,20 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarOutlined,
-  DeleteOutlined,
-  FileDoneOutlined,
-  FilePdfOutlined,
+  CheckCircleOutlined,
   FileTextOutlined,
-  FileWordOutlined,
-  FolderOpenOutlined,
-  InboxOutlined,
-  PaperClipOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
   TagOutlined,
-  UploadOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
-import { Button, Divider, Drawer, Input, Select, StandardFileUpload, Text, STANDARD_DRAWER_WIDTH } from "@/components/ui";
+import {
+  Button,
+  Divider,
+  Drawer,
+  Input,
+  Select,
+  StandardFileUpload,
+  STANDARD_DRAWER_WIDTH,
+} from "@/components/ui";
 import type { UploadedAttachment } from "@/components/ui/standard-file-upload";
 import { todayIso } from "@/utils/date";
 import { normalizeSearchText } from "@/utils/search-text";
@@ -46,19 +48,26 @@ interface CreateDocumentDrawerProps {
   knownCategories?: string[];
 }
 
-const BUILT_IN_CATEGORIES: BuiltInDocumentCategory[] = ["LAW", "DECREE", "CIRCULAR", "RESOLUTION", "DECISION", "LOCAL"];
+const BUILT_IN_CATEGORIES: BuiltInDocumentCategory[] = [
+  "LAW",
+  "DECREE",
+  "CIRCULAR",
+  "RESOLUTION",
+  "DECISION",
+  "LOCAL",
+];
 
-const STATUS_SELECT_OPTIONS = STATUS_ORDER.map((value) => ({ value, label: STATUS_META[value].label }));
+const STATUS_SELECT_OPTIONS = STATUS_ORDER.map((value) => ({
+  value,
+  label: (
+    <div className="flex items-center gap-2">
+      <span className={`inline-block h-2 w-2 rounded-full ${STATUS_META[value].dotClass}`} />
+      <span>{STATUS_META[value].label}</span>
+    </div>
+  ),
+}));
 
 const DEFAULT_ISSUERS = new Set(Object.values(DEFAULT_ISSUER_BY_CATEGORY));
-
-function formatFileSize(bytes: number): string {
-  if (bytes <= 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
 
 export default function CreateDocumentDrawer({
   open,
@@ -69,28 +78,37 @@ export default function CreateDocumentDrawer({
   knownCategories = [],
 }: CreateDocumentDrawerProps) {
   const [code, setCode] = useState("");
+  const [title, setTitle] = useState("");
   const [category, setCategory] = useState<DocumentCategoryKey>("DECREE");
   const [categoryQuery, setCategoryQuery] = useState("");
   const [addedCategories, setAddedCategories] = useState<string[]>([]);
   const [issuer, setIssuer] = useState("");
   const [issuerQuery, setIssuerQuery] = useState("");
   const [addedIssuers, setAddedIssuers] = useState<string[]>([]);
+  const [signer, setSigner] = useState("");
   const [issueDate, setIssueDate] = useState(todayIso());
   const [effectiveDate, setEffectiveDate] = useState(todayIso());
+  const [expiredDate, setExpiredDate] = useState("");
   const [status, setStatus] = useState<LegalDocumentStatus>("EFFECTIVE");
   const [tagsStr, setTagsStr] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<UploadedAttachment[]>([]);
   const [errorText, setErrorText] = useState("");
 
+  // Đồng bộ dữ liệu khi mở form hoặc chuyển văn bản sửa
   useEffect(() => {
+    if (!open) return;
+
     if (editingDocument) {
-      setCode(editingDocument.code);
-      setCategory(editingDocument.category);
-      setIssuer(editingDocument.issuer);
-      setIssueDate(editingDocument.issueDate);
-      setEffectiveDate(editingDocument.effectiveDate);
-      setStatus(editingDocument.status);
-      setTagsStr(editingDocument.tags.join(", "));
+      setCode(editingDocument.code || "");
+      setTitle(editingDocument.title || "");
+      setCategory(editingDocument.category || "DECREE");
+      setIssuer(editingDocument.issuer || "");
+      setSigner(editingDocument.signer || "");
+      setIssueDate(editingDocument.issueDate || todayIso());
+      setEffectiveDate(editingDocument.effectiveDate || todayIso());
+      setExpiredDate(editingDocument.expiredDate || "");
+      setStatus(editingDocument.status || "EFFECTIVE");
+      setTagsStr((editingDocument.tags || []).join(", "));
       if (editingDocument.files && editingDocument.files.length > 0) {
         setAttachedFiles(
           editingDocument.files.map((f) => ({
@@ -98,7 +116,7 @@ export default function CreateDocumentDrawer({
             name: f.name,
             size: f.size,
             type: f.type,
-          }))
+          })),
         );
       } else if (editingDocument.code) {
         setAttachedFiles([
@@ -115,10 +133,13 @@ export default function CreateDocumentDrawer({
       setErrorText("");
     } else {
       setCode("");
+      setTitle("");
       setCategory("DECREE");
       setIssuer(DEFAULT_ISSUER_BY_CATEGORY.DECREE ?? "");
+      setSigner("");
       setIssueDate(todayIso());
       setEffectiveDate(todayIso());
+      setExpiredDate("");
       setStatus("EFFECTIVE");
       setTagsStr("");
       setAttachedFiles([]);
@@ -141,16 +162,19 @@ export default function CreateDocumentDrawer({
     return list.map((name) => ({ value: name, label: name }));
   }, [knownIssuers, addedIssuers, issuer]);
 
-  // Ô nhập cuối danh sách vừa lọc (không phân biệt hoa/thường và dấu) vừa dùng để thêm cơ quan mới
   const filteredIssuerOptions = useMemo(() => {
     const query = normalizeSearchText(issuerQuery.trim());
-    return query ? issuerOptions.filter((opt) => normalizeSearchText(opt.value).includes(query)) : issuerOptions;
+    return query
+      ? issuerOptions.filter((opt) => normalizeSearchText(opt.value).includes(query))
+      : issuerOptions;
   }, [issuerOptions, issuerQuery]);
 
   const issuerQueryTrimmed = issuerQuery.trim();
   const canAddIssuer =
     Boolean(issuerQueryTrimmed) &&
-    !issuerOptions.some((opt) => normalizeSearchText(opt.value) === normalizeSearchText(issuerQueryTrimmed));
+    !issuerOptions.some(
+      (opt) => normalizeSearchText(opt.value) === normalizeSearchText(issuerQueryTrimmed),
+    );
 
   const handleAddIssuer = () => {
     if (!canAddIssuer) return;
@@ -159,7 +183,6 @@ export default function CreateDocumentDrawer({
     setIssuerQuery("");
   };
 
-  // Loại có sẵn + loại đã thêm trong thư viện + loại vừa thêm trong form (khóa của loại tự thêm là chính tên loại)
   const categoryOptions = useMemo(() => {
     const seen = new Set<string>();
     const list: { value: string; label: string }[] = [];
@@ -176,7 +199,9 @@ export default function CreateDocumentDrawer({
   const categoryQueryTrimmed = categoryQuery.trim();
   const canAddCategory =
     Boolean(categoryQueryTrimmed) &&
-    !categoryOptions.some((opt) => normalizeSearchText(opt.label) === normalizeSearchText(categoryQueryTrimmed));
+    !categoryOptions.some(
+      (opt) => normalizeSearchText(opt.label) === normalizeSearchText(categoryQueryTrimmed),
+    );
 
   const handleCategoryChange = (next: DocumentCategoryKey) => {
     setCategory(next);
@@ -192,38 +217,23 @@ export default function CreateDocumentDrawer({
     handleCategoryChange(categoryQueryTrimmed);
   };
 
-  const handleFilesSelected = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const newItems: AttachedDocumentFile[] = Array.from(files).map((f, idx) => {
-      const isDoc = f.name.toLowerCase().endsWith(".docx") || f.name.toLowerCase().endsWith(".doc");
-      return {
-        id: `file-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
-        name: f.name,
-        size: formatFileSize(f.size),
-        type: isDoc ? "DOCX" : "PDF",
-      };
-    });
-    setAttachedFiles((prev) => [...prev, ...newItems]);
-    setErrorText("");
-  };
-
-  const handleRemoveFile = (id: string) => {
-    setAttachedFiles((prev) => prev.filter((item) => item.id !== id));
-  };
-
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (!code.trim()) {
-      setErrorText("Vui lòng nhập số hiệu văn bản.");
+      setErrorText("Vui lòng nhập số hiệu văn bản (Ví dụ: 45/2019/QH14).");
       return;
     }
     if (!issuer.trim()) {
-      setErrorText("Vui lòng nhập cơ quan ban hành.");
+      setErrorText("Vui lòng chọn hoặc nhập cơ quan ban hành.");
       return;
     }
     if (issueDate && effectiveDate && effectiveDate < issueDate) {
-      setErrorText("Ngày có hiệu lực không được trước ngày ban hành.");
+      setErrorText("Ngày áp dụng (có hiệu lực) không được trước ngày ban hành.");
+      return;
+    }
+    if (effectiveDate && expiredDate && expiredDate < effectiveDate) {
+      setErrorText("Ngày hết hiệu lực không được trước ngày bắt đầu có hiệu lực.");
       return;
     }
 
@@ -238,21 +248,21 @@ export default function CreateDocumentDrawer({
       attachedFiles.length === 1
         ? attachedFiles[0].size
         : attachedFiles.length > 1
-        ? `${attachedFiles.length} tệp`
-        : editingDocument?.fileSize || "2.4 MB";
+          ? `${attachedFiles.length} tệp`
+          : editingDocument?.fileSize || "2.4 MB";
 
     const newDoc: LegalDocument = {
       id: editingDocument ? editingDocument.id : `DOC-${Date.now().toString().slice(-4)}`,
       code: code.trim(),
-      // Form không nhập trích yếu / phạm vi nữa; giữ giá trị cũ khi cập nhật văn bản đã có
-      title: editingDocument?.title ?? "",
+      title: title.trim() || (editingDocument?.title ? editingDocument.title : `${getCategoryLabel(category)} số ${code.trim()}`),
       category,
       issuer: issuer.trim(),
+      signer: signer.trim() || undefined,
       issueDate,
       effectiveDate,
+      expiredDate: expiredDate.trim() || undefined,
       status,
-      scope: editingDocument?.scope ?? "",
-      // Form không nhập tóm tắt nữa; giữ tóm tắt cũ khi cập nhật văn bản đã có
+      scope: editingDocument?.scope ?? "Quản lý dự án",
       summary: editingDocument?.summary ?? "",
       fileType: primaryType,
       fileSize: totalSizeStr,
@@ -285,7 +295,7 @@ export default function CreateDocumentDrawer({
           </div>
           <div className="mt-0.5 text-xs font-normal text-slate-500">
             {editingDocument
-              ? "Chỉnh sửa số hiệu, cơ quan ban hành, hiệu lực và tệp tài liệu số hóa"
+              ? "Chỉnh sửa số hiệu, cơ quan ban hành, người ký, hiệu lực và tệp tài liệu số hóa"
               : "Bổ sung luật, nghị định, thông tư, nghị quyết, quyết định vào thư viện tra cứu"}
           </div>
         </div>
@@ -313,7 +323,7 @@ export default function CreateDocumentDrawer({
           </div>
         )}
 
-        {/* 1. Nhóm văn bản & Số hiệu */}
+        {/* 1. KHỐI: PHÂN LOẠI & THÔNG TIN ĐỊNH DANH VĂN BẢN */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
           <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
             <FileTextOutlined className="text-[#DC2626]" />
@@ -323,10 +333,10 @@ export default function CreateDocumentDrawer({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nhóm văn bản <span className="text-rose-500">*</span>
+                Loại văn bản <span className="text-rose-500">*</span>
               </label>
               <Select
-                aria-label="Nhóm văn bản"
+                aria-label="Loại văn bản"
                 value={category}
                 options={categoryOptions}
                 onChange={(val) => handleCategoryChange(val)}
@@ -335,7 +345,10 @@ export default function CreateDocumentDrawer({
                   <>
                     {menu}
                     <Divider style={{ margin: "6px 0" }} />
-                    <div className="flex items-center gap-2 px-2 pb-1.5" onMouseDown={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex items-center gap-2 px-2 pb-1.5"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
                       <Input
                         intent="clean"
                         value={categoryQuery}
@@ -347,7 +360,7 @@ export default function CreateDocumentDrawer({
                             handleAddCategory();
                           }
                         }}
-                        placeholder="Nhập nhóm văn bản mới..."
+                        placeholder="Nhập loại văn bản mới..."
                         className="h-7 flex-1 text-xs"
                       />
                       <Button
@@ -375,128 +388,203 @@ export default function CreateDocumentDrawer({
                 intent="clean"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="VD: 10/2021/NĐ-CP"
+                placeholder="VD: 45/2019/QH14"
+                className="w-full text-xs h-8"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Tên văn bản / Trích yếu nội dung
+            </label>
+            <Input
+              intent="clean"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="VD: Bộ luật Lao động năm 2019 về hoạt động lao động, tiền lương và chế độ nghỉ ngơi"
+              className="w-full text-xs h-8"
+            />
+          </div>
+        </div>
+
+        {/* 2. KHỐI: CƠ QUAN BAN HÀNH & NGƯỜI KÝ */}
+        <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
+          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <UserOutlined className="text-[#DC2626]" />
+            Thẩm quyền ban hành & Người ký
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Cơ quan ban hành <span className="text-rose-500">*</span>
+              </label>
+              <Select
+                aria-label="Cơ quan ban hành"
+                placeholder="Chọn cơ quan ban hành..."
+                value={issuer || undefined}
+                options={filteredIssuerOptions}
+                onChange={(val) => {
+                  setIssuer(val);
+                  setIssuerQuery("");
+                }}
+                notFoundContent={
+                  <div className="py-1 text-xs text-slate-400">Chưa có cơ quan này trong danh sách.</div>
+                }
+                className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    <Divider style={{ margin: "6px 0" }} />
+                    <div
+                      className="flex items-center gap-2 px-2 pb-1.5"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <Input
+                        intent="clean"
+                        value={issuerQuery}
+                        onChange={(e) => setIssuerQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddIssuer();
+                          }
+                        }}
+                        placeholder="Tìm hoặc nhập cơ quan mới..."
+                        className="h-7 flex-1 text-xs"
+                      />
+                      <Button
+                        htmlType="button"
+                        intent="primary"
+                        scale="xs"
+                        icon={<PlusOutlined />}
+                        disabled={!canAddIssuer}
+                        onClick={handleAddIssuer}
+                        className="text-xs"
+                      >
+                        Thêm
+                      </Button>
+                    </div>
+                  </>
+                )}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Người ký
+              </label>
+              <Input
+                intent="clean"
+                value={signer}
+                onChange={(e) => setSigner(e.target.value)}
+                placeholder="VD: Nguyễn Thị Kim Ngân"
                 className="w-full text-xs h-8"
               />
             </div>
           </div>
         </div>
 
-        {/* 2. Cơ quan & Ngày ban hành / Hiệu lực */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Cơ quan ban hành <span className="text-rose-500">*</span>
-            </label>
-            <Select
-              aria-label="Cơ quan ban hành"
-              placeholder="Chọn cơ quan ban hành..."
-              value={issuer || undefined}
-              options={filteredIssuerOptions}
-              onChange={(val) => {
-                setIssuer(val);
-                setIssuerQuery("");
-              }}
-              notFoundContent={
-                <div className="py-1 text-xs text-slate-400">Chưa có cơ quan này trong danh sách.</div>
-              }
-              className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-              popupRender={(menu) => (
-                <>
-                  {menu}
-                  <Divider style={{ margin: "6px 0" }} />
-                  <div className="flex items-center gap-2 px-2 pb-1.5" onMouseDown={(e) => e.stopPropagation()}>
-                    <Input
-                      intent="clean"
-                      value={issuerQuery}
-                      onChange={(e) => setIssuerQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddIssuer();
-                        }
-                      }}
-                      placeholder="Tìm hoặc nhập cơ quan mới..."
-                      className="h-7 flex-1 text-xs"
-                    />
-                    <Button
-                      htmlType="button"
-                      intent="primary"
-                      scale="xs"
-                      icon={<PlusOutlined />}
-                      disabled={!canAddIssuer}
-                      onClick={handleAddIssuer}
-                      className="text-xs"
-                    >
-                      Thêm
-                    </Button>
-                  </div>
-                </>
-              )}
-            />
+        {/* 3. KHỐI: MỐC THỜI GIAN & TÌNH TRẠNG HIỆU LỰC */}
+        <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
+          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <CalendarOutlined className="text-[#DC2626]" />
+            Mốc thời gian & Tình trạng hiệu lực
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Ngày ban hành
+              </label>
+              <Input
+                type="date"
+                intent="clean"
+                value={issueDate}
+                onChange={(e) => setIssueDate(e.target.value)}
+                className="w-full text-xs h-8"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Ngày áp dụng (có hiệu lực)
+              </label>
+              <Input
+                type="date"
+                intent="clean"
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                className="w-full text-xs h-8"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Ngày hết hiệu lực{" "}
+                <span className="text-[11px] font-normal text-slate-400">
+                  (để trống nếu đang cập nhật)
+                </span>
+              </label>
+              <Input
+                type="date"
+                intent="clean"
+                value={expiredDate}
+                onChange={(e) => setExpiredDate(e.target.value)}
+                className="w-full text-xs h-8"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Tình trạng hiệu lực
+              </label>
+              <Select
+                aria-label="Tình trạng hiệu lực"
+                value={status}
+                onChange={(val) => setStatus(val as LegalDocumentStatus)}
+                className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+                options={STATUS_SELECT_OPTIONS}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 4. KHỐI: TỪ KHÓA TRA CỨU & TỆP ĐÍNH KÈM */}
+        <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
+          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <TagOutlined className="text-[#DC2626]" />
+            Từ khóa tra cứu & Tệp tài liệu số hóa
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Trạng thái hiệu lực
-            </label>
-            <Select
-              aria-label="Trạng thái hiệu lực"
-              value={status}
-              onChange={(val) => setStatus(val as LegalDocumentStatus)}
-              className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-              options={STATUS_SELECT_OPTIONS}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Ngày ban hành
+              Từ khóa tra cứu (Tags - phân cách bằng dấu phẩy)
             </label>
             <Input
-              type="date"
               intent="clean"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
+              value={tagsStr}
+              onChange={(e) => setTagsStr(e.target.value)}
+              placeholder="VD: Quản lý dự án, Đấu thầu, Nghiệm thu, Lao động, Ban QLDA"
               className="w-full text-xs h-8"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Ngày có hiệu lực
+              Đính kèm tệp văn bản số hóa (PDF, DOCX)
             </label>
-            <Input
-              type="date"
-              intent="clean"
-              value={effectiveDate}
-              onChange={(e) => setEffectiveDate(e.target.value)}
-              className="w-full text-xs h-8"
+            <StandardFileUpload
+              value={attachedFiles}
+              onChange={setAttachedFiles}
+              accept=".pdf,.docx,.doc"
             />
           </div>
         </div>
-
-        {/* 3. Từ khóa tra cứu */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Từ khóa tra cứu (Tags - phân cách bằng dấu phẩy)
-          </label>
-          <Input
-            intent="clean"
-            value={tagsStr}
-            onChange={(e) => setTagsStr(e.target.value)}
-            placeholder="VD: Quản lý chi phí, Dự toán, Định mức, BQL Hà Tiên"
-            className="w-full text-xs h-8"
-          />
-        </div>
-
-        {/* 4. Tập tin đính kèm */}
-        <StandardFileUpload
-          value={attachedFiles}
-          onChange={setAttachedFiles}
-          accept=".pdf,.docx,.doc"
-        />
       </form>
     </Drawer>
   );

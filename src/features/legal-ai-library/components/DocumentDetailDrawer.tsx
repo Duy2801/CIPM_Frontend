@@ -14,7 +14,6 @@ import {
   PlusOutlined,
   SafetyCertificateOutlined,
   SwapOutlined,
-  SyncOutlined,
   TagOutlined,
 } from "@ant-design/icons";
 import { Button, Drawer, Tooltip } from "@/components/ui";
@@ -406,6 +405,15 @@ export default function DocumentDetailDrawer({
             />
 
             <InlineEditField
+              label="Người ký"
+              changed={isChanged("signer")}
+              value={document.signer ?? ""}
+              display={document.signer || <span className="font-normal italic text-slate-400">Chưa có</span>}
+              editor={{ kind: "text", placeholder: "VD: Nguyễn Thị Kim Ngân" }}
+              onSave={saveField && ((signer) => saveField({ signer }))}
+            />
+
+            <InlineEditField
               label="Ngày ban hành"
               changed={isChanged("issueDate")}
               value={document.issueDate}
@@ -425,7 +433,7 @@ export default function DocumentDetailDrawer({
             />
 
             <InlineEditField
-              label="Ngày bắt đầu hiệu lực"
+              label="Ngày áp dụng (hiệu lực)"
               changed={isChanged("effectiveDate")}
               value={document.effectiveDate}
               display={
@@ -443,16 +451,23 @@ export default function DocumentDetailDrawer({
               onSave={saveField && ((effectiveDate) => saveField({ effectiveDate }))}
             />
 
-            {/* Tự cập nhật mỗi lần sửa — không sửa tay */}
-            {document.updatedAt && (
-              <div>
-                <span className="text-[11px] font-medium text-slate-500">Cập nhật vào thư viện</span>
-                <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-900">
-                  <SyncOutlined className="text-slate-400" />
-                  {formatDateVi(document.updatedAt)}
-                </div>
-              </div>
-            )}
+            <InlineEditField
+              label="Ngày hết hiệu lực"
+              changed={isChanged("expiredDate")}
+              value={document.expiredDate ?? ""}
+              display={
+                document.expiredDate ? (
+                  <span className="flex items-center gap-1.5">
+                    <CalendarOutlined className="text-slate-400" />
+                    {formatDateVi(document.expiredDate)}
+                  </span>
+                ) : (
+                  <span className="font-normal italic text-slate-400">Đang cập nhật</span>
+                )
+              }
+              editor={{ kind: "date" }}
+              onSave={saveField && ((expiredDate) => saveField({ expiredDate }))}
+            />
           </div>
         </div>
 

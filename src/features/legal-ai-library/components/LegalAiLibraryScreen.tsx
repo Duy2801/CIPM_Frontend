@@ -10,6 +10,7 @@ import {
   HistoryOutlined,
   LockOutlined,
   PlusOutlined,
+  ReadOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Flex, Input, Pagination, Select, Text, Title, Tooltip } from "@/components/ui";
@@ -18,6 +19,7 @@ import { normalizeSearchText } from "@/utils/search-text";
 import AiLegalAssistantDrawer from "./AiLegalAssistantDrawer";
 import CreateDocumentDrawer from "./CreateDocumentDrawer";
 import DocumentDetailDrawer from "./DocumentDetailDrawer";
+import LegalDocumentViewer from "./LegalDocumentViewer";
 import { describeLegalChanges, type LegalDocumentPatch } from "../utils/document-changes";
 import LegalStatsChart from "./LegalStatsChart";
 import { LEGAL_LOG_MODULE, STATUS_META, STATUS_ORDER, getCategoryLabel } from "../constants/legal-mock-data";
@@ -297,7 +299,8 @@ export default function LegalAiLibraryScreen() {
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [screenTab, setScreenTab] = useState<"documents" | "history">("documents");
+  const [assistantPrompt, setAssistantPrompt] = useState<string>("");
+  const [screenTab, setScreenTab] = useState<"viewer" | "documents" | "history">("documents");
   // Lọc lịch sử theo một ngày (yyyy-mm-dd), rỗng = tất cả
   const [historyDate, setHistoryDate] = useState("");
   const logVersion = useActivityLogVersion();
@@ -314,7 +317,7 @@ export default function LegalAiLibraryScreen() {
   const query = normalizeSearchText(search);
   const matchesQuery = (item: LegalItem) =>
     !query ||
-    [item.code, item.title, item.issuer, item.summary, ...item.tags].some((text) =>
+    [item.code, item.title, item.issuer, item.signer ?? "", item.summary, ...item.tags].some((text) =>
       normalizeSearchText(text).includes(query),
     );
 
@@ -458,12 +461,12 @@ export default function LegalAiLibraryScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {/* 2 tab trên cùng: danh sách văn bản / lịch sử thao tác */}
-      {/* Tab nhỏ gọn: rộng vừa chữ, icon cùng hàng với chữ */}
+      {/* 3 tab trên cùng: tra cứu chi tiết / quản lý danh sách văn bản / lịch sử thao tác */}
       <div role="tablist" className="inline-flex gap-1 self-start rounded-lg border border-slate-200 bg-slate-100/70 p-0.5">
         {(
           [
-            { key: "documents", icon: <FileTextOutlined />, label: "Danh sách văn bản" },
+            { key: "viewer", icon: <ReadOutlined />, label: "Tra cứu Thư viện Pháp lý" },
+            { key: "documents", icon: <FileTextOutlined />, label: "Quản lý danh sách văn bản" },
             { key: "history", icon: <HistoryOutlined />, label: "Lịch sử thay đổi" },
           ] as const
         ).map((tab) => {
@@ -486,7 +489,15 @@ export default function LegalAiLibraryScreen() {
         })}
       </div>
 
-      {screenTab === "history" ? (
+      {screenTab === "viewer" ? (
+        <LegalDocumentViewer
+          onOpenAssistantWithPrompt={(prompt) => {
+            setAssistantPrompt(prompt);
+            setIsAssistantOpen(true);
+          }}
+          onBackToList={() => setScreenTab("documents")}
+        />
+      ) : screenTab === "history" ? (
         <Card
           surface="flat"
           padding="none"
@@ -782,7 +793,11 @@ export default function LegalAiLibraryScreen() {
       {/* Drawer Trợ lý AI pháp lý (closable=false) */}
       <AiLegalAssistantDrawer
         open={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
+        initialPrompt={assistantPrompt}
+        onClose={() => {
+          setIsAssistantOpen(false);
+          setAssistantPrompt("");
+        }}
         onSelectDocument={(docId) => {
           const item = legalItems.find((l) => l.id === docId);
           if (item) handleOpenDocDetail(item);
