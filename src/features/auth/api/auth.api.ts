@@ -1,11 +1,15 @@
+import { isAxiosError } from "axios";
 import Cookies from "js-cookie";
 import apiClient, { type ApiResponse } from "@/config";
 import type { AuthUser, Permission } from "@/types/auth";
 import { findMockUser, MOCK_ROLES } from "../constants/mock-roles";
 import type {
+  ApiErrorResponse,
   AuthResponse,
   AuthTokens,
   LoginCredentials,
+  LogoutRequest,
+  LogoutResponse,
   ModulePermissions,
   User,
 } from "../types/auth.types";
@@ -194,12 +198,24 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
   }
 }
 
-export async function logout(): Promise<void> {
+/**
+ * Đăng xuất: backend xóa refresh token trong Redis.
+ * Phiên phía client luôn bị xóa, kể cả khi API lỗi (token hết hạn, mất mạng...).
+ */
+export async function logout(): Promise<LogoutResponse> {
+  let result: LogoutResponse = { status: true, statusCode: 200 };
+
   if (!USE_MOCK_AUTH) {
     try {
-      await apiClient.post("/auth/logout", {});
+      result = await apiClient.post<never, LogoutResponse, LogoutRequest>("/auth/logout", {});
     } catch (error) {
-      console.warn("Loi khi goi API logout:", error);
+      const errorData = isAxiosError<ApiErrorResponse>(error) ? error.response?.data : undefined;
+      const message = Array.isArray(errorData?.message)
+        ? errorData.message.join(", ")
+        : errorData?.message ?? "Backend API khong phan hoi";
+
+      console.warn("Loi khi goi API logout:", message);
+      result = { status: false, statusCode: errorData?.statusCode ?? 0, message };
     }
   }
 
@@ -208,6 +224,8 @@ export async function logout(): Promise<void> {
   if (typeof window !== "undefined") {
     window.location.href = "/login";
   }
+
+  return result;
 }
 
 export async function getCurrentUser(): Promise<ApiResponse<AuthUser>> {

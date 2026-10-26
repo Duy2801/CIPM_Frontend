@@ -7,7 +7,6 @@ import {
   KeyOutlined,
   LockOutlined,
   MailOutlined,
-  PhoneOutlined,
   SafetyCertificateOutlined,
   SaveOutlined,
   UserOutlined,
@@ -30,7 +29,6 @@ import { useAuthStore } from "@/stores/auth.store";
 
 interface ProfileFormValues {
   displayName: string;
-  phone: string;
   email: string;
 }
 
@@ -56,7 +54,6 @@ export default function ProfilePage() {
     if (user) {
       profileForm.setFieldsValue({
         displayName: user.displayName ?? user.name ?? "",
-        phone: user.phone ?? "",
         email: user.email ?? "",
       });
     }
@@ -79,7 +76,6 @@ export default function ProfilePage() {
       updateUser({
         displayName: updatedDisplayName,
         name: updatedDisplayName,
-        phone: values.phone.trim(),
         email: values.email.trim(),
         initials: initials || user?.initials,
       });
@@ -199,16 +195,6 @@ export default function ProfilePage() {
 
               <div className="py-2.5 flex justify-between items-center">
                 <span className="text-slate-500 flex items-center gap-1.5">
-                  <PhoneOutlined className="text-slate-400" />
-                  Số điện thoại
-                </span>
-                <span className="font-medium text-slate-800 text-right">
-                  {user?.phone ?? "0297.xxx.xxx"}
-                </span>
-              </div>
-
-              <div className="py-2.5 flex justify-between items-center">
-                <span className="text-slate-500 flex items-center gap-1.5">
                   <MailOutlined className="text-slate-400" />
                   Email liên hệ
                 </span>
@@ -278,43 +264,21 @@ export default function ProfilePage() {
                           />
                         </Form.Item>
 
-                        <Row gutter={12}>
-                          <Col xs={24} sm={12}>
-                            <Form.Item
-                              name="phone"
-                              label={<span className="text-xs font-semibold text-slate-700">Số điện thoại di động</span>}
-                              rules={[
-                                { required: true, message: "Vui lòng nhập số điện thoại" },
-                                { pattern: /^[0-9+.\s()-]{8,15}$/, message: "Số điện thoại không hợp lệ" },
-                              ]}
-                              className="!mb-2.5"
-                            >
-                              <Input
-                                prefix={<PhoneOutlined className="text-slate-400" />}
-                                placeholder="VD: 0918.xxx.xxx"
-                                className="h-9"
-                              />
-                            </Form.Item>
-                          </Col>
-
-                          <Col xs={24} sm={12}>
-                            <Form.Item
-                              name="email"
-                              label={<span className="text-xs font-semibold text-slate-700">Địa chỉ Email liên hệ</span>}
-                              rules={[
-                                { required: true, message: "Vui lòng nhập email" },
-                                { type: "email", message: "Email không đúng định dạng" },
-                              ]}
-                              className="!mb-2.5"
-                            >
-                              <Input
-                                prefix={<MailOutlined className="text-slate-400" />}
-                                placeholder="VD: can_bo@hatien.gov.vn"
-                                className="h-9"
-                              />
-                            </Form.Item>
-                          </Col>
-                        </Row>
+                        <Form.Item
+                          name="email"
+                          label={<span className="text-xs font-semibold text-slate-700">Địa chỉ Email liên hệ</span>}
+                          rules={[
+                            { required: true, message: "Vui lòng nhập email" },
+                            { type: "email", message: "Email không đúng định dạng" },
+                          ]}
+                          className="!mb-2.5"
+                        >
+                          <Input
+                            prefix={<MailOutlined className="text-slate-400" />}
+                            placeholder="VD: can_bo@hatien.gov.vn"
+                            className="h-9"
+                          />
+                        </Form.Item>
 
                         {/* Phần thông tin cố định chỉ đọc */}
                         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-2 mt-1">

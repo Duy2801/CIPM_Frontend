@@ -21,7 +21,4 @@ export interface AuthUser {
   department?: string;
   initials?: string;
   email?: string;
-  phone?: string;
-  avatarUrl?: string;
-  branchId?: string;
 }

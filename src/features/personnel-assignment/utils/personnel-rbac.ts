@@ -1,4 +1,4 @@
-import type { PersonnelProject, Staff, Team } from "../types/personnel.types";
+import type { Staff, Team } from "../types/personnel.types";
 
 export type RbacRoleCode =
   | "DIRECTOR"
@@ -139,37 +139,12 @@ export const TEAM_PERMISSION_DEFS: Record<RbacTeamCode, {
   },
 };
 
-export interface StaffRbacProfile {
-  roleCode: RbacRoleCode;
-  roleLabel: string;
-  roleDescription: string;
-  teamCode: RbacTeamCode | null;
-  teamLabel: string;
-  displayBadge: string;
-  isLeader: boolean;
-  rolePermissions: RbacPermissionItem[];
-  teamPermissions: RbacPermissionItem[];
-  actingDirectorProjects: Array<{
-    id: string;
-    code: string;
-    name: string;
-    assignedAt?: string;
-    assignedBy?: string;
-    note?: string;
-  }>;
-}
-
 /**
- * Phân tích và trích xuất hồ sơ RBAC (Role + Team) cho cán bộ
+ * Quyền mặc định của cán bộ theo cấp bậc (Giám đốc, Phó GĐ, Kế toán trưởng, Tổ trưởng, Thành viên)
+ * và theo tổ chuyên môn; mỗi mã quyền một dòng. Chức danh đang tắt / chưa có chức danh → không có quyền.
  */
-export function resolveStaffRbac(
-  staff: Staff,
-  team?: Team,
-  projects: PersonnelProject[] = [],
-  /** Chức danh của cán bộ đang tắt ở màn phân quyền → tạm thời không có quyền theo chức danh */
-  titleLocked = false
-): StaffRbacProfile {
-  // 1. Xác định RoleCode theo cấp bậc
+export function resolveStaffBasePermissions(staff: Staff, team?: Team, titleLocked = false): RbacPermissionItem[] {
+  // 1. Xác định cấp bậc
   let roleCode: RbacRoleCode = "MEMBER";
 
   if (staff.roleCode === "ADMIN" || staff.title.toLowerCase().includes("giám đốc") && !staff.title.toLowerCase().includes("phó")) {
@@ -182,11 +157,9 @@ export function resolveStaffRbac(
     roleCode = "ACCOUNTANT";
   } else if (team?.leaderId === staff.id || staff.title.toLowerCase().includes("tổ trưởng")) {
     roleCode = "LEAD";
-  } else {
-    roleCode = "MEMBER";
   }
 
-  // 2. Xác định TeamCode theo chuyên môn
+  // 2. Xác định tổ chuyên môn
   let teamCode: RbacTeamCode | null = null;
   const teamId = team?.id || staff.teamId;
 
@@ -200,57 +173,17 @@ export function resolveStaffRbac(
     } else {
       teamCode = "ADMIN";
     }
-  } else if (teamId === "BGD" || teamId === "PGD") {
-    teamCode = null;
   }
 
-  const roleMeta = ROLE_PERMISSION_DEFS[roleCode];
-  // Đã bị thu hồi chức danh (chức danh & mã vai trò đều trống) → không còn quyền theo chức danh / tổ
+  // Đã bị thu hồi chức danh (chức danh & mã vai trò đều trống) hoặc chức danh đang tắt → không có quyền
   const hasNoTitle = titleLocked || (!(staff.title || "").trim() && !(staff.roleCode || "").trim());
-  const teamMeta = teamCode && !hasNoTitle ? TEAM_PERMISSION_DEFS[teamCode] : null;
+  if (hasNoTitle) return [];
 
-  // 3. Tạo nhãn hiển thị trực quan (Display Badge)
-  let displayBadge = hasNoTitle ? "Chưa có chức danh" : roleMeta.label;
-  if (roleCode === "LEAD" && teamMeta) {
-    displayBadge = `Trưởng tổ ${teamMeta.label.split("/")[0].trim()}`;
-  } else if (roleCode === "MEMBER" && teamMeta) {
-    displayBadge = `Thành viên ${teamMeta.label.split("/")[0].trim()}`;
-  } else if (hasNoTitle) {
-    // giữ nhãn "Chưa có chức danh"
-  } else if (roleCode === "DIRECTOR") {
-    displayBadge = "Giám đốc";
-  } else if (roleCode === "DEPUTY_DIRECTOR") {
-    displayBadge = "Phó Giám đốc";
-  }
-
-  // 4. Tìm các dự án được ủy quyền Quyền Chủ nhiệm dự án (CNDA)
-  const actingProjects = projects
-    .filter(
-      (p) =>
-        p.actingDirectorId === staff.id ||
-        (p.mainExecutorId === staff.id && !p.cndaRevoked),
-    )
-    .map((p) => ({
-      id: p.id,
-      code: p.code,
-      name: p.name,
-      assignedAt: p.actingDirectorAssignedAt || p.assignedAt,
-      assignedBy: p.actingDirectorAssignedBy || "Ban Giám đốc",
-      note: p.actingDirectorNote || p.note,
-    }));
-
-  return {
-    roleCode,
-    roleLabel: roleMeta.label,
-    roleDescription: roleMeta.description,
-    teamCode,
-    teamLabel: teamMeta?.label ?? (teamId === "PGD" ? "Ban Phó Giám đốc" : "Ban Giám đốc"),
-    displayBadge,
-    isLeader: roleCode === "LEAD",
-    rolePermissions: hasNoTitle ? [] : roleMeta.permissions,
-    teamPermissions: teamMeta?.permissions ?? [],
-    actingDirectorProjects: actingProjects,
-  };
+  const rolePermissions = ROLE_PERMISSION_DEFS[roleCode].permissions;
+  const teamPermissions = teamCode ? TEAM_PERMISSION_DEFS[teamCode].permissions : [];
+  return [...rolePermissions, ...teamPermissions].filter(
+    (perm, idx, self) => idx === self.findIndex((p) => p.code === perm.code),
+  );
 }
 
 /** Toàn bộ quyền có thể cấp cho cán bộ (gộp quyền theo cấp bậc và theo tổ, mỗi mã quyền một dòng) */

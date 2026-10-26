@@ -3,51 +3,39 @@
 import { useMemo, useState } from "react";
 import { PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import { App } from "antd";
-import { Button, Input, Switch, Title } from "@/components/ui";
+import { Button, Input, Title, toast } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
-import type { MatrixModule, MatrixPermission, MatrixRole } from "../constants/role-matrix-data";
 import PermissionChecklist from "./PermissionChecklist";
 import { useConfirmAction } from "../hooks/useConfirmAction";
+import { usePermissionChangeLog } from "../hooks/usePermissionChangeLog";
+import { useStaffAccess } from "../hooks/usePersonnelAccess";
+import { useRoleMatrix, useRoleMatrixActions, useSortedMatrixRoles } from "../hooks/useRoleMatrix";
+import type { ActivityChange } from "../utils/activity-log";
 
 interface RoleEditorViewProps {
-  /** "create" = tạo chức danh mới, "edit" = chỉnh sửa chức danh `role` */
-  mode: "create" | "edit";
-  role?: MatrixRole;
-  /** Tất cả chức danh hiện có (để kiểm tra trùng tên) */
-  roles: MatrixRole[];
-  modules: MatrixModule[];
-  permissions: MatrixPermission[];
-  /** Quyền ban đầu (chỉnh sửa: quyền hiện có; tạo mới: rỗng) */
-  initialPermIds: string[];
-  isLocked?: boolean;
-  onToggleLock?: () => void;
-  /** Chỉ xem: không sửa tên, trạng thái, quyền */
-  readOnly?: boolean;
+  /** Mã chức danh cần xem / sửa; bỏ trống = tạo chức danh mới */
+  roleCode?: string;
+  /** Quay lại danh sách chức danh */
   onBack: () => void;
-  /** Lưu tên + quyền; trả về false nếu không lưu được (giữ nguyên màn hình) */
-  onSubmit: (name: string, permIds: string[]) => boolean;
 }
 
 /** Màn Tạo / Chỉnh sửa chức danh: nhập tên, tick quyền theo nhóm rồi lưu; "Hủy" để quay lại danh sách */
-export default function RoleEditorView({
-  mode,
-  role,
-  roles,
-  modules,
-  permissions,
-  initialPermIds,
-  isLocked = false,
-  onToggleLock,
-  readOnly = false,
-  onBack,
-  onSubmit,
-}: RoleEditorViewProps) {
+export default function RoleEditorView({ roleCode, onBack }: RoleEditorViewProps) {
+  const { sortedRoles: roles, getRolePermIds } = useSortedMatrixRoles();
+  const { modules, permissions } = useRoleMatrix();
+  const { createRole, renameRole, updateRolePermissions } = useRoleMatrixActions();
+  // Không có quyền quản lý → chỉ xem
+  const readOnly = !useStaffAccess().canManageAccounts;
+  const logPermissionChange = usePermissionChangeLog();
+  const role = roleCode ? roles.find((r) => r.code === roleCode) : undefined;
   const { modal } = App.useApp();
   const confirmAction = useConfirmAction();
-  const isCreating = mode === "create";
+  const isCreating = !roleCode;
   const baselineName = role?.name ?? "";
 
   const [name, setName] = useState(baselineName);
+  // Quyền ban đầu (chỉnh sửa: quyền hiện có; tạo mới: rỗng) — chụp lúc mở màn
+  const [initialPermIds] = useState<string[]>(() => (roleCode ? getRolePermIds(roleCode) : []));
   // Quyền đang tick là bản nháp: chỉ lưu khi bấm nút ở dưới
   const [draftPerms, setDraftPerms] = useState<string[]>(initialPermIds);
 
@@ -93,6 +81,42 @@ export default function RoleEditorView({
     });
   };
 
+  /** Tạo chức danh mới + ghi nhật ký; trả về false nếu không tạo được */
+  const saveNewRole = () => {
+    const created = createRole(trimmedName, draftPerms);
+    if (!created?.code) return false;
+    const permNames = permissions.filter((p) => draftPerms.includes(p.id)).map((p) => p.name);
+    logPermissionChange(
+      { code: created.code, name: trimmedName },
+      "Tạo chức danh",
+      [{ label: "Số quyền", to: `${draftPerms.length} quyền` }],
+      permNames.length ? `Quyền được cấp: ${permNames.join(", ")}` : undefined
+    );
+    return true;
+  };
+
+  /** Lưu tên + quyền của chức danh đang sửa, ghi lại đúng phần thay đổi; trả về false nếu tên không hợp lệ */
+  const saveExistingRole = (code: string) => {
+    if (!renameRole(code, trimmedName)) return false;
+    updateRolePermissions(code, draftPerms);
+    toast.success(`Đã lưu chức danh "${trimmedName}".`);
+
+    const beforeIds = new Set(initialPermIds);
+    const afterIds = new Set(draftPerms);
+    const nameOf = (id: string) => permissions.find((p) => p.id === id)?.name ?? id;
+    const added = draftPerms.filter((id) => !beforeIds.has(id)).map(nameOf);
+    const removed = [...beforeIds].filter((id) => !afterIds.has(id)).map(nameOf);
+    const changes: ActivityChange[] = [];
+    if (baselineName !== trimmedName) changes.push({ label: "Tên chức danh", from: baselineName, to: trimmedName });
+    if (added.length || removed.length) {
+      changes.push({ label: "Số quyền", from: `${beforeIds.size} quyền`, to: `${draftPerms.length} quyền` });
+      if (added.length) changes.push({ label: "Thêm quyền", to: added.join(", ") });
+      if (removed.length) changes.push({ label: "Bỏ quyền", to: removed.join(", ") });
+    }
+    if (changes.length) logPermissionChange({ code, name: trimmedName }, "Cập nhật chức danh", changes);
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     if (
@@ -105,7 +129,8 @@ export default function RoleEditorView({
       }))
     )
       return;
-    if (onSubmit(trimmedName, draftPerms)) onBack();
+    const saved = roleCode ? saveExistingRole(roleCode) : saveNewRole();
+    if (saved) onBack();
   };
 
   const title = readOnly ? "Xem chức danh" : isCreating ? "Tạo chức danh mới" : "Chỉnh sửa chức danh";
@@ -138,16 +163,6 @@ export default function RoleEditorView({
             />
           </div>
 
-          {/* Bật / tắt chức danh (khi chỉnh sửa): áp dụng ngay, tắt thì hỏi xác nhận trước */}
-          {!isCreating && onToggleLock && (
-            <div className="shrink-0">
-              <span className="block text-sm font-semibold text-slate-800 mb-1.5">Trạng thái</span>
-              <div className="flex h-10 items-center gap-2">
-                <Switch checked={!isLocked} disabled={readOnly} onChange={onToggleLock} />
-                <span className="text-xs text-slate-500">{isLocked ? "Đang tắt" : "Đang bật"}</span>
-              </div>
-            </div>
-          )}
         </div>
         {trimmedName && isNameTaken && <div className="mt-1 text-xs text-rose-600">Tên chức danh này đã tồn tại.</div>}
 

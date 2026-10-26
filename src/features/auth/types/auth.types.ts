@@ -42,6 +42,27 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+/** Lỗi mặc định của NestJS (không đi qua interceptor nên không có `status`) */
+export interface ApiErrorResponse {
+  statusCode: number;
+  message: string | string[];
+  error?: string;
+}
+
+/**
+ * POST /auth/logout
+ * Không có body; accessToken gửi qua header `Authorization: Bearer <accessToken>`
+ * (apiClient tự gắn từ cookie).
+ */
+export type LogoutRequest = Record<string, never>;
+
+/** Thành công: `{ "status": true, "statusCode": 201 }` — backend không trả `data` */
+export interface LogoutResponse {
+  status: boolean;
+  statusCode: number;
+  message?: string;
+}
+
 export interface AuthResponse {
   user: User & { permissions?: Permission[] };
   tokens: AuthTokens;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AntdProvider } from "@/providers";
+import { AntdProvider, QueryProvider } from "@/providers";
 import { DashboardShell } from "@/components/layout/shell";
 import { themeClassNames, themeCssVariables } from "@/components/theme";
 import "./globals.css";
@@ -27,9 +27,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className={themeClassNames.app.body} style={themeCssVariables}>
-        <AntdProvider>
-          <DashboardShell>{children}</DashboardShell>
-        </AntdProvider>
+        <QueryProvider>
+          <AntdProvider>
+            <DashboardShell>{children}</DashboardShell>
+          </AntdProvider>
+        </QueryProvider>
       </body>
     </html>
   );

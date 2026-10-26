@@ -42,8 +42,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Ban Giám đốc",
       initials: "TH",
       email: "hai.ht@hatien.gov.vn",
-      phone: "0918.765.432",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "giamdoc",
@@ -80,8 +78,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Ban Phó Giám đốc",
       initials: "TT",
       email: "tin.tt@hatien.gov.vn",
-      phone: "0913.882.345",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "phogiamdoc",
@@ -122,8 +118,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Giám sát – Kỹ thuật",
       initials: "TC",
       email: "cuong.pt@hatien.gov.vn",
-      phone: "0982.112.233",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "lead_kythuat",
@@ -159,8 +153,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Giám sát – Kỹ thuật",
       initials: "MO",
       email: "on.tm@hatien.gov.vn",
-      phone: "0907.334.455",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "topho_kt",
@@ -196,8 +188,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Giám sát – Kỹ thuật",
       initials: "PT",
       email: "tien.tp@hatien.gov.vn",
-      phone: "0976.556.677",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "topho_gs",
@@ -233,8 +223,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Giám sát – Kỹ thuật",
       initials: "TT",
       email: "thi.ct@hatien.gov.vn",
-      phone: "0944.778.899",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "member_gskt",
@@ -270,8 +258,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Bồi thường, giải tỏa, GPMB – TĐC",
       initials: "DT",
       email: "thuan.nd@hatien.gov.vn",
-      phone: "0945.334.455",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "lead_gpmb",
@@ -305,8 +291,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Bồi thường, giải tỏa, GPMB – TĐC",
       initials: "HS",
       email: "son.lh@hatien.gov.vn",
-      phone: "0919.556.677",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "topho_gpmb",
@@ -339,8 +323,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Bồi thường, giải tỏa, GPMB – TĐC",
       initials: "LH",
       email: "huynh.tl@hatien.gov.vn",
-      phone: "0962.778.899",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "member_gpmb",
@@ -376,8 +358,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Hành chính – Tổng hợp",
       initials: "KN",
       email: "ngan.dtk@hatien.gov.vn",
-      phone: "0908.123.456",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "lead_taichinh",
@@ -410,8 +390,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Hành chính – Tổng hợp",
       initials: "KY",
       email: "yen.ttk@hatien.gov.vn",
-      phone: "0912.345.678",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "ketoan_congtrinh",
@@ -443,8 +421,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Hành chính – Tổng hợp",
       initials: "TH",
       email: "ha.ntt@hatien.gov.vn",
-      phone: "0977.234.567",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "member_taichinh",
@@ -476,8 +452,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Hành chính – Tổng hợp",
       initials: "TH",
       email: "hieu.tt@hatien.gov.vn",
-      phone: "0948.567.890",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "hanhchinh_th",
@@ -510,8 +484,6 @@ export const MOCK_ROLES: MockRoleAccount[] = [
       department: "Tổ Hành chính – Tổng hợp",
       initials: "DT",
       email: "tien.ld@hatien.gov.vn",
-      phone: "0969.678.901",
-      branchId: "BQL-HT",
     },
     credentials: {
       username: "member_hanhchinh",

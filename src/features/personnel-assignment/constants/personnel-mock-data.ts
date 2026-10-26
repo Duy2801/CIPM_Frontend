@@ -384,6 +384,4 @@ export const PERSONNEL_MOCK_DATA: PersonnelDataset = {
       accountActive: true,
     },
   ],
-  projects: [],
-  assignments: [],
 };

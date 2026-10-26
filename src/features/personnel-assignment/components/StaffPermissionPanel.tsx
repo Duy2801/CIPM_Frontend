@@ -1,56 +1,104 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircleFilled, EditOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, Checkbox, Text } from "@/components/ui";
-import type { Staff, StaffInput } from "../types/personnel.types";
+import {
+  CheckCircleFilled,
+  CloseOutlined,
+  EditOutlined,
+  SafetyCertificateOutlined,
+  SaveOutlined,
+  UndoOutlined,
+} from "@ant-design/icons";
+import { Button, Checkbox, Select, Text } from "@/components/ui";
 import { getAllRbacPermissions, getStaffEffectivePermissions, type RbacPermissionItem } from "../utils/personnel-rbac";
 import { useConfirmAction } from "../hooks/useConfirmAction";
+import { useStaffAccess, useStaffDetail } from "../hooks/usePersonnelAccess";
+import { useUpdateStaff } from "../hooks/usePersonnelMutations";
 
-interface StaffPermissionPanelProps {
-  staff: Staff;
-  /** Quyền mặc định theo chức danh & tổ của cán bộ */
-  basePermissions: RbacPermissionItem[];
-  /** Có truyền thì cho chỉnh quyền riêng của cán bộ */
-  onUpdateStaff?: (staffId: string, input: Partial<StaffInput>, customMessage?: string | false) => Promise<boolean>;
-}
+const NO_PERMISSIONS: RbacPermissionItem[] = [];
 
 /**
  * Mục "Quyền hạn hệ thống & nghiệp vụ chuyên môn" trong hồ sơ cán bộ.
  * Chỉnh quyền chỉ áp dụng RIÊNG cán bộ này: quyền mặc định của chức danh không đổi, người khác cùng chức danh không bị ảnh hưởng.
  */
-export default function StaffPermissionPanel({ staff, basePermissions, onUpdateStaff }: StaffPermissionPanelProps) {
+export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
+  const detail = useStaffDetail(staffId);
+  // Quyền mặc định theo chức danh & tổ của cán bộ
+  const basePermissions = detail?.basePermissions ?? NO_PERMISSIONS;
+  // Người có quyền quản lý chức danh mới chỉnh được quyền riêng
+  const { canManageRole: canEdit } = useStaffAccess();
+  const updateStaff = useUpdateStaff();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const confirmAction = useConfirmAction();
   const [draft, setDraft] = useState<Set<string>>(new Set());
 
   const baseCodes = useMemo(() => new Set(basePermissions.map((p) => p.code)), [basePermissions]);
-  const effective = useMemo(() => getStaffEffectivePermissions(staff, basePermissions), [staff, basePermissions]);
-  const grantedCodes = new Set((staff.permissions ?? []).filter((code) => !baseCodes.has(code)));
-  const revokedCount = (staff.revokedPermissions ?? []).filter((code) => baseCodes.has(code)).length;
+  const staff = detail?.staff;
+  const effective = useMemo(
+    () => (staff ? getStaffEffectivePermissions(staff, basePermissions) : NO_PERMISSIONS),
+    [staff, basePermissions],
+  );
 
-  // Danh mục khi chỉnh: quyền theo chức danh lên trước, sau đó các quyền khác có thể cấp thêm
+  // Toàn bộ danh mục quyền trong hệ thống
   const catalog = useMemo(() => {
     const all = getAllRbacPermissions();
     return [...all.filter((p) => baseCodes.has(p.code)), ...all.filter((p) => !baseCodes.has(p.code))];
   }, [baseCodes]);
+
+  // Options cho Select gộp
+  const permissionOptions = useMemo(() => {
+    return catalog.map((perm) => ({
+      value: perm.code,
+      label: perm.name,
+      title: perm.description,
+      module: perm.module,
+      isBase: baseCodes.has(perm.code),
+    }));
+  }, [catalog, baseCodes]);
+
+  // Các quyền đang được cấp cho cán bộ trong draft
+  const currentPermissions = useMemo(
+    () => catalog.filter((p) => draft.has(p.code)),
+    [catalog, draft],
+  );
+
+  // Các quyền mặc định của chức danh đang bị thu hồi
+  const revokedBasePermissions = useMemo(
+    () => basePermissions.filter((p) => !draft.has(p.code)),
+    [basePermissions, draft],
+  );
+
+  if (!staff) return null;
+  const grantedCodes = new Set((staff.permissions ?? []).filter((code) => !baseCodes.has(code)));
+  const revokedCount = (staff.revokedPermissions ?? []).filter((code) => baseCodes.has(code)).length;
 
   const startEdit = () => {
     setDraft(new Set(effective.map((p) => p.code)));
     setEditing(true);
   };
 
-  const toggle = (code: string) =>
+  const handleTogglePermission = (code: string) => {
+    if (!code) return;
     setDraft((prev) => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
       else next.add(code);
       return next;
     });
+  };
+
+  const handleRemovePermission = (code: string) => {
+    if (!code) return;
+    setDraft((prev) => {
+      const next = new Set(prev);
+      next.delete(code);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
-    if (!onUpdateStaff) return;
+    if (!canEdit) return;
     // Lưu phần khác biệt so với chức danh: cấp thêm = tick mà chức danh không có; thu hồi = chức danh có mà bỏ tick
     const permissions = [...draft].filter((code) => !baseCodes.has(code));
     const revokedPermissions = [...baseCodes].filter((code) => !draft.has(code));
@@ -64,11 +112,11 @@ export default function StaffPermissionPanel({ staff, basePermissions, onUpdateS
       return;
     setSaving(true);
     try {
-      const ok = await onUpdateStaff(
-        staff.id,
-        { permissions, revokedPermissions },
-        `Đã cập nhật quyền hạn riêng của cán bộ ${staff.name}.`
-      );
+      const ok = await updateStaff.run({
+        staffId,
+        input: { permissions, revokedPermissions },
+        successText: `Đã cập nhật quyền hạn riêng của cán bộ ${staff.name}.`,
+      });
       if (ok) setEditing(false);
     } finally {
       setSaving(false);
@@ -85,7 +133,7 @@ export default function StaffPermissionPanel({ staff, basePermissions, onUpdateS
           <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
             {editing ? draft.size : effective.length} quyền khả dụng
           </span>
-          {onUpdateStaff && !editing && (
+          {canEdit && !editing && (
             <Button
               intent="outline"
               scale="compact"
@@ -100,7 +148,7 @@ export default function StaffPermissionPanel({ staff, basePermissions, onUpdateS
       </div>
       <div className="text-[11px] text-slate-500 mb-3.5">
         {editing
-          ? "Tick để cấp thêm hoặc bỏ tick để thu hồi quyền — chỉ áp dụng riêng cán bộ này, không đổi quyền của chức danh."
+          ? "Chọn hoặc bỏ chọn quyền bằng ô bên dưới — chỉ áp dụng riêng cán bộ này, không đổi quyền của chức danh."
           : "Quyền hạn được cấp theo chức danh của cán bộ, cộng / trừ các quyền điều chỉnh riêng (nếu có)."}
         {!editing && (grantedCodes.size > 0 || revokedCount > 0) && (
           <span className="ml-1 font-semibold text-slate-700">
@@ -112,26 +160,157 @@ export default function StaffPermissionPanel({ staff, basePermissions, onUpdateS
       </div>
 
       {editing ? (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {catalog.map((perm) => (
-              <label
-                key={perm.code}
-                title={perm.description}
-                className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-xs transition-colors ${
-                  draft.has(perm.code) ? "border-slate-300 bg-white" : "border-slate-200/80 bg-slate-50/50"
-                }`}
-              >
-                <Checkbox checked={draft.has(perm.code)} onChange={() => toggle(perm.code)} />
-                <span className="min-w-0 flex-1 font-medium text-slate-800 leading-snug">{perm.name}</span>
-                {baseCodes.has(perm.code) && (
-                  <span className="shrink-0 rounded border border-slate-200 bg-slate-100 px-1.5 text-[10px] text-slate-500">
-                    Theo chức danh
-                  </span>
-                )}
-              </label>
-            ))}
+        <div className="space-y-3.5">
+          {/* Hộp chọn quyền gộp 1 input */}
+          <div className="rounded-lg border border-slate-200/90 bg-slate-50/70 p-3">
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+              <SafetyCertificateOutlined className="text-amber-600 text-xs" />
+              <span>Chọn quyền hạn (tích để thêm quyền, bỏ tích để thu hồi quyền):</span>
+            </label>
+            <Select
+              mode="multiple"
+              showSearch
+              allowClear
+              maxTagCount="responsive"
+              maxTagPlaceholder={(omittedValues) => (
+                <span className="text-[11px] font-medium text-slate-500">
+                  +{omittedValues.length} quyền khác
+                </span>
+              )}
+              placeholder="-- Tìm kiếm & tích chọn quyền hạn cho cán bộ --"
+              className="w-full text-xs"
+              value={Array.from(draft)}
+              onChange={(codes: string[]) => setDraft(new Set(codes))}
+              filterOption={(input, option) => {
+                const label = String(option?.label ?? "").toLowerCase();
+                const title = String(option?.title ?? "").toLowerCase();
+                const search = input.toLowerCase().trim();
+                return label.includes(search) || title.includes(search);
+              }}
+              options={permissionOptions}
+              optionRender={(option) => {
+                const data = option.data as {
+                  value: string;
+                  label: string;
+                  title?: string;
+                  module?: string;
+                  isBase?: boolean;
+                };
+                const isChecked = draft.has(data.value);
+                return (
+                  <div className="flex items-center gap-2.5 py-1 w-full">
+                    <Checkbox checked={isChecked} className="pointer-events-none shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-medium text-slate-800">{data.label}</span>
+                        {data.module && (
+                          <span className="text-[10px] text-slate-400">[{data.module}]</span>
+                        )}
+                      </div>
+                      {data.title && (
+                        <div className="text-[11px] text-slate-400 line-clamp-1">{data.title}</div>
+                      )}
+                    </div>
+                    {data.isBase && (
+                      <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                        Chức danh
+                      </span>
+                    )}
+                  </div>
+                );
+              }}
+            />
           </div>
+
+          {/* Danh sách các quyền khả dụng hiện tại */}
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-slate-700">
+                Danh sách quyền khả dụng ({currentPermissions.length}):
+              </span>
+              <span className="text-[11px] text-slate-400 italic">
+                Bấm nút [✕] trên từng quyền để bỏ nhanh
+              </span>
+            </div>
+
+            {currentPermissions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs italic text-slate-400">
+                Cán bộ chưa có quyền nào. Vui lòng chọn quyền ở ô &ldquo;Chọn quyền hạn&rdquo; phía trên.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {currentPermissions.map((perm) => {
+                  const isBase = baseCodes.has(perm.code);
+                  return (
+                    <div
+                      key={perm.code}
+                      title={perm.description}
+                      className="group flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-xs shadow-2xs hover:border-slate-300 transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <CheckCircleFilled className="text-amber-500 text-sm shrink-0" />
+                        <span
+                          className="min-w-0 flex-1 font-medium text-xs text-slate-800 leading-snug truncate"
+                          title={perm.name}
+                        >
+                          {perm.name}
+                        </span>
+                        {isBase ? (
+                          <span className="shrink-0 rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                            Theo chức danh
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                            Cấp thêm
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePermission(perm.code)}
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+                        title="Bỏ quyền này"
+                      >
+                        <CloseOutlined className="text-[10px]" />
+                        <span className="hidden group-hover:inline font-medium">Bỏ</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quyền chức danh đã thu hồi (nếu có) */}
+          {revokedBasePermissions.length > 0 && (
+            <div className="rounded-lg border border-rose-200/80 bg-rose-50/40 p-2.5">
+              <div className="mb-1.5 text-[11px] font-medium text-rose-700 flex items-center gap-1">
+                <span>Quyền mặc định của chức danh đã thu hồi ({revokedBasePermissions.length}):</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {revokedBasePermissions.map((perm) => (
+                  <span
+                    key={perm.code}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11px] text-rose-700 shadow-2xs"
+                    title={perm.description}
+                  >
+                    <span className="line-through text-slate-500">{perm.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePermission(perm.code)}
+                      className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer flex items-center gap-0.5 ml-1"
+                      title="Khôi phục lại quyền này"
+                    >
+                      <UndoOutlined className="text-[10px]" />
+                      <span>Khôi phục</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
           <div className="mt-3.5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
             <Button intent="outline" scale="compact" disabled={saving} onClick={() => setEditing(false)}>
               Hủy
@@ -140,7 +319,7 @@ export default function StaffPermissionPanel({ staff, basePermissions, onUpdateS
               Lưu quyền
             </Button>
           </div>
-        </>
+        </div>
       ) : effective.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center text-xs italic text-slate-400">
           Cán bộ chưa có quyền nào.

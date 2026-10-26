@@ -22,12 +22,14 @@ interface AiLegalAssistantDrawerProps {
   open: boolean;
   onClose: () => void;
   onSelectDocument?: (docId: string) => void;
+  initialPrompt?: string;
 }
 
 export default function AiLegalAssistantDrawer({
   open,
   onClose,
   onSelectDocument,
+  initialPrompt,
 }: AiLegalAssistantDrawerProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [inputText, setInputText] = useState("");
@@ -40,9 +42,12 @@ export default function AiLegalAssistantDrawer({
 
   useEffect(() => {
     if (open) {
+      if (initialPrompt && initialPrompt.trim()) {
+        setInputText(initialPrompt);
+      }
       setTimeout(scrollToBottom, 150);
     }
-  }, [open, messages, isThinking]);
+  }, [open, initialPrompt]);
 
   const handleSendMessage = (textToSend?: string) => {
     const query = (textToSend || inputText).trim();

@@ -49,16 +49,6 @@ apiClient.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-
-      const userInfoStr = Cookies.get('user_info');
-      if (userInfoStr && config.headers) {
-        try {
-          const userInfo = JSON.parse(userInfoStr);
-          if (userInfo.branchId) {
-            config.headers['x-branch-id'] = userInfo.branchId;
-          }
-        } catch {}
-      }
     }
     return config;
   },

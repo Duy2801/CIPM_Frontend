@@ -2,7 +2,6 @@ import type { CustomFieldDefinition, CustomFieldTarget } from "../types/custom-f
 
 const STORAGE_KEY_PREFIX = "cipm_custom_fields_";
 const CHANGE_EVENT_NAME = "cipm-custom-fields-changed";
-const DATASET_STORAGE_KEY = "cipm_personnel_dataset_v1";
 
 export const DEFAULT_STAFF_CUSTOM_FIELDS: CustomFieldDefinition[] = [];
 
@@ -58,59 +57,6 @@ export function saveCustomFields(target: CustomFieldTarget, fields: CustomFieldD
     );
   } catch (err) {
     console.error(`Lỗi lưu trường tùy biến cho ${target}:`, err);
-  }
-}
-
-/**
- * Xóa hoàn toàn một trường tùy biến đã bị gỡ khỏi cấu hình ra khỏi dữ liệu thực tế (các phòng ban hoặc nhân sự)
- */
-export function purgeCustomFieldFromDataset(target: CustomFieldTarget, fieldName: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem(DATASET_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    let changed = false;
-
-    if (target === "team" && parsed.teams) {
-      parsed.teams.forEach((t: any) => {
-        if (t.customFields) {
-          if (t.customFields[fieldName] !== undefined) {
-            delete t.customFields[fieldName];
-            changed = true;
-          }
-          // Dọn dẹp trường rác fdsaf nếu còn tồn đọng
-          for (const k of Object.keys(t.customFields)) {
-            if (/fdsaf/i.test(k)) {
-              delete t.customFields[k];
-              changed = true;
-            }
-          }
-        }
-      });
-    } else if (target === "staff" && parsed.staff) {
-      parsed.staff.forEach((s: any) => {
-        if (s.customFields) {
-          if (s.customFields[fieldName] !== undefined) {
-            delete s.customFields[fieldName];
-            changed = true;
-          }
-          for (const k of Object.keys(s.customFields)) {
-            if (/fdsaf/i.test(k)) {
-              delete s.customFields[k];
-              changed = true;
-            }
-          }
-        }
-      });
-    }
-
-    if (changed) {
-      localStorage.setItem(DATASET_STORAGE_KEY, JSON.stringify(parsed));
-      window.dispatchEvent(new Event("cipm-personnel-dataset-changed"));
-    }
-  } catch (err) {
-    console.error("Lỗi xóa trường dữ liệu khỏi dataset:", err);
   }
 }
 
