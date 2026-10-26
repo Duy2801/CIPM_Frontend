@@ -1,12 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  CloseOutlined,
-  DownloadOutlined,
-  ExportOutlined,
-  FileWordOutlined,
-} from "@ant-design/icons";
+import { useEffect, useMemo } from "react";
+import { CloseOutlined, FileWordOutlined } from "@ant-design/icons";
 import { Modal } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
 import { STATUS_META, getCategoryLabel } from "../constants/legal-mock-data";
@@ -21,7 +16,7 @@ interface FilePreviewModalProps {
   document: LegalDocument;
   /** Tệp cần xem; không truyền = văn bản mẫu chưa có tệp gốc */
   file?: AttachedDocumentFile;
-  onDownload: () => void;
+  onDownload?: () => void;
   onClose: () => void;
 }
 
@@ -33,7 +28,6 @@ export default function FilePreviewModal({
   open,
   document,
   file,
-  onDownload,
   onClose,
 }: FilePreviewModalProps) {
   // Tệp vừa tải lên chỉ có File trong bộ nhớ → tạo đường dẫn tạm, thu hồi khi đóng
@@ -50,9 +44,7 @@ export default function FilePreviewModal({
     file?.name ??
     (document.title ? `${document.code} - ${document.title}` : document.code);
   const canEmbedPdf = Boolean(file && fileUrl && file.type === "PDF");
-  // Số trang của PDF đang xem (gắn với đường dẫn tệp để đổi tệp là tự đặt lại)
-  const [pageInfo, setPageInfo] = useState<{ url: string; count: number } | null>(null);
-  const pageCount = pageInfo && pageInfo.url === fileUrl ? pageInfo.count : null;
+
 
   const iconButtonClass =
     "flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#DC2626]";
@@ -73,37 +65,13 @@ export default function FilePreviewModal({
     >
       <div className="flex h-[calc(100dvh-48px)] flex-col overflow-hidden rounded-md bg-white shadow-2xl">
         {/* Dải tiêu đề mảnh: cố định, không che chữ */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 py-1.5 pl-4 pr-2">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 py-1.5 pl-4 pr-2">
           <span
             className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600"
             title={fileName}
           >
             {fileName}
-            {canEmbedPdf && pageCount !== null && (
-              <span className="ml-2 font-normal text-slate-400">· {pageCount} trang</span>
-            )}
           </span>
-          {canEmbedPdf && (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Mở trong tab mới"
-              title="Mở trong tab mới"
-              className={iconButtonClass}
-            >
-              <ExportOutlined />
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={onDownload}
-            aria-label="Tải về"
-            title="Tải về"
-            className={iconButtonClass}
-          >
-            <DownloadOutlined />
-          </button>
           <button
             type="button"
             onClick={onClose}
@@ -123,7 +91,6 @@ export default function FilePreviewModal({
               <PdfPagesViewer
                 key={fileUrl}
                 url={fileUrl!}
-                onPageCount={(count) => setPageInfo({ url: fileUrl!, count })}
               />
             </div>
           ) : file && file.type === "DOCX" ? (
