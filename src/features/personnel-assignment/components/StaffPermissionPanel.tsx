@@ -7,7 +7,6 @@ import {
   EditOutlined,
   SafetyCertificateOutlined,
   SaveOutlined,
-  UndoOutlined,
 } from "@ant-design/icons";
 import { Button, Checkbox, Select, Text } from "@/components/ui";
 import { getAllRbacPermissions, getStaffEffectivePermissions, type RbacPermissionItem } from "../utils/personnel-rbac";
@@ -63,12 +62,6 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
     [catalog, draft],
   );
 
-  // Các quyền mặc định của chức danh đang bị thu hồi
-  const revokedBasePermissions = useMemo(
-    () => basePermissions.filter((p) => !draft.has(p.code)),
-    [basePermissions, draft],
-  );
-
   if (!staff) return null;
   const grantedCodes = new Set((staff.permissions ?? []).filter((code) => !baseCodes.has(code)));
   const revokedCount = (staff.revokedPermissions ?? []).filter((code) => baseCodes.has(code)).length;
@@ -76,16 +69,6 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
   const startEdit = () => {
     setDraft(new Set(effective.map((p) => p.code)));
     setEditing(true);
-  };
-
-  const handleTogglePermission = (code: string) => {
-    if (!code) return;
-    setDraft((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
   };
 
   const handleRemovePermission = (code: string) => {
@@ -280,35 +263,6 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
               </div>
             )}
           </div>
-
-          {/* Quyền chức danh đã thu hồi (nếu có) */}
-          {revokedBasePermissions.length > 0 && (
-            <div className="rounded-lg border border-rose-200/80 bg-rose-50/40 p-2.5">
-              <div className="mb-1.5 text-[11px] font-medium text-rose-700 flex items-center gap-1">
-                <span>Quyền mặc định của chức danh đã thu hồi ({revokedBasePermissions.length}):</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {revokedBasePermissions.map((perm) => (
-                  <span
-                    key={perm.code}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11px] text-rose-700 shadow-2xs"
-                    title={perm.description}
-                  >
-                    <span className="line-through text-slate-500">{perm.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleTogglePermission(perm.code)}
-                      className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer flex items-center gap-0.5 ml-1"
-                      title="Khôi phục lại quyền này"
-                    >
-                      <UndoOutlined className="text-[10px]" />
-                      <span>Khôi phục</span>
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Action buttons */}
           <div className="mt-3.5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">

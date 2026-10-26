@@ -2,18 +2,11 @@
 
 import { useMemo, useState } from "react";
 import {
-  BellOutlined,
-  BookOutlined,
-  CheckOutlined,
   CommentOutlined,
-  CopyOutlined,
-  DiffOutlined,
   EyeOutlined,
-  FilePdfOutlined,
-  FileWordOutlined,
   InfoCircleOutlined,
+  PlusOutlined,
   PrinterOutlined,
-  QuestionCircleOutlined,
   SaveOutlined,
   SearchOutlined,
   SwapOutlined,
@@ -28,11 +21,19 @@ import type {
   LegalViewerTab,
   RelatedDocumentItem,
 } from "../types/legal-viewer.types";
+import type { LegalDocument } from "../types/legal-ai.types";
 import {
   MOCK_CONSTRUCTION_LAW_2014,
   MOCK_LABOR_CODE_2019,
   POPULAR_LEGAL_DOCUMENTS,
 } from "../constants/legal-viewer-data";
+import {
+  getCategoryLabel,
+  LEGAL_LOG_MODULE,
+  STATUS_META,
+} from "../constants/legal-mock-data";
+import { appendActivity } from "@/features/personnel-assignment/utils/activity-log";
+import { useAuthStore } from "@/stores/auth.store";
 
 // Các tab views
 import TabOverview from "./tabs/TabOverview";
@@ -45,13 +46,14 @@ import TabDiagram from "./tabs/TabDiagram";
 import TabConsolidated from "./tabs/TabConsolidated";
 import TabDownload from "./tabs/TabDownload";
 
-// Modals
+// Modals & Drawers
 import ColorGuideModal from "./ColorGuideModal";
 import CompareDocumentModal from "./CompareDocumentModal";
 import TableOfContentsDrawer from "./TableOfContentsDrawer";
 import AdvancedSearchModal, { type AdvancedSearchCriteria } from "./AdvancedSearchModal";
 import NoteModal from "./NoteModal";
 import ReportErrorModal from "./ReportErrorModal";
+import CreateDocumentDrawer from "./CreateDocumentDrawer";
 
 interface LegalDocumentViewerProps {
   initialDocumentCode?: string;
@@ -65,14 +67,17 @@ export default function LegalDocumentViewer({
   onBackToList,
 }: LegalDocumentViewerProps) {
   const { message } = App.useApp();
-  // Văn bản đang xem
+  const user = useAuthStore((state) => state.user);
+
+  // Danh sách văn bản & văn bản đang xem
+  const [documents, setDocuments] = useState<DetailedLegalDocument[]>(POPULAR_LEGAL_DOCUMENTS);
   const [selectedDocCode, setSelectedDocCode] = useState<string>(initialDocumentCode);
   const currentDoc: DetailedLegalDocument = useMemo(() => {
-    const found = POPULAR_LEGAL_DOCUMENTS.find(
+    const found = documents.find(
       (d) => d.code === selectedDocCode || d.id === selectedDocCode,
     );
-    return found || MOCK_LABOR_CODE_2019;
-  }, [selectedDocCode]);
+    return found || documents[0] || MOCK_LABOR_CODE_2019;
+  }, [documents, selectedDocCode]);
 
   // Tab đang hoạt động
   const [activeTab, setActiveTab] = useState<LegalViewerTab>("overview");
@@ -85,7 +90,8 @@ export default function LegalDocumentViewer({
   const [isSaved, setIsSaved] = useState(false);
   const [isFollowed, setIsFollowed] = useState(false);
 
-  // Modals state
+  // Modals & Drawers state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isColorGuideOpen, setIsColorGuideOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isTocOpen, setIsTocOpen] = useState(false);
@@ -101,8 +107,8 @@ export default function LegalDocumentViewer({
       message.info("Vui lòng nhập nội dung cần tìm kiếm.");
       return;
     }
-    // Tìm trong danh sách văn bản mẫu
-    const matched = POPULAR_LEGAL_DOCUMENTS.find(
+    // Tìm trong danh sách văn bản
+    const matched = documents.find(
       (d) =>
         d.title.toLowerCase().includes(q) ||
         d.code.toLowerCase().includes(q) ||
@@ -140,13 +146,64 @@ export default function LegalDocumentViewer({
     }
   };
 
-  const handleAskAiAboutDoc = () => {
-    const prompt = `Tôi đang xem văn bản: ${currentDoc.title} (Số hiệu: ${currentDoc.code}, Lĩnh vực: ${currentDoc.field}, Hiệu lực: ${currentDoc.effectiveDate}). Hãy tóm tắt cho tôi các điểm trọng tâm cần lưu ý khi áp dụng trong hoạt động của Ban QLDA?`;
-    if (onOpenAssistantWithPrompt) {
-      onOpenAssistantWithPrompt(prompt);
-    } else {
-      message.info("Đang kết nối tới Trợ lý CIPM AI...");
-    }
+  const handleCreateDocument = (doc: LegalDocument) => {
+    const newDoc: DetailedLegalDocument = {
+      id: doc.id || `DOC-${Date.now()}`,
+      code: doc.code,
+      title: doc.title,
+      shortTitle: doc.title,
+      categoryName: getCategoryLabel(doc.category),
+      issuer: doc.issuer,
+      gazetteNumber: "Đang cập nhật",
+      gazetteDate: doc.issueDate,
+      signer: "Người có thẩm quyền",
+      issueDate: doc.issueDate,
+      effectiveDate: doc.effectiveDate,
+      expiredDate: doc.status === "EXPIRED" ? doc.effectiveDate : "Đang cập nhật",
+      statusText: STATUS_META[doc.status]?.label ?? "Còn hiệu lực",
+      statusCode: doc.status,
+      field: doc.scope || "Quản lý dự án xây dựng",
+      updatedAtText: new Date().toLocaleDateString("vi-VN"),
+      totalChapters: 1,
+      totalArticles: 1,
+      summaryHighlights: doc.summary ? [doc.summary] : ["Văn bản mới được thêm vào hệ thống."],
+      chapters: [
+        {
+          number: "Nội dung",
+          title: doc.title,
+          articles: [
+            {
+              number: "Điều 1",
+              title: "Nội dung văn bản",
+              paragraphs: [
+                doc.summary || "Toàn văn nội dung văn bản quy phạm pháp luật được ban hành.",
+              ],
+            },
+          ],
+        },
+      ],
+      amendedByCodes: [],
+      keywords: doc.tags || [],
+      faqs: [],
+      authors: [user?.displayName || user?.name || "Cán bộ ban"],
+      englishTitle: doc.title,
+    };
+
+    setDocuments((prev) => [newDoc, ...prev]);
+    setSelectedDocCode(newDoc.code);
+    setIsCreateOpen(false);
+    message.success(`Đã thêm mới văn bản "${doc.code} - ${doc.title}" thành công!`);
+
+    appendActivity({
+      actorName: user?.displayName || user?.name || "Người dùng",
+      actorRole: user?.roleName || user?.role || "Cán bộ",
+      module: LEGAL_LOG_MODULE,
+      action: "Thêm văn bản mới vào thư viện",
+      targetType: "procedure",
+      targetId: newDoc.id,
+      targetName: newDoc.title,
+      note: `Số hiệu: ${newDoc.code} · Cơ quan: ${newDoc.issuer}`,
+    });
   };
 
   const handleAskAiSpecificArticle = (articleText: string) => {
@@ -365,17 +422,15 @@ export default function LegalDocumentViewer({
             </button>
           </div>
 
-          {/* Nút đặc biệt: HỎI AILUAT / CIPM AI */}
-          <button
-            type="button"
-            onClick={handleAskAiAboutDoc}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-blue-400 bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 hover:from-blue-100 hover:to-indigo-100 px-3.5 py-1.5 text-xs font-bold text-blue-800 shadow-2xs transition-all hover:shadow-xs"
+          {/* Nút Thêm văn bản */}
+          <Button
+            intent="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsCreateOpen(true)}
+            className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] text-white text-xs font-semibold shadow-xs cursor-pointer inline-flex items-center gap-1.5 h-7 px-3 rounded-md"
           >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-white text-[10px]">
-              ?
-            </span>
-            <span>Hỏi CIPM AI</span>
-          </button>
+            Thêm văn bản
+          </Button>
         </div>
 
         {/* Nội dung chính của Tab đang chọn */}
@@ -482,6 +537,14 @@ export default function LegalDocumentViewer({
         open={isReportErrorOpen}
         onClose={() => setIsReportErrorOpen(false)}
         documentTitle={currentDoc.title}
+      />
+
+      {/* Drawer Thêm văn bản mới */}
+      <CreateDocumentDrawer
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSubmit={handleCreateDocument}
+        knownIssuers={useMemo(() => documents.map((d) => d.issuer), [documents])}
       />
     </div>
   );
