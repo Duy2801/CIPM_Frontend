@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  BookOutlined,
   CalendarOutlined,
-  CheckCircleOutlined,
   FileTextOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
@@ -30,7 +30,6 @@ import {
   getCategoryLabel,
 } from "../constants/legal-mock-data";
 import type {
-  AttachedDocumentFile,
   BuiltInDocumentCategory,
   DocumentCategoryKey,
   LegalDocument,
@@ -67,6 +66,16 @@ const STATUS_SELECT_OPTIONS = STATUS_ORDER.map((value) => ({
   ),
 }));
 
+const COMMON_FIELDS = [
+  "Lao động-Tiền lương",
+  "Đầu tư xây dựng",
+  "Quản lý đấu thầu",
+  "Đất đai - GPMB & TĐC",
+  "Tài chính - Quyết toán KBNN",
+  "Bảo hành & Bảo trì công trình",
+  "Thủ tục XDCB",
+];
+
 const DEFAULT_ISSUERS = new Set(Object.values(DEFAULT_ISSUER_BY_CATEGORY));
 
 export default function CreateDocumentDrawer({
@@ -86,6 +95,9 @@ export default function CreateDocumentDrawer({
   const [issuerQuery, setIssuerQuery] = useState("");
   const [addedIssuers, setAddedIssuers] = useState<string[]>([]);
   const [signer, setSigner] = useState("");
+  const [gazetteNumber, setGazetteNumber] = useState("");
+  const [gazetteDate, setGazetteDate] = useState("");
+  const [field, setField] = useState("Lao động-Tiền lương");
   const [issueDate, setIssueDate] = useState(todayIso());
   const [effectiveDate, setEffectiveDate] = useState(todayIso());
   const [expiredDate, setExpiredDate] = useState("");
@@ -104,6 +116,9 @@ export default function CreateDocumentDrawer({
       setCategory(editingDocument.category || "DECREE");
       setIssuer(editingDocument.issuer || "");
       setSigner(editingDocument.signer || "");
+      setGazetteNumber(editingDocument.gazetteNumber || "");
+      setGazetteDate(editingDocument.gazetteDate || "");
+      setField(editingDocument.field || editingDocument.scope || "Lao động-Tiền lương");
       setIssueDate(editingDocument.issueDate || todayIso());
       setEffectiveDate(editingDocument.effectiveDate || todayIso());
       setExpiredDate(editingDocument.expiredDate || "");
@@ -137,6 +152,9 @@ export default function CreateDocumentDrawer({
       setCategory("DECREE");
       setIssuer(DEFAULT_ISSUER_BY_CATEGORY.DECREE ?? "");
       setSigner("");
+      setGazetteNumber("");
+      setGazetteDate("");
+      setField("Lao động-Tiền lương");
       setIssueDate(todayIso());
       setEffectiveDate(todayIso());
       setExpiredDate("");
@@ -258,11 +276,14 @@ export default function CreateDocumentDrawer({
       category,
       issuer: issuer.trim(),
       signer: signer.trim() || undefined,
+      gazetteNumber: gazetteNumber.trim() || undefined,
+      gazetteDate: gazetteDate.trim() || undefined,
+      field: field.trim() || undefined,
       issueDate,
       effectiveDate,
       expiredDate: expiredDate.trim() || undefined,
       status,
-      scope: editingDocument?.scope ?? "Quản lý dự án",
+      scope: field.trim() || editingDocument?.scope || "Quản lý dự án",
       summary: editingDocument?.summary ?? "",
       fileType: primaryType,
       fileSize: totalSizeStr,
@@ -295,7 +316,7 @@ export default function CreateDocumentDrawer({
           </div>
           <div className="mt-0.5 text-xs font-normal text-slate-500">
             {editingDocument
-              ? "Chỉnh sửa số hiệu, cơ quan ban hành, người ký, hiệu lực và tệp tài liệu số hóa"
+              ? "Chỉnh sửa số hiệu, cơ quan ban hành, hiệu lực và tệp tài liệu số hóa"
               : "Bổ sung luật, nghị định, thông tư, nghị quyết, quyết định vào thư viện tra cứu"}
           </div>
         </div>
@@ -323,13 +344,14 @@ export default function CreateDocumentDrawer({
           </div>
         )}
 
-        {/* 1. KHỐI: PHÂN LOẠI & THÔNG TIN ĐỊNH DANH VĂN BẢN */}
+        {/* 1. KHỐI: PHÂN LOẠI, SỐ HIỆU & CƠ QUAN BAN HÀNH */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
           <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
             <FileTextOutlined className="text-[#DC2626]" />
-            Phân loại & Số hiệu văn bản
+            Thông tin định danh & Phân loại văn bản
           </div>
 
+          {/* Hàng 1: Loại văn bản & Số hiệu */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -394,6 +416,7 @@ export default function CreateDocumentDrawer({
             </div>
           </div>
 
+          {/* Hàng 2: Tên văn bản / Trích yếu nội dung */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Tên văn bản / Trích yếu nội dung
@@ -406,16 +429,22 @@ export default function CreateDocumentDrawer({
               className="w-full text-xs h-8"
             />
           </div>
-        </div>
 
-        {/* 2. KHỐI: CƠ QUAN BAN HÀNH & NGƯỜI KÝ */}
-        <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
-          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <UserOutlined className="text-[#DC2626]" />
-            Thẩm quyền ban hành & Người ký
-          </div>
-
+          {/* Hàng 3: Lĩnh vực & Cơ quan ban hành */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Lĩnh vực áp dụng
+              </label>
+              <Select
+                aria-label="Lĩnh vực áp dụng"
+                value={field}
+                options={COMMON_FIELDS.map((f) => ({ value: f, label: f }))}
+                onChange={(val) => setField(val)}
+                className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Cơ quan ban hành <span className="text-rose-500">*</span>
@@ -471,8 +500,44 @@ export default function CreateDocumentDrawer({
                 )}
               />
             </div>
+          </div>
+        </div>
+
+        {/* 2. KHỐI: CÔNG BÁO & NGƯỜI KÝ */}
+        <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
+          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <BookOutlined className="text-[#DC2626]" />
+            Thông tin công báo & Người ký
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Số công báo
+              </label>
+              <Input
+                intent="clean"
+                value={gazetteNumber}
+                onChange={(e) => setGazetteNumber(e.target.value)}
+                placeholder="VD: 993&994-12/2019"
+                className="w-full text-xs h-8"
+              />
+            </div>
 
             <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Ngày đăng công báo
+              </label>
+              <Input
+                type="date"
+                intent="clean"
+                value={gazetteDate}
+                onChange={(e) => setGazetteDate(e.target.value)}
+                className="w-full text-xs h-8"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Người ký
               </label>
@@ -522,12 +587,12 @@ export default function CreateDocumentDrawer({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Ngày hết hiệu lực{" "}
-                <span className="text-[11px] font-normal text-slate-400">
-                  (để trống nếu đang cập nhật)
+              <label className="block text-xs font-semibold text-slate-700 mb-1 leading-tight">
+                <span>Ngày hết hiệu lực</span>
+                <span className="block text-[10px] font-normal text-slate-400 mt-0.5">
+                  (để trống nếu chưa xác định)
                 </span>
               </label>
               <Input

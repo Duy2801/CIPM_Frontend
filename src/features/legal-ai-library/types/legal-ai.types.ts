@@ -40,6 +40,9 @@ export interface LegalDocument {
   category: DocumentCategoryKey;
   issuer: string; // Cơ quan ban hành
   signer?: string; // Người ký (vd: Nguyễn Thị Kim Ngân)
+  gazetteNumber?: string; // Số công báo (vd: 993&994-12/2019)
+  gazetteDate?: string; // Ngày đăng công báo (YYYY-MM-DD)
+  field?: string; // Lĩnh vực (vd: Lao động-Tiền lương)
   issueDate: string; // Ngày ban hành (YYYY-MM-DD)
   effectiveDate: string; // Ngày hiệu lực
   expiredDate?: string; // Ngày hết hiệu lực (YYYY-MM-DD hoặc "Đang cập nhật")

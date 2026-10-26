@@ -10,7 +10,6 @@ import {
   HistoryOutlined,
   LockOutlined,
   PlusOutlined,
-  ReadOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Flex, Input, Pagination, Select, Text, Title, Tooltip } from "@/components/ui";
@@ -19,7 +18,6 @@ import { normalizeSearchText } from "@/utils/search-text";
 import AiLegalAssistantDrawer from "./AiLegalAssistantDrawer";
 import CreateDocumentDrawer from "./CreateDocumentDrawer";
 import DocumentDetailDrawer from "./DocumentDetailDrawer";
-import LegalDocumentViewer from "./LegalDocumentViewer";
 import { describeLegalChanges, type LegalDocumentPatch } from "../utils/document-changes";
 import LegalStatsChart from "./LegalStatsChart";
 import { LEGAL_LOG_MODULE, STATUS_META, STATUS_ORDER, getCategoryLabel } from "../constants/legal-mock-data";
@@ -300,9 +298,10 @@ export default function LegalAiLibraryScreen() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantPrompt, setAssistantPrompt] = useState<string>("");
-  const [screenTab, setScreenTab] = useState<"viewer" | "documents" | "history">("documents");
+  const [screenTab, setScreenTab] = useState<"documents" | "history">("documents");
   // Lọc lịch sử theo một ngày (yyyy-mm-dd), rỗng = tất cả
   const [historyDate, setHistoryDate] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
   const logVersion = useActivityLogVersion();
 
   // Lịch sử thao tác trên thư viện (nhật ký dùng chung, lọc theo phân hệ), mới nhất lên đầu
@@ -313,11 +312,17 @@ export default function LegalAiLibraryScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyDate, logVersion]);
 
+  const HISTORY_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
+  const historyTotalPages = Math.max(1, Math.ceil(libraryHistory.length / HISTORY_PAGE_SIZE));
+  const currentHistoryPage = Math.min(historyPage, historyTotalPages);
+  const historyPageStart = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
+  const pagedHistory = libraryHistory.slice(historyPageStart, historyPageStart + HISTORY_PAGE_SIZE);
+
   // Lọc văn bản pháp luật: từ khóa (không phân biệt hoa/thường và dấu) + loại văn bản + tình trạng
   const query = normalizeSearchText(search);
   const matchesQuery = (item: LegalItem) =>
     !query ||
-    [item.code, item.title, item.issuer, item.signer ?? "", item.summary, ...item.tags].some((text) =>
+    [item.code, item.title, item.issuer, item.summary, ...item.tags].some((text) =>
       normalizeSearchText(text).includes(query),
     );
 
@@ -461,12 +466,11 @@ export default function LegalAiLibraryScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
-      {/* 3 tab trên cùng: tra cứu chi tiết / quản lý danh sách văn bản / lịch sử thao tác */}
+      {/* 2 tab trên cùng: danh sách văn bản / lịch sử thao tác */}
       <div role="tablist" className="inline-flex gap-1 self-start rounded-lg border border-slate-200 bg-slate-100/70 p-0.5">
         {(
           [
-            { key: "viewer", icon: <ReadOutlined />, label: "Tra cứu Thư viện Pháp lý" },
-            { key: "documents", icon: <FileTextOutlined />, label: "Quản lý danh sách văn bản" },
+            { key: "documents", icon: <FileTextOutlined />, label: "Danh sách văn bản" },
             { key: "history", icon: <HistoryOutlined />, label: "Lịch sử thay đổi" },
           ] as const
         ).map((tab) => {
@@ -489,35 +493,50 @@ export default function LegalAiLibraryScreen() {
         })}
       </div>
 
-      {screenTab === "viewer" ? (
-        <LegalDocumentViewer
-          onOpenAssistantWithPrompt={(prompt) => {
-            setAssistantPrompt(prompt);
-            setIsAssistantOpen(true);
-          }}
-          onBackToList={() => setScreenTab("documents")}
-        />
-      ) : screenTab === "history" ? (
+      {screenTab === "history" ? (
         <Card
           surface="flat"
           padding="none"
           rounded="lg"
           className="overflow-hidden border border-slate-200 shadow-xs bg-white"
         >
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3.5">
             <div className="min-w-0">
               <h2 className="m-0 text-base font-bold text-slate-900">Lịch sử thay đổi</h2>
               <p className="m-0 mt-0.5 text-xs text-slate-500">
                 Ai đã thao tác trên thư viện, vào lúc nào · {libraryHistory.length} thao tác
               </p>
             </div>
-            <ActivityDateFilter value={historyDate} onChange={setHistoryDate} />
+            <div className="flex flex-wrap items-center gap-3">
+              <ActivityDateFilter
+                value={historyDate}
+                onChange={(val) => {
+                  setHistoryDate(val);
+                  setHistoryPage(1);
+                }}
+              />
+              {libraryHistory.length > 0 && (
+                <div className="flex items-center gap-2.5 text-xs text-slate-500">
+                  <span className="hidden whitespace-nowrap sm:inline">
+                    Hiển thị {historyPageStart + 1}–{historyPageStart + pagedHistory.length} / {libraryHistory.length} thao tác
+                  </span>
+                  <Pagination
+                    current={currentHistoryPage}
+                    pageSize={HISTORY_PAGE_SIZE}
+                    total={libraryHistory.length}
+                    onChange={setHistoryPage}
+                    showSizeChanger={false}
+                    size="small"
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <div className="p-4">
             <ActivityTimeline
-              key={historyDate}
-              entries={libraryHistory}
-              pageSize={20}
+              key={`${historyDate}-${currentHistoryPage}`}
+              entries={pagedHistory}
+              hideLoadMore
               emptyText={
                 historyDate
                   ? "Không có thao tác nào trong ngày đã chọn."
@@ -644,17 +663,21 @@ export default function LegalAiLibraryScreen() {
                   aria-hidden
                   className="hidden items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:flex"
                 >
-                  <span className="w-36 shrink-0">Số hiệu</span>
-                  <span className="w-28 shrink-0">Loại văn bản</span>
+                  <span className="w-28 shrink-0">Số hiệu</span>
+                  <span className="w-24 shrink-0">Loại văn bản</span>
                   <span className="min-w-0 flex-1">Tên văn bản</span>
-                  <span className="w-24 shrink-0 text-center">Ngày ban hành</span>
-                  <span className="w-24 shrink-0 text-center">Ngày hiệu lực</span>
+                  <div className="w-28 shrink-0 text-center leading-tight">
+                    <div className="whitespace-nowrap">Ngày ban hành</div>
+                    <div className="whitespace-nowrap text-[10px] font-medium text-slate-400">Ngày hiệu lực</div>
+                  </div>
+
                   <span className="w-20 shrink-0 text-center">Tình trạng</span>
                   {canManageDocuments && <span className="ml-auto w-20 shrink-0 text-center">Thao tác</span>}
                 </div>
                 <ol className="m-0 list-none divide-y divide-slate-100 p-0">
                   {pagedItems.map((item) => {
                     const status = STATUS_META[item.status];
+                    const isNewest = recentlyAddedIds.length > 0 && item.id === recentlyAddedIds[0];
                     return (
                       <li key={item.id}>
                         <div
@@ -668,17 +691,28 @@ export default function LegalAiLibraryScreen() {
                               handleOpenDocDetail(item);
                             }
                           }}
-                          className="group flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-center md:gap-4"
+                          className={`group flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition-all focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#DC2626]/40 md:flex-row md:items-center md:gap-4 ${
+                            isNewest
+                              ? "bg-amber-50/70 border-l-4 border-l-[#DC2626] hover:bg-amber-100/70 shadow-2xs"
+                              : "hover:bg-slate-50/80 focus-visible:bg-slate-50 border-l-4 border-l-transparent"
+                          }`}
                         >
                           {/* Số hiệu · cơ quan ban hành */}
-                          <div className="flex shrink-0 flex-col items-start gap-1 text-xs md:w-36">
-                            <span className="font-semibold text-slate-800">{item.code}</span>
+                          <div className="flex shrink-0 flex-col items-start gap-1 text-xs md:w-28">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-slate-800">{item.code}</span>
+                              {isNewest && (
+                                <span className="inline-flex items-center rounded bg-[#DC2626] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-2xs">
+                                  Mới thêm
+                                </span>
+                              )}
+                            </div>
                             <span className="text-slate-500">{item.issuer}</span>
                           </div>
 
                           {/* Loại văn bản */}
-                          <div className="shrink-0 md:w-28">
-                            <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                          <div className="shrink-0 md:w-24">
+                            <span className="whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                               {getCategoryLabel(item.category)}
                             </span>
                           </div>
@@ -691,14 +725,22 @@ export default function LegalAiLibraryScreen() {
                             {item.title || item.code}
                           </p>
 
-                          {/* Ngày ban hành · Ngày hiệu lực (màn hình nhỏ hiện kèm nhãn) */}
-                          <div className="shrink-0 text-xs text-slate-700 md:w-24 md:text-center">
-                            <span className="text-slate-500 md:hidden">Ban hành: </span>
-                            <span className="font-medium tabular-nums">{formatDateVi(item.issueDate)}</span>
-                          </div>
-                          <div className="shrink-0 text-xs text-slate-700 md:w-24 md:text-center">
-                            <span className="text-slate-500 md:hidden">Hiệu lực: </span>
-                            <span className="font-medium tabular-nums">{formatDateVi(item.effectiveDate)}</span>
+                          {/* Ngày ban hành (trên) · Ngày hiệu lực (dưới) */}
+                          <div className="flex shrink-0 flex-col items-start gap-0.5 text-xs md:w-28 md:items-center md:text-center">
+                            <span
+                              className="font-medium tabular-nums text-slate-800"
+                              title={`Ngày ban hành: ${formatDateVi(item.issueDate)}`}
+                            >
+                              <span className="text-slate-400 md:hidden">Ban hành: </span>
+                              {formatDateVi(item.issueDate)}
+                            </span>
+                            <span
+                              className="text-[11px] tabular-nums text-slate-500"
+                              title={`Ngày hiệu lực: ${formatDateVi(item.effectiveDate)}`}
+                            >
+                              <span className="text-slate-400 md:hidden">Hiệu lực: </span>
+                              {formatDateVi(item.effectiveDate)}
+                            </span>
                           </div>
 
                           {/* Tình trạng văn bản */}

@@ -10,6 +10,9 @@ export type LegalDocumentPatch = Partial<
     | "category"
     | "issuer"
     | "signer"
+    | "gazetteNumber"
+    | "gazetteDate"
+    | "field"
     | "issueDate"
     | "effectiveDate"
     | "expiredDate"
@@ -27,6 +30,9 @@ export const LEGAL_FIELD_LABELS: Record<LegalDocumentField, string> = {
   category: "Phân loại văn bản",
   issuer: "Cơ quan ban hành",
   signer: "Người ký",
+  gazetteNumber: "Số công báo",
+  gazetteDate: "Ngày đăng công báo",
+  field: "Lĩnh vực",
   issueDate: "Ngày ban hành",
   effectiveDate: "Ngày áp dụng (hiệu lực)",
   expiredDate: "Ngày hết hiệu lực",

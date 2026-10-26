@@ -5,7 +5,6 @@ import { App } from "antd";
 import {
   CalendarOutlined,
   CheckCircleOutlined,
-  DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
   FilePdfOutlined,
@@ -13,7 +12,6 @@ import {
   PaperClipOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
-  SwapOutlined,
   TagOutlined,
 } from "@ant-design/icons";
 import { Button, Drawer, Tooltip } from "@/components/ui";
@@ -206,22 +204,6 @@ export default function DocumentDetailDrawer({
     setFileTarget(null);
   };
 
-  const confirmRemoveFile = (file: AttachedDocumentFile) =>
-    modal.confirm({
-      centered: true,
-      width: 440,
-      title: "Xóa tệp đính kèm?",
-      content: (
-        <p className="m-0 text-xs leading-relaxed text-slate-600">
-          Tệp <strong className="text-slate-800">{file.name}</strong> sẽ bị gỡ khỏi văn bản này.
-        </p>
-      ),
-      okText: "Xóa tệp",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk: () => saveFiles(displayFiles.filter((item) => item.id !== file.id)),
-    });
-
   const handleDownload = () => {
     // Giả lập download file thực tế
     const safeCode = document.code.replace(/[\/\\?%*:|"<>]/g, "_");
@@ -405,6 +387,42 @@ export default function DocumentDetailDrawer({
             />
 
             <InlineEditField
+              label="Lĩnh vực"
+              changed={isChanged("field")}
+              value={document.field ?? ""}
+              display={document.field || <span className="font-normal italic text-slate-400">Chưa có</span>}
+              editor={{ kind: "text", placeholder: "VD: Lao động-Tiền lương" }}
+              onSave={saveField && ((field) => saveField({ field }))}
+            />
+
+            <InlineEditField
+              label="Số công báo"
+              changed={isChanged("gazetteNumber")}
+              value={document.gazetteNumber ?? ""}
+              display={document.gazetteNumber || <span className="font-normal italic text-slate-400">Chưa có</span>}
+              editor={{ kind: "text", placeholder: "VD: 993&994-12/2019" }}
+              onSave={saveField && ((gazetteNumber) => saveField({ gazetteNumber }))}
+            />
+
+            <InlineEditField
+              label="Ngày đăng công báo"
+              changed={isChanged("gazetteDate")}
+              value={document.gazetteDate ?? ""}
+              display={
+                document.gazetteDate ? (
+                  <span className="flex items-center gap-1.5">
+                    <CalendarOutlined className="text-slate-400" />
+                    {formatDateVi(document.gazetteDate)}
+                  </span>
+                ) : (
+                  <span className="font-normal italic text-slate-400">Chưa có</span>
+                )
+              }
+              editor={{ kind: "date" }}
+              onSave={saveField && ((gazetteDate) => saveField({ gazetteDate }))}
+            />
+
+            <InlineEditField
               label="Người ký"
               changed={isChanged("signer")}
               value={document.signer ?? ""}
@@ -520,7 +538,7 @@ export default function DocumentDetailDrawer({
           </div>
         )}
 
-        {/* File đính kèm — có quyền sửa: thêm, thay tệp, xóa tệp */}
+        {/* File đính kèm — có quyền sửa: thêm tệp */}
         <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
           <div className="mb-2.5 flex items-center justify-between gap-2 text-xs font-bold text-slate-700">
             <span className="flex items-center gap-1.5">
@@ -588,30 +606,6 @@ export default function DocumentDetailDrawer({
                           className="text-xs"
                         />
                       </Tooltip>
-                      {saveField && (
-                        <>
-                          <Tooltip title="Thay tệp khác">
-                            <Button
-                              intent="outline"
-                              scale="xs"
-                              icon={<SwapOutlined />}
-                              aria-label={`Thay tệp ${file.name}`}
-                              onClick={() => pickFile(file.id)}
-                              className="text-xs"
-                            />
-                          </Tooltip>
-                          <Tooltip title="Xóa tệp">
-                            <Button
-                              intent="outline"
-                              scale="xs"
-                              icon={<DeleteOutlined />}
-                              aria-label={`Xóa tệp ${file.name}`}
-                              onClick={() => confirmRemoveFile(file)}
-                              className="text-xs text-rose-600! hover:border-rose-300! hover:bg-rose-50!"
-                            />
-                          </Tooltip>
-                        </>
-                      )}
                     </div>
                   </div>
                 );
