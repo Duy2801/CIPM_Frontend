@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BookOutlined,
   CalendarOutlined,
-  ClockCircleOutlined,
   FileTextOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
@@ -311,15 +310,6 @@ export default function CreateDocumentDrawer({
         </div>
       }
     >
-      {/* Thông tin thời gian cập nhật vào hệ thống bên ngoài/trên form, nằm bên trái */}
-      <div className="mb-3 flex items-center justify-between border-b border-slate-200/80 pb-2.5 text-xs text-slate-500">
-        <div className="flex items-center gap-1.5 font-medium text-slate-600">
-          <ClockCircleOutlined className="text-slate-400" />
-          <span>Ngày cập nhật hệ thống gần nhất:</span>
-          <strong className="text-slate-800">{formatDateVi(todayIso())}</strong>
-        </div>
-      </div>
-
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-slate-800">
         {errorText && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">

@@ -160,6 +160,8 @@ export default function DocumentDetailDrawer({
   // Các trường đã sửa bằng bút chì nhưng chưa lưu (gắn với mã văn bản: đổi văn bản là bỏ)
   const [pending, setPending] = useState<{ docId: string; patch: LegalDocumentPatch } | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  // Mã tệp vừa mới thêm vào văn bản
+  const [recentFileId, setRecentFileId] = useState<{ docId: string; fileId: string } | null>(null);
 
   if (!originalDocument) return null;
 
@@ -190,6 +192,7 @@ export default function DocumentDetailDrawer({
     setPending(null);
     setPreview(null);
     setIsEditingTitle(false);
+    setRecentFileId(null);
   };
 
   // Bấm "Lưu thay đổi": liệt kê đúng những gì sẽ đổi, đồng ý mới lưu
@@ -262,6 +265,11 @@ export default function DocumentDetailDrawer({
     },
   ];
 
+  // Tệp được thêm gần đây nhất (tệp vừa tải lên hoặc tệp cuối cùng trong danh sách nếu có nhiều hơn 1 tệp)
+  const activeRecentId = recentFileId?.docId === document.id ? recentFileId.fileId : null;
+  const latestFileId =
+    activeRecentId ?? (displayFiles.length > 1 ? displayFiles[displayFiles.length - 1]?.id : null);
+
   const saveFiles = (files: AttachedDocumentFile[]) => {
     setPreview(null);
     saveField?.({ files });
@@ -287,6 +295,9 @@ export default function DocumentDetailDrawer({
       type: isWord ? "DOCX" : "PDF",
       rawFile: picked,
     };
+    if (fileTarget === NEW_FILE_TARGET) {
+      setRecentFileId({ docId: document.id, fileId: nextFile.id });
+    }
     saveFiles(
       fileTarget === NEW_FILE_TARGET
         ? [...displayFiles, nextFile]
@@ -354,21 +365,13 @@ export default function DocumentDetailDrawer({
       width="min(760px, 100vw)"
       title={
         <div className="py-1">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-slate-800">
-              {document.code}
-            </span>
-            <span
-              className={`ml-2 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${statusInfo.badge}`}
-            >
-              {statusInfo.label}
-            </span>
+          <div className="flex items-center gap-2 text-base font-bold text-slate-800">
+            <SafetyCertificateOutlined className="text-[#DC2626]" />
+            <span>Cập nhật văn bản pháp luật</span>
           </div>
-          {document.title && (
-            <div className="mt-1 line-clamp-2 text-xs font-medium text-slate-600">
-              {document.title}
-            </div>
-          )}
+          <div className="mt-0.5 text-xs font-normal text-slate-500">
+            Chỉnh sửa số hiệu, cơ quan ban hành, hiệu lực pháp lý và tệp tài liệu số hóa
+          </div>
         </div>
       }
       footer={
@@ -397,22 +400,6 @@ export default function DocumentDetailDrawer({
       }
     >
       <div key={document.id} className="flex flex-col gap-4 text-slate-800">
-        {/* Thông tin thời gian cập nhật vào hệ thống ở trên bên ngoài/đầu, nằm bên trái */}
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5 text-xs text-slate-500">
-          <div className="flex items-center gap-1.5 font-medium text-slate-600">
-            <ClockCircleOutlined className="text-slate-400" />
-            <span>Ngày cập nhật hệ thống gần nhất:</span>
-            <strong className="text-slate-800">
-              {document.updatedAt ? formatDateVi(document.updatedAt) : "26/10/2026"}
-            </strong>
-          </div>
-          {isDirty && (
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
-              Có {changes.length} thay đổi chưa lưu
-            </span>
-          )}
-        </div>
-
         {/* Tên văn bản / Trích yếu nội dung đưa lên đầu */}
         <div
           onClick={() => {
@@ -871,11 +858,16 @@ export default function DocumentDetailDrawer({
             <div className="flex flex-col gap-2">
               {displayFiles.map((file) => {
                 const isPreviewing = previewFileId === file.id;
+                const isLatest = file.id === latestFileId;
                 return (
                   <div
                     key={file.id}
-                    className={`flex items-center justify-between gap-2 rounded-lg border bg-white p-2.5 shadow-xs transition-colors ${
-                      isPreviewing ? "border-[#DC2626]/40" : "border-slate-200 hover:border-slate-300"
+                    className={`flex items-center justify-between gap-2 rounded-lg bg-white p-2.5 shadow-xs transition-colors ${
+                      isLatest
+                        ? "border-2 border-[#DC2626] bg-red-50/15 shadow-2xs"
+                        : isPreviewing
+                        ? "border border-[#DC2626]/40"
+                        : "border border-slate-200 hover:border-slate-300"
                     }`}
                   >
                     <button
@@ -888,12 +880,19 @@ export default function DocumentDetailDrawer({
                       ) : (
                         <FileWordOutlined className="shrink-0 text-xl text-blue-600" />
                       )}
-                      <span className="min-w-0">
-                        <span
-                          className="block line-clamp-2 text-xs font-bold text-slate-800 hover:text-[#DC2626]"
-                          title={file.name}
-                        >
-                          {file.name}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="block truncate text-xs font-bold text-slate-800 hover:text-[#DC2626]"
+                            title={file.name}
+                          >
+                            {file.name}
+                          </span>
+                          {isLatest && (
+                            <span className="shrink-0 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-[#DC2626]">
+                              Vừa thêm
+                            </span>
+                          )}
                         </span>
                         <span className="block text-[11px] text-slate-500">
                           {file.type} · {file.size}
@@ -931,6 +930,24 @@ export default function DocumentDetailDrawer({
               e.target.value = "";
             }}
           />
+        </div>
+
+        {/* Thông tin ngày cập nhật cuối cùng, chuyển xuống mé bên phải ở cuối form */}
+        <div className="flex items-center justify-between border-t border-slate-200/80 pt-2.5 text-xs text-slate-500">
+          {isDirty ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
+              Có {changes.length} thay đổi chưa lưu
+            </span>
+          ) : (
+            <div />
+          )}
+          <div className="flex items-center gap-1.5 font-medium text-slate-600 ml-auto">
+            <ClockCircleOutlined className="text-slate-400" />
+            <span>Ngày cập nhật cuối cùng:</span>
+            <strong className="text-slate-800">
+              {document.updatedAt ? formatDateVi(document.updatedAt) : "26/10/2026"}
+            </strong>
+          </div>
         </div>
       </div>
 

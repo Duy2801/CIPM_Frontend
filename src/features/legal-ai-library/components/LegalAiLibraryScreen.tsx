@@ -61,6 +61,29 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     fileSize: "3.1 MB",
     downloads: 126,
     tags: ["Chủ đầu tư", "Thẩm định thiết kế", "Nghiệm thu"],
+    files: [
+      {
+        id: "L01-f1",
+        name: "50-2014-QH13_Luat-Xay-Dung.pdf",
+        size: "3.1 MB",
+        type: "PDF",
+        url: "/sample-documents/50-2014-QH13_Luat-Xay-Dung.pdf",
+      },
+      {
+        id: "L01-f2",
+        name: "62-2020-QH14_Sua-Doi-Luat-Xay-Dung.pdf",
+        size: "1.2 MB",
+        type: "PDF",
+        url: "/sample-documents/62-2020-QH14_Sua-Doi-Luat-Xay-Dung.pdf",
+      },
+      {
+        id: "L01-f3",
+        name: "VBHN-01-VBHN-VPQH_Hop-Nhat-Luat-Xay-Dung.pdf",
+        size: "1.8 MB",
+        type: "PDF",
+        url: "/sample-documents/VBHN-01-VBHN-VPQH_Hop-Nhat-Luat-Xay-Dung.pdf",
+      },
+    ],
   },
   {
     id: "L-02",
@@ -84,6 +107,22 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     fileSize: "2.8 MB",
     downloads: 98,
     tags: ["Lựa chọn nhà thầu", "E-HSMT", "Mạng đấu thầu quốc gia"],
+    files: [
+      {
+        id: "L02-f1",
+        name: "22-2023-QH15_Luat-Dau-Thau.pdf",
+        size: "2.8 MB",
+        type: "PDF",
+        url: "/sample-documents/22-2023-QH15_Luat-Dau-Thau.pdf",
+      },
+      {
+        id: "L02-f2",
+        name: "Phu-luc-I-Ke-hoach-lua-chon-nha-thau.pdf",
+        size: "0.9 MB",
+        type: "PDF",
+        url: "/sample-documents/Phu-luc-I-Ke-hoach-lua-chon-nha-thau.pdf",
+      },
+    ],
   },
   {
     id: "L-03",
@@ -107,6 +146,22 @@ const INITIAL_LEGAL_ITEMS: LegalItem[] = [
     fileSize: "4.2 MB",
     downloads: 143,
     tags: ["Thu hồi đất", "Bồi thường", "Tái định cư"],
+    files: [
+      {
+        id: "L03-f1",
+        name: "31-2024-QH15_Luat-Dat-Dai.pdf",
+        size: "4.2 MB",
+        type: "PDF",
+        url: "/sample-documents/31-2024-QH15_Luat-Dat-Dai.pdf",
+      },
+      {
+        id: "L03-f2",
+        name: "Nghi-quyet-18-NQ-TW_Chinh-sach-dat-dai.pdf",
+        size: "1.1 MB",
+        type: "PDF",
+        url: "/sample-documents/Nghi-quyet-18-NQ-TW_Chinh-sach-dat-dai.pdf",
+      },
+    ],
   },
   {
     id: "L-04",
