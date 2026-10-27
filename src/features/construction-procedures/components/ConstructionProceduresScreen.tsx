@@ -355,6 +355,8 @@ export default function ConstructionProceduresScreen() {
   const { modal } = App.useApp();
   // 2 tab trên cùng: danh mục quy trình / lịch sử thay đổi
   const [screenTab, setScreenTab] = useState<"procedures" | "history">("procedures");
+  /** Đang xem trang chi tiết một quy trình (chiếm cả màn hình, ẩn thanh tab) */
+  const [libraryDetailOpen, setLibraryDetailOpen] = useState(false);
   const [libraryHistory, setLibraryHistory] = useState<ProcedureHistoryLog[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -1546,7 +1548,8 @@ export default function ConstructionProceduresScreen() {
 
   return (
     <section className="w-full max-w-[2560px] mx-auto space-y-3">
-      {/* Tab nhỏ gọn: rộng vừa chữ, icon cùng hàng với chữ (đồng bộ các phân hệ) */}
+      {/* Tab nhỏ gọn: rộng vừa chữ, icon cùng hàng với chữ (đồng bộ các phân hệ); ẩn khi đang xem chi tiết quy trình */}
+      {!libraryDetailOpen && (
       <div role="tablist" className="inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-100/70 p-0.5">
         {(
           [
@@ -1572,6 +1575,7 @@ export default function ConstructionProceduresScreen() {
           );
         })}
       </div>
+      )}
 
       {screenTab === "history" ? (
         <ProcedureHistoryPanel projects={historyProjects} />
@@ -1581,7 +1585,11 @@ export default function ConstructionProceduresScreen() {
           <p className="m-0 mt-1 text-xs text-slate-400">Liên hệ quản trị để được cấp quyền cấu hình quy trình thủ tục.</p>
         </div>
       ) : (
-        <ProcedureLibraryTab actorName={operatorName} onSaved={handleSaveLibraryProcedure} />
+        <ProcedureLibraryTab
+          actorName={operatorName}
+          onSaved={handleSaveLibraryProcedure}
+          onDetailChange={setLibraryDetailOpen}
+        />
       )}
 
       {/* Giao diện theo dõi thủ tục theo từng dự án (tạm ẩn khi thử giao diện danh mục quy trình) */}

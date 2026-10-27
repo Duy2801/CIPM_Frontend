@@ -38,6 +38,8 @@ interface StepConfigModalProps {
   variant?: "modal" | "page";
   /** Trang danh mục: nút "Đóng" quay lại danh sách quy trình */
   onBack?: () => void;
+  /** Trang thêm quy trình mới: chưa có quy trình để lưu, bấm "Tạo quy trình" thì trả các bước về */
+  onCreateNew?: (steps: ProcedureStep[]) => void;
   onClose: () => void;
   onSaveConfig: (updatedSteps: ProcedureStep[], profileId?: string) => void;
 }
@@ -267,6 +269,38 @@ function StepDateInput({
 }
 
 /** Khung của bảng cấu hình: popup lớn (mặc định) hoặc khối nằm ngay trên trang */
+/** Cột thao tác của dòng nhập bước mới: không có nút Lưu / Đóng, chỉ nhắc phím tắt */
+function InlineRowHint() {
+  return (
+    <span className="text-[10px] leading-tight text-slate-400 text-center select-none">
+      Enter để thêm
+      <br />
+      Esc để bỏ
+    </span>
+  );
+}
+
+/** Nút X đầu dòng nhập bước mới: bỏ dòng đang nhập (giống phím Esc) */
+function InlineRowCancel({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={`${label} (Esc)`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-rose-100 hover:text-rose-600"
+    >
+      <CloseOutlined className="text-[11px]" />
+    </button>
+  );
+}
+
+/** Chiều cao chân trang bám đáy (dạng trang) — thanh kéo ngang của bảng bám ngay phía trên */
+const STICKY_FOOTER_HEIGHT = 56;
+
 function StepConfigFrame({
   variant,
   open,
@@ -287,7 +321,12 @@ function StepConfigFrame({
       // Không giới hạn chiều cao: cả trang cuộn theo bảng, chân (nút Lưu) bám đáy màn hình
       <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs">
         <div className="flex flex-col px-4 pt-4">{children}</div>
-        <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3">{footer}</div>
+        <div
+          className="sticky bottom-0 z-10 flex items-center rounded-b-xl border-t border-slate-200 bg-slate-50 px-4"
+          style={{ height: STICKY_FOOTER_HEIGHT }}
+        >
+          {footer}
+        </div>
       </div>
     );
   }
@@ -315,13 +354,35 @@ export default function StepConfigModal({
   projectName,
   variant = "modal",
   onBack,
+  onCreateNew,
   onClose,
   onSaveConfig,
 }: StepConfigModalProps) {
   const { modal } = App.useApp();
   const isPage = variant === "page";
+  const isDraft = isPage && !!onCreateNew;
+  // Trang chi tiết quy trình: bấm vào bước là sửa (thêm bước con bằng nút dấu cộng)
+  const clickRowToEdit = isPage && !isDraft;
   // Hàng tiêu đề bảng nằm ngoài vùng kéo ngang → kéo theo phần thân để cột luôn thẳng hàng
   const headerScrollRef = useRef<HTMLDivElement>(null);
+  // Trên trang: thanh kéo ngang riêng bám đáy màn hình (trên chân trang) để luôn kéo ngang được
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const stickyBarRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [tableOverflows, setTableOverflows] = useState(false);
+  useEffect(() => {
+    const body = bodyScrollRef.current;
+    if (!isPage || !body) return;
+    const measure = () => {
+      setTableScrollWidth(body.scrollWidth);
+      setTableOverflows(body.scrollWidth > body.clientWidth + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    if (body.firstElementChild) observer.observe(body.firstElementChild);
+    return () => observer.disconnect();
+  }, [isPage]);
   const [localSteps, setLocalSteps] = useState<ProcedureStep[]>(steps);
   const [filterType, setFilterType] = useState<"ALL" | "MANDATORY" | "CONDITIONAL" | "DISABLED">("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -589,16 +650,12 @@ export default function StepConfigModal({
     setActiveParentForSub(null);
   };
 
-  // Lưu bước chính được nhập inline
-  const handleSaveInlineParent = (keepOpen = false) => {
-    if (!inlineParentName.trim()) {
-      setInlineParentError("Vui lòng nhập tên bước chính");
-      return;
-    }
-    const finalCode = inlineParentCode.trim() || getNextParentCode(localSteps);
-    const newStep: ProcedureStep = {
+  // Bước chính từ dòng nhập inline (chưa đưa vào danh sách)
+  const buildInlineParentStep = (steps: ProcedureStep[]): ProcedureStep => {
+    const finalCode = inlineParentCode.trim() || getNextParentCode(steps);
+    return {
       id: `dept-step-${Date.now()}-${finalCode}`,
-      order: localSteps.length + 1,
+      order: steps.length + 1,
       code: finalCode,
       groupCode: finalCode,
       groupTitle: inlineParentName.trim(),
@@ -613,6 +670,15 @@ export default function StepConfigModal({
       attachments: [],
       notes: "",
     };
+  };
+
+  // Thêm bước chính được nhập inline (Enter)
+  const handleSaveInlineParent = (keepOpen = false) => {
+    if (!inlineParentName.trim()) {
+      setInlineParentError("Vui lòng nhập tên bước chính");
+      return;
+    }
+    const newStep = buildInlineParentStep(localSteps);
     const updated = [...localSteps, newStep].map((s, idx) => ({ ...s, order: idx + 1 }));
     setLocalSteps(updated);
     syncToCurrentProfile(updated);
@@ -646,23 +712,16 @@ export default function StepConfigModal({
     setInlineChildError("");
   };
 
-  // Lưu bước con được nhập trực tiếp bên dưới bước cha
-  const handleSaveInlineChild = (keepOpen = false) => {
-    if (!activeParentForSub) return;
-    if (!inlineChildName.trim()) {
-      setInlineChildError("Vui lòng nhập tên bước con");
-      return;
-    }
-
-    const finalCode = inlineChildCode.trim() || getNextSubCode(activeParentForSub, localSteps);
-
-    const rootCode = getRootCode(activeParentForSub);
-    const rootObj = localSteps.find((p) => p.code === rootCode);
+  // Bước con từ dòng nhập inline dưới bước cha (chưa đưa vào danh sách)
+  const buildInlineChildStep = (parentCode: string, steps: ProcedureStep[]): ProcedureStep => {
+    const finalCode = inlineChildCode.trim() || getNextSubCode(parentCode, steps);
+    const rootCode = getRootCode(parentCode);
+    const rootObj = steps.find((p) => p.code === rootCode);
     const assigneeStaff = staffList.find((s) => s.name === inlineChildAssignee);
 
-    const newStep: ProcedureStep = {
+    return {
       id: `dept-step-${Date.now()}-${finalCode}`,
-      order: localSteps.length + 1,
+      order: steps.length + 1,
       code: finalCode,
       groupCode: rootCode,
       groupTitle: rootObj?.name || "Quy trình thực hiện",
@@ -680,7 +739,17 @@ export default function StepConfigModal({
       attachments: [],
       notes: "",
     };
+  };
 
+  // Thêm bước con được nhập trực tiếp bên dưới bước cha (Enter)
+  const handleSaveInlineChild = (keepOpen = false) => {
+    if (!activeParentForSub) return;
+    if (!inlineChildName.trim()) {
+      setInlineChildError("Vui lòng nhập tên bước con");
+      return;
+    }
+
+    const newStep = buildInlineChildStep(activeParentForSub, localSteps);
     const updated = insertStepHierarchically(localSteps, newStep, activeParentForSub);
     setLocalSteps(updated);
     syncToCurrentProfile(updated);
@@ -789,7 +858,9 @@ export default function StepConfigModal({
               Bước này có <strong>{childCount}</strong> bước con bên dưới, tất cả sẽ bị xóa cùng.{" "}
             </>
           )}
-          {isPage
+          {isDraft
+            ? "Quy trình chỉ được lưu khi bạn bấm \"Tạo quy trình\"."
+            : isPage
             ? "Thay đổi được lưu vào quy trình khi bạn bấm \"Lưu quy trình\"."
             : "Thay đổi chỉ áp dụng cho dự án khi bạn bấm \"Lưu cấu hình\"."}
         </p>
@@ -803,8 +874,28 @@ export default function StepConfigModal({
 
   // Lưu cấu hình
   const handleSave = () => {
-    const finalSteps = withParentRollups(localSteps);
+    // Dòng nhập bước đang gõ dở (chưa nhấn Enter) cũng được lưu luôn
+    let pendingSteps = localSteps;
+    if (isAddingParentInline && inlineParentName.trim()) {
+      pendingSteps = [...pendingSteps, buildInlineParentStep(pendingSteps)].map((s, idx) => ({ ...s, order: idx + 1 }));
+    }
+    if (activeParentForSub && inlineChildName.trim()) {
+      pendingSteps = insertStepHierarchically(
+        pendingSteps,
+        buildInlineChildStep(activeParentForSub, pendingSteps),
+        activeParentForSub,
+      );
+    }
+    setIsAddingParentInline(false);
+    setInlineParentName("");
+    setActiveParentForSub(null);
+    setInlineChildName("");
+    const finalSteps = withParentRollups(pendingSteps);
     if (isPage) {
+      if (onCreateNew) {
+        onCreateNew(finalSteps);
+        return;
+      }
       // Trang danh mục: lưu thẳng vào quy trình đang chọn, trang vẫn mở
       if (!selectedProfileId) {
         toast.warning("Chưa chọn quy trình", "Vui lòng chọn hoặc thêm một quy trình trước khi lưu.");
@@ -870,14 +961,15 @@ export default function StepConfigModal({
         <div className="flex items-center gap-3 w-full">
           {/* Mã bước (thụt lề theo cấp) */}
           <div className="w-28 shrink-0 flex items-center gap-0.5" style={{ paddingLeft: STEP_INDENT_PX * childDepth }}>
+            <InlineRowCancel label="Bỏ thêm bước con" onClick={() => setActiveParentForSub(null)} />
             <span className="text-[#DC2626] font-mono text-xs select-none">└</span>
             <Input
               value={inlineChildCode}
               onChange={(e) => setInlineChildCode(e.target.value)}
-              className="h-7 w-16 text-center font-mono font-bold text-[11px] bg-white border-red-200 p-0.5"
+              className="h-7 w-16 min-w-0 shrink text-center font-mono font-bold text-[11px] bg-white border-red-200 p-0.5"
               placeholder="Mã"
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveInlineChild(false);
+                if (e.key === "Enter") handleSaveInlineChild(true);
                 if (e.key === "Escape") setActiveParentForSub(null);
               }}
             />
@@ -891,13 +983,13 @@ export default function StepConfigModal({
                 setInlineChildName(e.target.value);
                 if (inlineChildError) setInlineChildError("");
               }}
-              placeholder={`Nhập tên bước con thuộc [${activeParentForSub}] (nhấn Enter để lưu)...`}
+              placeholder={`Nhập tên bước con thuộc [${activeParentForSub}] (nhấn Enter để thêm)...`}
               autoFocus
               className={`h-7 text-xs bg-white w-full ${
                 inlineChildError ? "border-rose-500 ring-1 ring-rose-200" : "border-red-300 focus:border-[#DC2626]"
               }`}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveInlineChild(false);
+                if (e.key === "Enter") handleSaveInlineChild(true);
                 if (e.key === "Escape") setActiveParentForSub(null);
               }}
             />
@@ -963,25 +1055,7 @@ export default function StepConfigModal({
 
           {/* Thao tác */}
           <div className="w-24 shrink-0 flex items-center justify-center">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleSaveInlineChild(false)}
-                className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-md bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-colors shadow-2xs cursor-pointer text-xs font-semibold"
-                title="Lưu bước con (Enter)"
-              >
-                <CheckOutlined className="text-[11px]" />
-                <span>Lưu</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveParentForSub(null)}
-                className="flex h-7 px-2 items-center justify-center rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors cursor-pointer text-xs font-medium"
-                title="Đóng (Esc)"
-              >
-                Đóng
-              </button>
-            </div>
+            <InlineRowHint />
           </div>
         </div>
 
@@ -1007,7 +1081,8 @@ export default function StepConfigModal({
       <div className="flex flex-col gap-1 px-3.5 py-2 bg-indigo-50/60 border-y border-indigo-300 border-l-[3px] border-l-indigo-500 shadow-2xs">
         <div className="flex items-center gap-3 w-full">
           {/* Mã bước */}
-          <div className="w-28 shrink-0 text-left">
+          <div className="w-28 shrink-0 flex items-center gap-1.5 text-left">
+            <InlineRowCancel label="Bỏ thêm bước chính" onClick={() => setIsAddingParentInline(false)} />
             <Input
               value={inlineParentCode}
               onChange={(e) => setInlineParentCode(e.target.value)}
@@ -1028,7 +1103,7 @@ export default function StepConfigModal({
                 setInlineParentName(e.target.value);
                 if (inlineParentError) setInlineParentError("");
               }}
-              placeholder="Nhập tên bước chính (nhấn Enter để lưu)..."
+              placeholder="Nhập tên bước chính (nhấn Enter để thêm)..."
               autoFocus
               className={`h-7 text-xs bg-white w-full font-semibold ${
                 inlineParentError ? "border-rose-500 ring-1 ring-rose-200" : "border-indigo-400 focus:border-indigo-600"
@@ -1080,25 +1155,7 @@ export default function StepConfigModal({
 
           {/* Thao tác */}
           <div className="w-24 shrink-0 flex items-center justify-center">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleSaveInlineParent(false)}
-                className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-md bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-colors shadow-2xs cursor-pointer text-xs font-semibold"
-                title="Lưu bước chính (Enter)"
-              >
-                <CheckOutlined className="text-[11px]" />
-                <span>Lưu</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddingParentInline(false)}
-                className="flex h-7 px-2 items-center justify-center rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors cursor-pointer text-xs font-medium"
-                title="Đóng (Esc)"
-              >
-                Đóng
-              </button>
-            </div>
+            <InlineRowHint />
           </div>
         </div>
 
@@ -1196,7 +1253,7 @@ export default function StepConfigModal({
                 className="bg-[#DC2626] border-[#DC2626] text-white"
                 onClick={handleSave}
               >
-                {isPage ? "Lưu quy trình" : "Lưu cấu hình"}
+                {isDraft ? "Tạo quy trình" : isPage ? "Lưu quy trình" : "Lưu cấu hình"}
               </Button>
               <Button scale="compact" onClick={isPage ? onBack : onClose}>
                 Đóng
@@ -1206,22 +1263,12 @@ export default function StepConfigModal({
         }
       >
         <div className="flex-1 min-h-0 flex flex-col gap-3 pr-1 pb-2 text-xs">
-          {/* Thanh công cụ 2 dòng chuyên nghiệp, thông thoáng */}
+          {/* Thanh công cụ 2 dòng (chỉ ở popup; trên trang thì tiêu đề trang và dòng "+ Thêm bước chính" đã đủ) */}
+          {!isPage && (
           <div className="flex flex-col gap-2.5 bg-slate-50/90 p-3 rounded-lg border border-slate-200/80 shrink-0">
             {/* Dòng 1: Quản lý Quy trình & Thao tác chính */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Trái: Badge phòng ban (nếu có) + Chọn quy trình cũ/mẫu + Nút Thêm quy trình mới */}
-              {isPage ? (
-                // Trang danh mục: tên quy trình đang xem (quay lại bằng nút "Đóng" ở chân)
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                  <div className="flex min-w-0 items-center gap-1.5 px-1">
-                    <BranchesOutlined className="text-[#DC2626] text-sm" />
-                    <span className="truncate text-sm font-bold text-slate-900" title={activeProfile?.name}>
-                      {activeProfile?.name || "Quy trình"}
-                    </span>
-                  </div>
-                </div>
-              ) : (
               <div className="flex flex-wrap items-center gap-2">
                 {departmentTitle && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 text-[#DC2626] font-bold text-xs shadow-2xs shrink-0">
@@ -1298,7 +1345,6 @@ export default function StepConfigModal({
                   Thêm quy trình mới
                 </Button>
               </div>
-              )}
 
               {/* Phải: Thêm bước chính */}
               <Button
@@ -1312,9 +1358,8 @@ export default function StepConfigModal({
               </Button>
             </div>
 
-            {/* Dòng 2: Tìm kiếm & Bộ lọc (trên trang thì bỏ để bảng rộng hơn) */}
-            {!isPage && (
-              <div className="flex items-center justify-between gap-3">
+            {/* Dòng 2: Tìm kiếm & Bộ lọc */}
+            <div className="flex items-center justify-between gap-3">
                 {/* Trái: Ô tìm kiếm rộng rãi */}
                 <Input
                   placeholder="Tìm mã bước (I, II...), tên bước hoặc đơn vị phụ trách..."
@@ -1360,8 +1405,8 @@ export default function StepConfigModal({
                   </div>
                 </div>
               </div>
-            )}
           </div>
+          )}
 
           {/* Bảng danh sách các bước: kéo ngang khi màn hình hẹp, tên bước luôn đủ rộng để đọc */}
           <div className="flex-1 flex flex-col rounded-lg border border-slate-200 bg-white min-h-0">
@@ -1390,16 +1435,22 @@ export default function StepConfigModal({
             </div>
 
             <div
+              ref={bodyScrollRef}
               onScroll={(e) => {
-                if (headerScrollRef.current) headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                const left = e.currentTarget.scrollLeft;
+                if (headerScrollRef.current) headerScrollRef.current.scrollLeft = left;
+                if (stickyBarRef.current && stickyBarRef.current.scrollLeft !== left) stickyBarRef.current.scrollLeft = left;
               }}
               className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden [scrollbar-width:thin]"
+              // Trên trang đã có thanh kéo ngang bám đáy màn hình → ẩn thanh của chính bảng
+              style={isPage ? { scrollbarWidth: "none" } : undefined}
             >
             <div className="flex h-full min-w-[1480px] flex-col">
 
             {/* Danh sách các hàng */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 [scrollbar-width:thin] min-h-0">
-              {filteredSteps.length === 0 ? (
+              {/* Trang thêm mới: bảng trống thì để trống, thêm bước bằng nút "Thêm bước chính" phía trên */}
+              {filteredSteps.length === 0 && isDraft ? null : filteredSteps.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50/30">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-[#DC2626] mb-3 border border-red-100 shadow-2xs">
                     <FolderAddOutlined className="text-2xl" />
@@ -1478,23 +1529,32 @@ export default function StepConfigModal({
                   return (
                     <div key={step.id}>
                       <div
+                        // Trang chi tiết: bấm vào dòng là sửa bước đó; còn lại: mở dòng thêm bước con ngay bên dưới
                         onClick={() => {
-                          if (!isSubStep && !isEditing) {
-                            handleParentRowClick(step.code);
-                          }
+                          if (isEditing) return;
+                          if (clickRowToEdit) startEditStep(step);
+                          else handleParentRowClick(step.code);
                         }}
                         className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${isEditing
                           ? // Đang sửa: luôn sáng rõ và nổi bật, kể cả bước đang tắt
                             "bg-red-50/70 border-l-[3px] border-l-[#DC2626] ring-1 ring-inset ring-red-200"
                           : !isEnabled
-                          ? "bg-slate-50/70 opacity-60"
+                          ? "bg-slate-50/70 opacity-60 cursor-pointer"
                           : isSubStep
-                            ? "bg-slate-50/30 hover:bg-red-50/20 border-l-[3px] border-l-red-300/80"
+                            ? isCurrentParentActive
+                              ? "bg-red-50/60 hover:bg-red-50/80 cursor-pointer border-l-[3px] border-l-[#DC2626]"
+                              : "bg-slate-50/30 hover:bg-red-50/30 cursor-pointer border-l-[3px] border-l-red-300/80"
                             : isCurrentParentActive
                               ? "bg-red-50/60 hover:bg-red-50/80 cursor-pointer border-l-[3px] border-l-[#DC2626]"
                               : "hover:bg-red-50/30 cursor-pointer"
                           }`}
-                        title={!isSubStep ? "Nhấn vào bước chính này để thêm bước con bên dưới" : undefined}
+                        title={
+                          isEditing
+                            ? undefined
+                            : clickRowToEdit
+                            ? "Nhấn vào bước này để chỉnh sửa"
+                            : "Nhấn vào bước này để thêm bước con bên dưới"
+                        }
                       >
                         {/* Mã bước (thụt lề theo cấp) */}
                         <div className="w-28 shrink-0" style={{ paddingLeft: STEP_INDENT_PX * depth }}>
@@ -1819,6 +1879,35 @@ export default function StepConfigModal({
             {renderInlineParentRow()}
             </div>
             </div>
+
+            {/* Trên trang: ô thêm bước chính phủ hết bề ngang bảng (nằm ngoài vùng kéo ngang nên luôn ở giữa) */}
+            {isPage && !isAddingParentInline && (
+              <div className="border-t border-slate-100 p-3">
+                <button
+                  type="button"
+                  onClick={handleOpenAddParentStep}
+                  className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-red-200 bg-red-50/30 py-3 text-sm font-semibold text-[#DC2626] transition-all hover:border-[#DC2626] hover:bg-red-50/70"
+                >
+                  <PlusOutlined className="text-xs" />
+                  Thêm bước chính
+                </button>
+              </div>
+            )}
+
+            {/* Thanh kéo ngang luôn hiện: bám đáy màn hình, ngay trên chân trang */}
+            {isPage && tableOverflows && (
+              <div
+                ref={stickyBarRef}
+                onScroll={(e) => {
+                  const left = e.currentTarget.scrollLeft;
+                  if (bodyScrollRef.current && bodyScrollRef.current.scrollLeft !== left) bodyScrollRef.current.scrollLeft = left;
+                }}
+                className="sticky z-10 shrink-0 overflow-x-auto overflow-y-hidden rounded-b-lg border-t border-slate-200 bg-white"
+                style={{ bottom: STICKY_FOOTER_HEIGHT }}
+              >
+                <div style={{ width: tableScrollWidth, height: 1 }} />
+              </div>
+            )}
           </div>
         </div>
       </StepConfigFrame>
