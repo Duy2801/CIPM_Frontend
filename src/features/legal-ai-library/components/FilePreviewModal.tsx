@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { CloseOutlined, FileWordOutlined } from "@ant-design/icons";
 import { Modal } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
-import { STATUS_META, getCategoryLabel } from "../constants/legal-mock-data";
+import { STATUS_META, getCategoryLabel } from "../constants/legal-labels";
 import type {
   AttachedDocumentFile,
   LegalDocument,
@@ -16,7 +16,6 @@ interface FilePreviewModalProps {
   document: LegalDocument;
   /** Tệp cần xem; không truyền = văn bản mẫu chưa có tệp gốc */
   file?: AttachedDocumentFile;
-  onDownload?: () => void;
   onClose: () => void;
 }
 

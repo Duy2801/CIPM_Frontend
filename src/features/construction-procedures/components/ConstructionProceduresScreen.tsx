@@ -4,10 +4,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { App } from "antd";
 import {
   AlertFilled,
+  BranchesOutlined,
   CheckCircleFilled,
   CheckOutlined,
   CloseOutlined,
-  FileTextOutlined,
   HistoryOutlined,
   HourglassOutlined,
   SafetyCertificateOutlined,
@@ -15,6 +15,7 @@ import {
 import { Button, Input, Modal, Select, Tag, toast } from "@/components/ui";
 import { INITIAL_PROCEDURE_PROJECTS } from "../constants/procedure-mock-data";
 import {
+  getTemplateSteps,
   loadCustomProfiles,
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
@@ -39,6 +40,7 @@ import ProcedureFilterToolbar from "./ProcedureFilterToolbar";
 import ProcedureStepList from "./ProcedureStepList";
 import CompleteStepModal from "./CompleteStepModal";
 import ProcedureHistoryPanel from "./ProcedureHistoryPanel";
+import ProcedureLibraryTab from "./ProcedureLibraryTab";
 import ProcedureStageProgressChart from "./ProcedureStageProgressChart";
 import { getWorkSteps } from "../utils/procedure-rules";
 import ProcedureStepDetailDrawer, { type ProcedureStepInfoPatch } from "./ProcedureStepDetailDrawer";
@@ -51,6 +53,8 @@ import { canUserDo, getUserEffectivePermissions, hasMatrixPermission } from "@/a
 // v6: bỏ quy trình chuẩn 16 bước dựng sẵn → dữ liệu cũ (v5) có 16 bước được xóa
 const PROCEDURE_PROJECTS_STORAGE_KEY = "cipm_procedure_projects_data_v6";
 const PROCEDURE_MAPPINGS_STORAGE_KEY = "cipm_project_procedures_map_v6";
+// Nhật ký chỉnh sửa danh mục quy trình (tab "Quy trình")
+const PROCEDURE_LIBRARY_HISTORY_STORAGE_KEY = "cipm_procedure_library_history";
 
 /**
  * Quyết định nghiệm thu / yêu cầu rà soát của BGĐ gắn theo mã giai đoạn (I, II...).
@@ -296,11 +300,11 @@ export default function ConstructionProceduresScreen() {
       name: tpl.name,
       shortName: tpl.shortName,
       description: tpl.description,
-      stepCount: tpl.createSteps().length,
+      stepCount: getTemplateSteps(tpl).length,
       badge: tpl.badge,
       tagColor: tpl.tagColor === "red" ? ("slate" as const) : tpl.tagColor,
       isSystem: true,
-      createSteps: tpl.createSteps,
+      createSteps: () => getTemplateSteps(tpl),
     }));
     return [...draftProfiles, ...customAsProfiles];
   }, [customProfiles]);
@@ -349,8 +353,65 @@ export default function ConstructionProceduresScreen() {
     useState<ProcedureStep | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
   const { modal } = App.useApp();
-  // 2 tab trên cùng: danh sách hồ sơ thủ tục / lịch sử thay đổi
+  // 2 tab trên cùng: danh mục quy trình / lịch sử thay đổi
   const [screenTab, setScreenTab] = useState<"procedures" | "history">("procedures");
+  const [libraryHistory, setLibraryHistory] = useState<ProcedureHistoryLog[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(PROCEDURE_LIBRARY_HISTORY_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Lưu quy trình ở tab "Quy trình": ghi nhật ký + thông báo
+  const handleSaveLibraryProcedure = (profileId: string, profileName: string, steps: ProcedureStep[]) => {
+    const log: ProcedureHistoryLog = {
+      id: `LOG-${Date.now()}`,
+      stepId: profileId,
+      stepCode: "QUY-TRINH",
+      stepName: profileName,
+      timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+      performedBy: operatorName,
+      role: operatorRole,
+      action: "TOGGLE_STEP",
+      actionLabel: "Cập nhật quy trình",
+      details: `Lưu quy trình "${profileName}" (${steps.length} bước).`,
+    };
+    setLibraryHistory((prev) => {
+      const next = [log, ...prev];
+      try {
+        localStorage.setItem(PROCEDURE_LIBRARY_HISTORY_STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error("Failed to save procedure library history", e);
+      }
+      return next;
+    });
+    refreshProcedureProfiles();
+    toast.success("Đã lưu quy trình", `Đã lưu quy trình "${profileName}" (${steps.length} bước).`);
+  };
+
+  // Lịch sử gộp: chỉnh sửa danh mục quy trình + thao tác trên thủ tục các dự án
+  const historyProjects = useMemo<ProjectProcedureData[]>(
+    () => [
+      {
+        projectId: "PROCEDURE-LIBRARY",
+        projectCode: "QT",
+        projectName: "Danh mục quy trình",
+        projectType: "",
+        totalInvestment: 0,
+        managerName: "",
+        supervisorName: "",
+        startDate: "",
+        expectedFinishDate: "",
+        steps: [],
+        history: libraryHistory,
+      },
+      ...mergedProjectsData,
+    ],
+    [libraryHistory, mergedProjectsData],
+  );
   const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState<boolean>(false);
   const [isDirectorRejectModalOpen, setIsDirectorRejectModalOpen] = useState<boolean>(false);
   const [directorRejectReason, setDirectorRejectReason] = useState<string>("");
@@ -1489,7 +1550,7 @@ export default function ConstructionProceduresScreen() {
       <div role="tablist" className="inline-flex gap-1 rounded-lg border border-slate-200 bg-slate-100/70 p-0.5">
         {(
           [
-            { key: "procedures", icon: <FileTextOutlined />, label: "Danh sách hồ sơ" },
+            { key: "procedures", icon: <BranchesOutlined />, label: "Quy trình" },
             { key: "history", icon: <HistoryOutlined />, label: "Lịch sử thay đổi" },
           ] as const
         ).map((tab) => {
@@ -1513,8 +1574,18 @@ export default function ConstructionProceduresScreen() {
       </div>
 
       {screenTab === "history" ? (
-        <ProcedureHistoryPanel projects={mergedProjectsData} />
+        <ProcedureHistoryPanel projects={historyProjects} />
+      ) : !canConfigureProcedure ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-2xs">
+          <p className="m-0 text-sm font-semibold text-slate-700">Bạn chưa có quyền cấu hình quy trình</p>
+          <p className="m-0 mt-1 text-xs text-slate-400">Liên hệ quản trị để được cấp quyền cấu hình quy trình thủ tục.</p>
+        </div>
       ) : (
+        <ProcedureLibraryTab onSaved={handleSaveLibraryProcedure} />
+      )}
+
+      {/* Giao diện theo dõi thủ tục theo từng dự án (tạm ẩn khi thử giao diện danh mục quy trình) */}
+      {false && (
         <>
           {/* 2. Banner Thông báo cho Lead nếu phòng ban đã xong hết bước nhưng chưa xác nhận */}
           <ProcedureFilterToolbar

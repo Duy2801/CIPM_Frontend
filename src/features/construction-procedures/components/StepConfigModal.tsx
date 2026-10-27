@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BranchesOutlined,
   CheckOutlined,
@@ -34,15 +34,19 @@ interface StepConfigModalProps {
   currentProcedureId?: string;
   departmentTitle?: string;
   projectName?: string;
+  /** "page": hiện ngay trên trang (quản lý danh mục quy trình), không có nút Đóng */
+  variant?: "modal" | "page";
   onClose: () => void;
   onSaveConfig: (updatedSteps: ProcedureStep[], profileId?: string) => void;
 }
 
 import {
+  getTemplateSteps,
   loadCustomProfiles,
   saveCustomProfiles,
   loadHiddenTemplateIds,
   saveHiddenTemplateIds,
+  saveTemplateOverride,
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
 import {
@@ -258,16 +262,61 @@ function StepDateInput({
   );
 }
 
+/** Khung của bảng cấu hình: popup lớn (mặc định) hoặc khối nằm ngay trên trang */
+function StepConfigFrame({
+  variant,
+  open,
+  onClose,
+  title,
+  footer,
+  children,
+}: {
+  variant: "modal" | "page";
+  open: boolean;
+  onClose: () => void;
+  title: React.ReactNode;
+  footer: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (variant === "page") {
+    return (
+      // Không giới hạn chiều cao: cả trang cuộn theo bảng, chân (nút Lưu) bám đáy màn hình
+      <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs">
+        <div className="flex flex-col px-4 pt-4">{children}</div>
+        <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3">{footer}</div>
+      </div>
+    );
+  }
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      destroyOnHidden
+      // Cùng kích thước với popup Quản lý chức danh
+      {...LARGE_MODAL_PROPS}
+      styles={{ container: LARGE_MODAL_CONTAINER_STYLE, body: LARGE_MODAL_BODY_STYLE }}
+      title={title}
+      footer={[<div key="footer-row">{footer}</div>]}
+    >
+      {children}
+    </Modal>
+  );
+}
+
 export default function StepConfigModal({
   open,
   steps,
   currentProcedureId,
   departmentTitle,
   projectName,
+  variant = "modal",
   onClose,
   onSaveConfig,
 }: StepConfigModalProps) {
   const { modal } = App.useApp();
+  const isPage = variant === "page";
+  // Hàng tiêu đề bảng nằm ngoài vùng kéo ngang → kéo theo phần thân để cột luôn thẳng hàng
+  const headerScrollRef = useRef<HTMLDivElement>(null);
   const [localSteps, setLocalSteps] = useState<ProcedureStep[]>(steps);
   const [filterType, setFilterType] = useState<"ALL" | "MANDATORY" | "CONDITIONAL" | "DISABLED">("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -283,7 +332,7 @@ export default function StepConfigModal({
   // Modal 1: Tạo quy trình mới
   const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
-  const [newProfileSource, setNewProfileSource] = useState<"CURRENT" | "DEPT_TEMPLATE" | "COPY" | "EMPTY">("CURRENT");
+  const [newProfileSource, setNewProfileSource] = useState<"COPY" | "EMPTY">("EMPTY");
   // Quy trình nguồn khi chọn "Sao chép từ quy trình khác" (không cần chuyển sang quy trình đó trước)
   const [copyFromProfileId, setCopyFromProfileId] = useState<string>("");
   const [createProfileError, setCreateProfileError] = useState("");
@@ -448,7 +497,7 @@ export default function StepConfigModal({
     // 1. Kiểm tra template theo phòng ban
     const deptTpl = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((d) => d.id === profileId);
     if (deptTpl) {
-      const loadedSteps = deptTpl.createSteps();
+      const loadedSteps = getTemplateSteps(deptTpl);
       setLocalSteps(loadedSteps);
       setNewlyAddedStepIds(new Set());
       return;
@@ -499,7 +548,7 @@ export default function StepConfigModal({
 
         if (selectedProfileId === profileId) {
           setSelectedProfileId("");
-          setLocalSteps(steps);
+          setLocalSteps(isPage ? [] : steps);
           setNewlyAddedStepIds(new Set());
         }
         if (copyFromProfileId === profileId) setCopyFromProfileId("");
@@ -511,7 +560,7 @@ export default function StepConfigModal({
   const handleOpenCreateProfile = () => {
     setNewProfileName("");
     setCreateProfileError("");
-    setNewProfileSource(localSteps.length > 0 ? "CURRENT" : deptTemplate ? "DEPT_TEMPLATE" : "EMPTY");
+    setNewProfileSource("EMPTY");
     setCopyFromProfileId("");
     setIsCreateProfileOpen(true);
   };
@@ -537,14 +586,8 @@ export default function StepConfigModal({
       initialSteps = sourceCustom
         ? sourceCustom.steps.map((s) => ({ ...s }))
         : sourceTemplate
-          ? sourceTemplate.createSteps()
+          ? getTemplateSteps(sourceTemplate)
           : [];
-    } else if (newProfileSource === "CURRENT") {
-      initialSteps = localSteps.map((s) => ({ ...s }));
-    } else if (newProfileSource === "DEPT_TEMPLATE" && deptTemplate) {
-      initialSteps = deptTemplate.createSteps();
-    } else {
-      initialSteps = [];
     }
 
     const newProfile: CustomProcedureProfile = {
@@ -783,7 +826,9 @@ export default function StepConfigModal({
               Bước này có <strong>{childCount}</strong> bước con bên dưới, tất cả sẽ bị xóa cùng.{" "}
             </>
           )}
-          Thay đổi chỉ áp dụng cho dự án khi bạn bấm &quot;Lưu cấu hình&quot;.
+          {isPage
+            ? "Thay đổi được lưu vào quy trình khi bạn bấm \"Lưu quy trình\"."
+            : "Thay đổi chỉ áp dụng cho dự án khi bạn bấm \"Lưu cấu hình\"."}
         </p>
       ),
       okText: "Xóa bước",
@@ -795,7 +840,26 @@ export default function StepConfigModal({
 
   // Lưu cấu hình
   const handleSave = () => {
-    onSaveConfig(withParentRollups(localSteps), selectedProfileId);
+    const finalSteps = withParentRollups(localSteps);
+    if (isPage) {
+      // Trang danh mục: lưu thẳng vào quy trình đang chọn, trang vẫn mở
+      if (!selectedProfileId) {
+        toast.warning("Chưa chọn quy trình", "Vui lòng chọn hoặc thêm một quy trình trước khi lưu.");
+        return;
+      }
+      if (customProfiles.some((p) => p.id === selectedProfileId)) {
+        const updated = customProfiles.map((p) => (p.id === selectedProfileId ? { ...p, steps: finalSteps } : p));
+        setCustomProfiles(updated);
+        saveCustomProfiles(updated);
+      } else {
+        saveTemplateOverride(selectedProfileId, finalSteps);
+      }
+      setLocalSteps(finalSteps);
+      setNewlyAddedStepIds(new Set());
+      onSaveConfig(finalSteps, selectedProfileId);
+      return;
+    }
+    onSaveConfig(finalSteps, selectedProfileId);
     onClose();
   };
 
@@ -1104,7 +1168,7 @@ export default function StepConfigModal({
 
     return [
       ...sortedTemplates.map((d) => {
-        const stepCount = d.createSteps().length;
+        const stepCount = getTemplateSteps(d).length;
         return {
           value: d.id,
           label: `${d.shortName} (${d.department})`,
@@ -1127,58 +1191,58 @@ export default function StepConfigModal({
 
   return (
     <>
-      <Modal
+      <StepConfigFrame
+        variant={variant}
         open={open}
-        onCancel={onClose}
-        destroyOnHidden
-        // Cùng kích thước với popup Quản lý chức danh
-        {...LARGE_MODAL_PROPS}
-        styles={{ container: LARGE_MODAL_CONTAINER_STYLE, body: LARGE_MODAL_BODY_STYLE }}
+        onClose={onClose}
         title={
-          <div className="flex items-center justify-between pr-6 w-full">
-            <div className="flex items-center gap-2.5">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 leading-snug">
-                  {departmentTitle ? (
-                    <>
-                      Thêm Quy trình Thủ tục — <span className="text-[#DC2626]">{departmentTitle}</span>
-                    </>
-                  ) : (
-                    "Cấu hình Quy trình Thủ tục Dự án"
-                  )}
-                </h3>
-                <p className="text-xs font-normal text-slate-500 mt-0.5">
-                  {projectName
-                    ? `Tùy chỉnh quy trình, thêm bước chính và bước con phù hợp`
-                    : "Tùy chỉnh hoặc thêm mới quy trình, thêm bước cha và bước con phù hợp với dự án"}
-                </p>
+          isPage ? null : (
+            <div className="flex items-center justify-between pr-6 w-full">
+              <div className="flex items-center gap-2.5">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-snug">
+                    {departmentTitle ? (
+                      <>
+                        Thêm Quy trình Thủ tục — <span className="text-[#DC2626]">{departmentTitle}</span>
+                      </>
+                    ) : (
+                      "Cấu hình Quy trình Thủ tục Dự án"
+                    )}
+                  </h3>
+                  <p className="text-xs font-normal text-slate-500 mt-0.5">
+                    {projectName
+                      ? `Tùy chỉnh quy trình, thêm bước chính và bước con phù hợp`
+                      : "Tùy chỉnh hoặc thêm mới quy trình, thêm bước cha và bước con phù hợp với dự án"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )
         }
-        footer={[
-          <div key="footer-row" className="flex items-center justify-between w-full">
+        footer={
+          <div className="flex items-center justify-between w-full">
             <div className="text-xs text-slate-600 font-normal">
               Áp dụng: <strong className="text-slate-900 font-semibold">{stats.totalActiveSteps}/{stats.totalCount} bước</strong>{" "}
               <span className="text-slate-400">({stats.mandatoryCount} bắt buộc + {stats.enabledConditionalCount} điều kiện)</span>
             </div>
             <div className="flex items-center gap-2">
               <Button
-                key="save"
                 intent="primary"
                 scale="compact"
                 icon={<SaveOutlined />}
                 className="bg-[#DC2626] border-[#DC2626] text-white"
                 onClick={handleSave}
               >
-                Lưu cấu hình
+                {isPage ? "Lưu quy trình" : "Lưu cấu hình"}
               </Button>
-              <Button key="cancel" scale="compact" onClick={onClose}>
-                Đóng
-              </Button>
+              {!isPage && (
+                <Button scale="compact" onClick={onClose}>
+                  Đóng
+                </Button>
+              )}
             </div>
-          </div>,
-        ]}
+          </div>
+        }
       >
         <div className="flex-1 min-h-0 flex flex-col gap-3 pr-1 pb-2 text-xs">
           {/* Thanh công cụ 2 dòng chuyên nghiệp, thông thoáng */}
@@ -1275,59 +1339,67 @@ export default function StepConfigModal({
               </Button>
             </div>
 
-            {/* Dòng 2: Tìm kiếm & Bộ lọc */}
-            <div className="flex items-center justify-between gap-3">
-              {/* Trái: Ô tìm kiếm rộng rãi */}
-              <Input
-                placeholder="Tìm mã bước (I, II...), tên bước hoặc đơn vị phụ trách..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                allowClear
-                className="h-8 text-xs flex-1 max-w-md"
-              />
+            {/* Dòng 2: Tìm kiếm & Bộ lọc (trên trang thì bỏ để bảng rộng hơn) */}
+            {!isPage && (
+              <div className="flex items-center justify-between gap-3">
+                {/* Trái: Ô tìm kiếm rộng rãi */}
+                <Input
+                  placeholder="Tìm mã bước (I, II...), tên bước hoặc đơn vị phụ trách..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  allowClear
+                  className="h-8 text-xs flex-1 max-w-md"
+                />
 
-              {/* Phải: Bộ lọc Tabs + Nút Reset */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center rounded-md border border-slate-200 bg-slate-200/60 p-0.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setFilterType("ALL")}
-                    className={`rounded px-2.5 py-1 font-medium transition-all cursor-pointer ${filterType === "ALL"
-                      ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
-                      }`}
-                  >
-                    Tất cả ({stats.totalCount})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterType("MANDATORY")}
-                    className={`rounded px-2.5 py-1 font-medium transition-all cursor-pointer ${filterType === "MANDATORY"
-                      ? "bg-white text-blue-700 shadow-2xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
-                      }`}
-                  >
-                    Bắt buộc ({stats.mandatoryCount})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterType("CONDITIONAL")}
-                    className={`rounded px-2.5 py-1 font-medium transition-all cursor-pointer ${filterType === "CONDITIONAL"
-                      ? "bg-white text-amber-700 shadow-2xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
-                      }`}
-                  >
-                    Điều kiện ({stats.conditionalCount})
-                  </button>
+                {/* Phải: Bộ lọc Tabs + Nút Reset */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center rounded-md border border-slate-200 bg-slate-200/60 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setFilterType("ALL")}
+                      className={`rounded px-2.5 py-1 font-medium transition-all cursor-pointer ${filterType === "ALL"
+                        ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                        : "text-slate-600 hover:text-slate-900"
+                        }`}
+                    >
+                      Tất cả ({stats.totalCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterType("MANDATORY")}
+                      className={`rounded px-2.5 py-1 font-medium transition-all cursor-pointer ${filterType === "MANDATORY"
+                        ? "bg-white text-blue-700 shadow-2xs font-semibold"
+                        : "text-slate-600 hover:text-slate-900"
+                        }`}
+                    >
+                      Bắt buộc ({stats.mandatoryCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterType("CONDITIONAL")}
+                      className={`rounded px-2.5 py-1 font-medium transition-all cursor-pointer ${filterType === "CONDITIONAL"
+                        ? "bg-white text-amber-700 shadow-2xs font-semibold"
+                        : "text-slate-600 hover:text-slate-900"
+                        }`}
+                    >
+                      Điều kiện ({stats.conditionalCount})
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Bảng danh sách các bước: Cố định kích thước */}
-          <div className="flex-1 flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white min-h-0">
-            {/* Header bảng */}
-            <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-100/80 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 shrink-0">
+          {/* Bảng danh sách các bước: kéo ngang khi màn hình hẹp, tên bước luôn đủ rộng để đọc */}
+          <div className="flex-1 flex flex-col rounded-lg border border-slate-200 bg-white min-h-0">
+            {/* Header bảng: trên trang thì bám ngay dưới thanh tiêu đề khi cuộn xuống */}
+            <div
+              ref={headerScrollRef}
+              className={`shrink-0 overflow-hidden rounded-t-lg border-b border-slate-200 bg-slate-100 ${isPage ? "sticky z-10" : ""}`}
+              // Bám ngay dưới thanh tiêu đề trang (cao 60px, cố định)
+              style={isPage ? { top: 60 } : undefined}
+            >
+            <div className="flex min-w-[1480px] items-center gap-3 px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <div className="w-28 shrink-0 text-left pl-1">Mã bước</div>
               <div className="min-w-0 flex-1">Tên bước / Bước con</div>
               {departmentTitle && (
@@ -1342,6 +1414,15 @@ export default function StepConfigModal({
               <div className="w-20 shrink-0 text-center">Áp dụng</div>
               <div className="w-28 shrink-0 text-center">Thao tác</div>
             </div>
+            </div>
+
+            <div
+              onScroll={(e) => {
+                if (headerScrollRef.current) headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+              }}
+              className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden [scrollbar-width:thin]"
+            >
+            <div className="flex h-full min-w-[1480px] flex-col">
 
             {/* Danh sách các hàng */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 [scrollbar-width:thin] min-h-0">
@@ -1356,6 +1437,8 @@ export default function StepConfigModal({
                       : localSteps.length === 0
                       ? activeProfile
                         ? `Quy trình "${activeProfile.name}" hiện chưa có bước nào`
+                        : isPage
+                        ? "Chưa chọn quy trình"
                         : "Dự án hiện chưa có bước thủ tục nào"
                       : "Không tìm thấy bước thủ tục phù hợp với từ khóa"}
                   </h4>
@@ -1364,7 +1447,11 @@ export default function StepConfigModal({
                       ? `Là Lead (Tổ trưởng) ${departmentTitle}, bạn hãy thêm các bước quy trình chuyên môn (bước chính I, II... và bước con I.1, I.2...) và phân công cho thành viên trong tổ.`
                       : localSteps.length === 0
                       ? activeProfile
-                        ? "Dự án đã áp dụng quy trình này. Hãy thêm bước chính (I, II...) và bước con để hoàn thiện quy trình:"
+                        ? isPage
+                          ? "Quy trình này chưa có bước nào. Hãy thêm bước chính (I, II...) và bước con để hoàn thiện quy trình:"
+                          : "Dự án đã áp dụng quy trình này. Hãy thêm bước chính (I, II...) và bước con để hoàn thiện quy trình:"
+                        : isPage
+                        ? "Chọn một quy trình ở ô \"Quy trình\" phía trên, hoặc thêm quy trình mới:"
                         : "Bạn có thể áp dụng ngay quy trình mẫu chuẩn có sẵn hoặc thêm bước chính thủ công bên dưới:"
                       : "Hãy thử kiểm tra lại từ khóa tìm kiếm hoặc chuyển sang tab bộ lọc khác."}
                   </p>
@@ -1757,9 +1844,11 @@ export default function StepConfigModal({
             </div>
             {/* Dòng nhập inline bước chính (Cha) hiện ngay cuối danh sách */}
             {renderInlineParentRow()}
+            </div>
+            </div>
           </div>
         </div>
-      </Modal>
+      </StepConfigFrame>
 
       {/* MODAL: THÊM / TẠO QUY TRÌNH MỚI */}
       <Modal
@@ -1782,7 +1871,7 @@ export default function StepConfigModal({
             className="bg-[#DC2626] border-[#DC2626] text-white font-semibold"
             onClick={handleConfirmCreateProfile}
           >
-            Tạo & Lưu quy trình
+            Tạo quy trình
           </Button>,
           <Button key="cancel-create" scale="compact" onClick={() => setIsCreateProfileOpen(false)}>
             Hủy
@@ -1815,60 +1904,6 @@ export default function StepConfigModal({
               Nguồn khởi tạo các bước quy trình:
             </label>
             <div className="space-y-2">
-              {localSteps.length > 0 && (
-                <label
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                    newProfileSource === "CURRENT"
-                      ? "border-[#DC2626] bg-red-50/50"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                  onClick={() => setNewProfileSource("CURRENT")}
-                >
-                  <input
-                    type="radio"
-                    name="newProfileSource"
-                    checked={newProfileSource === "CURRENT"}
-                    onChange={() => setNewProfileSource("CURRENT")}
-                    className="mt-0.5 text-[#DC2626] focus:ring-[#DC2626]"
-                  />
-                  <div>
-                    <div className="font-semibold text-slate-800">
-                      Lưu và sao chép từ {localSteps.length} bước hiện tại đang thiết lập
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      Giữ nguyên toàn bộ bước chính, bước con, thời gian và phân công đang cấu hình để tái sử dụng về sau.
-                    </div>
-                  </div>
-                </label>
-              )}
-
-              {deptTemplate && (
-                <label
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                    newProfileSource === "DEPT_TEMPLATE"
-                      ? "border-[#DC2626] bg-red-50/50"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                  onClick={() => setNewProfileSource("DEPT_TEMPLATE")}
-                >
-                  <input
-                    type="radio"
-                    name="newProfileSource"
-                    checked={newProfileSource === "DEPT_TEMPLATE"}
-                    onChange={() => setNewProfileSource("DEPT_TEMPLATE")}
-                    className="mt-0.5 text-[#DC2626] focus:ring-[#DC2626]"
-                  />
-                  <div>
-                    <div className="font-semibold text-slate-800">
-                      Khởi tạo từ {deptTemplate.shortName} (Mẫu của {deptTemplate.department})
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      {deptTemplate.description}
-                    </div>
-                  </div>
-                </label>
-              )}
-
               {/* Sao chép từ một quy trình bất kỳ — chọn ngay trong ô bên dưới */}
               <div
                 role="radio"

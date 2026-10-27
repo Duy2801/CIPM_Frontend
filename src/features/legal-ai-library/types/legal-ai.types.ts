@@ -25,6 +25,8 @@ export interface AttachedDocumentFile {
   url?: string;
   /** Tệp vừa tải lên (chưa có đường dẫn trên máy chủ) */
   rawFile?: File;
+  /** Ngày giờ thêm / cập nhật tệp */
+  updatedAt?: string;
 }
 
 /** Một chương của toàn văn: các điều, mỗi điều gồm các khoản */
@@ -60,40 +62,7 @@ export interface LegalDocument {
   content?: LegalDocumentSection[];
 }
 
-export type ReportType =
-  | "WEEKLY"
-  | "MONTHLY"
-  | "GPMB_TOPIC"
-  | "DISBURSEMENT_TOPIC"
-  | "ANNUAL";
-
-export interface GeneratedReport {
-  id: string;
-  title: string;
-  type: ReportType;
-  period: string; // vd: "Tuần 39 - Tháng 09/2026"
-  createdAt: string;
-  author: string;
-  status: "DRAFT" | "FINALIZED";
-  content: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: "user" | "ai";
-  text: string;
-  timestamp: string;
-  citations?: { title: string; code: string; article?: string }[];
-}
-
 export interface LegalAiPermissions {
   canAccessModule: boolean;
-  isReadOnly: boolean;
   canCreateDocument: boolean;
-  canEditDocument: boolean;
-  canDeleteDocument: boolean;
-  canGenerateReport: boolean;
-  canExportReport: boolean;
-  roleTitle: string;
-  roleNotice?: string;
 }

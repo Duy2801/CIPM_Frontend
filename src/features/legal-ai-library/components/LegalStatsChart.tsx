@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Card, Text } from "@/components/ui";
-import { STATUS_META, STATUS_ORDER } from "../constants/legal-mock-data";
+import { STATUS_META, STATUS_ORDER } from "../constants/legal-labels";
 import type { LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types";
 
 interface LegalStatsChartProps {

@@ -44,7 +44,7 @@ export const themeClassNames = {
     body: "min-h-full",
     shell: "min-h-screen !bg-[#F8FAFC]",
     content: "min-h-screen transition-[margin] duration-200",
-    main: "min-h-[calc(100vh-60px)] bg-[#F8FAFC] p-3.5 sm:p-5 lg:p-6 2xl:p-8 text-slate-800 w-full overflow-x-hidden",
+    main: "min-h-[calc(100vh-60px)] bg-[#F8FAFC] p-3.5 sm:p-5 lg:p-6 2xl:p-8 text-slate-800 w-full overflow-x-clip",
   },
   topbar: {
     header:

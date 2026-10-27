@@ -29,7 +29,7 @@ export const sidebarMenuItems: MenuItem[] = [
   },
   {
     key: "/construction-procedures",
-    label: "Hồ sơ thủ tục XDCB",
+    label: "Quy trình dự án",
     icon: React.createElement(FileProtectOutlined),
   },
   {

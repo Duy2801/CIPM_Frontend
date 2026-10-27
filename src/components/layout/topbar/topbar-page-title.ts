@@ -1,7 +1,7 @@
 const PAGE_TITLES: ReadonlyArray<readonly [string, string]> = [
   ["/dashboard", "Bảng điều khiển"],
   ["/projects_works", "Dự án & Công trình"],
-  ["/construction-procedures", "Hồ sơ thủ tục XDCB"],
+  ["/construction-procedures", "Quy trình dự án"],
   ["/finance-settlement", "Tài chính & Quyết toán"],
   ["/personnel-assignment", "Nhân sự & Phân công"],
   ["/site-clearance-resettlement", "GPMB - Bồi thường TĐC"],

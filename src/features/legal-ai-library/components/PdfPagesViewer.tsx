@@ -26,14 +26,13 @@ function loadPdfJs(): Promise<PdfJs> {
 
 interface PdfPagesViewerProps {
   url: string;
-  onPageCount?: (count: number) => void;
 }
 
 /**
  * Hiển thị PDF thành các tờ giấy trắng xếp dọc (cuộn chuột để đọc), tự co theo chiều rộng khung.
  * Mỗi lần đổi tệp, component được mount lại (key = url) nên trạng thái luôn bắt đầu từ "đang tải".
  */
-export default function PdfPagesViewer({ url, onPageCount }: PdfPagesViewerProps) {
+export default function PdfPagesViewer({ url }: PdfPagesViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState(false);
@@ -52,7 +51,6 @@ export default function PdfPagesViewer({ url, onPageCount }: PdfPagesViewerProps
       .then((doc) => {
         if (cancelled || !doc) return;
         setPdf(doc);
-        onPageCount?.(doc.numPages);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -62,8 +60,6 @@ export default function PdfPagesViewer({ url, onPageCount }: PdfPagesViewerProps
       cancelled = true;
       void loadingTask?.destroy();
     };
-    // onPageCount chỉ dùng để báo số trang một lần khi mở
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
   // Theo dõi chiều rộng khung để tờ giấy luôn vừa màn hình

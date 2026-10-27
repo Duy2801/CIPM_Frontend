@@ -62,6 +62,38 @@ export const saveHiddenTemplateIds = (ids: string[]) => {
   }
 };
 
+/** Bộ bước đã chỉnh của quy trình mẫu (theo mã quy trình), lưu trình duyệt */
+export const TEMPLATE_OVERRIDE_STORAGE_KEY = "cipm_procedure_template_overrides";
+
+const loadTemplateOverrides = (): Record<string, ProcedureStep[]> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(TEMPLATE_OVERRIDE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveTemplateOverride = (templateId: string, steps: ProcedureStep[]) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      TEMPLATE_OVERRIDE_STORAGE_KEY,
+      JSON.stringify({ ...loadTemplateOverrides(), [templateId]: steps }),
+    );
+  } catch (e) {
+    console.error("Failed to save procedure template override", e);
+  }
+};
+
+/** Bước của quy trình mẫu: bản đã chỉnh (nếu có), không thì bộ bước gốc */
+export const getTemplateSteps = (template: { id: string; createSteps: () => ProcedureStep[] }): ProcedureStep[] => {
+  const override = loadTemplateOverrides()[template.id];
+  return override ? override.map((s) => ({ ...s })) : template.createSteps();
+};
+
 export const saveCustomProfiles = (profiles: CustomProcedureProfile[]) => {
   if (typeof window === "undefined") return;
   try {

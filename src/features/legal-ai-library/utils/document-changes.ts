@@ -1,5 +1,5 @@
-import { STATUS_META, getCategoryLabel } from "../constants/legal-mock-data";
-import type { LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types";
+import { STATUS_META, getCategoryLabel } from "../constants/legal-labels.ts";
+import type { LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types.ts";
 
 /** Các trường sửa được trong drawer chi tiết văn bản */
 export type LegalDocumentPatch = Partial<
@@ -25,7 +25,7 @@ export type LegalDocumentPatch = Partial<
 
 export type LegalDocumentField = keyof LegalDocumentPatch;
 
-export const LEGAL_FIELD_LABELS: Record<LegalDocumentField, string> = {
+const LEGAL_FIELD_LABELS: Record<LegalDocumentField, string> = {
   code: "Số hiệu",
   title: "Tên văn bản",
   category: "Phân loại văn bản",
@@ -50,7 +50,7 @@ const formatIsoDate = (iso: string) => {
 };
 
 /** Giá trị dễ đọc của một trường (dùng cho hộp xác nhận và lịch sử "cũ → mới") */
-export function formatLegalFieldValue(field: LegalDocumentField, value: unknown): string {
+function formatLegalFieldValue(field: LegalDocumentField, value: unknown): string {
   if (field === "category") return getCategoryLabel(String(value));
   if (field === "status") return STATUS_META[value as LegalDocumentStatus]?.label ?? String(value);
   if (field === "issueDate" || field === "effectiveDate" || field === "expiredDate") return value ? formatIsoDate(String(value)) : "Chưa xác định";

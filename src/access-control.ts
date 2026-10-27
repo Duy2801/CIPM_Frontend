@@ -12,7 +12,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   {
     route: "/construction-procedures",
     permission: "m3_construction_procedures:view",
-    label: "M3 - Ho so thu tuc XDCB",
+    label: "M3 - Quy trinh du an",
   },
   {
     route: "/finance-settlement",

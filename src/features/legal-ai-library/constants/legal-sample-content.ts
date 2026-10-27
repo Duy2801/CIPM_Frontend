@@ -1,4 +1,4 @@
-import type { LegalDocumentSection } from "../types/legal-ai.types";
+import type { LegalDocumentSection } from "../types/legal-ai.types.ts";
 
 /**
  * Nội dung toàn văn MẪU dùng để thử bản xem trước văn bản dài (cuộn nhiều trang).
