@@ -1581,7 +1581,7 @@ export default function ConstructionProceduresScreen() {
           <p className="m-0 mt-1 text-xs text-slate-400">Liên hệ quản trị để được cấp quyền cấu hình quy trình thủ tục.</p>
         </div>
       ) : (
-        <ProcedureLibraryTab onSaved={handleSaveLibraryProcedure} />
+        <ProcedureLibraryTab actorName={operatorName} onSaved={handleSaveLibraryProcedure} />
       )}
 
       {/* Giao diện theo dõi thủ tục theo từng dự án (tạm ẩn khi thử giao diện danh mục quy trình) */}

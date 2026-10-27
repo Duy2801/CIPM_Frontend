@@ -1,49 +1,92 @@
 "use client";
 
 import { useState } from "react";
-import {
-  getTemplateSteps,
-  loadCustomProfiles,
-  loadHiddenTemplateIds,
-} from "../constants/procedure-templates";
-import { DEPARTMENT_PROCEDURE_TEMPLATES } from "../constants/procedure-department-templates";
+import { toast } from "@/components/ui";
 import type { ProcedureStep } from "../types/procedure.types";
+import {
+  createProcedure,
+  deleteProcedure,
+  getProcedureDepartmentOptions,
+  getProcedureSteps,
+  loadProcedureLibrary,
+  markProcedureUpdated,
+} from "../utils/procedure-library";
+import CreateProcedureModal from "./CreateProcedureModal";
+import ProcedureListView from "./ProcedureListView";
 import StepConfigModal from "./StepConfigModal";
 
 interface ProcedureLibraryTabProps {
+  /** Người đang thao tác (ghi vào "Người tạo" / "Cập nhật bởi") */
+  actorName: string;
   /** Đã bấm "Lưu quy trình" (ghi lịch sử, thông báo) */
   onSaved: (profileId: string, profileName: string, steps: ProcedureStep[]) => void;
 }
 
-/** Quy trình mở sẵn khi vào trang: quy trình mẫu đầu tiên chưa bị xóa, không thì quy trình tự tạo đầu tiên */
-function getInitialProcedure(): { id: string; steps: ProcedureStep[] } {
-  const hidden = loadHiddenTemplateIds();
-  const template = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((tpl) => !hidden.includes(tpl.id));
-  if (template) return { id: template.id, steps: getTemplateSteps(template) };
-  const custom = loadCustomProfiles()[0];
-  return custom ? { id: custom.id, steps: custom.steps } : { id: "", steps: [] };
-}
+/** Tab "Quy trình": danh sách quy trình → bấm "Chi tiết" để xem và chỉnh các bước ngay trên trang */
+export default function ProcedureLibraryTab({ actorName, onSaved }: ProcedureLibraryTabProps) {
+  const [procedures, setProcedures] = useState(loadProcedureLibrary);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
-/** Tab "Quy trình": danh mục quy trình thủ tục, xem và chỉnh bước ngay trên trang */
-export default function ProcedureLibraryTab({ onSaved }: ProcedureLibraryTabProps) {
-  // Giữ cố định giá trị ban đầu để bảng không bị nạp lại sau mỗi lần vẽ
-  const [initial] = useState(getInitialProcedure);
+  const reload = () => setProcedures(loadProcedureLibrary());
+  const opened = openId ? procedures.find((p) => p.id === openId) : undefined;
 
-  const profileName = (profileId: string) =>
-    Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((tpl) => tpl.id === profileId)?.name ||
-    loadCustomProfiles().find((p) => p.id === profileId)?.name ||
-    "Quy trình";
+  if (opened) {
+    return (
+      <StepConfigModal
+        // Mỗi quy trình một bảng riêng: đổi quy trình là dựng lại từ đầu
+        key={opened.id}
+        open
+        variant="page"
+        steps={opened.steps}
+        currentProcedureId={opened.id}
+        onBack={() => {
+          reload();
+          setOpenId(null);
+        }}
+        onClose={() => {}}
+        onSaveConfig={(steps, profileId) => {
+          if (profileId) markProcedureUpdated(profileId, actorName);
+          reload();
+          if (profileId) onSaved(profileId, opened.name, steps);
+        }}
+      />
+    );
+  }
 
   return (
-    <StepConfigModal
-      open
-      variant="page"
-      steps={initial.steps}
-      currentProcedureId={initial.id}
-      onClose={() => {}}
-      onSaveConfig={(steps, profileId) => {
-        if (profileId) onSaved(profileId, profileName(profileId), steps);
-      }}
-    />
+    <>
+      <ProcedureListView
+        procedures={procedures}
+        onOpen={setOpenId}
+        onCreate={() => setCreateOpen(true)}
+        onDelete={(procedure) => {
+          deleteProcedure(procedure.id);
+          reload();
+          toast.info("Đã xóa quy trình", `Đã xóa quy trình "${procedure.name}" khỏi danh sách.`);
+        }}
+      />
+
+      {createOpen && (
+        <CreateProcedureModal
+          sourceOptions={procedures.map((p) => ({
+            value: p.id,
+            label: `${p.name}${p.department ? ` (${p.department})` : ""} · ${p.steps.length} bước`,
+          }))}
+          departmentOptions={getProcedureDepartmentOptions()}
+          creatorName={actorName}
+          onClose={() => setCreateOpen(false)}
+          onCreate={({ name, department, copyFromId }) => {
+            const steps = copyFromId ? getProcedureSteps(copyFromId) : [];
+            const created = createProcedure({ name, department, steps, createdBy: actorName });
+            setCreateOpen(false);
+            reload();
+            // Tạo xong mở ngay để thêm bước
+            setOpenId(created.id);
+            toast.success("Đã tạo quy trình mới", `Đã lưu quy trình "${name}" (${steps.length} bước).`);
+          }}
+        />
+      )}
+    </>
   );
 }

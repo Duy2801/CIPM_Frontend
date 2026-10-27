@@ -36,6 +36,8 @@ interface StepConfigModalProps {
   projectName?: string;
   /** "page": hiện ngay trên trang (quản lý danh mục quy trình), không có nút Đóng */
   variant?: "modal" | "page";
+  /** Trang danh mục: nút "Đóng" quay lại danh sách quy trình */
+  onBack?: () => void;
   onClose: () => void;
   onSaveConfig: (updatedSteps: ProcedureStep[], profileId?: string) => void;
 }
@@ -49,6 +51,8 @@ import {
   saveTemplateOverride,
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
+import { createProcedure, getProcedureDepartmentOptions, getProcedureSteps } from "../utils/procedure-library";
+import CreateProcedureModal, { type CreateProcedureValues } from "./CreateProcedureModal";
 import {
   getDepartmentStaff,
   DEPARTMENT_PROCEDURE_TEMPLATES,
@@ -310,6 +314,7 @@ export default function StepConfigModal({
   departmentTitle,
   projectName,
   variant = "modal",
+  onBack,
   onClose,
   onSaveConfig,
 }: StepConfigModalProps) {
@@ -331,11 +336,6 @@ export default function StepConfigModal({
 
   // Modal 1: Tạo quy trình mới
   const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
-  const [newProfileName, setNewProfileName] = useState("");
-  const [newProfileSource, setNewProfileSource] = useState<"COPY" | "EMPTY">("EMPTY");
-  // Quy trình nguồn khi chọn "Sao chép từ quy trình khác" (không cần chuyển sang quy trình đó trước)
-  const [copyFromProfileId, setCopyFromProfileId] = useState<string>("");
-  const [createProfileError, setCreateProfileError] = useState("");
 
   // Tìm quy trình mẫu chuẩn tương ứng với phòng ban (nếu có)
   const deptTemplate = useMemo(() => {
@@ -551,55 +551,18 @@ export default function StepConfigModal({
           setLocalSteps(isPage ? [] : steps);
           setNewlyAddedStepIds(new Set());
         }
-        if (copyFromProfileId === profileId) setCopyFromProfileId("");
       },
     });
   };
 
   // Mở modal tạo quy trình mới
-  const handleOpenCreateProfile = () => {
-    setNewProfileName("");
-    setCreateProfileError("");
-    setNewProfileSource("EMPTY");
-    setCopyFromProfileId("");
-    setIsCreateProfileOpen(true);
-  };
+  const handleOpenCreateProfile = () => setIsCreateProfileOpen(true);
 
-  // Xác nhận tạo quy trình mới
-  const handleConfirmCreateProfile = () => {
-    const trimmed = newProfileName.trim();
-    if (!trimmed) {
-      setCreateProfileError("Vui lòng nhập tên quy trình mới");
-      return;
-    }
-
-    if (newProfileSource === "COPY" && !copyFromProfileId) {
-      setCreateProfileError("Vui lòng chọn quy trình muốn sao chép");
-      return;
-    }
-
-    let initialSteps: ProcedureStep[] = [];
-    if (newProfileSource === "COPY") {
-      // Lấy bước của quy trình nguồn: quy trình tùy chỉnh đã lưu hoặc quy trình mẫu của phòng ban
-      const sourceCustom = customProfiles.find((p) => p.id === copyFromProfileId);
-      const sourceTemplate = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((d) => d.id === copyFromProfileId);
-      initialSteps = sourceCustom
-        ? sourceCustom.steps.map((s) => ({ ...s }))
-        : sourceTemplate
-          ? getTemplateSteps(sourceTemplate)
-          : [];
-    }
-
-    const newProfile: CustomProcedureProfile = {
-      id: `custom_${Date.now()}`,
-      name: trimmed,
-      createdAt: new Date().toISOString().slice(0, 10),
-      steps: initialSteps,
-    };
-
-    const updated = [newProfile, ...customProfiles];
-    setCustomProfiles(updated);
-    saveCustomProfiles(updated);
+  // Xác nhận tạo quy trình mới: lưu ngay vào danh mục rồi mở để thêm bước
+  const handleConfirmCreateProfile = ({ name, department, copyFromId }: CreateProcedureValues) => {
+    const initialSteps = copyFromId ? getProcedureSteps(copyFromId) : [];
+    const newProfile = createProcedure({ name, department, steps: initialSteps });
+    setCustomProfiles(loadCustomProfiles());
     setSelectedProfileId(newProfile.id);
     setLocalSteps(initialSteps);
     setNewlyAddedStepIds(new Set());
@@ -607,7 +570,7 @@ export default function StepConfigModal({
 
     toast.success(
       "Đã tạo quy trình mới",
-      `Đã lưu quy trình "${trimmed}" (${initialSteps.length} bước). Về sau bạn và các dự án khác có thể chọn dùng lại ngay lập tức!`
+      `Đã lưu quy trình "${name}" (${initialSteps.length} bước). Về sau bạn và các dự án khác có thể chọn dùng lại ngay lập tức!`
     );
   };
 
@@ -1235,11 +1198,9 @@ export default function StepConfigModal({
               >
                 {isPage ? "Lưu quy trình" : "Lưu cấu hình"}
               </Button>
-              {!isPage && (
-                <Button scale="compact" onClick={onClose}>
-                  Đóng
-                </Button>
-              )}
+              <Button scale="compact" onClick={isPage ? onBack : onClose}>
+                Đóng
+              </Button>
             </div>
           </div>
         }
@@ -1250,6 +1211,17 @@ export default function StepConfigModal({
             {/* Dòng 1: Quản lý Quy trình & Thao tác chính */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Trái: Badge phòng ban (nếu có) + Chọn quy trình cũ/mẫu + Nút Thêm quy trình mới */}
+              {isPage ? (
+                // Trang danh mục: tên quy trình đang xem (quay lại bằng nút "Đóng" ở chân)
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5 px-1">
+                    <BranchesOutlined className="text-[#DC2626] text-sm" />
+                    <span className="truncate text-sm font-bold text-slate-900" title={activeProfile?.name}>
+                      {activeProfile?.name || "Quy trình"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
               <div className="flex flex-wrap items-center gap-2">
                 {departmentTitle && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 text-[#DC2626] font-bold text-xs shadow-2xs shrink-0">
@@ -1326,6 +1298,7 @@ export default function StepConfigModal({
                   Thêm quy trình mới
                 </Button>
               </div>
+              )}
 
               {/* Phải: Thêm bước chính */}
               <Button
@@ -1851,139 +1824,18 @@ export default function StepConfigModal({
       </StepConfigFrame>
 
       {/* MODAL: THÊM / TẠO QUY TRÌNH MỚI */}
-      <Modal
-        open={isCreateProfileOpen}
-        onCancel={() => setIsCreateProfileOpen(false)}
-        centered
-        width={560}
-        zIndex={1350}
-        title={
-          <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-            <span>Thêm Quy trình Thủ tục Mới</span>
-          </div>
-        }
-        footer={[
-          <Button
-            key="confirm-create"
-            intent="primary"
-            scale="compact"
-            icon={<CheckOutlined />}
-            className="bg-[#DC2626] border-[#DC2626] text-white font-semibold"
-            onClick={handleConfirmCreateProfile}
-          >
-            Tạo quy trình
-          </Button>,
-          <Button key="cancel-create" scale="compact" onClick={() => setIsCreateProfileOpen(false)}>
-            Hủy
-          </Button>,
-        ]}
-      >
-        <div className="space-y-4 py-2 text-xs">
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">
-              Tên quy trình mới <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              placeholder="VD: Quy trình Giám sát công trình đặc thù, Quy trình nghiệm thu nhanh..."
-              value={newProfileName}
-              onChange={(e) => {
-                setNewProfileName(e.target.value);
-                if (createProfileError) setCreateProfileError("");
-              }}
-              onPressEnter={handleConfirmCreateProfile}
-              className="w-full text-xs h-9"
-              autoFocus
-            />
-            {createProfileError && (
-              <p className="text-[11px] text-rose-500 mt-1 font-medium">{createProfileError}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1.5">
-              Nguồn khởi tạo các bước quy trình:
-            </label>
-            <div className="space-y-2">
-              {/* Sao chép từ một quy trình bất kỳ — chọn ngay trong ô bên dưới */}
-              <div
-                role="radio"
-                aria-checked={newProfileSource === "COPY"}
-                tabIndex={0}
-                className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                  newProfileSource === "COPY"
-                    ? "border-[#DC2626] bg-red-50/50"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
-                }`}
-                onClick={() => setNewProfileSource("COPY")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setNewProfileSource("COPY");
-                  }
-                }}
-              >
-                <input
-                  type="radio"
-                  name="newProfileSource"
-                  checked={newProfileSource === "COPY"}
-                  onChange={() => setNewProfileSource("COPY")}
-                  className="mt-0.5 text-[#DC2626] focus:ring-[#DC2626]"
-                  tabIndex={-1}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-slate-800">Sao chép từ quy trình khác</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    Chọn bất kỳ quy trình mẫu hoặc quy trình đã lưu để sao chép toàn bộ bước, không cần chuyển sang quy trình đó trước.
-                  </div>
-                  <Select
-                    aria-label="Quy trình muốn sao chép"
-                    className="mt-2 w-full text-xs"
-                    placeholder="— Chọn quy trình muốn sao chép —"
-                    showSearch
-                    optionFilterProp="label"
-                    value={copyFromProfileId || undefined}
-                    onChange={(val: string) => {
-                      setCopyFromProfileId(val);
-                      setNewProfileSource("COPY");
-                      if (createProfileError) setCreateProfileError("");
-                    }}
-                    options={profileSelectOptions.map((opt) => ({
-                      value: opt.value,
-                      label: `${opt.label} · ${opt.stepCount} bước`,
-                    }))}
-                    getPopupContainer={() => document.body}
-                  />
-                </div>
-              </div>
-
-              <label
-                className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${
-                  newProfileSource === "EMPTY"
-                    ? "border-[#DC2626] bg-red-50/50"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
-                }`}
-                onClick={() => setNewProfileSource("EMPTY")}
-              >
-                <input
-                  type="radio"
-                  name="newProfileSource"
-                  checked={newProfileSource === "EMPTY"}
-                  onChange={() => setNewProfileSource("EMPTY")}
-                  className="mt-0.5 text-[#DC2626] focus:ring-[#DC2626]"
-                />
-                <div>
-                  <div className="font-semibold text-slate-800">
-                    Quy trình trống (tự thêm bước từ đầu)
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    Bắt đầu với danh sách rỗng và tự thêm các bước chính, bước con theo nhu cầu.
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-      </Modal>
+      {isCreateProfileOpen && (
+        <CreateProcedureModal
+          sourceOptions={profileSelectOptions.map((opt) => ({
+            value: opt.value,
+            label: `${opt.label} · ${opt.stepCount} bước`,
+          }))}
+          departmentOptions={getProcedureDepartmentOptions()}
+          defaultDepartment={departmentTitle}
+          onClose={() => setIsCreateProfileOpen(false)}
+          onCreate={handleConfirmCreateProfile}
+        />
+      )}
 
     </>
   );

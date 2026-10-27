@@ -23,6 +23,10 @@ export interface CustomProcedureProfile {
   id: string;
   name: string;
   createdAt: string;
+  /** Người tạo (tên hiển thị) */
+  createdBy?: string;
+  /** Tổ phụ trách */
+  department?: string;
   isSystem?: boolean;
   steps: ProcedureStep[];
 }
