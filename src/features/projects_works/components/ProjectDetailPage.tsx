@@ -10,6 +10,7 @@ import {
   SafetyCertificateOutlined,
   ArrowLeftOutlined,
   FormOutlined,
+  HistoryOutlined,
   ProfileOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
@@ -39,8 +40,9 @@ import { FinanceSettlementScreen } from "@/features/finance-settlement";
 import { WarrantyMaintenanceScreen } from "@/features/warranty-maintenance";
 import { ProjectDocumentsSection } from "./detail/ProjectViewTab";
 import ProjectProcedureConfigTab from "./detail/ProjectProcedureConfigTab";
+import ProjectHistoryTab from "./detail/ProjectHistoryTab";
 
-type DetailTab = "info" | "procedure" | "gpmb" | "bidding" | "finance" | "warranty";
+type DetailTab = "info" | "procedure" | "gpmb" | "bidding" | "finance" | "warranty" | "history";
 
 /** Các trường sửa được bằng bút chì trên trang chi tiết */
 type EditablePatch = Partial<
@@ -187,6 +189,8 @@ export default function ProjectDetailPage({
           type: view.type,
           startDate: view.startDate,
           endDatePlanned: view.endDatePlanned,
+          // Ghi vào lịch sử dự án: các trường đã đổi (cũ → mới)
+          progressNote: pendingChanges.map((c) => `${c.label}: ${c.from || "Trống"} → ${c.to || "Trống"}`).join("; "),
         });
         discardChanges();
       },
@@ -244,6 +248,7 @@ export default function ProjectDetailPage({
     ...(canUserDo(user, "m8_warranty", "view")
       ? [{ key: "warranty" as const, icon: <SafetyCertificateOutlined />, label: "Bảo hành & Bảo trì" }]
       : []),
+    { key: "history", icon: <HistoryOutlined />, label: "Lịch sử" },
   ];
 
   return (
@@ -274,6 +279,7 @@ export default function ProjectDetailPage({
       )}
 
       {activeTab === "procedure" && <ProjectProcedureConfigTab project={project} controller={procedure} />}
+      {activeTab === "history" && <ProjectHistoryTab project={project} procedureLogs={procedure.data.history ?? []} />}
       {/* GPMB, đấu thầu, tài chính, bảo hành: chỉ dữ liệu của dự án này, không chọn dự án khác */}
       <ProjectScopeProvider projectId={project.id}>
         {activeTab === "gpmb" && <SiteClearanceResettlementScreen projectId={project.id} />}
