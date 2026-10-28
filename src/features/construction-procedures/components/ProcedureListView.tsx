@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { App } from "antd";
 import { BranchesOutlined, DeleteOutlined, EditOutlined, FolderAddOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Input, Tag, Tooltip } from "@/components/ui";
+import { Button, Input, Tooltip } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import type { ProcedureLibraryItem } from "../utils/procedure-library";
 
@@ -118,9 +118,6 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onDele
                       <span className="truncate text-sm font-semibold text-slate-900" title={procedure.name}>
                         {procedure.name}
                       </span>
-                      <Tag intent="subtle" scale="sm" className="shrink-0">
-                        {procedure.isCustom ? "Tự tạo" : "Mẫu"}
-                      </Tag>
                     </div>
                     <div className="w-40 shrink-0 truncate text-slate-700" title={procedure.department}>
                       {procedure.department || EMPTY}
