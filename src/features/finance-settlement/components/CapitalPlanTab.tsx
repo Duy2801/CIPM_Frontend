@@ -11,6 +11,7 @@ import type { CapitalPlan, FinanceProject } from "../types/finance.types";
 import { formatVndBillions } from "../utils/finance-rules";
 import CapitalPlanModal from "./CapitalPlanModal";
 import CapitalPlanDetailDrawer from "./CapitalPlanDetailDrawer";
+import { useProjectScope } from "@/components/workspace";
 
 interface CapitalPlanTabProps {
   controller: FinanceSettlementController;
@@ -73,6 +74,7 @@ function AdjustmentValue({ value, isParent }: { value: number; isParent?: boolea
 }
 
 export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
+  const scopedProjectId = useProjectScope();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [adjustingPlan, setAdjustingPlan] = useState<CapitalPlan>();
@@ -330,7 +332,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
         <SectionIntro
           title={`Kế hoạch vốn niên độ ${filters.year}`}
           description="Quản lý hạn mức kế hoạch vốn đầu tư công theo từng dự án và cơ cấu nguồn vốn. Căn cứ điều chỉnh phải có Quyết định phê duyệt."
-          countLabel={`${rows.length} dự án · ${visiblePlans.length} nguồn vốn`}
+          countLabel={scopedProjectId ? `${visiblePlans.length} nguồn vốn` : `${rows.length} dự án · ${visiblePlans.length} nguồn vốn`}
           readOnly={!rolePermissions.canCreateCapitalPlan && !rolePermissions.canAdjustCapitalPlan}
           guide="Tỷ lệ giải ngân tính trên các hồ sơ đã được Giám đốc phê duyệt. Điều chỉnh giữa năm bắt buộc có văn bản phê duyệt."
           actions={
@@ -364,7 +366,7 @@ export default function CapitalPlanTab({ controller }: CapitalPlanTabProps) {
                 allowClear
                 intent="clean"
                 prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder="Tìm kiếm dự án, mã dự án, nguồn vốn, số QĐ..."
+                placeholder={scopedProjectId ? "Tìm nguồn vốn, số QĐ..." : "Tìm kiếm dự án, mã dự án, nguồn vốn, số QĐ..."}
                 style={{ width: 340, maxWidth: "100%" }}
                 className="text-xs"
                 value={search}

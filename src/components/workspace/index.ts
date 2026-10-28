@@ -17,6 +17,7 @@ export { default as SegmentedTabs } from "./SegmentedTabs";
 export type { SegmentedTabItem } from "./SegmentedTabs";
 export { default as ReasonModal } from "./ReasonModal";
 export { default as InlineEditField } from "./InlineEditField";
+export { ProjectScopeProvider, useProjectScope } from "./ProjectScope";
 export { useActionFeedback } from "./useActionFeedback";
 export type { ActionFeedback } from "./useActionFeedback";
 export { sortWorkspaceTasks } from "./workspace.types";

@@ -12,11 +12,15 @@ import { buildBiddingTasks } from "../utils/bidding-workspace";
 
 const EMPTY_DATASET: BiddingDataset = { projects: [], packages: [] };
 
-export function useBiddingManagement() {
+/**
+ * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
+ * danh sách dự án trong các hộp tạo mới cũng chỉ còn dự án này.
+ */
+export function useBiddingManagement(fixedProjectId?: string) {
   const { user } = useAuth();
   const [data, setData] = useState<BiddingDataset>(EMPTY_DATASET);
   const [loading, setLoading] = useState(true);
-  const [projectId, setProjectId] = useState("ALL");
+  const [projectId, setProjectId] = useState(fixedProjectId ?? "ALL");
   const today = todayIso();
 
   const permissions = useMemo(() => getBiddingRolePermissions(user), [user]);
@@ -62,8 +66,13 @@ export function useBiddingManagement() {
 
   const nameOf = (id: string) => data.packages.find((pkg) => pkg.id === id)?.code ?? "";
 
+  const scopedData = useMemo(
+    () => (fixedProjectId ? { ...data, projects: data.projects.filter((p) => p.id === fixedProjectId) } : data),
+    [data, fixedProjectId],
+  );
+
   return {
-    data,
+    data: scopedData,
     loading,
     today,
     projectId,

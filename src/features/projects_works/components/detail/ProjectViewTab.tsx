@@ -16,6 +16,8 @@ import {
   getProjectHealthStatus,
 } from "../../constants/project-enums";
 import type { ProjectItem } from "../../types/project.types";
+import { getProjectDocuments } from "../../constants/project-documents-mock";
+import { cn } from "@/utils/cn";
 import { canUserDo } from "@/access-control";
 
 interface ProjectViewTabProps {
@@ -176,101 +178,9 @@ export default function ProjectViewTab({
         </div>
       </section>
 
-      {/* Khối Nhật ký tiến độ */}
-      <section className="rounded-xl border border-slate-200 p-4">
-        <Flex align="center" gap={6} className="mb-3">
-          <HistoryOutlined className="text-slate-500" />
-          <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
-            Nhật ký tiến độ tuần ({(project.progressHistory ?? []).length})
-          </Text>
-        </Flex>
+      <ProjectHistorySection project={project} />
 
-        <div className="space-y-2 max-h-[240px] overflow-y-auto [scrollbar-width:thin] pr-1">
-          {(project.progressHistory ?? []).length === 0 ? (
-            <div className="py-6 text-center text-xs text-slate-400">
-              Chưa có lịch sử cập nhật tiến độ
-            </div>
-          ) : (
-            (project.progressHistory ?? []).map((hist) => (
-              <div
-                key={hist.id}
-                className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors"
-              >
-                <Flex justify="space-between" align="center" gap={8} className="mb-1">
-                  <Text strong className="text-slate-900 text-xs">
-                    {hist.updatedBy}
-                  </Text>
-                  <Text className="text-slate-400 font-mono text-[11px]">
-                    {hist.updatedAt}
-                  </Text>
-                </Flex>
-                <div className="text-xs font-mono font-bold text-[#DC2626] mb-1">
-                  {hist.oldProgress}% → {hist.newProgress}%
-                </div>
-                <Text className="block text-xs text-slate-600 leading-relaxed">
-                  {hist.note}
-                </Text>
-                {hist.actualEndDateRecorded && (
-                  <div className="mt-1.5">
-                    <Tag intent="brand" scale="sm">
-                      Hoàn thành thực tế: {hist.actualEndDateRecorded}
-                    </Tag>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
-      {/* Khối Tài liệu đính kèm dự án */}
-      <section className="rounded-xl border border-slate-200 p-4">
-        <Flex align="center" justify="space-between" className="mb-3">
-          <Flex align="center" gap={6}>
-            <FileTextOutlined className="text-slate-500" />
-            <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
-              Tài liệu đính kèm ({(project.documents ?? []).length})
-            </Text>
-          </Flex>
-          <span className="text-[10.5px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-            Hồ sơ pháp lý & kỹ thuật
-          </span>
-        </Flex>
-
-        {(project.documents ?? []).length === 0 ? (
-          <div className="py-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-lg bg-slate-50/40">
-            Chưa có tài liệu đính kèm cho dự án này
-          </div>
-        ) : (
-          <div className="space-y-1.5 max-h-[220px] overflow-y-auto [scrollbar-width:thin] pr-1">
-            {(project.documents ?? []).map((doc, idx) => (
-              <div
-                key={doc.id || idx}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="flex h-7 w-7 items-center justify-center rounded bg-red-50 text-[#DC2626] border border-red-200 shrink-0">
-                    <FileTextOutlined className="text-xs" />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-slate-800 truncate" title={doc.fileName || doc.name}>
-                      {doc.fileName || doc.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                      {doc.fileSize && <span>{doc.fileSize}</span>}
-                      {doc.uploadedAt && <span>· Ngày tải: {doc.uploadedAt}</span>}
-                    </div>
-                  </div>
-                </div>
-                <span className="text-xs font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0 ml-2">
-                  <PaperClipOutlined className="mr-1 text-[10px]" />
-                  Đính kèm
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <ProjectDocumentsSection project={project} />
       </div>
 
       {/* Footer thao tác của màn hình Chi tiết (Cố định ở đáy, nút chức năng đứng TRƯỚC, Đóng đứng SAU) */}
@@ -296,5 +206,118 @@ export default function ProjectViewTab({
         )}
       </footer>
     </div>
+  );
+}
+
+/** Khối nhật ký cập nhật tiến độ tuần (audit trail) */
+export function ProjectHistorySection({ project }: { project: ProjectItem }) {
+  return (
+    <section className="rounded-xl border border-slate-200 p-4">
+      <Flex align="center" gap={6} className="mb-3">
+        <HistoryOutlined className="text-slate-500" />
+        <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
+          Nhật ký tiến độ tuần ({(project.progressHistory ?? []).length})
+        </Text>
+      </Flex>
+
+      <div className="space-y-2 max-h-[240px] overflow-y-auto [scrollbar-width:thin] pr-1">
+        {(project.progressHistory ?? []).length === 0 ? (
+          <div className="py-6 text-center text-xs text-slate-400">
+            Chưa có lịch sử cập nhật tiến độ
+          </div>
+        ) : (
+          (project.progressHistory ?? []).map((hist) => (
+            <div
+              key={hist.id}
+              className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors"
+            >
+              <Flex justify="space-between" align="center" gap={8} className="mb-1">
+                <Text strong className="text-slate-900 text-xs">
+                  {hist.updatedBy}
+                </Text>
+                <Text className="text-slate-400 font-mono text-[11px]">
+                  {hist.updatedAt}
+                </Text>
+              </Flex>
+              <div className="text-xs font-mono font-bold text-[#DC2626] mb-1">
+                {hist.oldProgress}% → {hist.newProgress}%
+              </div>
+              <Text className="block text-xs text-slate-600 leading-relaxed">
+                {hist.note}
+              </Text>
+              {hist.actualEndDateRecorded && (
+                <div className="mt-1.5">
+                  <Tag intent="brand" scale="sm">
+                    Hoàn thành thực tế: {hist.actualEndDateRecorded}
+                  </Tag>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Khối tài liệu đính kèm của dự án.
+ * `fill`: giãn hết chiều cao khung chứa, danh sách cuộn bên trong (thay cho giới hạn chiều cao cố định).
+ */
+export function ProjectDocumentsSection({ project, fill = false }: { project: ProjectItem; fill?: boolean }) {
+  const documents = getProjectDocuments(project);
+  return (
+    <section className={cn("rounded-xl border border-slate-200 p-4", fill && "flex h-full flex-col")}>
+      <Flex align="center" justify="space-between" className="mb-3">
+        <Flex align="center" gap={6}>
+          <FileTextOutlined className="text-slate-500" />
+          <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
+            Tài liệu đính kèm ({documents.length})
+          </Text>
+        </Flex>
+        <span className="text-[10.5px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+          Hồ sơ pháp lý & kỹ thuật
+        </span>
+      </Flex>
+
+      {documents.length === 0 ? (
+        <div className="py-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-lg bg-slate-50/40">
+          Chưa có tài liệu đính kèm cho dự án này
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "space-y-1.5 overflow-y-auto [scrollbar-width:thin] pr-1",
+            fill ? "min-h-0 flex-1" : "max-h-[220px]",
+          )}
+        >
+          {documents.map((doc, idx) => (
+            <div
+              key={doc.id || idx}
+              className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="flex h-7 w-7 items-center justify-center rounded bg-red-50 text-[#DC2626] border border-red-200 shrink-0">
+                  <FileTextOutlined className="text-xs" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-slate-800 truncate" title={doc.fileName || doc.name}>
+                    {doc.fileName || doc.name}
+                  </div>
+                  <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                    {doc.fileSize && <span>{doc.fileSize}</span>}
+                    {doc.uploadedAt && <span>· Ngày tải: {doc.uploadedAt}</span>}
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0 ml-2">
+                <PaperClipOutlined className="mr-1 text-[10px]" />
+                Đính kèm
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

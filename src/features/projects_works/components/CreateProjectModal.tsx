@@ -509,7 +509,7 @@ export default function CreateProjectModal({
 
               <Flex vertical gap={4}>
                 <Text variant="label" className="text-[11px] font-semibold text-slate-700">
-                  Ngày kết thúc kế hoạch <span className="text-rose-500">*</span>
+                  Ngày kết thúc <span className="text-rose-500">*</span>
                 </Text>
                 <Input
                   type="date"

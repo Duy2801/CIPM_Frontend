@@ -25,10 +25,14 @@ const EMPTY_DATASET: FinanceDataset = {
   settlements: [],
 };
 
-export function useFinanceSettlement() {
+/**
+ * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
+ * danh sách dự án trong các hộp tạo mới cũng chỉ còn dự án này.
+ */
+export function useFinanceSettlement(fixedProjectId?: string) {
   const { user } = useAuth();
   const [data, setData] = useState<FinanceDataset>(EMPTY_DATASET);
-  const [filters, setFilters] = useState<FinanceFilters>({ year: 2026, projectId: "ALL" });
+  const [filters, setFilters] = useState<FinanceFilters>({ year: 2026, projectId: fixedProjectId ?? "ALL" });
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -211,8 +215,20 @@ export function useFinanceSettlement() {
     );
   }, [runMutation, user]);
 
+  const scopedData = useMemo(
+    () =>
+      fixedProjectId
+        ? {
+            ...data,
+            projects: data.projects.filter((p) => p.id === fixedProjectId),
+            contracts: data.contracts.filter((c) => c.projectId === fixedProjectId),
+          }
+        : data,
+    [data, fixedProjectId],
+  );
+
   return {
-    data,
+    data: scopedData,
     filters,
     setFilters,
     loading,

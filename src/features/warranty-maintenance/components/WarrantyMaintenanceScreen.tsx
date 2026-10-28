@@ -25,10 +25,10 @@ type IncidentModalState = { mode: "closed" } | { mode: "report"; warrantyId?: st
 const formatBillions = (value: number) =>
   `${formatMoneyString(value)} VNĐ`;
 
-export default function WarrantyMaintenanceScreen() {
+export default function WarrantyMaintenanceScreen({ projectId }: { projectId?: string } = {}) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const controller = useWarrantyMaintenance();
+  const controller = useWarrantyMaintenance(projectId);
 
   const [warrantyFilter, setWarrantyFilter] = useState<WarrantyFilter>("ALL");
   const [modal, setModal] = useState<IncidentModalState>({ mode: "closed" });

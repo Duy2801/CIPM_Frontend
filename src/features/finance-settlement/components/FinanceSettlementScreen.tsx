@@ -27,8 +27,8 @@ type DisbursementModalState =
   | { mode: "create"; prefill?: DisbursementPrefill }
   | { mode: "edit"; disbursement: Disbursement };
 
-export default function FinanceSettlementScreen() {
-  const controller = useFinanceSettlement();
+export default function FinanceSettlementScreen({ projectId }: { projectId?: string } = {}) {
+  const controller = useFinanceSettlement(projectId);
   const { rolePermissions } = controller;
 
   const [activeTab, setActiveTab] = useState<FinanceTabKey | null>(null);

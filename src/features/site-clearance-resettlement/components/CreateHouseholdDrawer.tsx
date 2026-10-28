@@ -42,6 +42,7 @@ import type {
   SpecialStatus,
   StepStatus,
 } from "../types/gpmb.types";
+import { useProjectScope } from "@/components/workspace";
 
 interface CreateHouseholdDrawerProps {
   open: boolean;
@@ -102,6 +103,7 @@ export default function CreateHouseholdDrawer({
   onClose,
   onCreate,
 }: CreateHouseholdDrawerProps) {
+  const scopedProjectId = useProjectScope();
   const [form] = Form.useForm<HouseholdInput>();
   const [submitting, setSubmitting] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -321,6 +323,7 @@ export default function CreateHouseholdDrawer({
               >
                 <Select
                   options={projectOptions}
+                  disabled={Boolean(scopedProjectId)}
                   onChange={(val) => {
                     setSelectedProjectId(val);
                     form.setFieldValue("projectId", val);

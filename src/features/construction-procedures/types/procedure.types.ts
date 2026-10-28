@@ -110,6 +110,9 @@ export interface ProcedureStep {
 
 export interface DepartmentProcedureStatus {
   department?: string;
+  /** Quy trình (trong danh mục Quy trình) đang áp dụng cho phòng ban này trong dự án */
+  procedureId?: string;
+  procedureName?: string;
   isCompletedByLead: boolean;  // Lead đã xác nhận hoàn thành toàn bộ bước của phòng ban
   completedAt?: string;
   completedBy?: string;        // Tên Lead xác nhận

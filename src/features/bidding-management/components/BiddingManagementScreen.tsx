@@ -10,8 +10,8 @@ import BidPackageTab from "./BidPackageTab";
 import BidStepModal from "./BidStepModal";
 import CreatePackageModal from "./CreatePackageModal";
 
-export default function BiddingManagementScreen() {
-  const controller = useBiddingManagement();
+export default function BiddingManagementScreen({ projectId }: { projectId?: string } = {}) {
+  const controller = useBiddingManagement(projectId);
 
   const [filter, setFilter] = useState<PackageFilter>("ALL");
   const [stepTargetId, setStepTargetId] = useState<string>();

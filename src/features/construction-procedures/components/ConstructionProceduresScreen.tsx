@@ -43,6 +43,7 @@ import ProcedureHistoryPanel from "./ProcedureHistoryPanel";
 import ProcedureLibraryTab from "./ProcedureLibraryTab";
 import ProcedureStageProgressChart from "./ProcedureStageProgressChart";
 import { getWorkSteps } from "../utils/procedure-rules";
+import { PROCEDURE_PROJECTS_STORAGE_KEY } from "../utils/project-procedure-storage";
 import ProcedureStepDetailDrawer, { type ProcedureStepInfoPatch } from "./ProcedureStepDetailDrawer";
 import SkipStepModal from "./SkipStepModal";
 import StepConfigModal from "./StepConfigModal";
@@ -50,8 +51,6 @@ import { useAuth } from "@/features/auth";
 import { useProjectStore } from "@/stores/project.store";
 import { canUserDo, getUserEffectivePermissions, hasMatrixPermission } from "@/access-control";
 
-// v6: bỏ quy trình chuẩn 16 bước dựng sẵn → dữ liệu cũ (v5) có 16 bước được xóa
-const PROCEDURE_PROJECTS_STORAGE_KEY = "cipm_procedure_projects_data_v6";
 const PROCEDURE_MAPPINGS_STORAGE_KEY = "cipm_project_procedures_map_v6";
 // Nhật ký chỉnh sửa danh mục quy trình (tab "Quy trình")
 const PROCEDURE_LIBRARY_HISTORY_STORAGE_KEY = "cipm_procedure_library_history";

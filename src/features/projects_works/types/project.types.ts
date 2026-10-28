@@ -113,5 +113,7 @@ export interface ProjectFormData {
   actualProgress?: number;
   plannedProgress?: number;
   note?: string;
+  /** Ghi chú riêng cho nhật ký tiến độ tuần (không ghi đè ghi chú của dự án) */
+  progressNote?: string;
   documents?: ProjectDocument[];
 }

@@ -6,6 +6,7 @@ import { Button, Col, Drawer, Form, Input, MoneyInput, Row, Select, Text } from 
 import { BID_STEPS, PACKAGE_TYPES, SELECTION_METHODS } from "../constants/bidding-steps";
 import { parseMoney } from "@/utils/format-money";
 import type { BidProject, CreatePackageInput, PackageType, SelectionMethod } from "../types/bidding.types";
+import { useProjectScope } from "@/components/workspace";
 
 interface CreatePackageModalProps {
   projects: BidProject[];
@@ -38,6 +39,7 @@ export default function CreatePackageModal({
   onClose,
   onCreate,
 }: CreatePackageModalProps) {
+  const scopedProjectId = useProjectScope();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -143,6 +145,7 @@ export default function CreatePackageModal({
               rules={[{ required: true, message: "Vui lòng chọn dự án." }]}
             >
               <Select
+                disabled={Boolean(scopedProjectId)}
                 placeholder="— Chọn dự án —"
                 showSearch={{ optionFilterProp: "label" }}
                 options={projects.map((project) => ({

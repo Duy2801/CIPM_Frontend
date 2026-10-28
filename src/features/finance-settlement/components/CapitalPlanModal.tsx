@@ -14,6 +14,7 @@ import type {
   FinanceProject,
 } from "../types/finance.types";
 import { formatVndBillions } from "../utils/finance-rules";
+import { useProjectScope } from "@/components/workspace";
 
 interface CapitalPlanModalProps {
   open: boolean;
@@ -54,6 +55,7 @@ export default function CapitalPlanModal({
   onCreate,
   onAdjust,
 }: CapitalPlanModalProps) {
+  const scopedProjectId = useProjectScope();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const isAdjustment = Boolean(adjustingPlan);
@@ -188,7 +190,7 @@ export default function CapitalPlanModal({
                   className="!mb-0"
                 >
                   <Select
-                    disabled={isAdjustment}
+                    disabled={isAdjustment || Boolean(scopedProjectId)}
                     className="text-xs w-full"
                     showSearch
                     optionFilterProp="label"

@@ -11,8 +11,8 @@ import HouseholdDetailDrawer from "./HouseholdDetailDrawer";
 import HouseholdMatrixTab from "./HouseholdMatrixTab";
 import StepUpdateModal from "./StepUpdateModal";
 
-export default function SiteClearanceResettlementScreen() {
-  const controller = useSiteClearance();
+export default function SiteClearanceResettlementScreen({ projectId }: { projectId?: string } = {}) {
+  const controller = useSiteClearance(projectId);
 
   const [detailId, setDetailId] = useState<string>();
   const [detailStep, setDetailStep] = useState<number>();

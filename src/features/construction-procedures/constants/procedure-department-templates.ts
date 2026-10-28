@@ -672,6 +672,24 @@ export function getDepartmentStaff(deptName?: string) {
 }
 
 /**
+ * Tổ trưởng (người duyệt cấp tổ) của phòng ban, theo `leaderId` của tổ trong cơ cấu nhân sự
+ */
+export function getDepartmentLead(deptName?: string) {
+  if (!deptName) return undefined;
+  let allTeams = PERSONNEL_MOCK_DATA.teams;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage.getItem("cipm_personnel_test_flow_v9") || window.localStorage.getItem("cipm_personnel_test_flow_v8");
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed?.teams) && parsed.teams.length > 0) allTeams = parsed.teams;
+    } catch {}
+  }
+  const staff = getDepartmentStaff(deptName);
+  const team = allTeams.find((t) => staff.some((s) => s.teamId === t.id));
+  return staff.find((s) => s.id === team?.leaderId);
+}
+
+/**
  * Chuẩn hóa mã phòng ban để đối sánh chính xác:
  * - GSKT: Tổ Giám sát – Kỹ thuật
  * - KHKT: Tổ Kế hoạch – Kỹ thuật

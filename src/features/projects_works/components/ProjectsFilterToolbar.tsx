@@ -3,29 +3,18 @@
 import React from "react";
 import { App } from "antd";
 import { DownloadOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Flex, Input, Select } from "@/components/ui";
+import { Button, Card, Input, Select } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import { useAuthStore } from "@/stores/auth.store";
 import { getProjectExportScope } from "../utils/project-permissions";
-import {
-  PROJECT_STATUS_TABS,
-  WORK_TYPE_OPTIONS,
-} from "../constants/project-enums";
-import type {
-  ProjectItem,
-  ProjectStatusFilter,
-  ProjectWorkType,
-} from "../types/project.types";
+import { WORK_TYPE_OPTIONS } from "../constants/project-enums";
+import type { ProjectItem, ProjectWorkType } from "../types/project.types";
 
 interface ProjectsFilterToolbarProps {
-  activeTab: ProjectStatusFilter;
-  onTabChange: (tab: ProjectStatusFilter) => void;
   searchTerm: string;
   onSearchChange: (val: string) => void;
   selectedType: ProjectWorkType | "ALL";
   onTypeChange: (val: ProjectWorkType | "ALL") => void;
-  sortBy: string;
-  onSortChange: (val: string) => void;
   statusFilter?: "ALL" | "active" | "closed";
   onStatusFilterChange?: (val: "ALL" | "active" | "closed") => void;
   totalFilteredCount: number;
@@ -35,14 +24,10 @@ interface ProjectsFilterToolbarProps {
 }
 
 export default function ProjectsFilterToolbar({
-  activeTab,
-  onTabChange,
   searchTerm,
   onSearchChange,
   selectedType,
   onTypeChange,
-  sortBy,
-  onSortChange,
   statusFilter = "ALL",
   onStatusFilterChange,
   totalFilteredCount,
@@ -136,62 +121,8 @@ export default function ProjectsFilterToolbar({
       rounded="lg"
       className="w-full border border-slate-200/80 shadow-xs select-none"
     >
-      <div className="w-full p-3 sm:p-3.5 flex flex-col gap-3">
-        {/* HÀNG 1: Danh sách Tabs giai đoạn (trái) & Nút Xuất CSV, Thêm dự án (phải) */}
-        <div className="w-full flex items-center justify-between gap-3">
-          {/* Tabs giai đoạn cuộn ngang mượt mà */}
-          <div className="overflow-x-auto [scrollbar-width:none] min-w-0 flex-1">
-            <Flex align="center" gap={8} className="min-w-max py-0.5">
-              {PROJECT_STATUS_TABS.map((tab) => {
-                const isActive = activeTab === tab.key;
-                return (
-                  <Button
-                    key={tab.key}
-                    scale="compact"
-                    intent={isActive ? "primary" : "default"}
-                    className={
-                      isActive
-                        ? "h-8 rounded-lg border-[#DC2626] bg-[#DC2626] px-3.5 text-white shadow-xs font-semibold text-xs shrink-0"
-                        : "h-8 rounded-lg border border-slate-200 bg-white px-3.5 text-slate-700 shadow-xs hover:border-[#DC2626]/60 hover:text-[#DC2626] text-xs shrink-0 font-medium"
-                    }
-                    onClick={() => onTabChange(tab.key)}
-                  >
-                    {tab.label}
-                  </Button>
-                );
-              })}
-            </Flex>
-          </div>
-
-          {/* Các nút hành động chính */}
-          <div className="flex items-center gap-2 shrink-0">
-            {exportScope.canExport && (
-              <Button
-                scale="compact"
-                intent="default"
-                className="h-8 rounded-lg px-3 text-slate-700 hover:border-[#DC2626]/50 hover:text-[#DC2626] text-xs font-medium"
-                icon={<DownloadOutlined />}
-                onClick={handleExportCSV}
-              >
-                Xuất CSV
-              </Button>
-            )}
-
-            {canCreateProject && (
-              <Button
-                intent="primary"
-                scale="compact"
-                className="h-8 rounded-lg border-[#DC2626] bg-[#DC2626] px-3.5 font-semibold text-white shadow-xs hover:bg-[#B91C1C] text-xs"
-                icon={<PlusOutlined />}
-                onClick={onOpenCreateModal}
-              >
-                Thêm dự án
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* HÀNG 2: Thanh tìm kiếm & Toàn bộ bộ lọc - NẰM GỌN TRÊN 1 HÀNG NGANG */}
+      <div className="w-full p-3 sm:p-3.5">
+        {/* Thanh tìm kiếm, bộ lọc & nút hành động - NẰM GỌN TRÊN 1 HÀNG NGANG */}
         <div className="w-full flex items-center gap-2.5">
           {/* Ô tìm kiếm co giãn linh hoạt */}
           <div className="flex-1 min-w-[200px]">
@@ -234,32 +165,31 @@ export default function ProjectsFilterToolbar({
             </div>
           )}
 
-          {/* Sắp xếp đa chiều */}
-          <div className="w-[195px] shrink-0">
-            <Select
-              value={sortBy}
-              onChange={(val) => onSortChange(val)}
-              className="h-8.5 w-full text-xs"
-              options={[
-                { value: "latest", label: "Mới nhất (Ưu tiên đầu danh sách)" },
-                { value: "code_asc", label: "Mã dự án (A-Z)" },
-                { value: "code_desc", label: "Mã dự án (Z-A)" },
-                { value: "name_asc", label: "Tên dự án (A-Z)" },
-                { value: "name_desc", label: "Tên dự án (Z-A)" },
-                { value: "investment_desc", label: "Tổng vốn: Cao → Thấp" },
-                { value: "investment_asc", label: "Tổng vốn: Thấp → Cao" },
-                { value: "progress_desc", label: "Tiến độ: Cao nhất" },
-                { value: "progress_asc", label: "Tiến độ: Chậm nhất" },
-                { value: "stage_asc", label: "Giai đoạn (Theo quy trình)" },
-                { value: "stage_desc", label: "Giai đoạn (Ngược quy trình)" },
-                { value: "manager_asc", label: "Chủ nhiệm (A-Z)" },
-                { value: "manager_desc", label: "Chủ nhiệm (Z-A)" },
-                { value: "startDate_asc", label: "Bắt đầu: Cũ nhất" },
-                { value: "startDate_desc", label: "Bắt đầu: Mới nhất" },
-                { value: "endDate_asc", label: "Hoàn thành: Sớm nhất" },
-                { value: "endDate_desc", label: "Hoàn thành: Muộn nhất" },
-              ]}
-            />
+          {/* Các nút hành động chính */}
+          <div className="flex items-center gap-2 shrink-0">
+            {exportScope.canExport && (
+              <Button
+                scale="compact"
+                intent="default"
+                className="h-8 rounded-lg px-3 text-slate-700 hover:border-[#DC2626]/50 hover:text-[#DC2626] text-xs font-medium"
+                icon={<DownloadOutlined />}
+                onClick={handleExportCSV}
+              >
+                Xuất CSV
+              </Button>
+            )}
+
+            {canCreateProject && (
+              <Button
+                intent="primary"
+                scale="compact"
+                className="h-8 rounded-lg border-[#DC2626] bg-[#DC2626] px-3.5 font-semibold text-white shadow-xs hover:bg-[#B91C1C] text-xs"
+                icon={<PlusOutlined />}
+                onClick={onOpenCreateModal}
+              >
+                Thêm dự án
+              </Button>
+            )}
           </div>
         </div>
       </div>

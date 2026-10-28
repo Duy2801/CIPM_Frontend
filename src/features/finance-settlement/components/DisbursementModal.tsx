@@ -20,6 +20,7 @@ import type {
   TreasuryAccount,
 } from "../types/finance.types";
 import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
+import { useProjectScope } from "@/components/workspace";
 
 interface DisbursementModalProps {
   open: boolean;
@@ -79,6 +80,7 @@ export default function DisbursementModal({
   onCreate,
   onUpdate,
 }: DisbursementModalProps) {
+  const scopedProjectId = useProjectScope();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const isEditing = Boolean(editingDisbursement);
@@ -113,6 +115,7 @@ export default function DisbursementModal({
       return;
     }
     form.resetFields();
+    if (scopedProjectId) form.setFieldsValue({ projectId: scopedProjectId });
     if (prefill) {
       const contract = contracts.find((item) => item.id === prefill.contractId);
       form.setFieldsValue({
@@ -121,7 +124,7 @@ export default function DisbursementModal({
         payee: contract?.contractor,
       });
     }
-  }, [contracts, editingDisbursement, form, prefill]);
+  }, [contracts, editingDisbursement, form, prefill, scopedProjectId]);
 
   const submit = async (values: FormValues) => {
     const payload: DisbursementInput = {
@@ -228,6 +231,7 @@ export default function DisbursementModal({
                 rules={[{ required: true, message: "Vui lòng chọn dự án." }]}
               >
                 <Select
+                  disabled={Boolean(scopedProjectId)}
                   showSearch={{ optionFilterProp: "label" }}
                   placeholder="Chọn dự án"
                   className="text-xs"

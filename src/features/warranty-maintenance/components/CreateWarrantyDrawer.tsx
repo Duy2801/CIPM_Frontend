@@ -15,6 +15,7 @@ import { FINANCE_MOCK_DATA } from "@/features/finance-settlement/constants/finan
 import { todayIso } from "@/utils/date";
 import { parseMoney } from "@/utils/format-money";
 import type { BondStatus, WarrantyCreateInput, WarrantyProject, WarrantyRecord } from "../types/warranty.types";
+import { useProjectScope } from "@/components/workspace";
 
 interface CreateWarrantyDrawerProps {
   open: boolean;
@@ -113,10 +114,15 @@ export default function CreateWarrantyDrawer({
   onClose,
   onSubmit,
 }: CreateWarrantyDrawerProps) {
+  const scopedProjectId = useProjectScope();
+  // Mở trong trang chi tiết dự án: chỉ chọn hợp đồng của dự án đó
+  const contractChoices = scopedProjectId
+    ? M4_CONTRACTS.filter((c) => c.projectId === scopedProjectId)
+    : M4_CONTRACTS;
   const [selectedContractId, setSelectedContractId] = useState<string>("CTR-001");
   const [contractCode, setContractCode] = useState<string>("12/2026/HĐ-XL");
   const [contractor, setContractor] = useState<string>("Công ty CP Xây dựng Kiên Giang");
-  const [projectId, setProjectId] = useState<string>("PRJ-101");
+  const [projectId, setProjectId] = useState<string>(scopedProjectId ?? "PRJ-101");
   const [workName, setWorkName] = useState<string>("");
   const [acceptanceDate, setAcceptanceDate] = useState<string>(today);
   const [months, setMonths] = useState<number>(24);
@@ -141,15 +147,23 @@ export default function CreateWarrantyDrawer({
       setSelectedContractId("CTR-001");
       setContractCode("12/2026/HĐ-XL");
       setContractor("Công ty CP Xây dựng Kiên Giang");
-      setProjectId("PRJ-101");
+      setProjectId(scopedProjectId ?? "PRJ-101");
       setWorkName("");
       setAcceptanceDate(today);
       setMonths(24);
       setBondValue(3.625);
       setBank("Vietcombank – CN Kiên Giang");
       setBondStatus("HOLDING");
+      if (scopedProjectId) {
+        // Hợp đồng đầu tiên của dự án; dự án chưa có hợp đồng thì nhập thủ công
+        const first = M4_CONTRACTS.find((c) => c.projectId === scopedProjectId);
+        setSelectedContractId(first ? first.id : "CUSTOM");
+        setContractCode(first?.code ?? "");
+        setContractor(first?.contractor ?? "");
+        setBondValue(first?.suggestedBond ?? 0);
+      }
     }
-  }, [editingWarranty, open, today]);
+  }, [editingWarranty, open, today, scopedProjectId]);
 
   // Xử lý khi chọn hợp đồng từ M4
   const handleSelectContract = (contractId: string) => {
@@ -162,7 +176,7 @@ export default function CreateWarrantyDrawer({
       setContractCode(contract.code);
       setContractor(contract.contractor);
       setBondValue(contract.suggestedBond);
-      if (contract.projectId) {
+      if (contract.projectId && !scopedProjectId) {
         setProjectId(contract.projectId);
       }
       if (!workName) {
@@ -259,7 +273,7 @@ export default function CreateWarrantyDrawer({
             onChange={handleSelectContract}
             className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
             options={[
-              ...M4_CONTRACTS.map((c) => ({
+              ...contractChoices.map((c) => ({
                 value: c.id,
                 label: `${c.code} · ${c.contractor} (Giá trị HĐ: ${c.value} tỷ · Đề xuất BL: ${c.suggestedBond} tỷ)`,
               })),
@@ -299,6 +313,7 @@ export default function CreateWarrantyDrawer({
             </label>
             <Select
               aria-label="Chọn dự án"
+              disabled={Boolean(scopedProjectId)}
               value={projectId}
               onChange={setProjectId}
               className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"

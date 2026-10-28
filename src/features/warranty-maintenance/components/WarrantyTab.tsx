@@ -33,6 +33,7 @@ import { WARRANTY_FILTER_LABELS } from "../constants/warranty-labels";
 import type { WarrantyController } from "../hooks/useWarrantyMaintenance";
 import type { WarrantyFilter, WarrantyRecord } from "../types/warranty.types";
 import { getBondReturnBlocker, getCountdown, getOpenIncidents, matchesWarrantyFilter } from "../utils/warranty-rules";
+import { useProjectScope } from "@/components/workspace";
 
 interface WarrantyTabProps {
   controller: WarrantyController;
@@ -59,6 +60,7 @@ export default function WarrantyTab({
   onOpenCreate,
   onOpenEdit,
 }: WarrantyTabProps) {
+  const scopedProjectId = useProjectScope();
   const { message } = App.useApp();
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -211,9 +213,11 @@ export default function WarrantyTab({
         const project = data.projects.find((p) => p.id === row.projectId);
         return (
           <div className="py-0.5">
-            <div className="text-xs text-slate-500 line-clamp-1" title={project?.name}>
-              {project?.name}
-            </div>
+            {!scopedProjectId && (
+              <div className="text-xs text-slate-500 line-clamp-1" title={project?.name}>
+                {project?.name}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => onOpenDetail(row)}

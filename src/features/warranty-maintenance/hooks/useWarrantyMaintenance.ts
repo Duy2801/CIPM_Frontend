@@ -12,11 +12,15 @@ import { buildWarrantyTasks } from "../utils/warranty-workspace";
 
 const EMPTY_DATASET: WarrantyDataset = { projects: [], warranties: [], incidents: [] };
 
-export function useWarrantyMaintenance() {
+/**
+ * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
+ * danh sách dự án trong các hộp tạo mới cũng chỉ còn dự án này.
+ */
+export function useWarrantyMaintenance(fixedProjectId?: string) {
   const { user } = useAuth();
   const [data, setData] = useState<WarrantyDataset>(EMPTY_DATASET);
   const [loading, setLoading] = useState(true);
-  const [projectId, setProjectId] = useState("ALL");
+  const [projectId, setProjectId] = useState(fixedProjectId ?? "ALL");
   const today = todayIso();
 
   const permissions = useMemo(() => getWarrantyRolePermissions(user), [user]);
@@ -67,9 +71,14 @@ export function useWarrantyMaintenance() {
 
   const workNameOf = (warrantyId: string) => data.warranties.find((item) => item.id === warrantyId)?.workName ?? "";
 
+  const scopedData = useMemo(
+    () => (fixedProjectId ? { ...data, projects: data.projects.filter((p) => p.id === fixedProjectId) } : data),
+    [data, fixedProjectId],
+  );
+
   return {
     currentUser: user,
-    data,
+    data: scopedData,
     loading,
     today,
     projectId,

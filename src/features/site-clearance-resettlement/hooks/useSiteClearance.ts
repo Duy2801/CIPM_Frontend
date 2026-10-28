@@ -12,11 +12,15 @@ import { buildGpmbTasks } from "../utils/gpmb-workspace";
 
 const EMPTY_DATASET: GpmbDataset = { projects: [], households: [] };
 
-export function useSiteClearance() {
+/**
+ * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
+ * danh sách dự án trong các hộp tạo mới cũng chỉ còn dự án này.
+ */
+export function useSiteClearance(fixedProjectId?: string) {
   const { user } = useAuth();
   const [data, setData] = useState<GpmbDataset>(EMPTY_DATASET);
   const [loading, setLoading] = useState(true);
-  const [projectId, setProjectId] = useState("ALL");
+  const [projectId, setProjectId] = useState(fixedProjectId ?? "ALL");
   const today = todayIso();
 
   const permissions = useMemo(() => getGpmbRolePermissions(user), [user]);
@@ -60,8 +64,13 @@ export function useSiteClearance() {
 
   const findName = (id: string) => data.households.find((item) => item.id === id)?.ownerName ?? "";
 
+  const scopedData = useMemo(
+    () => (fixedProjectId ? { ...data, projects: data.projects.filter((p) => p.id === fixedProjectId) } : data),
+    [data, fixedProjectId],
+  );
+
   return {
-    data,
+    data: scopedData,
     loading,
     today,
     projectId,

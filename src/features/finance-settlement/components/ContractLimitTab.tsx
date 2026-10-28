@@ -23,6 +23,7 @@ import { FilterChip, SectionIntro } from "@/components/workspace";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
 import type { DisbursementPrefill } from "../types/finance.types";
 import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
+import { useProjectScope } from "@/components/workspace";
 
 interface ContractLimitTabProps {
   controller: FinanceSettlementController;
@@ -35,6 +36,7 @@ export default function ContractLimitTab({
   controller,
   onCreateDisbursementForContract,
 }: ContractLimitTabProps) {
+  const scopedProjectId = useProjectScope();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ContractFilter>("ALL");
   const { rolePermissions, data, filters } = controller;
@@ -67,15 +69,17 @@ export default function ContractLimitTab({
 
   const columns: ColumnsType<(typeof rows)[number]> = [
     {
-      title: "Hợp đồng / Dự án",
+      title: scopedProjectId ? "Hợp đồng" : "Hợp đồng / Dự án",
       key: "contract",
       width: 260,
       render: (_, row) => (
         <section className="py-0.5">
           <Text className="block text-xs font-bold text-[#DC2626]">{row.code}</Text>
-          <Text className="mt-0.5 block line-clamp-2 text-xs font-semibold leading-5 text-[#102A43]">
-            {row.project?.name}
-          </Text>
+          {!scopedProjectId && (
+            <Text className="mt-0.5 block line-clamp-2 text-xs font-semibold leading-5 text-[#102A43]">
+              {row.project?.name}
+            </Text>
+          )}
         </section>
       ),
     },
@@ -197,7 +201,7 @@ export default function ContractLimitTab({
               allowClear
               intent="clean"
               prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="Tìm số hợp đồng, nhà thầu, dự án..."
+              placeholder={scopedProjectId ? "Tìm số hợp đồng, nhà thầu..." : "Tìm số hợp đồng, nhà thầu, dự án..."}
               className="w-full sm:w-80"
               value={search}
               onChange={(event) => setSearch(event.target.value)}

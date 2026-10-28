@@ -7,14 +7,12 @@ import { useProjectStore } from "@/stores/project.store";
 import type {
   ProjectFormData,
   ProjectItem,
-  ProjectStage,
-  ProjectStatusFilter,
   ProjectWorkType,
 } from "../types/project.types";
 import { useAuth } from "@/features/auth";
 import ProjectsFilterToolbar from "./ProjectsFilterToolbar";
 import ProjectsTable from "./ProjectsTable";
-import ProjectDetailModal, { type ProjectDetailTab } from "./ProjectDetailModal";
+import ProjectDetailPage from "./ProjectDetailPage";
 import CreateProjectModal from "./CreateProjectModal";
 import ProjectActionConfirmModal, { type ProjectActionType } from "./ProjectActionConfirmModal";
 import { canUserDo } from "@/access-control";
@@ -24,7 +22,6 @@ export default function ProjectsWorksScreen() {
   const { user } = useAuth();
   const projects = useProjectStore((s) => s.projects);
   const setProjects = useProjectStore((s) => s.setProjects);
-  const [activeTab, setActiveTab] = useState<ProjectStatusFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedType, setSelectedType] = useState<ProjectWorkType | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "active" | "closed">("ALL");
@@ -32,9 +29,16 @@ export default function ProjectsWorksScreen() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 10;
 
-  // Quản lý Drawer xem chi tiết và cập nhật inline (tiến độ tuần / thông tin dự án)
+  // Trang con xem chi tiết và cập nhật inline (tiến độ tuần / thông tin dự án)
   const [detailProjectId, setDetailProjectId] = useState<string | null>(null);
-  const [detailMode, setDetailMode] = useState<ProjectDetailTab>("view");
+
+  const openDetail = (projectId: string) => {
+    setDetailProjectId(projectId);
+  };
+
+  const closeDetail = () => {
+    setDetailProjectId(null);
+  };
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
 
   // Quản lý Modal xác nhận hành động căn giữa khung trắng (Quy tắc 5, Đóng, Xóa, Mở lại)
@@ -65,22 +69,17 @@ export default function ProjectsWorksScreen() {
   const filteredProjects = useMemo(() => {
     let result = [...projects];
 
-    // 1. Phân tab giai đoạn
-    if (activeTab !== "ALL") {
-      result = result.filter((p) => p.currentStage === activeTab);
-    }
-
-    // 2. Lọc trạng thái vận hành (Quy tắc 5: Đang hoạt động / Đã đóng)
+    // 1. Lọc trạng thái vận hành (Quy tắc 5: Đang hoạt động / Đã đóng)
     if (statusFilter !== "ALL") {
       result = result.filter((p) => p.status === statusFilter);
     }
 
-    // 3. Lọc loại công trình
+    // 2. Lọc loại công trình
     if (selectedType !== "ALL") {
       result = result.filter((p) => p.type === selectedType);
     }
 
-    // 4. Tìm kiếm full-text
+    // 3. Tìm kiếm full-text
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase().trim();
       result = result.filter(
@@ -105,7 +104,7 @@ const STAGE_ORDER: Record<string, number> = {
   COMPLETED: 8,
 };
 
-    // 5. Sắp xếp đa chiều
+    // 4. Sắp xếp đa chiều
     result.sort((a, b) => {
       switch (sortBy) {
         case "latest":
@@ -148,7 +147,7 @@ const STAGE_ORDER: Record<string, number> = {
     });
 
     return result;
-  }, [projects, activeTab, statusFilter, selectedType, searchTerm, sortBy]);
+  }, [projects, statusFilter, selectedType, searchTerm, sortBy]);
 
   // Phân trang
   const total = filteredProjects.length;
@@ -157,12 +156,7 @@ const STAGE_ORDER: Record<string, number> = {
     return filteredProjects.slice(start, start + pageSize);
   }, [filteredProjects, currentPage, pageSize]);
 
-  // Reset trang về 1 khi đổi tab hoặc bộ lọc
-  const handleTabChange = (tab: ProjectStatusFilter) => {
-    setActiveTab(tab);
-    setCurrentPage(1);
-  };
-
+  // Reset trang về 1 khi đổi bộ lọc
   const handleSearchChange = (term: string) => {
     setSearchTerm(term);
     setCurrentPage(1);
@@ -181,43 +175,6 @@ const STAGE_ORDER: Record<string, number> = {
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
     setCurrentPage(1);
-  };
-
-  // Cập nhật tiến độ tuần & giai đoạn (Quy tắc 4, 4.2.3 & Quy tắc 6)
-  const handleSaveProgress = (
-    projectId: string,
-    newProgress: number,
-    note: string,
-    actualEndDate?: string,
-    newStage?: ProjectStage,
-  ) => {
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id !== projectId) return p;
-
-        const stageToSet = newStage || (newProgress === 100 ? "COMPLETED" : p.currentStage);
-
-        const newHistoryRecord = {
-          id: `HIS-${Date.now()}`,
-          updatedAt: new Date().toISOString().slice(0, 10),
-          updatedBy: "Kỹ sư Giám sát (Tổ KT)",
-          oldProgress: p.actualProgress,
-          newProgress,
-          note,
-          actualEndDateRecorded: actualEndDate,
-          stageRecorded: stageToSet,
-        };
-
-        return {
-          ...p,
-          actualProgress: newProgress,
-          // QUY TẮC 6: Lưu ngày hoàn thành thực tế khi đạt 100%
-          actualEndDate: newProgress === 100 ? (actualEndDate || p.actualEndDate) : p.actualEndDate,
-          currentStage: stageToSet,
-          progressHistory: [newHistoryRecord, ...p.progressHistory],
-        };
-      })
-    );
   };
 
   // Tạo mới dự án
@@ -263,9 +220,6 @@ const STAGE_ORDER: Record<string, number> = {
     setProjects((prev) => [newProject, ...prev]);
     setSortBy("latest");
     setCurrentPage(1);
-    if (activeTab !== "ALL" && activeTab !== newProject.currentStage) {
-      setActiveTab("ALL");
-    }
     if (statusFilter === "closed") {
       setStatusFilter("ALL");
     }
@@ -285,7 +239,8 @@ const STAGE_ORDER: Record<string, number> = {
           data.plannedProgress !== undefined ? data.plannedProgress : project.plannedProgress;
         const newStage = data.currentStage ?? project.currentStage;
         const hasProgressChanged = newActualProgress !== project.actualProgress;
-        const hasNote = Boolean(data.note?.trim());
+        const historyNote = data.progressNote?.trim() || data.note?.trim();
+        const hasNote = Boolean(historyNote);
 
         const newHistory = [...(project.progressHistory ?? [])];
         if (hasProgressChanged || hasNote) {
@@ -295,7 +250,7 @@ const STAGE_ORDER: Record<string, number> = {
             updatedBy: updaterName,
             oldProgress: project.actualProgress,
             newProgress: newActualProgress,
-            note: data.note?.trim() || "Cập nhật thông tin và tiến độ dự án.",
+            note: historyNote || "Cập nhật thông tin và tiến độ dự án.",
             actualEndDateRecorded:
               newActualProgress === 100
                 ? (data.endDatePlanned || project.actualEndDate)
@@ -343,36 +298,11 @@ const STAGE_ORDER: Record<string, number> = {
     }
 
     // Nếu đã phát sinh tài chính -> Hiển thị cảnh báo Quy tắc 5 (BRD 4.2.4)
-    if (prj.disbursedAmount > 0) {
-      setConfirmAction({
-        open: true,
-        type: "rule5_warning",
-        project: prj,
-      });
-    } else {
-      setConfirmAction({
-        open: true,
-        type: "close_confirm",
-        project: prj,
-      });
-    }
-  };
-
-  // Quy tắc nghiệp vụ 5 (BRD 4.2.4): Không được xóa dự án đã có phát sinh tài chính. Chỉ được chuyển trạng thái "Đóng".
-  const handleDeleteProject = (prj: ProjectItem) => {
-    if (prj.disbursedAmount > 0) {
-      setConfirmAction({
-        open: true,
-        type: "rule5_warning",
-        project: prj,
-      });
-    } else {
-      setConfirmAction({
-        open: true,
-        type: "delete_confirm",
-        project: prj,
-      });
-    }
+    setConfirmAction({
+      open: true,
+      type: prj.disbursedAmount > 0 ? "rule5_warning" : "close_confirm",
+      project: prj,
+    });
   };
 
   // Mở lại dự án đã đóng
@@ -384,12 +314,12 @@ const STAGE_ORDER: Record<string, number> = {
     });
   };
 
-  // Thao tác từ bảng danh sách
+  // Thao tác từ bảng danh sách: đóng dự án đang hoạt động / mở lại dự án đã đóng
   const handleTableProjectAction = (prj: ProjectItem) => {
     if (prj.status === "closed") {
       handleReopenProject(prj);
     } else {
-      handleDeleteProject(prj);
+      handleCloseProject(prj);
     }
   };
 
@@ -406,7 +336,7 @@ const STAGE_ORDER: Record<string, number> = {
     } else if (confirmAction.type === "delete_confirm") {
       setProjects((prev) => prev.filter((p) => p.id !== prj.id));
       if (detailProjectId === prj.id) {
-        setDetailProjectId(null);
+        closeDetail();
       }
       message.success(`Đã xóa thành công dự án ${prj.code} khỏi hệ thống.`);
     } else if (confirmAction.type === "reopen_confirm") {
@@ -421,57 +351,46 @@ const STAGE_ORDER: Record<string, number> = {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-2.5 select-none">
-      {/* 3. Bộ lọc trạng thái & Thanh công cụ */}
-      <ProjectsFilterToolbar
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        searchTerm={searchTerm}
-        onSearchChange={handleSearchChange}
-        selectedType={selectedType}
-        onTypeChange={handleTypeChange}
-        statusFilter={statusFilter}
-        onStatusFilterChange={handleStatusFilterChange}
-        sortBy={sortBy}
-        onSortChange={handleSortChange}
-        totalFilteredCount={total}
-        filteredProjects={filteredProjects}
-        canCreateProject={canUserDo(user, "m2_projects", "input")}
-        onOpenCreateModal={() => setIsCreateOpen(true)}
-      />
+      {/* Trang con chi tiết dự án (BRD 4.2.2, 4.2.3, 4.2.4) — thay cho bộ lọc + bảng */}
+      {detailProject ? (
+        <ProjectDetailPage
+          key={detailProject.id}
+          project={detailProject}
+          onBack={closeDetail}
+          onUpdateProject={handleUpdateProject}
+        />
+      ) : (
+        <>
+          {/* Bộ lọc trạng thái & Thanh công cụ */}
+          <ProjectsFilterToolbar
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
+            selectedType={selectedType}
+            onTypeChange={handleTypeChange}
+            statusFilter={statusFilter}
+            onStatusFilterChange={handleStatusFilterChange}
+            totalFilteredCount={total}
+            filteredProjects={filteredProjects}
+            canCreateProject={canUserDo(user, "m2_projects", "input")}
+            onOpenCreateModal={() => setIsCreateOpen(true)}
+          />
 
-      {/* 4. Bảng danh mục dự án & Phân trang căn giữa */}
-      <ProjectsTable
-        projects={paginatedProjects}
-        currentPage={currentPage}
-        pageSize={pageSize}
-        total={total}
-        sortBy={sortBy}
-        onSortChange={handleSortChange}
-        onPageChange={(page) => setCurrentPage(page)}
-        onViewDetail={(prj, mode = "view") => {
-          setDetailProjectId(prj.id);
-          setDetailMode(mode);
-        }}
-        onCloseProject={handleTableProjectAction}
-      />
+          {/* Bảng danh mục dự án & Phân trang căn giữa */}
+          <ProjectsTable
+            projects={paginatedProjects}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            total={total}
+            sortBy={sortBy}
+            onSortChange={handleSortChange}
+            onPageChange={(page) => setCurrentPage(page)}
+            onViewDetail={(prj) => openDetail(prj.id)}
+            onCloseProject={handleTableProjectAction}
+          />
+        </>
+      )}
 
-      {/* 5. Khung Chi tiết & Cập nhật inline dự án (BRD 4.2.2, 4.2.3, 4.2.4) */}
-      <ProjectDetailModal
-        project={detailProject}
-        open={Boolean(detailProject)}
-        initialMode={detailMode}
-        onClose={() => {
-          setDetailProjectId(null);
-          setDetailMode("view");
-        }}
-        onSaveProgress={handleSaveProgress}
-        onUpdateProject={handleUpdateProject}
-        onCloseProject={handleCloseProject}
-        onDeleteProject={handleDeleteProject}
-        onReopenProject={handleReopenProject}
-      />
-
-      {/* 6. Modal Tạo mới dự án với mã tự sinh (BRD 4.2.2) */}
+      {/* 4. Modal Tạo mới dự án với mã tự sinh (BRD 4.2.2) */}
       {isCreateOpen && (
         <CreateProjectModal
           key="create-project"
@@ -482,7 +401,7 @@ const STAGE_ORDER: Record<string, number> = {
         />
       )}
 
-      {/* 7. Modal xác nhận hành động căn giữa khung trắng (Quy tắc 5, Đóng, Xóa, Mở lại) */}
+      {/* 5. Modal xác nhận hành động căn giữa khung trắng (Quy tắc 5, Đóng, Xóa, Mở lại) */}
       <ProjectActionConfirmModal
         open={confirmAction.open}
         type={confirmAction.type}

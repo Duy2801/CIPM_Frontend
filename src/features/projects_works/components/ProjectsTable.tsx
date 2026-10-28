@@ -1,19 +1,16 @@
 "use client";
 
 import React from "react";
-import { EyeOutlined, StopOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { EditOutlined, StopOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Pagination, Tag, Text, Tooltip } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import { useAuth } from "@/features/auth";
 import {
-  STAGE_BADGE_CLASSES,
-  STAGE_DISPLAY_NAMES,
   getProjectHealthStatus,
 } from "../constants/project-enums";
 import type { ProjectItem } from "../types/project.types";
 import {
   canDeleteOrCloseProject,
-  canUpdateProjectProgress,
 } from "../utils/project-permissions";
 
 function getProgressTone(status: ReturnType<typeof getProjectHealthStatus>["status"]) {
@@ -186,7 +183,7 @@ interface ProjectsTableProps {
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
-  onViewDetail: (project: ProjectItem, mode?: "view" | "progress" | "edit") => void;
+  onViewDetail: (project: ProjectItem) => void;
   onOpenProgressModal?: (project: ProjectItem) => void;
   onCloseProject?: (project: ProjectItem) => void;
   sortBy?: string;
@@ -220,7 +217,7 @@ export default function ProjectsTable({
             <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-600 uppercase tracking-wider h-[40px]">
               <SortColumnHeader
                 label="DỰ ÁN"
-                widthClass="w-[24%]"
+                widthClass="w-[30%]"
                 paddingClass="px-3.5 py-2"
                 currentSort={sortBy}
                 onSortChange={onSortChange}
@@ -251,18 +248,8 @@ export default function ProjectsTable({
                 defaultSort="desc"
               />
               <SortColumnHeader
-                label="GIAI ĐOẠN"
-                widthClass="w-[11%]"
-                align="center"
-                paddingClass="px-3 py-2"
-                currentSort={sortBy}
-                onSortChange={onSortChange}
-                sortKeys={{ asc: "stage_asc", desc: "stage_desc" }}
-                defaultSort="asc"
-              />
-              <SortColumnHeader
                 label="CHỦ NHIỆM"
-                widthClass="w-[13%]"
+                widthClass="w-[15%]"
                 paddingClass="px-3 py-2"
                 currentSort={sortBy}
                 onSortChange={onSortChange}
@@ -289,7 +276,7 @@ export default function ProjectsTable({
                 sortKeys={{ asc: "endDate_asc", desc: "endDate_desc" }}
                 defaultSort="asc"
               />
-              <th className="w-[8%] px-2 py-2 text-center text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              <th className="w-[11%] px-2 py-2 text-center text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                 THAO TÁC
               </th>
             </tr>
@@ -297,7 +284,7 @@ export default function ProjectsTable({
           <tbody className="divide-y divide-slate-100 text-xs h-full">
             {projects.length === 0 ? (
               <tr>
-                <td colSpan={8} className="h-full text-center text-slate-400 py-16">
+                <td colSpan={7} className="h-full text-center text-slate-400 py-16">
                   <div className="flex flex-col items-center justify-center gap-1.5 py-6">
                     <p className="text-sm font-semibold text-slate-600 m-0">
                       {total === 0
@@ -315,7 +302,6 @@ export default function ProjectsTable({
             ) : (
               <>
                 {projects.map((prj) => {
-                  const progressPerm = canUpdateProjectProgress(user, prj);
                   const isClosed = prj.status === "closed";
 
                   return (
@@ -324,7 +310,7 @@ export default function ProjectsTable({
                       style={{ height: `${100 / pageSize}%` }}
                       className={`transition-colors group cursor-pointer ${isClosed ? "bg-slate-50/60 opacity-85 hover:bg-slate-100/70" : "hover:bg-slate-50/70"
                         }`}
-                      onClick={() => onViewDetail(prj, "view")}
+                      onClick={() => onViewDetail(prj)}
                     >
                       <td className="px-3.5 py-1.5 align-middle">
                         <Flex vertical gap={1} className="min-w-0">
@@ -361,16 +347,6 @@ export default function ProjectsTable({
                         />
                       </td>
 
-                      <td className="px-3 py-1.5 align-middle text-center">
-                        <span
-                          className={`max-w-full truncate text-[11px] px-2 py-0.5 rounded-md font-medium border inline-block ${STAGE_BADGE_CLASSES[prj.currentStage]
-                            }`}
-                          title={STAGE_DISPLAY_NAMES[prj.currentStage]}
-                        >
-                          {STAGE_DISPLAY_NAMES[prj.currentStage]}
-                        </span>
-                      </td>
-
                       <td className="px-3 py-1.5 align-middle">
                         <Text strong className="block truncate text-slate-800 text-xs" title={prj.managerName}>
                           {prj.managerName || "—"}
@@ -390,38 +366,17 @@ export default function ProjectsTable({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Flex align="center" justify="center" gap={4}>
-                          <Tooltip title="Xem chi tiết">
+                          <Tooltip title="Xem & cập nhật dự án">
                             <Button
                               scale="compact"
+                              aria-label="Xem và cập nhật dự án"
                               className="h-7 w-7 p-0 flex items-center justify-center text-slate-600 hover:text-[#DC2626] hover:border-[#DC2626]/50"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onViewDetail(prj, "view");
+                                onViewDetail(prj);
                               }}
                             >
-                              <EyeOutlined className="text-xs" />
-                            </Button>
-                          </Tooltip>
-
-                          <Tooltip
-                            title={
-                              isClosed
-                                ? "Dự án đã đóng"
-                                : !progressPerm.allowed
-                                  ? progressPerm.reason
-                                  : "Cập nhật tiến độ (Quy tắc 4)"
-                            }
-                          >
-                            <Button
-                              scale="compact"
-                              className="h-7 w-7 p-0 flex items-center justify-center text-slate-600 hover:text-[#DC2626] hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent"
-                              disabled={!progressPerm.allowed || isClosed}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onViewDetail(prj, "progress");
-                              }}
-                            >
-                              <ThunderboltOutlined className="text-xs" />
+                              <EditOutlined className="text-xs" />
                             </Button>
                           </Tooltip>
 
@@ -429,8 +384,8 @@ export default function ProjectsTable({
                             <Tooltip
                               title={
                                 isClosed
-                                  ? "Quản lý mở lại dự án (Quy tắc 5)"
-                                  : "Đóng / Xóa dự án (Quy tắc 5)"
+                                  ? "Mở lại dự án"
+                                  : "Đóng dự án (Quy tắc 5)"
                               }
                             >
                               <Button
@@ -454,7 +409,7 @@ export default function ProjectsTable({
                 {/* Giữ đúng chiều cao cố định cho các hàng kể cả khi trang có ít hơn pageSize dự án */}
                 {Array.from({ length: Math.max(0, pageSize - projects.length) }).map((_, idx) => (
                   <tr key={`empty-slot-${idx}`} style={{ height: `${100 / pageSize}%` }} className="border-b border-transparent">
-                    <td colSpan={8} className="px-3.5 py-1.5 pointer-events-none select-none">&nbsp;</td>
+                    <td colSpan={7} className="px-3.5 py-1.5 pointer-events-none select-none">&nbsp;</td>
                   </tr>
                 ))}
               </>
