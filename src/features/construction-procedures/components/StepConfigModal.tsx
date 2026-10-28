@@ -25,6 +25,7 @@ import {
   toast,
 } from "@/components/ui";
 import { App } from "antd";
+import { SelectWithAddOption } from "@/components/workspace";
 import type { ProcedureStep, StepType } from "../types/procedure.types";
 
 interface StepConfigModalProps {
@@ -467,13 +468,20 @@ export default function StepConfigModal({
   // Theo dõi các bước mới thêm trong session này (chưa lưu cấu hình)
   const [newlyAddedStepIds, setNewlyAddedStepIds] = useState<Set<string>>(new Set());
 
-  // Danh mục đơn vị phụ trách có thể bao gồm phòng ban hiện tại
+  // Đơn vị người dùng tự thêm qua ô "Thêm" cuối danh sách chọn
+  const [customUnits, setCustomUnits] = useState<string[]>([]);
+
+  // Danh mục đơn vị phụ trách: danh mục chuẩn + phòng ban hiện tại + đơn vị đang dùng trong các bước + đơn vị tự thêm
   const unitOptions = useMemo(() => {
-    if (departmentTitle && !RESPONSIBLE_UNIT_OPTIONS.some((o) => o.value === departmentTitle)) {
-      return [{ value: departmentTitle, label: departmentTitle }, ...RESPONSIBLE_UNIT_OPTIONS];
-    }
-    return RESPONSIBLE_UNIT_OPTIONS;
-  }, [departmentTitle]);
+    const names = [
+      ...(departmentTitle ? [departmentTitle] : []),
+      ...RESPONSIBLE_UNIT_OPTIONS.map((o) => o.value),
+      ...localSteps.map((st) => st.responsibleUnit.trim()),
+      ...customUnits,
+    ].filter(Boolean);
+    return [...new Set(names)].map((name) => ({ value: name, label: name }));
+  }, [departmentTitle, localSteps, customUnits]);
+  const addUnit = (name: string) => setCustomUnits((prev) => [...prev, name]);
 
   // Tải custom profiles khi mở modal
   useEffect(() => {
@@ -1019,12 +1027,16 @@ export default function StepConfigModal({
           {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
           {!departmentTitle && (
             <div className="w-48 xl:w-56 shrink-0 hidden md:block">
-              <Select
+              <SelectWithAddOption
                 value={inlineChildUnit}
                 onChange={setInlineChildUnit}
+                onAdd={(name) => {
+                  addUnit(name);
+                  setInlineChildUnit(name);
+                }}
                 size="small"
-                className="w-full text-xs"
                 options={unitOptions}
+                addPlaceholder="Đơn vị khác..."
               />
             </div>
           )}
@@ -1128,12 +1140,16 @@ export default function StepConfigModal({
           {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
           {!departmentTitle && (
             <div className="w-48 xl:w-56 shrink-0 hidden md:block">
-              <Select
+              <SelectWithAddOption
                 value={inlineParentUnit}
                 onChange={setInlineParentUnit}
+                onAdd={(name) => {
+                  addUnit(name);
+                  setInlineParentUnit(name);
+                }}
                 size="small"
-                className="w-full text-xs"
                 options={unitOptions}
+                addPlaceholder="Đơn vị khác..."
               />
             </div>
           )}
@@ -1648,21 +1664,24 @@ export default function StepConfigModal({
 
                         {/* Đơn vị thực hiện - chỉ hiện khi không phải modal phòng ban */}
                         {!departmentTitle && (
-                          <div className="w-48 xl:w-56 shrink-0 hidden md:block text-xs text-slate-700 truncate" title={step.responsibleUnit}>
+                          <div className="w-48 xl:w-56 shrink-0 hidden md:block text-xs text-slate-700" title={step.responsibleUnit}>
                             {isEditing ? (
-                              <Input
-                                value={editDraft.responsibleUnit}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => setEditDraft((d) => ({ ...d, responsibleUnit: e.target.value }))}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") saveEditStep();
-                                  if (e.key === "Escape") cancelEditStep();
-                                }}
-                                placeholder="Đơn vị thực hiện"
-                                className="h-7 text-xs bg-white w-full border-red-300 focus:border-[#DC2626]"
-                              />
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <SelectWithAddOption
+                                  value={editDraft.responsibleUnit || undefined}
+                                  onChange={(val) => setEditDraft((d) => ({ ...d, responsibleUnit: val }))}
+                                  onAdd={(name) => {
+                                    addUnit(name);
+                                    setEditDraft((d) => ({ ...d, responsibleUnit: name }));
+                                  }}
+                                  size="small"
+                                  placeholder="Chọn đơn vị thực hiện"
+                                  options={unitOptions}
+                                  addPlaceholder="Đơn vị khác..."
+                                />
+                              </div>
                             ) : step.responsibleUnit ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium max-w-full truncate">
+                              <span className="line-clamp-2 w-fit max-w-full break-words rounded border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium leading-snug text-slate-700">
                                 {step.responsibleUnit}
                               </span>
                             ) : (

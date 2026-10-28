@@ -31,7 +31,7 @@ import {
   type LegalDocumentFormValues,
 } from "../utils/legal-document-form";
 import { LegalFormField, LegalFormSection } from "./LegalFormSection";
-import SelectWithAddOption from "./SelectWithAddOption";
+import { SelectWithAddOption } from "@/components/workspace";
 
 /** Loại văn bản chọn được khi thêm (biểu mẫu chuẩn không thêm ở đây) */
 const CREATABLE_CATEGORIES = CATEGORY_DISPLAY_ORDER.filter((cat) => cat !== "TEMPLATE");

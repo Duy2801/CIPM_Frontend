@@ -16,6 +16,8 @@ interface SelectWithAddOptionProps {
   filterByQuery?: boolean;
   placeholder?: string;
   notFoundContent?: ReactNode;
+  /** Ô nhỏ (dùng trong dòng bảng) */
+  size?: "small" | "middle";
   "aria-label"?: string;
 }
 
@@ -29,6 +31,7 @@ export default function SelectWithAddOption({
   filterByQuery,
   placeholder,
   notFoundContent,
+  size,
   "aria-label": ariaLabel,
 }: SelectWithAddOptionProps) {
   const [query, setQuery] = useState("");
@@ -51,6 +54,7 @@ export default function SelectWithAddOption({
   return (
     <Select
       aria-label={ariaLabel}
+      size={size}
       placeholder={placeholder}
       value={value}
       options={visibleOptions}
