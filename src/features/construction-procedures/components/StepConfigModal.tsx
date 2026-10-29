@@ -212,7 +212,8 @@ function StepFlowCell({
   const isMain = depth === 0;
   return (
     // Phủ hết chiều cao dòng (bù py-2.5 của dòng) để trục liền mạch giữa các dòng
-    <div className="relative w-32 shrink-0 self-stretch -my-2.5">
+    // Mã dài ở cấp sâu thì ô tự giãn ra, không đè lên tên bước
+    <div className="relative min-w-32 shrink-0 self-stretch -my-2.5">
       {passLevels.map((level) => (
         <FlowVLine key={level} level={level} style={{ top: 0, bottom: 0 }} />
       ))}
@@ -258,7 +259,7 @@ function StepFlowCell({
               style={{ width: SUB_NODE_R * 2, height: SUB_NODE_R * 2 }}
             />
             <span
-              className="ml-2 font-mono text-[11px] font-medium tracking-tight text-slate-500"
+              className="ml-2 whitespace-nowrap pr-2 font-mono text-[11px] font-medium tracking-tight text-slate-500"
             >
               {code}
             </span>
@@ -1064,24 +1065,30 @@ export default function StepConfigModal({
     responsibleUnit: string;
     type: StepType;
     days: string;
+    assignedTo: string;
   }>({
     name: "",
     responsibleUnit: "",
     type: "MANDATORY",
     days: "",
+    assignedTo: "",
   });
   // Giữ nguyên khoảng thời gian dạng chữ (VD "Theo HĐ") nếu không sửa số ngày
   const [editDaysTouched, setEditDaysTouched] = useState(false);
   const [editError, setEditError] = useState("");
+  // Bấm vào ô người thực hiện để sửa thì giữ con trỏ ở ô đó, không nhảy sang ô tên
+  const [editFocusAssignee, setEditFocusAssignee] = useState(false);
 
-  const startEditStep = (step: ProcedureStep) => {
+  const startEditStep = (step: ProcedureStep, focusAssignee = false) => {
     setActiveParentForSub(null);
     setEditingStepId(step.id);
+    setEditFocusAssignee(focusAssignee);
     setEditDraft({
       name: step.name,
       responsibleUnit: step.responsibleUnit,
       type: step.type,
       days: getStepDays(step) ? String(getStepDays(step)) : "",
+      assignedTo: step.assignedTo || "",
     });
     setEditDaysTouched(false);
     setEditError("");
@@ -1100,7 +1107,11 @@ export default function StepConfigModal({
     const current = localSteps.find((s) => s.id === editingStepId);
     // Không sửa gì thì đóng luôn, khỏi hỏi
     const unchanged =
-      !!current && current.name === name && current.type === editDraft.type && !editDaysTouched;
+      !!current &&
+      current.name === name &&
+      current.type === editDraft.type &&
+      (current.assignedTo || "") === editDraft.assignedTo &&
+      !editDaysTouched;
     if (unchanged) {
       cancelEditStep();
       return;
@@ -1120,6 +1131,7 @@ export default function StepConfigModal({
       responsibleUnit: editDraft.responsibleUnit.trim() || current?.responsibleUnit || "",
       type: editDraft.type,
       ...(editDaysTouched ? buildDurationFields(editDraft.days) : {}),
+      ...((current?.assignedTo || "") !== editDraft.assignedTo ? buildAssignment(editDraft.assignedTo || undefined) : {}),
       // Đổi sang bắt buộc thì bước luôn được áp dụng
       ...(isMandatory && current && !current.isEnabled
         ? { isEnabled: true, status: current.status === "DISABLED" ? "NOT_STARTED" : current.status }
@@ -2013,7 +2025,7 @@ export default function StepConfigModal({
                           {isEditing ? (
                             <div onClick={(e) => e.stopPropagation()}>
                               <Input
-                                autoFocus
+                                autoFocus={!editFocusAssignee}
                                 value={editDraft.name}
                                 onChange={(e) => {
                                   setEditDraft((d) => ({ ...d, name: e.target.value }));
@@ -2058,28 +2070,29 @@ export default function StepConfigModal({
                           </div>
                         </div>
 
-                        {/* Người thực hiện: chọn trực tiếp trên dòng */}
-                        <div className={ASSIGNEE_COL} onClick={(e) => e.stopPropagation()}>
+                        {/* Người thực hiện: bấm vào là chuyển dòng sang chế độ sửa rồi mới chọn */}
+                        <div
+                          className={ASSIGNEE_COL}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isEditing) startEditStep(step, true);
+                          }}
+                        >
                           <Select
-                            value={step.assignedTo || undefined}
+                            value={(isEditing ? editDraft.assignedTo : step.assignedTo) || undefined}
                             placeholder="— Chọn cán bộ —"
                             size="small"
                             className="w-full text-xs"
-                            allowClear
+                            allowClear={isEditing}
                             showSearch
                             optionFilterProp="label"
-                            onChange={(val) =>
-                              confirmChange(
-                                "Đổi người thực hiện?",
-                                `Bước [${step.code}]: ${step.assignedTo || "Chưa giao"} → ${(val as string | undefined) || "Chưa giao"}.`,
-                                () => handleUpdateStep(step.id, buildAssignment(val as string | undefined)),
-                              )
-                            }
+                            // Chỉ ghi vào bản nháp, hỏi một lần khi lưu (tick / bấm ra ngoài)
+                            onChange={(val) => setEditDraft((d) => ({ ...d, assignedTo: (val as string | undefined) || "" }))}
                             options={staffOptions}
                             labelRender={showStaffName}
                           />
                         </div>
-                        {renderEmail(step.assignedTo)}
+                        {renderEmail(isEditing ? editDraft.assignedTo || undefined : step.assignedTo)}
 
                         {/* Thời gian: số ngày cố định (chỉ xem; sửa bằng nút bút chì) */}
                         {isEditing ? (
