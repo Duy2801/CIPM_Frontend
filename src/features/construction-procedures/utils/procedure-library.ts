@@ -50,6 +50,8 @@ export interface ProcedureLibraryItem {
 type ProcedureMeta = Pick<ProcedureLibraryItem, "createdAt" | "createdBy" | "updatedAt" | "updatedBy" | "approvedBy"> & {
   /** Trạng thái khi đang bật và chưa duyệt */
   status: Exclude<ProcedureStatus, "STOPPED" | "APPLIED">;
+  /** false = dữ liệu mẫu đang tắt sẵn (Đã ngưng) */
+  enabled?: boolean;
 };
 
 /** Tắt → Đã ngưng; đã có người duyệt → Đang áp dụng; còn lại theo trạng thái xử lý */
@@ -59,8 +61,9 @@ const resolveStatus = (
   pending: Exclude<ProcedureStatus, "STOPPED" | "APPLIED">,
 ): ProcedureStatus => (!enabled ? "STOPPED" : approvedBy ? "APPLIED" : pending);
 
-/** Dữ liệu mẫu cho các quy trình theo dự thảo (chưa có backend) */
+/** Dữ liệu mẫu cho các quy trình theo dự thảo (chưa có backend) — đủ 4 trạng thái */
 const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
+  // Đang áp dụng
   "template-khkt": {
     status: "PROCESSING",
     approvedBy: "Trần Minh Ơn",
@@ -69,14 +72,16 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
     updatedAt: "2026-09-18T09:30:00+07:00",
     updatedBy: "Trần Trung Tín",
   },
+  // Đang xử lý
   "template-dauthau": {
     status: "PROCESSING",
-    approvedBy: "Trần Minh Ơn",
+    approvedBy: null,
     createdAt: "2025-01-09",
     createdBy: "Huỳnh Thái Hải",
     updatedAt: null,
     updatedBy: null,
   },
+  // Chờ duyệt
   "template-gskt": {
     status: "PENDING_APPROVAL",
     approvedBy: null,
@@ -85,8 +90,10 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
     updatedAt: "2026-10-02T14:15:00+07:00",
     updatedBy: "Trần Minh Ơn",
   },
+  // Đã ngưng
   "template-quy-hoach": {
     status: "PROCESSING",
+    enabled: false,
     approvedBy: "Huỳnh Thái Hải",
     createdAt: "2025-03-20",
     createdBy: "Huỳnh Thái Hải",
@@ -95,25 +102,26 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
   },
 };
 
-/** Id các quy trình đang tắt (lưu trình duyệt) */
-const DISABLED_STORAGE_KEY = "cipm_procedure_disabled_ids";
+/** Bật / tắt quy trình do người dùng chọn (lưu trình duyệt); ghi cả bật để bật lại được quy trình mẫu đang tắt sẵn */
+const ENABLED_STORAGE_KEY = "cipm_procedure_disabled_ids";
 
-function loadDisabledIds(): string[] {
-  if (typeof window === "undefined") return [];
+function loadEnabledOverrides(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
   try {
-    const parsed = JSON.parse(localStorage.getItem(DISABLED_STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(localStorage.getItem(ENABLED_STORAGE_KEY) ?? "{}");
+    // Dữ liệu cũ: mảng id đang tắt
+    if (Array.isArray(parsed)) return Object.fromEntries(parsed.map((id: string) => [id, false]));
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
-    return [];
+    return {};
   }
 }
 
 /** Bật / tắt quy trình */
 export function setProcedureEnabled(procedureId: string, enabled: boolean) {
   if (typeof window === "undefined") return;
-  const others = loadDisabledIds().filter((id) => id !== procedureId);
   try {
-    localStorage.setItem(DISABLED_STORAGE_KEY, JSON.stringify(enabled ? others : [...others, procedureId]));
+    localStorage.setItem(ENABLED_STORAGE_KEY, JSON.stringify({ ...loadEnabledOverrides(), [procedureId]: enabled }));
   } catch (e) {
     console.error("Failed to save procedure enabled state", e);
   }
@@ -176,13 +184,13 @@ export function markProcedureUpdated(procedureId: string, updatedBy: string) {
 export function loadProcedureLibrary(): ProcedureLibraryItem[] {
   const hidden = loadHiddenTemplateIds();
   const updates = loadUpdateMeta();
-  const disabled = loadDisabledIds();
+  const enabledOverrides = loadEnabledOverrides();
   const approvals = loadApprovals();
   const templates = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES)
     .filter((tpl) => !hidden.includes(tpl.id))
     .map<ProcedureLibraryItem>((tpl) => {
       const mock = TEMPLATE_MOCK_META[tpl.id];
-      const enabled = !disabled.includes(tpl.id);
+      const enabled = enabledOverrides[tpl.id] ?? mock?.enabled ?? true;
       const approvedBy = approvals[tpl.id]?.approvedBy ?? mock?.approvedBy ?? null;
       return {
         id: tpl.id,
@@ -205,9 +213,9 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
     name: p.name,
     department: p.department,
     isCustom: true,
-    enabled: !disabled.includes(p.id),
+    enabled: enabledOverrides[p.id] ?? true,
     // Quy trình tự tạo: chờ duyệt cho tới khi có người bấm "Duyệt quy trình"
-    status: resolveStatus(!disabled.includes(p.id), approvals[p.id]?.approvedBy ?? null, "PENDING_APPROVAL"),
+    status: resolveStatus(enabledOverrides[p.id] ?? true, approvals[p.id]?.approvedBy ?? null, "PENDING_APPROVAL"),
     approvedBy: approvals[p.id]?.approvedBy ?? null,
     approvedAt: approvals[p.id]?.approvedAt ?? null,
     createdAt: p.createdAt || null,
