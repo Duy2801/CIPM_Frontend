@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
-import { useActivityLogVersion } from "../hooks/useActivityLogVersion";
-import { getPermissionChangeHistory } from "../utils/activity-log";
+import { usePermissionHistory } from "../hooks/usePersonnelQueries";
 import ActivityDateFilter, { toLocalDate } from "./ActivityDateFilter";
 import ActivityTimeline from "./ActivityTimeline";
 
@@ -12,14 +11,12 @@ export default function RoleMatrixHistoryTab({ onClose }: { onClose: () => void 
   // Lọc lịch sử thay đổi quyền theo một ngày (yyyy-mm-dd)
   const [historyDate, setHistoryDate] = useState("");
   const [page, setPage] = useState(1);
-  const logVersion = useActivityLogVersion();
+  const { data: history } = usePermissionHistory();
 
   const permissionHistory = useMemo(() => {
-    const all = getPermissionChangeHistory();
+    const all = history ?? [];
     return historyDate ? all.filter((e) => toLocalDate(e.at) === historyDate) : all;
-    // đọc lại khi nhật ký có dòng mới
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyDate, logVersion]);
+  }, [history, historyDate]);
 
   const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(permissionHistory.length / PAGE_SIZE));

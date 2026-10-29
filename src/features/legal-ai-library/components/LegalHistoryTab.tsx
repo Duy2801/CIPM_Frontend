@@ -4,9 +4,7 @@ import { useMemo, useState } from "react";
 import { Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
 import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
 import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import { useActivityLogVersion } from "@/features/personnel-assignment/hooks/useActivityLogVersion";
-import { getPersonnelActivities } from "@/features/personnel-assignment/utils/activity-log";
-import { LEGAL_LOG_MODULE } from "../constants/legal-labels";
+import { useLegalHistory } from "../hooks/useLegalQueries";
 
 const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
@@ -15,15 +13,13 @@ export default function LegalHistoryTab() {
   // Lọc lịch sử theo một ngày (yyyy-mm-dd), rỗng = tất cả
   const [historyDate, setHistoryDate] = useState("");
   const [page, setPage] = useState(1);
-  const logVersion = useActivityLogVersion();
+  const { data: entries } = useLegalHistory();
 
-  // Nhật ký dùng chung, lọc theo phân hệ, mới nhất lên đầu
+  // Nhật ký của thư viện, mới nhất lên đầu
   const history = useMemo(() => {
-    const all = getPersonnelActivities().filter((e) => e.module === LEGAL_LOG_MODULE);
+    const all = [...(entries ?? [])].sort((a, b) => String(b.at).localeCompare(String(a.at)));
     return historyDate ? all.filter((e) => toLocalDate(e.at) === historyDate) : all;
-    // đọc lại khi nhật ký có dòng mới
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyDate, logVersion]);
+  }, [entries, historyDate]);
 
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

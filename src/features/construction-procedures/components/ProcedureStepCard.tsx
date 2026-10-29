@@ -198,7 +198,7 @@ export default function ProcedureStepCard({
                     : "bg-amber-50/70 border-amber-200 text-amber-700"
                 }`}
               >
-                {step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
+                {step.type === "MANDATORY" ? "Bắt buộc" : "Nếu có"}
               </span>
 
               {/* Tag người dùng được giao */}

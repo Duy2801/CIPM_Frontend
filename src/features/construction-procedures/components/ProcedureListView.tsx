@@ -1,18 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { App } from "antd";
-import { BranchesOutlined, DeleteOutlined, EditOutlined, FolderAddOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Input, Tooltip } from "@/components/ui";
+import { BranchesOutlined, EditOutlined, FolderAddOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Input, Switch, Tooltip } from "@/components/ui";
+import { cn } from "@/utils/cn";
 import { normalizeSearchText } from "@/utils/search-text";
-import type { ProcedureLibraryItem } from "../utils/procedure-library";
+import {
+  PROCEDURE_STATUS_LABELS,
+  type ProcedureLibraryItem,
+  type ProcedureStatus,
+} from "../utils/procedure-library";
+import { getProcedureDays } from "../utils/procedure-progress";
 
 interface ProcedureListViewProps {
   procedures: ProcedureLibraryItem[];
   onOpen: (procedureId: string) => void;
   onCreate: () => void;
-  onDelete: (procedure: ProcedureLibraryItem) => void;
+  onToggle: (procedure: ProcedureLibraryItem, enabled: boolean) => void;
 }
+
+const STATUS_STYLES: Record<ProcedureStatus, string> = {
+  APPLIED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  PROCESSING: "border-blue-200 bg-blue-50 text-blue-700",
+  PENDING_APPROVAL: "border-amber-200 bg-amber-50 text-amber-700",
+  STOPPED: "border-slate-200 bg-slate-100 text-slate-500",
+};
 
 /** "2026-10-22" → "22/10/2026"; null → null */
 const formatDate = (iso: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : null);
@@ -30,8 +42,7 @@ const formatLocalDate = (iso: string | null) => {
 const EMPTY = <span className="text-slate-300">—</span>;
 
 /** Danh sách quy trình: tìm theo tên / tổ phụ trách, bấm dòng hoặc "Chi tiết" để xem các bước */
-export default function ProcedureListView({ procedures, onOpen, onCreate, onDelete }: ProcedureListViewProps) {
-  const { modal } = App.useApp();
+export default function ProcedureListView({ procedures, onOpen, onCreate, onToggle }: ProcedureListViewProps) {
   const [search, setSearch] = useState("");
 
   const visible = useMemo(() => {
@@ -39,23 +50,6 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onDele
     if (!key) return procedures;
     return procedures.filter((p) => normalizeSearchText(`${p.name} ${p.department ?? ""}`).includes(key));
   }, [procedures, search]);
-
-  const confirmDelete = (procedure: ProcedureLibraryItem) =>
-    modal.confirm({
-      centered: true,
-      width: 440,
-      title: "Xóa quy trình?",
-      content: (
-        <p className="m-0 text-xs leading-relaxed text-slate-600">
-          Quy trình <strong className="text-slate-800">{procedure.name}</strong> sẽ bị xóa khỏi danh sách. Các dự án đang áp
-          dụng vẫn giữ nguyên các bước đã cấu hình.
-        </p>
-      ),
-      okText: "Xóa quy trình",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk: () => onDelete(procedure),
-    });
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
@@ -84,15 +78,16 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onDele
 
       {/* Bảng quy trình */}
       <div className="overflow-x-auto [scrollbar-width:thin]">
-        <div className="min-w-[1100px]">
+        <div className="min-w-[1080px]">
           <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-100 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
             <div className="min-w-0 flex-1">Tên quy trình</div>
-            <div className="w-40 shrink-0">Tổ phụ trách</div>
-            <div className="w-28 shrink-0 text-center">Số bước</div>
-            <div className="w-32 shrink-0">Người tạo</div>
+            <div className="w-36 shrink-0 text-center">Số ngày hoàn thành</div>
+            <div className="w-24 shrink-0 text-center">Trạng thái</div>
+            <div className="w-28 shrink-0">Người tạo</div>
+            <div className="w-28 shrink-0">Người duyệt</div>
             <div className="w-24 shrink-0 text-center">Ngày tạo</div>
-            <div className="w-32 shrink-0 text-center">Cập nhật lần cuối</div>
-            <div className="w-24 shrink-0 text-center">Thao tác</div>
+            <div className="w-24 shrink-0 text-center">Ngày cập nhật</div>
+            <div className="w-20 shrink-0 text-center">Thao tác</div>
           </div>
 
           {visible.length === 0 ? (
@@ -113,26 +108,40 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onDele
                     }}
                     className="flex cursor-pointer items-center gap-3 px-4 py-3 text-xs transition-colors hover:bg-red-50/40"
                   >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
                       <BranchesOutlined className="shrink-0 text-[#DC2626]" />
-                      <span className="truncate text-sm font-semibold text-slate-900" title={procedure.name}>
+                      <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900" title={procedure.name}>
                         {procedure.name}
                       </span>
                     </div>
-                    <div className="w-40 shrink-0 truncate text-slate-700" title={procedure.department}>
-                      {procedure.department || EMPTY}
+                    {/* Tổng thời gian cả quy trình: bước song song tính theo bước lâu nhất */}
+                    <div className="w-36 shrink-0 text-center tabular-nums text-slate-700">
+                      {getProcedureDays(procedure.steps)} ngày
                     </div>
-                    <div className="w-28 shrink-0 text-center font-semibold text-slate-900">{procedure.steps.length} bước</div>
-                    <div className="w-32 shrink-0 truncate text-slate-700" title={procedure.createdBy ?? undefined}>
+                    <div className="flex w-24 shrink-0 justify-center">
+                      <span
+                        className={cn(
+                          "whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                          STATUS_STYLES[procedure.status],
+                        )}
+                      >
+                        {PROCEDURE_STATUS_LABELS[procedure.status]}
+                      </span>
+                    </div>
+                    <div className="w-28 shrink-0 truncate text-slate-700" title={procedure.createdBy ?? undefined}>
                       {procedure.createdBy || EMPTY}
+                    </div>
+                    <div className="w-28 shrink-0 truncate text-slate-700" title={procedure.approvedBy ?? undefined}>
+                      {procedure.approvedBy || EMPTY}
                     </div>
                     <div className="w-24 shrink-0 text-center tabular-nums text-slate-600">
                       {formatDate(procedure.createdAt) ?? EMPTY}
                     </div>
-                    <div className="w-32 shrink-0 text-center tabular-nums text-slate-600">
-                      {formatLocalDate(procedure.updatedAt) ?? EMPTY}
+                    <div className="w-24 shrink-0 text-center tabular-nums text-slate-600">
+                      {/* Chưa cập nhật lần nào thì lấy ngày tạo */}
+                      {formatLocalDate(procedure.updatedAt) ?? formatDate(procedure.createdAt) ?? EMPTY}
                     </div>
-                    <div className="flex w-24 shrink-0 items-center justify-center gap-1.5">
+                    <div className="flex w-20 shrink-0 items-center justify-center gap-2">
                       <Tooltip title="Chỉnh sửa quy trình">
                         {/* Cùng kiểu nút bút chì với Thư viện pháp lý */}
                         <Button
@@ -147,18 +156,17 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onDele
                           className="!h-7 !w-7 !p-0 !border-[#DC2626] !text-[#DC2626] hover:!bg-red-50/60"
                         />
                       </Tooltip>
-                      <Tooltip title="Xóa quy trình">
-                        <button
-                          type="button"
-                          aria-label={`Xóa ${procedure.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            confirmDelete(procedure);
-                          }}
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-400 shadow-2xs transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
-                        >
-                          <DeleteOutlined className="text-xs" />
-                        </button>
+                      <Tooltip title={procedure.enabled ? "Tắt quy trình" : "Bật quy trình"}>
+                        {/* Chặn click lan ra dòng (dòng bấm vào là mở chi tiết) */}
+                        <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <Switch
+                            size="small"
+                            checked={procedure.enabled}
+                            aria-label={`${procedure.enabled ? "Tắt" : "Bật"} ${procedure.name}`}
+                            onChange={(checked) => onToggle(procedure, checked)}
+                            className={cn(procedure.enabled && "!bg-[#DC2626]")}
+                          />
+                        </span>
                       </Tooltip>
                     </div>
                   </div>

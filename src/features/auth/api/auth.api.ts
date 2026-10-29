@@ -1,277 +1,131 @@
-import { isAxiosError } from "axios";
 import Cookies from "js-cookie";
-import apiClient, { type ApiResponse } from "@/config";
-import type { AuthUser, Permission } from "@/types/auth";
-import { findMockUser, MOCK_ROLES } from "../constants/mock-roles";
-import type {
-  ApiErrorResponse,
-  AuthResponse,
-  AuthTokens,
-  LoginCredentials,
-  LogoutRequest,
-  LogoutResponse,
-  ModulePermissions,
-  User,
-} from "../types/auth.types";
-
-export const USE_MOCK_AUTH: boolean =
-  process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false";
-
-const COOKIE_OPTIONS = {
-  path: "/",
-  sameSite: "lax" as const,
-  secure: typeof window !== "undefined" && window.location.protocol === "https:",
-};
-
-function normalizePermissions(
-  permissions?: AuthResponse["permissions"],
-): Permission[] {
-  if (!permissions) return [];
-  if (Array.isArray(permissions)) return permissions;
-
-  return Object.entries(permissions as ModulePermissions).flatMap(
-    ([module, actions]) =>
-      (actions ?? []).map((action) => `${module}:${action}` as Permission),
-  );
-}
-
-export function toAuthUser(
-  user: User,
-  permissions: Permission[] = [],
-): AuthUser {
-  return {
-    ...user,
-    name: user.displayName,
-    role: user.roleCode,
-    permissions,
-  };
-}
-
-export function normalizeAuthResponse(authData: AuthResponse): AuthResponse {
-  const permissions = normalizePermissions(authData.user.permissions ?? authData.permissions);
-
-  return {
-    ...authData,
-    user: {
-      ...authData.user,
-      permissions,
-    },
-    permissions,
-  };
-}
-
-export function persistAuthSession(authData: AuthResponse, rememberMe: boolean = true) {
-  const normalizedAuthData = normalizeAuthResponse(authData);
-  const expires = rememberMe ? 7 : undefined;
-
-  Cookies.set("access_token", normalizedAuthData.tokens.accessToken, {
-    ...COOKIE_OPTIONS,
-    expires,
-  });
-
-  Cookies.set("refresh_token", normalizedAuthData.tokens.refreshToken, {
-    ...COOKIE_OPTIONS,
-    expires: rememberMe ? 30 : undefined,
-  });
-
-  Cookies.set("user_info", JSON.stringify(normalizedAuthData.user), {
-    ...COOKIE_OPTIONS,
-    expires,
-  });
-}
-
-export function clearAuthSession() {
-  Cookies.remove("access_token", { path: "/" });
-  Cookies.remove("refresh_token", { path: "/" });
-  Cookies.remove("user_info", { path: "/" });
-}
-
+import { isAxiosError } from "axios";
+import type { ApiResponse } from "@/config";
+import type { AuthUser } from "@/types/auth";
+import { expandBackendPermissions } from "@/access-control";
+import type { AuthResponse, AuthTokens, BackendLoginResponse, LoginCredentials, LogoutResponse } from "../types/auth.types";
 import {
-  getRoleEffectivePermissions,
-  getUserEffectivePermissions,
-} from "@/access-control";
+  clearAuthSession,
+  COOKIE_OPTIONS,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  getStoredUser,
+  isBackendToken,
+  persistAuthSession,
+} from "./auth-session";
+import { loginApi, logoutApi, refreshTokenApi } from "./auth.backend";
+import { mockDefaultUser, mockLogin, mockRefreshToken } from "./auth.mock";
 
-export function getStoredUser(): AuthUser | null {
-  if (typeof window === "undefined") return null;
-  const userInfoStr = Cookies.get("user_info");
-  if (!userInfoStr) return null;
+/**
+ * Xác thực của ứng dụng: gọi backend thật (auth.backend.ts), mất kết nối thì dùng tài khoản thử nghiệm (auth.mock.ts).
+ * Kết quả đăng nhập được useAuth lưu vào zustand (useAuthStore); cookie giữ phiên khi tải lại trang.
+ */
 
-  try {
-    const stored = JSON.parse(userInfoStr) as User & { permissions?: Permission[] };
-    const authUser = toAuthUser(stored, stored.permissions ?? []);
-    const dynamicPerms = getUserEffectivePermissions(authUser);
-    return {
-      ...authUser,
-      permissions: dynamicPerms.length > 0 ? dynamicPerms : authUser.permissions,
-    };
-  } catch (err) {
-    console.error("Loi parse user_info tu Cookie:", err);
-    return null;
-  }
-}
+export {
+  clearAuthSession,
+  getStoredAccessToken,
+  getStoredUser,
+  isAuthenticated,
+  isBackendToken,
+  normalizeAuthResponse,
+  persistAuthSession,
+  toAuthUser,
+} from "./auth-session";
 
-export function getStoredAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return Cookies.get("access_token") ?? null;
-}
+/** Đặt NEXT_PUBLIC_USE_MOCK_AUTH=true để luôn dùng tài khoản thử nghiệm */
+export const USE_MOCK_AUTH: boolean = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
 
-export function isAuthenticated(): boolean {
-  return Boolean(getStoredAccessToken());
+/** Dữ liệu backend trả về → thông tin người dùng ứng dụng dùng (backend DIRECTOR = màn hình ADMIN) */
+function toAuthData(data: BackendLoginResponse): AuthResponse {
+  const { user } = data;
+  const backendRole = user.roles[0] ?? "";
+  const roleCode = backendRole === "DIRECTOR" ? "ADMIN" : backendRole;
+  return {
+    user: {
+      id: user.id,
+      username: user.email,
+      email: user.email,
+      displayName: user.fullName,
+      roleCode,
+      roleName: user.positionTitle || roleCode,
+      department: user.department?.name ?? "",
+      initials: user.fullName.trim().split(/\s+/).slice(-2).map((w) => w[0]?.toUpperCase() ?? "").join(""),
+      authSource: "backend",
+      permissions: data.userPermissions,
+    },
+    tokens: { accessToken: data.accessToken, refreshToken: data.refreshToken },
+    permissions: data.userPermissions,
+  };
 }
 
 export async function login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
-  if (USE_MOCK_AUTH) {
-    await new Promise((resolve) => setTimeout(resolve, 400));
+  if (USE_MOCK_AUTH) return mockLogin(credentials);
 
-    const mockAccount = findMockUser(credentials.username, credentials.password);
-
-    if (!mockAccount) {
-      throw {
-        status: false,
-        statusCode: 401,
-        message: "Ten dang nhap hoac mat khau khong chinh xac. Mat khau mau la '123456'.",
-      };
-    }
-
-    const dynamicPerms = getRoleEffectivePermissions(mockAccount.id).length > 0
-      ? getRoleEffectivePermissions(mockAccount.id)
-      : getRoleEffectivePermissions(mockAccount.roleCode);
-    const resolvedPerms = dynamicPerms.length > 0 ? dynamicPerms : mockAccount.permissions;
-
-    const authData = normalizeAuthResponse({
-      user: {
-        ...mockAccount.user,
-        roleId: mockAccount.id,
-        permissions: Array.isArray(resolvedPerms) ? resolvedPerms : undefined,
-      } as any,
-      tokens: {
-        accessToken: `mock_access_token_${mockAccount.roleCode.toLowerCase()}_${Date.now()}`,
-        refreshToken: `mock_refresh_token_${mockAccount.roleCode.toLowerCase()}_${Date.now()}`,
-      },
-      permissions: resolvedPerms,
-    });
-
-    persistAuthSession(authData, credentials.rememberMe ?? true);
-
-    return {
-      status: true,
-      statusCode: 200,
-      data: authData,
-      message: `Đăng nhập thành công với chức danh ${mockAccount.roleName}`,
-    };
-  }
-
+  let data: BackendLoginResponse;
   try {
-    const response = await apiClient.post<AuthResponse>("/auth/login", credentials);
-    if (response?.data) {
-      response.data = normalizeAuthResponse(response.data);
-      persistAuthSession(response.data, credentials.rememberMe ?? true);
+    data = await loginApi(credentials.username.trim().toLowerCase(), credentials.password);
+  } catch (error) {
+    // Không kết nối được server → đăng nhập bằng tài khoản thử nghiệm
+    if (isAxiosError(error) && !error.response) return mockLogin(credentials);
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    const backendMessage = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined;
+    if (status === 400) throw new Error("Vui lòng đăng nhập bằng email công vụ (VD: ten@hatien.gov.vn).");
+    if (status === 401 && backendMessage === "Tài khoản không còn hoạt động") {
+      throw new Error("Tài khoản đã bị khóa, vui lòng liên hệ quản trị.");
     }
-    return response;
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Backend API khong phan hoi";
-    console.warn("Tu dong chuyen sang mock auth:", message);
-
-    const mockAccount = findMockUser(credentials.username, credentials.password);
-    if (mockAccount) {
-      const authData = normalizeAuthResponse({
-        user: mockAccount.user,
-        tokens: {
-          accessToken: `mock_token_${Date.now()}`,
-          refreshToken: `mock_refresh_${Date.now()}`,
-        },
-        permissions: mockAccount.permissions,
-      });
-
-      persistAuthSession(authData, credentials.rememberMe ?? true);
-
-      return {
-        status: true,
-        statusCode: 200,
-        data: authData,
-        message: `Đăng nhập thử nghiệm thành công: ${mockAccount.roleName}`,
-      };
-    }
-
-    throw error;
+    if (status === 401) throw new Error("Email hoặc mật khẩu không chính xác.");
+    throw new Error("Đăng nhập thất bại, vui lòng thử lại.");
   }
+
+  const authData = toAuthData(data);
+  // Cookie giữ mã quyền backend để khôi phục phiên khi tải lại trang
+  persistAuthSession(authData, credentials.rememberMe ?? true);
+  // Phiên đang chạy dùng quyền đã đổi sang mã màn hình
+  const permissions = expandBackendPermissions(data.userPermissions);
+  return {
+    status: true,
+    statusCode: 200,
+    data: { ...authData, user: { ...authData.user, permissions }, permissions },
+    message: `Chào mừng ${data.user.fullName}!`,
+  };
 }
 
-/**
- * Đăng xuất: backend xóa refresh token trong Redis.
- * Phiên phía client luôn bị xóa, kể cả khi API lỗi (token hết hạn, mất mạng...).
- */
+/** Đăng xuất: xóa phiên phía client kể cả khi API lỗi (token hết hạn, mất mạng...) */
 export async function logout(): Promise<LogoutResponse> {
   let result: LogoutResponse = { status: true, statusCode: 200 };
-
-  if (!USE_MOCK_AUTH) {
+  if (isBackendToken(getStoredAccessToken())) {
     try {
-      result = await apiClient.post<never, LogoutResponse, LogoutRequest>("/auth/logout", {});
+      await logoutApi();
     } catch (error) {
-      const errorData = isAxiosError<ApiErrorResponse>(error) ? error.response?.data : undefined;
-      const message = Array.isArray(errorData?.message)
-        ? errorData.message.join(", ")
-        : errorData?.message ?? "Backend API khong phan hoi";
-
-      console.warn("Loi khi goi API logout:", message);
-      result = { status: false, statusCode: errorData?.statusCode ?? 0, message };
+      console.warn("Lỗi khi gọi API đăng xuất:", error);
+      result = { status: false, statusCode: 0 };
     }
   }
 
   clearAuthSession();
-
   if (typeof window !== "undefined") {
     window.location.href = "/login";
   }
-
   return result;
 }
 
+/** Tài khoản đang đăng nhập (backend chưa có /auth/me nên đọc từ phiên đã lưu lúc đăng nhập) */
 export async function getCurrentUser(): Promise<ApiResponse<AuthUser>> {
-  if (USE_MOCK_AUTH) {
-    const stored = getStoredUser();
-    if (stored) {
-      return {
-        status: true,
-        statusCode: 200,
-        data: stored,
-      };
-    }
+  const stored = getStoredUser();
+  if (stored) return { status: true, statusCode: 200, data: stored };
+  if (isBackendToken(getStoredAccessToken())) throw new Error("Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.");
 
-    const defaultUser = MOCK_ROLES[0].user;
-    return {
-      status: true,
-      statusCode: 200,
-      data: toAuthUser(defaultUser, normalizePermissions(MOCK_ROLES[0].permissions)),
-    };
-  }
-
-  const response = await apiClient.get<User & { permissions?: Permission[] }>("/auth/me");
-  return {
-    ...response,
-    data: toAuthUser(response.data, response.data.permissions ?? []),
-  };
+  return { status: true, statusCode: 200, data: mockDefaultUser() };
 }
 
 export async function refreshToken(): Promise<ApiResponse<AuthTokens>> {
-  const refreshToken = Cookies.get("refresh_token");
-  if (!refreshToken) {
-    throw new Error("Khong tim thay refresh token trong cookie");
+  const storedRefreshToken = getStoredRefreshToken();
+  if (!storedRefreshToken) {
+    throw new Error("Không tìm thấy refresh token trong cookie");
   }
+  if (!isBackendToken(getStoredAccessToken())) return mockRefreshToken();
 
-  if (USE_MOCK_AUTH) {
-    const newTokens: AuthTokens = {
-      accessToken: `mock_refreshed_access_${Date.now()}`,
-      refreshToken: `mock_refreshed_refresh_${Date.now()}`,
-    };
-    Cookies.set("access_token", newTokens.accessToken, COOKIE_OPTIONS);
-    return {
-      status: true,
-      statusCode: 200,
-      data: newTokens,
-    };
-  }
-
-  return apiClient.post<AuthTokens>("/auth/refresh", { refreshToken });
+  const accessToken = await refreshTokenApi(storedRefreshToken);
+  Cookies.set("access_token", accessToken, COOKIE_OPTIONS);
+  return { status: true, statusCode: 200, data: { accessToken, refreshToken: storedRefreshToken } };
 }

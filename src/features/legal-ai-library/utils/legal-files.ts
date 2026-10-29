@@ -47,7 +47,8 @@ export function getDisplayFiles(document: LegalDocument): AttachedDocumentFile[]
   );
 }
 
-function saveBlob(href: string, fileName: string) {
+/** Lưu một đường dẫn (blob / URL) thành tệp tải về */
+export function saveBlob(href: string, fileName: string) {
   const link = window.document.createElement("a");
   link.href = href;
   link.download = fileName;

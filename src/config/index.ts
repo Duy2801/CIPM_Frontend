@@ -69,7 +69,12 @@ apiClient.interceptors.response.use(
         case 401:
           const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-          if (typeof window === 'undefined' || originalRequest.url === '/auth/refresh' || originalRequest._retry) {
+          // Sai mật khẩu khi đăng nhập: trả lỗi cho form, không làm mới token
+          if (originalRequest.url?.includes('auth/login')) {
+            return Promise.reject(error);
+          }
+
+          if (typeof window === 'undefined' || originalRequest.url?.includes('auth/refresh') || originalRequest._retry) {
             if (typeof window !== 'undefined') {
               Cookies.remove('access_token');
               Cookies.remove('refresh_token');
@@ -101,13 +106,14 @@ apiClient.interceptors.response.use(
                throw new Error('No refresh token available');
             }
 
-            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/admin/auth/refresh`, {}, {
+            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/auth/refresh`, {}, {
               headers: { Authorization: `Bearer ${refreshToken}` }
             });
 
-            const { accessToken, refreshToken: newRefreshToken } = res.data;
-            Cookies.set('access_token', accessToken);
-            Cookies.set('refresh_token', newRefreshToken);
+            // Backend trả { status, statusCode, data: { accessToken } } và giữ nguyên refreshToken
+            const accessToken: string = res.data?.data?.accessToken ?? res.data?.accessToken;
+            if (!accessToken) throw new Error('Refresh token response has no access token');
+            Cookies.set('access_token', accessToken, { path: '/', sameSite: 'lax' });
             
             apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;

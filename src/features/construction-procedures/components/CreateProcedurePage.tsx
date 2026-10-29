@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Input, Select, toast } from "@/components/ui";
+import { Input, toast } from "@/components/ui";
 import type { ProcedureStep } from "../types/procedure.types";
 import ProcedurePageHeader from "./ProcedurePageHeader";
 import StepConfigModal from "./StepConfigModal";
@@ -11,12 +11,10 @@ const NO_STEPS: ProcedureStep[] = [];
 
 export interface CreateProcedurePageValues {
   name: string;
-  department: string;
   steps: ProcedureStep[];
 }
 
 interface CreateProcedurePageProps {
-  departmentOptions: string[];
   onBack: () => void;
   onCreate: (values: CreateProcedurePageValues) => void;
 }
@@ -32,27 +30,21 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 
 /** Trang "Thêm quy trình mới": nhập thông tin chung rồi thêm bước ngay bên dưới, bấm "Tạo quy trình" mới lưu */
 export default function CreateProcedurePage({
-  departmentOptions,
   onBack,
   onCreate,
 }: CreateProcedurePageProps) {
   const [name, setName] = useState("");
-  const [department, setDepartment] = useState("");
-  const [errors, setErrors] = useState<{ name?: string; department?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string }>({});
 
   const handleCreate = (steps: ProcedureStep[]) => {
     const trimmed = name.trim();
-    const nextErrors = {
-      name: trimmed ? undefined : "Vui lòng nhập tên quy trình",
-      department: department ? undefined : "Vui lòng chọn tổ phụ trách",
-    };
-    setErrors(nextErrors);
-    if (nextErrors.name || nextErrors.department) {
-      toast.warning("Thiếu thông tin quy trình", nextErrors.name ?? nextErrors.department);
+    if (!trimmed) {
+      setErrors({ name: "Vui lòng nhập tên quy trình" });
+      toast.warning("Thiếu thông tin quy trình", "Vui lòng nhập tên quy trình");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    onCreate({ name: trimmed, department, steps });
+    onCreate({ name: trimmed, steps });
   };
 
   return (
@@ -73,31 +65,12 @@ export default function CreateProcedurePage({
             status={errors.name ? "error" : undefined}
             onChange={(e) => {
               setName(e.target.value);
-              if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+              if (errors.name) setErrors({});
             }}
             className="h-9 w-full text-xs"
             autoFocus
           />
           {errors.name && <p className="m-0 mt-1 text-[11px] text-rose-500">{errors.name}</p>}
-        </div>
-
-        <div className="w-full sm:w-72">
-          <FieldLabel required>Tổ phụ trách</FieldLabel>
-          <Select
-            aria-label="Tổ phụ trách"
-            className="w-full text-xs"
-            placeholder="— Chọn tổ phụ trách —"
-            showSearch
-            optionFilterProp="label"
-            status={errors.department ? "error" : undefined}
-            value={department || undefined}
-            onChange={(val: string) => {
-              setDepartment(val);
-              if (errors.department) setErrors((prev) => ({ ...prev, department: undefined }));
-            }}
-            options={departmentOptions.map((d) => ({ value: d, label: d }))}
-          />
-          {errors.department && <p className="m-0 mt-1 text-[11px] text-rose-500">{errors.department}</p>}
         </div>
 
       </div>

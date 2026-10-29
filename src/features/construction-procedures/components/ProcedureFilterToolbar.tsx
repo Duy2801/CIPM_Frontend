@@ -66,7 +66,7 @@ const statusOptions: { value: ProcedureFilterStatus; label: string }[] = [
   { value: "WARNING_YELLOW", label: "Sắp đến hạn ≤ 7 ngày" },
   { value: "COMPLETED", label: "Đã hoàn thành" },
   { value: "SKIPPED", label: "Đã bỏ qua" },
-  { value: "DISABLED", label: "Bước điều kiện đã tắt" },
+  { value: "DISABLED", label: "Bước \"nếu có\" đã tắt" },
 ];
 
 const viewModes: Array<{ value: ProcedureViewMode; label: string; icon: React.ReactNode }> = [

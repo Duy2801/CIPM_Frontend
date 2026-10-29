@@ -60,8 +60,8 @@ export default function RoleMatrixRoleTable({ onOpenRole, onClose }: RoleMatrixR
         okText: "Bật chức danh",
         cancelText: "Hủy",
         okButtonProps: { className: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C]" },
-        onOk: () => {
-          setRoleLocked(role.code, false);
+        onOk: async () => {
+          if (!(await setRoleLocked(role.code, false))) return;
           logPermissionChange(role, "Bật lại chức danh", [{ label: "Trạng thái", from: "Đang tắt", to: "Đang bật" }]);
         },
       });
@@ -81,8 +81,8 @@ export default function RoleMatrixRoleTable({ onOpenRole, onClose }: RoleMatrixR
       okText: "Tắt chức danh",
       cancelText: "Hủy",
       okButtonProps: { danger: true },
-      onOk: () => {
-        setRoleLocked(role.code, true);
+      onOk: async () => {
+        if (!(await setRoleLocked(role.code, true))) return;
         logPermissionChange(role, "Tắt chức danh", [{ label: "Trạng thái", from: "Đang bật", to: "Đang tắt" }]);
       },
     });

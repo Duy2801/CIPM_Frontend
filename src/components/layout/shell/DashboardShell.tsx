@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AccessControlGate } from "@/components/AccessControlGate";
 import { Content, Layout } from "@/components/ui";
 import Sidebar from "@/components/layout/sidebar/Sidebar";
@@ -26,6 +26,7 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const isRefreshing = useAppRefreshStore((state) => state.isRefreshing);
   const sidebarWidth = sidebarCollapsed ? 72 : 260;
@@ -78,10 +79,14 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         );
       } else {
         useAuthStore.getState().setInitialized(true);
+        // Chưa đăng nhập → về trang đăng nhập
+        if (!pathname.startsWith("/auth") && pathname !== "/login") router.replace("/login");
       }
     } else {
       useAuthStore.getState().setInitialized(true);
     }
+    // Chỉ khôi phục phiên một lần khi mở ứng dụng
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Lắng nghe sự kiện cập nhật Ma trận phân quyền để cập nhật tức thì toàn bộ màn hình

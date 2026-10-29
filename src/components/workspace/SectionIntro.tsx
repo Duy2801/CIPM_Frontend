@@ -6,7 +6,7 @@ import { Flex, Tag, Text } from "@/components/ui";
 
 interface SectionIntroProps {
   title: string;
-  description: string;
+  description?: string;
   countLabel?: string;
   /** Gợi ý cách đọc bảng, hiển thị dưới mô tả */
   guide?: string;
@@ -42,7 +42,9 @@ export default function SectionIntro({
               </Tag>
             )}
           </Flex>
-          <Text className="mt-1 block text-[13px] leading-5 text-slate-500">{description}</Text>
+          {description && (
+            <Text className="mt-1 block text-[13px] leading-5 text-slate-500">{description}</Text>
+          )}
           {guide && (
             <Text className="mt-1.5 flex items-start gap-1.5 text-[13px] leading-5 text-emerald-800">
               <BulbOutlined className="mt-1 shrink-0" />

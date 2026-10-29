@@ -23,6 +23,7 @@ export {
   getStoredUser,
   getStoredAccessToken,
   isAuthenticated,
+  isBackendToken,
   USE_MOCK_AUTH,
   toAuthUser,
   normalizeAuthResponse,

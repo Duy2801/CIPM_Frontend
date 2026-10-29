@@ -3,18 +3,18 @@
 import { useRef, useState } from "react";
 import { App } from "antd";
 import { EditOutlined, PaperClipOutlined } from "@ant-design/icons";
-import { Tooltip } from "@/components/ui";
+import { toast, Tooltip } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
 import type { AttachedDocumentFile, LegalDocument } from "../types/legal-ai.types";
 import {
   ORIGINAL_FILE_ID,
   createFileId,
-  downloadLegalFile,
   formatFileDateTime,
   formatFileSize,
   getDisplayFiles,
   nowDateTimeVi,
 } from "../utils/legal-files";
+import { downloadFile } from "../services/legal.api";
 import DocumentFileItem from "./DocumentFileItem";
 import FilePreviewModal from "./FilePreviewModal";
 
@@ -101,7 +101,11 @@ export default function DocumentFilesSection({ document, changed, onChange }: Do
               isLatest={file.id === latestFileId}
               isPreviewing={file.id === previewId}
               onPreview={() => setPreviewId(file.id)}
-              onDownload={() => downloadLegalFile(document, file)}
+              onDownload={() =>
+                downloadFile(document, file).catch((error) =>
+                  toast.error(error instanceof Error ? error.message : "Không tải được tệp, vui lòng thử lại."),
+                )
+              }
             />
           ))}
         </div>

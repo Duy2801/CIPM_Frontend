@@ -52,6 +52,8 @@ export interface ProcedureHistoryLog {
   skipDocumentCode?: string;   // Số hiệu văn bản cho phép bỏ qua
   documentReference?: string;  // Số hiệu văn bản đính kèm
   details: string;             // Mô tả chi tiết biến động
+  /** Từng thay đổi "cũ → mới" (tự lưu trên trang chi tiết quy trình) */
+  changes?: { label: string; from?: string; to?: string }[];
 }
 
 export interface ProcedureStep {
@@ -68,6 +70,11 @@ export interface ProcedureStep {
   durationDaysMax: number | null;
   isContractBased?: boolean;   // Theo HĐ (VI.1, VI.2, VI.3, VII)
   isSpecialRequest?: boolean;  // Theo yêu cầu (IV.3)
+  /**
+   * Đợt thực hiện trong nhóm bước cùng cấp (1, 2, 3...): các bước cùng đợt làm song song,
+   * đợt sau chỉ bắt đầu khi đợt trước xong hết. Chưa đặt = làm lần lượt theo thứ tự bước.
+   */
+  flowStage?: number;
 
   // Trạng thái vận hành động của dự án
   isEnabled: boolean;          // Bật/tắt đối với bước điều kiện

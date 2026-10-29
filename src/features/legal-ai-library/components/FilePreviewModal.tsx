@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
 import { CloseOutlined, FileWordOutlined } from "@ant-design/icons";
 import { Modal } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
@@ -9,6 +8,7 @@ import type {
   AttachedDocumentFile,
   LegalDocument,
 } from "../types/legal-ai.types";
+import { useLegalFileUrl } from "../hooks/useLegalQueries";
 import PdfPagesViewer from "./PdfPagesViewer";
 
 interface FilePreviewModalProps {
@@ -29,15 +29,8 @@ export default function FilePreviewModal({
   file,
   onClose,
 }: FilePreviewModalProps) {
-  // Tệp vừa tải lên chỉ có File trong bộ nhớ → tạo đường dẫn tạm, thu hồi khi đóng
-  const fileUrl = useMemo(
-    () => (file?.rawFile ? URL.createObjectURL(file.rawFile) : file?.url),
-    [file],
-  );
-  useEffect(() => {
-    if (!file?.rawFile || !fileUrl) return;
-    return () => URL.revokeObjectURL(fileUrl);
-  }, [file, fileUrl]);
+  // Tệp vừa chọn / tệp trên backend → đường dẫn tạm, thu hồi khi đóng
+  const { url: fileUrl } = useLegalFileUrl(document, file);
 
   const fileName =
     file?.name ??

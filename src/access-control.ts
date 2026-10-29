@@ -197,10 +197,21 @@ export function getRoleEffectivePermissions(roleCode?: string): Permission[] {
 }
 
 /**
+ * Quyền backend ("projects:view") → quyền màn hình: giữ mã gốc, thêm mã ma trận ("m2.view") và mã phân hệ ("m2_projects:view").
+ */
+export function expandBackendPermissions(codes: string[]): Permission[] {
+  const granted = new Set(codes);
+  const matrixIds = MATRIX_PERMISSIONS.filter((p) => granted.has(p.code.replace(/^m\d+_/, ""))).map((p) => p.id);
+  return Array.from(new Set<Permission>([...(codes as Permission[]), ...convertMatrixPermIdsToPermissionCodes(matrixIds)]));
+}
+
+/**
  * Lấy danh sách quyền hiệu lực của người dùng hiện tại dựa trên Ma trận phân quyền.
+ * Tài khoản đăng nhập qua backend dùng quyền backend trả về lúc đăng nhập.
  */
 export function getUserEffectivePermissions(user: AuthUser | null): Permission[] {
   if (!user) return [];
+  if (user.authSource === "backend") return expandBackendPermissions(user.permissions ?? []);
   const roleId = (user as any).roleId;
   // Chức danh của tài khoản đang tắt → không có quyền nào cho tới khi bật lại
   if (roleId && (getLockedRoleCodes().includes(roleId) || getDeletedRoleCodes().includes(roleId))) return [];

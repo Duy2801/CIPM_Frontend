@@ -63,6 +63,22 @@ export interface LogoutResponse {
   message?: string;
 }
 
+/** POST /auth/login (backend cipm-service): body `{ email, password }` */
+export interface BackendLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    positionTitle?: string | null;
+    department?: { id: string; code: string; name: string } | null;
+    roles: string[];
+  };
+  /** Quyền thực tế của tài khoản, VD "projects:view" */
+  userPermissions: string[];
+}
+
 export interface AuthResponse {
   user: User & { permissions?: Permission[] };
   tokens: AuthTokens;

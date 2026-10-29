@@ -4,7 +4,11 @@ Tài liệu mô tả các chức năng của màn **Thư viện Pháp lý**, req
 
 - Frontend: `src/features/legal-ai-library`
 - Backend: `cipm-service`
-- Lớp gọi API phía FE: `services/legal.api.ts`. Hiện các hàm này chạy trên kho mock trong bộ nhớ (`services/mock-legal.repository.ts`); khi nối backend chỉ cần thay thân hàm bằng `apiClient`, hook và component giữ nguyên.
+- Lớp gọi API phía FE (tách như phân hệ Nhân sự):
+  - `api/legal.backend.ts`: chỉ gọi API backend, trả dữ liệu thô.
+  - `services/legal.mapper.ts`: kiểu dữ liệu backend và chuyển đổi ↔ kiểu màn hình.
+  - `services/legal.api.ts`: hàm hook/component gọi; đăng nhập bằng tài khoản thật thì dùng backend, tài khoản thử nghiệm hoặc server không phản hồi thì dùng kho mock trong bộ nhớ (`services/mock-legal.repository.ts`, chưa xóa).
+- Backend đã có module `legal-document` cho mục 1–6 và nhận `module=legal_library` ở `/audit-logs` (mục 7–8); các dấu ⚠ bên dưới là trạng thái lúc viết đề xuất.
 - Nhật ký thao tác dùng chung với Nhân sự & Phân công (`personnel-assignment/utils/activity-log`, hiện lưu localStorage), các dòng của thư viện có `module = "Thư viện pháp lý"`.
 
 Ký hiệu: ✅ backend đã có · ⚠ backend chưa có (đề xuất).

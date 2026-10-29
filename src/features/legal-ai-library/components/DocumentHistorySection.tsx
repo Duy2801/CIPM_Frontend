@@ -3,20 +3,14 @@
 import { useMemo } from "react";
 import { HistoryOutlined } from "@ant-design/icons";
 import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import { useActivityLogVersion } from "@/features/personnel-assignment/hooks/useActivityLogVersion";
-import { getPersonnelActivities } from "@/features/personnel-assignment/utils/activity-log";
+import { useLegalHistory } from "../hooks/useLegalQueries";
 import type { LegalDocument } from "../types/legal-ai.types";
 import { getDocumentHistory } from "../utils/legal-history";
 
 /** Lịch sử thực hiện trên một văn bản (theo bản đã lưu, không theo bản nháp đang sửa) */
 export default function DocumentHistorySection({ document }: { document: LegalDocument }) {
-  const logVersion = useActivityLogVersion();
-  const entries = useMemo(
-    () => getDocumentHistory(getPersonnelActivities(), document),
-    // đọc lại khi nhật ký có dòng mới
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [document, logVersion],
-  );
+  const { data: history } = useLegalHistory(document.id);
+  const entries = useMemo(() => getDocumentHistory(history ?? [], document), [history, document]);
 
   return (
     <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">

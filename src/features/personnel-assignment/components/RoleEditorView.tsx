@@ -82,8 +82,8 @@ export default function RoleEditorView({ roleCode, onBack }: RoleEditorViewProps
   };
 
   /** Tạo chức danh mới + ghi nhật ký; trả về false nếu không tạo được */
-  const saveNewRole = () => {
-    const created = createRole(trimmedName, draftPerms);
+  const saveNewRole = async () => {
+    const created = await createRole(trimmedName, draftPerms);
     if (!created?.code) return false;
     const permNames = permissions.filter((p) => draftPerms.includes(p.id)).map((p) => p.name);
     logPermissionChange(
@@ -96,9 +96,9 @@ export default function RoleEditorView({ roleCode, onBack }: RoleEditorViewProps
   };
 
   /** Lưu tên + quyền của chức danh đang sửa, ghi lại đúng phần thay đổi; trả về false nếu tên không hợp lệ */
-  const saveExistingRole = (code: string) => {
-    if (!renameRole(code, trimmedName)) return false;
-    updateRolePermissions(code, draftPerms);
+  const saveExistingRole = async (code: string) => {
+    if (!(await renameRole(code, trimmedName))) return false;
+    if (!(await updateRolePermissions(code, draftPerms))) return false;
     toast.success(`Đã lưu chức danh "${trimmedName}".`);
 
     const beforeIds = new Set(initialPermIds);
@@ -129,7 +129,7 @@ export default function RoleEditorView({ roleCode, onBack }: RoleEditorViewProps
       }))
     )
       return;
-    const saved = roleCode ? saveExistingRole(roleCode) : saveNewRole();
+    const saved = roleCode ? await saveExistingRole(roleCode) : await saveNewRole();
     if (saved) onBack();
   };
 

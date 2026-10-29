@@ -21,4 +21,6 @@ export interface AuthUser {
   department?: string;
   initials?: string;
   email?: string;
+  /** "backend": đăng nhập bằng tài khoản thật, quyền lấy theo backend thay vì ma trận phân quyền lưu trình duyệt */
+  authSource?: "backend" | "mock";
 }

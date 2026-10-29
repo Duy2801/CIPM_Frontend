@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
 import { MATRIX_MODULES, MATRIX_PERMISSIONS, type MatrixRole } from "../constants/role-matrix-data";
+import { hasBackendSession, withBackend } from "../services/backend";
+import * as roleMatrixApi from "../services/role-matrix.api";
+import { loadLocalRoleMatrix, type RoleMatrixState } from "../services/role-matrix.api";
 import {
   deduplicateRoles,
-  loadActiveRoles,
-  loadDeletedRoleCodes,
-  loadLockedRoleCodes,
   loadRolePermissions,
   notifyRolesUpdated,
   saveLockedRoleCodes,
@@ -19,34 +19,20 @@ import {
   writeRoles,
 } from "../services/role-matrix.storage";
 
-interface RoleMatrixState {
-  roles: MatrixRole[];
-  /** Mã chức danh → danh sách mã quyền */
-  permissionsMap: Record<string, string[]>;
-  /** Chức danh đang tắt */
-  lockedRoleCodes: string[];
-  /** Chức danh mặc định đã xóa */
-  deletedRoleCodes: string[];
-}
-
 export const roleMatrixKey = ["role-matrix"] as const;
 
-const loadRoleMatrix = (): RoleMatrixState => ({
-  roles: loadActiveRoles(),
-  permissionsMap: loadRolePermissions(),
-  lockedRoleCodes: loadLockedRoleCodes(),
-  deletedRoleCodes: loadDeletedRoleCodes(),
-});
+const EMPTY_ROLE_MATRIX: RoleMatrixState = { roles: [], permissionsMap: {}, lockedRoleCodes: [], deletedRoleCodes: [] };
 
 const isDirector = (roleCode: string) => roleCode === "role_admin" || roleCode === "ADMIN";
 
 /** Ma trận phân quyền đang lưu; mọi component dùng chung một bản, lưu ở đâu thì nơi khác tự cập nhật */
 export function useRoleMatrix() {
   const queryClient = useQueryClient();
-  const { data } = useQuery({
+  // Dữ liệu backend thì chờ tải; bản lưu trình duyệt thì đọc ngay
+  const { data = EMPTY_ROLE_MATRIX } = useQuery({
     queryKey: roleMatrixKey,
-    queryFn: loadRoleMatrix,
-    initialData: loadRoleMatrix,
+    queryFn: roleMatrixApi.getRoleMatrix,
+    initialData: hasBackendSession() ? undefined : loadLocalRoleMatrix,
     staleTime: Infinity,
   });
 
@@ -104,14 +90,19 @@ export function useSortedMatrixRoles() {
   return { sortedRoles, getRolePermIds };
 }
 
-/** Thao tác lưu ma trận phân quyền: lưu ngay, xong làm mới bản dùng chung */
+/** Thao tác lưu ma trận phân quyền: lưu backend (hoặc trình duyệt khi chạy mock), xong làm mới bản dùng chung */
 export function useRoleMatrixActions() {
   const queryClient = useQueryClient();
-  const current = () => queryClient.getQueryData<RoleMatrixState>(roleMatrixKey) ?? loadRoleMatrix();
+  const current = () => queryClient.getQueryData<RoleMatrixState>(roleMatrixKey) ?? loadLocalRoleMatrix();
   const refresh = () => queryClient.invalidateQueries({ queryKey: roleMatrixKey });
+  /** Lỗi từ backend: báo lỗi, trả về giá trị thất bại */
+  const failWith = <T,>(failed: T) => (error: unknown) => {
+    toast.error(error instanceof Error ? error.message : "Không thể lưu chức danh, vui lòng thử lại.");
+    return failed;
+  };
 
-  /** Tạo chức danh mới với bộ quyền ban đầu; trùng tên thì trả về chức danh sẵn có */
-  const createRole = (name: string, permIds: string[]): MatrixRole => {
+  /** Tạo chức danh mới với bộ quyền ban đầu; trùng tên thì trả về chức danh sẵn có, lỗi thì trả về null */
+  const createRole = async (name: string, permIds: string[]): Promise<MatrixRole | null> => {
     const { roles, permissionsMap } = current();
     const trimmedName = name.trim();
 
@@ -122,47 +113,64 @@ export function useRoleMatrixActions() {
       return existing;
     }
 
-    const role: MatrixRole = {
-      code: `CUSTOM_${Date.now()}`,
-      name: trimmedName,
-      shortName: trimmedName,
-      group: "member",
-      description: `Chức danh ${trimmedName} trong hệ thống`,
-      color: "#0F4C81",
-      isCustom: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      writeRoles(deduplicateRoles([role, ...roles]));
-      notifyRolesUpdated();
-    } catch (err) {
-      console.error("Lỗi khi lưu vai trò mới vào localStorage:", err);
-    }
-    try {
-      writeRolePermissions({ ...permissionsMap, [role.code]: permIds });
-    } catch (err) {
-      console.error("Lỗi khi lưu quyền mới vào localStorage:", err);
-    }
-    refresh();
+    const role = await withBackend(
+      () => roleMatrixApi.createRole(trimmedName, permIds),
+      () => {
+        const localRole: MatrixRole = {
+          code: `CUSTOM_${Date.now()}`,
+          name: trimmedName,
+          shortName: trimmedName,
+          group: "member",
+          description: `Chức danh ${trimmedName} trong hệ thống`,
+          color: "#0F4C81",
+          isCustom: true,
+          createdAt: new Date().toISOString(),
+        };
+        try {
+          writeRoles(deduplicateRoles([localRole, ...roles]));
+          notifyRolesUpdated();
+        } catch (err) {
+          console.error("Lỗi khi lưu vai trò mới vào localStorage:", err);
+        }
+        try {
+          writeRolePermissions({ ...permissionsMap, [localRole.code]: permIds });
+        } catch (err) {
+          console.error("Lỗi khi lưu quyền mới vào localStorage:", err);
+        }
+        return localRole;
+      },
+    ).catch(failWith(null));
+    if (!role) return null;
+    await refresh();
     toast.success(`Đã thêm chức danh "${role.name}" vào ma trận với ${permIds.length} quyền.`);
     return role;
   };
 
   /** Bật / tắt chức danh: chức danh tắt không chọn được khi thêm nhân sự; cán bộ đang giữ tạm không có quyền */
-  const setRoleLocked = (roleCode: string, locked: boolean) => {
+  const setRoleLocked = async (roleCode: string, locked: boolean): Promise<boolean> => {
     const { roles, lockedRoleCodes } = current();
-    const next = locked
-      ? Array.from(new Set([...lockedRoleCodes, roleCode]))
-      : lockedRoleCodes.filter((code) => code !== roleCode);
-    saveLockedRoleCodes(next);
-    refresh();
+    const saved = await withBackend(
+      async () => {
+        await roleMatrixApi.setRoleActive(roleCode, !locked);
+        return true;
+      },
+      () => {
+        const next = locked
+          ? Array.from(new Set([...lockedRoleCodes, roleCode]))
+          : lockedRoleCodes.filter((code) => code !== roleCode);
+        saveLockedRoleCodes(next);
+        return true;
+      },
+    ).catch(failWith(false));
+    if (!saved) return false;
+    await refresh();
     const roleName = roles.find((r) => r.code === roleCode)?.name ?? "";
     toast.success(locked ? `Đã tắt chức danh "${roleName}".` : `Đã bật lại chức danh "${roleName}".`);
+    return true;
   };
 
-  /** Đổi tên chức danh; trả về false nếu tên trống hoặc trùng chức danh khác */
-  const renameRole = (roleCode: string, newName: string): boolean => {
+  /** Đổi tên chức danh; trả về false nếu tên trống, trùng chức danh khác hoặc lưu lỗi */
+  const renameRole = async (roleCode: string, newName: string): Promise<boolean> => {
     const { roles } = current();
     const trimmed = newName.trim();
     if (!trimmed) {
@@ -179,27 +187,46 @@ export function useRoleMatrixActions() {
     const target = roles.find((r) => r.code === roleCode);
     if (!target || target.name === trimmed) return true;
 
-    try {
-      writeRoleNameOverride(roleCode, trimmed);
-      writeRoles(roles.map((r) => (r.code === roleCode ? { ...r, name: trimmed, shortName: trimmed } : r)));
-      notifyRolesUpdated();
-    } catch (err) {
-      console.error("Lỗi khi lưu tên chức danh:", err);
-    }
-    refresh();
-    return true;
+    const saved = await withBackend(
+      async () => {
+        await roleMatrixApi.renameRole(roleCode, trimmed);
+        return true;
+      },
+      () => {
+        try {
+          writeRoleNameOverride(roleCode, trimmed);
+          writeRoles(roles.map((r) => (r.code === roleCode ? { ...r, name: trimmed, shortName: trimmed } : r)));
+          notifyRolesUpdated();
+        } catch (err) {
+          console.error("Lỗi khi lưu tên chức danh:", err);
+        }
+        return true;
+      },
+    ).catch(failWith(false));
+    if (saved) await refresh();
+    return saved;
   };
 
   /** Ghi đè toàn bộ quyền của một chức danh và cập nhật quyền của tài khoản đang đăng nhập nếu bị ảnh hưởng */
-  const updateRolePermissions = (roleCode: string, permIds: string[]) => {
-    try {
-      const storedPerms = { ...loadRolePermissions(), [roleCode]: permIds };
-      writeRolePermissions(storedPerms);
-      syncCurrentUserPermissions(storedPerms);
-    } catch (err) {
-      console.error("Lỗi khi lưu quyền chức danh:", err);
-    }
-    refresh();
+  const updateRolePermissions = async (roleCode: string, permIds: string[]): Promise<boolean> => {
+    const saved = await withBackend(
+      async () => {
+        await roleMatrixApi.saveRolePermissions(roleCode, permIds);
+        return true;
+      },
+      () => {
+        try {
+          const storedPerms = { ...loadRolePermissions(), [roleCode]: permIds };
+          writeRolePermissions(storedPerms);
+          syncCurrentUserPermissions(storedPerms);
+        } catch (err) {
+          console.error("Lỗi khi lưu quyền chức danh:", err);
+        }
+        return true;
+      },
+    ).catch(failWith(false));
+    if (saved) await refresh();
+    return saved;
   };
 
   return { createRole, setRoleLocked, renameRole, updateRolePermissions };

@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Pagination, Text } from "@/components/ui";
-import { getStaffProfileHistory } from "../utils/activity-log";
-import { useActivityLogVersion } from "../hooks/useActivityLogVersion";
+import { useStaffActivity } from "../hooks/usePersonnelQueries";
 import ActivityDateFilter, { toLocalDate } from "./ActivityDateFilter";
 import ActivityTimeline from "./ActivityTimeline";
 
@@ -11,7 +10,7 @@ const PAGE_SIZE = 5;
 
 /** Lịch sử thay đổi của hồ sơ cán bộ (chỉ thay đổi trên hồ sơ này, không gộp thao tác ở các màn hình khác), mới nhất lên đầu */
 export default function StaffActivityHistory({ staffId }: { staffId: string }) {
-  const version = useActivityLogVersion();
+  const { data: history } = useStaffActivity(staffId);
   // Lọc theo một ngày cụ thể (yyyy-mm-dd)
   const [filterDate, setFilterDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,11 +23,10 @@ export default function StaffActivityHistory({ staffId }: { staffId: string }) {
     setFilterDate("");
   }
 
-  const allEntries = useMemo(() => {
-    return [...getStaffProfileHistory(staffId)].sort((a, b) => b.at.localeCompare(a.at));
-    // đọc lại khi nhật ký có dòng mới
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [staffId, version]);
+  const allEntries = useMemo(
+    () => [...(history ?? [])].sort((a, b) => String(b.at).localeCompare(String(a.at))),
+    [history]
+  );
 
   const entries = useMemo(
     () => (filterDate ? allEntries.filter((e) => toLocalDate(e.at) === filterDate) : allEntries),

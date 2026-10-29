@@ -83,7 +83,7 @@ export default function CompleteStepModal({
                 Xác Nhận Hoàn Thành Bước {step.code}
               </span>
               <Tag intent={step.type === "MANDATORY" ? "danger" : "warning"} scale="sm">
-                {step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
+                {step.type === "MANDATORY" ? "Bắt buộc" : "Nếu có"}
               </Tag>
             </div>
             <p className="text-xs font-normal text-slate-500 mt-0.5 truncate">
@@ -117,7 +117,7 @@ export default function CompleteStepModal({
               Đơn vị thực hiện: <strong>{step.responsibleUnit}</strong>
             </span>
             <Tag intent={step.type === "MANDATORY" ? "danger" : "warning"} scale="sm">
-              {step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
+              {step.type === "MANDATORY" ? "Bắt buộc" : "Nếu có"}
             </Tag>
           </div>
           <div>

@@ -5,7 +5,30 @@
  * Quy trình thủ tục ĐTXD theo dự thảo nằm ở procedure-department-templates.ts.
  */
 
+import { PERSONNEL_MOCK_DATA } from "@/features/personnel-assignment/constants/personnel-mock-data";
 import type { ProcedureStep } from "../types/procedure.types";
+
+/** Số ngày mẫu cho bước chưa có thời gian (chưa có backend) */
+const MOCK_STEP_DAYS = [5, 7, 10, 15, 20, 30];
+
+/** Băm chuỗi ổn định → cùng một bước luôn ra cùng dữ liệu mẫu */
+export const stableHash = (text: string) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+/** Dữ liệu mẫu: bước chưa có số ngày / người thực hiện thì điền sẵn để bảng không bị trống */
+export const withMockStepDefaults = (steps: ProcedureStep[]): ProcedureStep[] => {
+  const staff = PERSONNEL_MOCK_DATA.staff;
+  return steps.map((s) => {
+    const h = stableHash(`${s.code}|${s.name}`);
+    const hasDays = !!(s.plannedDays || s.durationDaysMax || s.durationDaysMin);
+    const days = MOCK_STEP_DAYS[h % MOCK_STEP_DAYS.length];
+    const person = staff.length > 0 ? staff[h % staff.length] : undefined;
+    return {
+      ...s,
+      ...(hasDays ? {} : { plannedDays: days, durationDaysMin: days, durationDaysMax: days, durationMargin: `${days} ngày` }),
+      ...(s.assignedTo || !person ? {} : { assignedTo: person.name, assignedToId: person.id }),
+    };
+  });
+};
 
 export interface ProcedureProfile {
   id: string;
@@ -95,7 +118,7 @@ export const saveTemplateOverride = (templateId: string, steps: ProcedureStep[])
 /** Bước của quy trình mẫu: bản đã chỉnh (nếu có), không thì bộ bước gốc */
 export const getTemplateSteps = (template: { id: string; createSteps: () => ProcedureStep[] }): ProcedureStep[] => {
   const override = loadTemplateOverrides()[template.id];
-  return override ? override.map((s) => ({ ...s })) : template.createSteps();
+  return withMockStepDefaults(override ? override.map((s) => ({ ...s })) : template.createSteps());
 };
 
 export const saveCustomProfiles = (profiles: CustomProcedureProfile[]) => {

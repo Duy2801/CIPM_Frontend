@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "@/components/ui";
+import { CheckOutlined } from "@ant-design/icons";
+import { App } from "antd";
+import { Button, toast } from "@/components/ui";
 import type { ProcedureStep } from "../types/procedure.types";
 import {
+  approveProcedure,
   createProcedure,
-  deleteProcedure,
-  getProcedureDepartmentOptions,
   loadProcedureLibrary,
   markProcedureUpdated,
+  setProcedureEnabled,
 } from "../utils/procedure-library";
 import CreateProcedurePage from "./CreateProcedurePage";
 import ProcedureListView from "./ProcedureListView";
 import ProcedurePageHeader from "./ProcedurePageHeader";
-import StepConfigModal from "./StepConfigModal";
+import StepConfigModal, { type SaveScope, type StepChange } from "./StepConfigModal";
 
 interface ProcedureLibraryTabProps {
   /** Người đang thao tác (ghi vào "Người tạo" / "Cập nhật bởi") */
   actorName: string;
   /** Đã bấm "Lưu quy trình" (ghi lịch sử, thông báo) */
-  onSaved: (profileId: string, profileName: string, steps: ProcedureStep[]) => void;
+  onSaved: (profileId: string, profileName: string, steps: ProcedureStep[], scope?: SaveScope, changes?: StepChange[]) => void;
   /** Mở / đóng trang con (chi tiết, thêm mới) — màn hình ẩn thanh tab khi đang ở trang con */
   onDetailChange?: (open: boolean) => void;
 }
@@ -31,6 +33,7 @@ type LibraryView = { kind: "list" } | { kind: "detail"; id: string } | { kind: "
 export default function ProcedureLibraryTab({ actorName, onSaved, onDetailChange }: ProcedureLibraryTabProps) {
   const [procedures, setProcedures] = useState(loadProcedureLibrary);
   const [view, setView] = useState<LibraryView>({ kind: "list" });
+  const { modal } = App.useApp();
 
   const reload = () => setProcedures(loadProcedureLibrary());
 
@@ -47,10 +50,9 @@ export default function ProcedureLibraryTab({ actorName, onSaved, onDetailChange
   if (view.kind === "create") {
     return (
       <CreateProcedurePage
-        departmentOptions={getProcedureDepartmentOptions()}
         onBack={backToList}
-        onCreate={({ name, department, steps }) => {
-          createProcedure({ name, department, steps, createdBy: actorName });
+        onCreate={({ name, steps }) => {
+          createProcedure({ name, steps, createdBy: actorName });
           backToList();
           toast.success("Đã tạo quy trình mới", `Đã lưu quy trình "${name}" (${steps.length} bước).`);
         }}
@@ -71,6 +73,32 @@ export default function ProcedureLibraryTab({ actorName, onSaved, onDetailChange
           }
           subtitle={[opened.department, `${opened.steps.length} bước`].filter(Boolean).join(" · ")}
           onBack={backToList}
+          actions={
+            // Đã duyệt thì không hiện gì (người duyệt xem ở danh sách)
+            opened.approvedBy ? null : (
+              <Button
+                intent="primary"
+                icon={<CheckOutlined />}
+                disabled={!opened.enabled}
+                title={opened.enabled ? undefined : "Quy trình đang ngưng, bật lại để duyệt"}
+                onClick={() =>
+                  modal.confirm({
+                    title: "Duyệt quy trình?",
+                    content: `Quy trình "${opened.name}" sẽ chuyển sang trạng thái Đang áp dụng, người duyệt: ${actorName}.`,
+                    okText: "Duyệt",
+                    cancelText: "Hủy",
+                    onOk: () => {
+                      approveProcedure(opened.id, actorName);
+                      reload();
+                      toast.success("Đã duyệt quy trình", `Quy trình "${opened.name}" đang được áp dụng.`);
+                    },
+                  })
+                }
+              >
+                Duyệt quy trình
+              </Button>
+            )
+          }
         />
 
         <StepConfigModal
@@ -82,10 +110,10 @@ export default function ProcedureLibraryTab({ actorName, onSaved, onDetailChange
           currentProcedureId={opened.id}
           onBack={backToList}
           onClose={() => {}}
-          onSaveConfig={(steps, profileId) => {
+          onSaveConfig={(steps, profileId, scope, changes) => {
             if (profileId) markProcedureUpdated(profileId, actorName);
             reload();
-            if (profileId) onSaved(profileId, opened.name, steps);
+            if (profileId) onSaved(profileId, opened.name, steps, scope, changes);
           }}
         />
       </div>
@@ -97,10 +125,13 @@ export default function ProcedureLibraryTab({ actorName, onSaved, onDetailChange
       procedures={procedures}
       onOpen={(id) => goTo({ kind: "detail", id })}
       onCreate={() => goTo({ kind: "create" })}
-      onDelete={(procedure) => {
-        deleteProcedure(procedure.id);
+      onToggle={(procedure, enabled) => {
+        setProcedureEnabled(procedure.id, enabled);
         reload();
-        toast.info("Đã xóa quy trình", `Đã xóa quy trình "${procedure.name}" khỏi danh sách.`);
+        toast.info(
+          enabled ? "Đã bật quy trình" : "Đã ngưng quy trình",
+          `Quy trình "${procedure.name}" ${enabled ? "đã được bật lại" : "đã chuyển sang Đã ngưng"}.`,
+        );
       }}
     />
   );

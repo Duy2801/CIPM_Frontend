@@ -21,7 +21,6 @@ import {
   Text,
   Tooltip,
 } from "@/components/ui";
-import { SectionIntro } from "@/components/workspace";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
 import { GPMB_STEPS } from "../constants/gpmb-steps";
@@ -140,14 +139,42 @@ export default function HouseholdMatrixTab({
 
   return (
     <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm shadow-slate-100 overflow-hidden">
-      <SectionIntro
-        title="Ma trận tiến độ hộ dân × 16 bước"
-        description="Mỗi hàng là một hộ dân, mỗi cột là một bước. Bấm vào ô tiến độ đang làm để cập nhật hoặc bấm vào tên hộ để mở chi tiết."
-        countLabel={`${rows.length} hộ dân`}
-        readOnly={!permissions.canEdit && !permissions.canApprove}
-        guide="Rê chuột lên ô để xem ngày & số văn bản. Bấm vào ô đang làm để cập nhật hoặc bấm tên hộ để mở chi tiết hồ sơ."
-        actions={
-          permissions.canEdit ? (
+      <header className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4">
+        {/* Hàng 1: Ô tìm kiếm + Lọc trạng thái (trái) + Thêm hộ dân (phải) */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="w-72 sm:w-80">
+              <Input
+                allowClear
+                intent="clean"
+                prefix={<SearchOutlined className="text-slate-400 text-xs" />}
+                placeholder="Tìm chủ hộ, CCCD, mã hộ..."
+                className="w-full text-xs h-8"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+
+            <div className="w-48 sm:w-56">
+              <Select
+                value={filter}
+                onChange={(val) => {
+                  setFilter(val as HouseholdFilter);
+                  setCurrentPage(1);
+                }}
+                className="w-full text-xs"
+                options={FILTER_ORDER.map((key) => ({
+                  value: key,
+                  label: CONCISE_FILTER_LABELS[key],
+                }))}
+              />
+            </div>
+          </div>
+
+          {permissions.canEdit && (
             <Button
               intent="primary"
               scale="sm"
@@ -157,78 +184,30 @@ export default function HouseholdMatrixTab({
             >
               Thêm hộ dân
             </Button>
-          ) : undefined
-        }
-        toolbar={
-          <div className="flex flex-col gap-3">
-            {/* Hàng 1: Ô tìm kiếm (bên trái) + Nút Select trạng thái (bên cạnh) */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="w-72 sm:w-80">
-                <Input
-                  allowClear
-                  intent="clean"
-                  prefix={<SearchOutlined className="text-slate-400 text-xs" />}
-                  placeholder="Tìm chủ hộ, CCCD, mã hộ..."
-                  className="w-full text-xs h-8"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                />
-              </div>
+          )}
+        </div>
 
-              <div className="w-48 sm:w-56">
-                <Select
-                  value={filter}
-                  onChange={(val) => {
-                    setFilter(val as HouseholdFilter);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full text-xs"
-                  options={FILTER_ORDER.map((key) => ({
-                    value: key,
-                    label: CONCISE_FILTER_LABELS[key],
-                  }))}
-                />
-              </div>
-            </div>
-
-            {/* Hàng 2: Chú giải màu (trái) + Phân trang (phải) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-100 pt-2.5 gap-2.5">
-              <ul className="m-0 flex list-none flex-wrap gap-x-3.5 gap-y-1 p-0" aria-label="Chú giải màu">
-                {(Object.keys(CELL_STYLES) as CellState[]).map((state) => (
-                  <li key={state} className="flex items-center gap-1.5 text-[11.5px] text-slate-600">
-                    <span className={`flex h-4 w-4 items-center justify-center rounded border text-[9px] ${CELL_STYLES[state].className}`}>
-                      {CELL_STYLES[state].icon}
-                    </span>
-                    {CELL_STYLES[state].label}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Phân trang đặt bên phải hàng 2 - chỉ hiện khi > 10 */}
-              {rows.length > PAGE_SIZE && (
-                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-                  <Text className="text-xs text-slate-500 font-medium">
-                    Hiển thị {(currentPage - 1) * PAGE_SIZE + 1} -{" "}
-                    {Math.min(currentPage * PAGE_SIZE, rows.length)} trong tổng số{" "}
-                    {rows.length} hộ dân
-                  </Text>
-                  <Pagination
-                    current={currentPage}
-                    pageSize={PAGE_SIZE}
-                    total={rows.length}
-                    onChange={(page) => setCurrentPage(page)}
-                    showSizeChanger={false}
-                    hideOnSinglePage={true}
-                  />
-                </div>
-              )}
+        {/* Hàng 2: Phân trang - chỉ hiện khi > 10 */}
+        {rows.length > PAGE_SIZE && (
+          <div className="flex justify-end">
+            <div className="flex items-center gap-2.5">
+              <Text className="text-xs text-slate-500 font-medium">
+                Hiển thị {(currentPage - 1) * PAGE_SIZE + 1} -{" "}
+                {Math.min(currentPage * PAGE_SIZE, rows.length)} trong tổng số{" "}
+                {rows.length} hộ dân
+              </Text>
+              <Pagination
+                current={currentPage}
+                pageSize={PAGE_SIZE}
+                total={rows.length}
+                onChange={(page) => setCurrentPage(page)}
+                showSizeChanger={false}
+                hideOnSinglePage={true}
+              />
             </div>
           </div>
-        }
-      />
+        )}
+      </header>
 
       <div className="overflow-x-auto p-4">
         {paginatedRows.length === 0 ? (

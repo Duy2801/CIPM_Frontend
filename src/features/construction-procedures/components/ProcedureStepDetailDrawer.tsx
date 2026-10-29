@@ -321,7 +321,7 @@ export default function ProcedureStepDetailDrawer({
     : undefined;
 
   // Danh sách thay đổi "cũ → mới" để xác nhận trước khi lưu
-  const typeLabel = (t?: string) => (t === "MANDATORY" ? "Bắt buộc" : t === "CONDITIONAL" ? "Điều kiện" : "");
+  const typeLabel = (t?: string) => (t === "MANDATORY" ? "Bắt buộc" : t === "CONDITIONAL" ? "Nếu có" : "");
   const pendingChanges = [
     "name" in pendingPatch ? { label: "Tên bước", from: step.name, to: view.name } : null,
     "type" in pendingPatch ? { label: "Phân loại", from: typeLabel(step.type), to: typeLabel(view.type) } : null,
@@ -654,12 +654,12 @@ export default function ProcedureStepDetailDrawer({
             label="Phân loại"
             changed={isChanged("type")}
             value={view.type}
-            display={view.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
+            display={view.type === "MANDATORY" ? "Bắt buộc" : "Nếu có"}
             editor={{
               kind: "select",
               options: [
                 { value: "MANDATORY", label: "Bắt buộc" },
-                { value: "CONDITIONAL", label: "Điều kiện" },
+                { value: "CONDITIONAL", label: "Nếu có" },
               ],
             }}
             onSave={saveInfo && ((type) => saveInfo({ type: type as ProcedureStep["type"] }))}

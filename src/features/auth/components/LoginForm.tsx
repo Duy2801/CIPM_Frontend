@@ -36,11 +36,11 @@ export default function LoginForm({
       <Form.Item
         label={
           <Text strong variant="label" className="text-[11px] uppercase tracking-wider text-[var(--cipm-text-muted)]">
-            TÊN ĐĂNG NHẬP
+            EMAIL CÔNG VỤ
           </Text>
         }
         name="username"
-        rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập" }]}
+        rules={[{ required: true, message: "Vui lòng nhập email công vụ" }]}
         className="!mb-1 [&_.ant-form-item-explain]:!min-h-[22px] [&_.ant-form-item-explain]:!text-[12px] [&_.ant-form-item-explain]:!pt-1 [&_.ant-form-item-row]:!mb-0"
       >
         <Input
@@ -48,7 +48,7 @@ export default function LoginForm({
           scale="md"
           rounded="default"
           prefix={<UserOutlined className="text-[var(--cipm-text-faint)] text-[15px] mr-2" />}
-          placeholder="Nhập tên đăng nhập hoặc email"
+          placeholder="VD: ten@hatien.gov.vn"
         />
       </Form.Item>
 

@@ -34,7 +34,7 @@ export default function ProcedureHeaderKpi({
     {
       label: "Quy trình đang áp dụng",
       value: `${activeStepsCount}/${totalSteps}`,
-      note: `${disabledCount} bước điều kiện đã tắt`,
+      note: `${disabledCount} bước "nếu có" đã tắt`,
       icon: <SlidersOutlined />,
       iconClass: "bg-cyan-50 text-cyan-700",
       valueClass: "text-[#102A43]",

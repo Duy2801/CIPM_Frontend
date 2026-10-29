@@ -151,6 +151,25 @@ export function useUpdateStaff() {
   );
 }
 
+/** Lưu quyền riêng của cán bộ: quyền thực tế sau khi lưu đúng bằng `selected` */
+export function useUpdateStaffPermissions() {
+  return usePersonnelAction(
+    ({ staffId, ...codes }: { staffId: string; staffName: string; selected: string[]; current: string[]; base: string[] }) =>
+      personnelApi.saveStaffPermissions(staffId, codes),
+    {
+      successText: ({ staffName }) => `Đã cập nhật quyền hạn riêng của cán bộ ${staffName}.`,
+      log: ({ staffId, staffName, selected, current }) => ({
+        module: "Nhân sự",
+        action: "Cập nhật quyền hạn riêng",
+        targetType: "staff",
+        targetId: staffId,
+        targetName: staffName,
+        changes: [{ label: "Số quyền", from: `${current.length} quyền`, to: `${selected.length} quyền` }],
+      }),
+    },
+  );
+}
+
 // ── Tài khoản ──
 
 export function useLockAccount() {

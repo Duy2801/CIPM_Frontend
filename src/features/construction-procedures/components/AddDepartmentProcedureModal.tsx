@@ -204,7 +204,7 @@ export default function AddDepartmentProcedureModal({
                     {step.code || `B-${idx + 1}`}
                   </span>
                   <Tag intent={step.type === "MANDATORY" ? "info" : "warning"} scale="sm">
-                    {step.type === "MANDATORY" ? "Bắt buộc" : "Điều kiện"}
+                    {step.type === "MANDATORY" ? "Bắt buộc" : "Nếu có"}
                   </Tag>
                   <Tag intent="default" scale="sm">
                     {step.durationMargin || "Theo kế hoạch"}

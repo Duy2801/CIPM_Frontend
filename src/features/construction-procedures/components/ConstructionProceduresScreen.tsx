@@ -367,7 +367,15 @@ export default function ConstructionProceduresScreen() {
   });
 
   // Lưu quy trình ở tab "Quy trình": ghi nhật ký + thông báo
-  const handleSaveLibraryProcedure = (profileId: string, profileName: string, steps: ProcedureStep[]) => {
+  const handleSaveLibraryProcedure = (
+    profileId: string,
+    profileName: string,
+    steps: ProcedureStep[],
+    scope?: "flow" | "info" | "all" | "auto",
+    changes?: { label: string; from?: string; to?: string }[],
+  ) => {
+    // Tự lưu: chỉ đổi thứ tự làm thì ghi là cập nhật tiến độ
+    const isFlow = scope === "flow" || (scope === "auto" && !!changes?.length && changes.every((c) => c.label.startsWith("Thứ tự")));
     const log: ProcedureHistoryLog = {
       id: `LOG-${Date.now()}`,
       stepId: profileId,
@@ -377,8 +385,14 @@ export default function ConstructionProceduresScreen() {
       performedBy: operatorName,
       role: operatorRole,
       action: "TOGGLE_STEP",
-      actionLabel: "Cập nhật quy trình",
-      details: `Lưu quy trình "${profileName}" (${steps.length} bước).`,
+      actionLabel: isFlow ? "Cập nhật tiến độ" : "Cập nhật quy trình",
+      details:
+        scope === "auto"
+          ? `${changes?.length ?? 0} thay đổi trên quy trình "${profileName}".`
+          : isFlow
+            ? `Lưu thứ tự thực hiện (song song / lần lượt) của quy trình "${profileName}".`
+            : `Lưu quy trình "${profileName}" (${steps.length} bước).`,
+      changes,
     };
     setLibraryHistory((prev) => {
       const next = [log, ...prev];
@@ -390,7 +404,10 @@ export default function ConstructionProceduresScreen() {
       return next;
     });
     refreshProcedureProfiles();
-    toast.success("Đã lưu quy trình", `Đã lưu quy trình "${profileName}" (${steps.length} bước).`);
+    // Tự lưu thì không bật thông báo (trang chi tiết đã hiện "Đã tự lưu")
+    if (scope === "auto") return;
+    if (isFlow) toast.success("Đã lưu tiến độ", `Đã lưu thứ tự thực hiện của quy trình "${profileName}".`);
+    else toast.success("Đã lưu quy trình", `Đã lưu quy trình "${profileName}" (${steps.length} bước).`);
   };
 
   // Lịch sử gộp: chỉnh sửa danh mục quy trình + thao tác trên thủ tục các dự án
@@ -1360,7 +1377,7 @@ export default function ConstructionProceduresScreen() {
     const updatedStep: ProcedureStep = { ...step, ...patch };
     const newSteps = currentProject.steps.map((s) => (s.id === stepId ? updatedStep : s));
 
-    const typeLabel = (t?: string) => (t === "MANDATORY" ? "Bắt buộc" : t === "CONDITIONAL" ? "Điều kiện" : "");
+    const typeLabel = (t?: string) => (t === "MANDATORY" ? "Bắt buộc" : t === "CONDITIONAL" ? "Nếu có" : "");
     const fmt = (iso?: string) => (iso ? iso.split("-").reverse().join("/") : "Trống");
     const changes = [
       patch.name !== undefined && patch.name !== step.name ? `Tên bước: ${step.name} → ${patch.name}` : null,

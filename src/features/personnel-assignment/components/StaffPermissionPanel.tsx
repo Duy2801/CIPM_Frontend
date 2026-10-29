@@ -9,10 +9,11 @@ import {
   SaveOutlined,
 } from "@ant-design/icons";
 import { Button, Checkbox, Select, Text } from "@/components/ui";
-import { getAllRbacPermissions, getStaffEffectivePermissions, type RbacPermissionItem } from "../utils/personnel-rbac";
+import type { RbacPermissionItem } from "../utils/personnel-rbac";
 import { useConfirmAction } from "../hooks/useConfirmAction";
-import { useStaffAccess, useStaffDetail } from "../hooks/usePersonnelAccess";
-import { useUpdateStaff } from "../hooks/usePersonnelMutations";
+import { useStaffAccess } from "../hooks/usePersonnelAccess";
+import { useUpdateStaffPermissions } from "../hooks/usePersonnelMutations";
+import { useStaffPermissions } from "../hooks/useStaffPermissions";
 
 const NO_PERMISSIONS: RbacPermissionItem[] = [];
 
@@ -21,29 +22,25 @@ const NO_PERMISSIONS: RbacPermissionItem[] = [];
  * Chỉnh quyền chỉ áp dụng RIÊNG cán bộ này: quyền mặc định của chức danh không đổi, người khác cùng chức danh không bị ảnh hưởng.
  */
 export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
-  const detail = useStaffDetail(staffId);
-  // Quyền mặc định theo chức danh & tổ của cán bộ
-  const basePermissions = detail?.basePermissions ?? NO_PERMISSIONS;
+  const data = useStaffPermissions(staffId);
+  // Quyền mặc định theo chức danh của cán bộ
+  const basePermissions = data?.basePermissions ?? NO_PERMISSIONS;
   // Người có quyền quản lý chức danh mới chỉnh được quyền riêng
   const { canManageRole: canEdit } = useStaffAccess();
-  const updateStaff = useUpdateStaff();
+  const updatePermissions = useUpdateStaffPermissions();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const confirmAction = useConfirmAction();
   const [draft, setDraft] = useState<Set<string>>(new Set());
 
   const baseCodes = useMemo(() => new Set(basePermissions.map((p) => p.code)), [basePermissions]);
-  const staff = detail?.staff;
-  const effective = useMemo(
-    () => (staff ? getStaffEffectivePermissions(staff, basePermissions) : NO_PERMISSIONS),
-    [staff, basePermissions],
-  );
+  const effective = data?.effective ?? NO_PERMISSIONS;
 
-  // Toàn bộ danh mục quyền trong hệ thống
+  // Toàn bộ danh mục quyền, quyền theo chức danh lên đầu
   const catalog = useMemo(() => {
-    const all = getAllRbacPermissions();
+    const all = data?.catalog ?? NO_PERMISSIONS;
     return [...all.filter((p) => baseCodes.has(p.code)), ...all.filter((p) => !baseCodes.has(p.code))];
-  }, [baseCodes]);
+  }, [data, baseCodes]);
 
   // Options cho Select gộp
   const permissionOptions = useMemo(() => {
@@ -62,12 +59,15 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
     [catalog, draft],
   );
 
-  if (!staff) return null;
-  const grantedCodes = new Set((staff.permissions ?? []).filter((code) => !baseCodes.has(code)));
-  const revokedCount = (staff.revokedPermissions ?? []).filter((code) => baseCodes.has(code)).length;
+  if (!data) return null;
+  const staffName = data.staffName;
+  const effectiveCodes = effective.map((p) => p.code);
+  // Điều chỉnh riêng = chênh lệch giữa quyền thực tế và quyền theo chức danh
+  const grantedCodes = new Set(effectiveCodes.filter((code) => !baseCodes.has(code)));
+  const revokedCount = [...baseCodes].filter((code) => !effectiveCodes.includes(code)).length;
 
   const startEdit = () => {
-    setDraft(new Set(effective.map((p) => p.code)));
+    setDraft(new Set(effectiveCodes));
     setEditing(true);
   };
 
@@ -82,12 +82,9 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
 
   const handleSave = async () => {
     if (!canEdit) return;
-    // Lưu phần khác biệt so với chức danh: cấp thêm = tick mà chức danh không có; thu hồi = chức danh có mà bỏ tick
-    const permissions = [...draft].filter((code) => !baseCodes.has(code));
-    const revokedPermissions = [...baseCodes].filter((code) => !draft.has(code));
     if (
       !(await confirmAction({
-        title: `Cập nhật quyền hạn của ${staff.name}?`,
+        title: `Cập nhật quyền hạn của ${staffName}?`,
         description: `Cán bộ sẽ có ${draft.size} quyền. Thay đổi chỉ áp dụng riêng cán bộ này.`,
         okText: "Lưu quyền",
       }))
@@ -95,10 +92,12 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
       return;
     setSaving(true);
     try {
-      const ok = await updateStaff.run({
+      const ok = await updatePermissions.run({
         staffId,
-        input: { permissions, revokedPermissions },
-        successText: `Đã cập nhật quyền hạn riêng của cán bộ ${staff.name}.`,
+        staffName,
+        selected: [...draft],
+        current: effectiveCodes,
+        base: [...baseCodes],
       });
       if (ok) setEditing(false);
     } finally {
