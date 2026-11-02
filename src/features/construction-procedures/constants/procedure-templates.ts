@@ -26,6 +26,7 @@ export interface CustomProcedureProfile {
   createdAt: string;
   createdBy?: string;
   department?: string;
+  category?: string;
   isSystem?: boolean;
   steps: ProcedureStep[];
 }

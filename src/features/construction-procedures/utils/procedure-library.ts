@@ -1,4 +1,5 @@
 import { DEPARTMENT_PROCEDURE_TEMPLATES } from "../constants/procedure-department-templates";
+import { PROCEDURE_CATEGORY, TEMPLATE_CATEGORY } from "../constants/procedure-categories";
 import {
   getTemplateSteps,
   loadCustomProfiles,
@@ -23,6 +24,7 @@ export interface ProcedureLibraryItem {
   id: string;
   name: string;
   department?: string;
+  category: string;
   isCustom: boolean;
   status: ProcedureStatus;
   enabled: boolean;
@@ -224,6 +226,7 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
         id: tpl.id,
         name: tpl.name,
         department: tpl.department,
+        category: TEMPLATE_CATEGORY[tpl.id] ?? PROCEDURE_CATEGORY.XDCB,
         isCustom: false,
         enabled,
         status: resolveStatus(enabled, approvedBy, !!submissions[tpl.id], mock?.status ?? "PROCESSING"),
@@ -243,6 +246,7 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
     id: p.id,
     name: p.name,
     department: p.department,
+    category: p.category ?? PROCEDURE_CATEGORY.XDCB,
     isCustom: true,
     enabled: enabledOverrides[p.id] ?? true,
     status: resolveStatus(
@@ -276,17 +280,19 @@ export function saveProcedureSteps(procedureId: string, steps: ProcedureStep[]) 
 
 export interface CreateProcedureInput {
   name: string;
+  category: string;
   steps: ProcedureStep[];
   createdBy?: string;
   version?: string;
 }
 
-export function createProcedure({ name, steps, createdBy, version }: CreateProcedureInput): CustomProcedureProfile {
+export function createProcedure({ name, category, steps, createdBy, version }: CreateProcedureInput): CustomProcedureProfile {
   const created: CustomProcedureProfile = {
     id: `custom_${Date.now()}`,
     name,
     createdAt: new Date().toISOString().slice(0, 10),
     createdBy,
+    category,
     steps,
   };
   saveCustomProfiles([created, ...loadCustomProfiles()]);

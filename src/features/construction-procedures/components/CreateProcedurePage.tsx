@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Form, Input, toast } from "@/components/ui";
+import { SelectWithAddOption } from "@/components/workspace";
+import { addProcedureCategory, getProcedureCategories } from "../constants/procedure-categories";
 import type { ProcedureStep } from "../types/procedure.types";
 import { DEFAULT_PROCEDURE_VERSION } from "../utils/procedure-library";
 import ProcedurePageHeader from "./ProcedurePageHeader";
@@ -12,6 +14,7 @@ const NO_STEPS: ProcedureStep[] = [];
 
 export interface CreateProcedurePageValues {
   name: string;
+  category: string;
   version: string;
   steps: ProcedureStep[];
 }
@@ -25,6 +28,9 @@ export default function CreateProcedurePage({ onBack, onCreate }: CreateProcedur
   const [name, setName] = useState("");
   const [version, setVersion] = useState(DEFAULT_PROCEDURE_VERSION);
   const [nameError, setNameError] = useState("");
+  const [categories, setCategories] = useState(getProcedureCategories);
+  const [category, setCategory] = useState<string>();
+  const [categoryError, setCategoryError] = useState("");
 
   const handleCreate = (steps: ProcedureStep[]) => {
     const trimmed = name.trim();
@@ -34,7 +40,13 @@ export default function CreateProcedurePage({ onBack, onCreate }: CreateProcedur
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    onCreate({ name: trimmed, version: version.trim(), steps });
+    if (!category) {
+      setCategoryError("Vui lòng chọn loại quy trình");
+      toast.warning("Thiếu thông tin quy trình", "Vui lòng chọn loại quy trình");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    onCreate({ name: trimmed, category, version: version.trim(), steps });
   };
 
   return (
@@ -71,7 +83,33 @@ export default function CreateProcedurePage({ onBack, onCreate }: CreateProcedur
             />
           </Form.Item>
 
-          <Form.Item label="Version" className="w-40">
+          <Form.Item
+            label="Loại quy trình"
+            required
+            validateStatus={categoryError ? "error" : undefined}
+            help={categoryError || undefined}
+            className="w-full sm:w-72"
+          >
+            <SelectWithAddOption
+              aria-label="Loại quy trình"
+              value={category}
+              options={categories.map((c) => ({ value: c, label: c }))}
+              onChange={(value) => {
+                setCategory(value);
+                setCategoryError("");
+              }}
+              onAdd={(newName) => {
+                addProcedureCategory(newName);
+                setCategories(getProcedureCategories());
+                setCategory(newName);
+                setCategoryError("");
+              }}
+              addPlaceholder="Nhập loại quy trình mới..."
+              placeholder="Chọn loại quy trình"
+            />
+          </Form.Item>
+
+          <Form.Item label="Version" className="w-40 sm:ml-auto!">
             <ProcedureVersionInput value={version} onChange={setVersion} className="h-9 w-full text-xs" />
           </Form.Item>
         </Form>

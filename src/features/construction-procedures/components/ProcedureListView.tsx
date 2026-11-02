@@ -44,7 +44,7 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
   const visible = useMemo(() => {
     const key = normalizeSearchText(search.trim());
     if (!key) return procedures;
-    return procedures.filter((p) => normalizeSearchText(`${p.name} ${p.department ?? ""}`).includes(key));
+    return procedures.filter((p) => normalizeSearchText(`${p.name} ${p.category} ${p.department ?? ""}`).includes(key));
   }, [procedures, search]);
 
   const columns: ColumnsType<ProcedureLibraryItem> = [
@@ -158,7 +158,7 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
           intent="clean"
           aria-label="Tìm quy trình"
           prefix={<SearchOutlined className="text-slate-400" />}
-          placeholder="Tìm tên quy trình hoặc tổ phụ trách..."
+          placeholder="Tìm tên hoặc loại quy trình..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 w-full text-sm sm:max-w-md"

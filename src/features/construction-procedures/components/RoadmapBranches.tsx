@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BRANCH_COLOR, SPINE_X } from "../constants/roadmap-layout";
 import type { ProcedureStep } from "../types/procedure.types";
 import { getSiblingSteps } from "../utils/step-dependencies";
-import RoadmapStepFlow, { type ChangeStagesHandler } from "./RoadmapStepFlow";
+import RoadmapStepFlow, { type ChangeStagesHandler, type RoadmapStepView } from "./RoadmapStepFlow";
 
 function BranchBlock({
   steps,
@@ -12,12 +12,14 @@ function BranchBlock({
   onChangeStages,
   collapsed,
   onToggleBranch,
+  stepView,
 }: {
   steps: ProcedureStep[];
   branch: ProcedureStep;
   onChangeStages?: ChangeStagesHandler;
   collapsed: Set<string>;
   onToggleBranch: (code: string) => void;
+  stepView?: RoadmapStepView;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [anchor, setAnchor] = useState<{ cx: number; rise: number } | null>(null);
@@ -63,6 +65,7 @@ function BranchBlock({
           entryColor={BRANCH_COLOR}
           collapsed={collapsed}
           onToggleBranch={onToggleBranch}
+          stepView={stepView}
         />
       </div>
       <RoadmapBranches
@@ -71,6 +74,7 @@ function BranchBlock({
         onChangeStages={onChangeStages}
         collapsed={collapsed}
         onToggleBranch={onToggleBranch}
+        stepView={stepView}
       />
     </div>
   );
@@ -82,12 +86,14 @@ export default function RoadmapBranches({
   onChangeStages,
   collapsed,
   onToggleBranch,
+  stepView,
 }: {
   steps: ProcedureStep[];
   parent: ProcedureStep;
   onChangeStages?: ChangeStagesHandler;
   collapsed: Set<string>;
   onToggleBranch: (code: string) => void;
+  stepView?: RoadmapStepView;
 }) {
   const branches = getSiblingSteps(steps, parent.code).filter(
     (c) => !collapsed.has(c.code) && getSiblingSteps(steps, c.code).length > 0,
@@ -103,6 +109,7 @@ export default function RoadmapBranches({
           onChangeStages={onChangeStages}
           collapsed={collapsed}
           onToggleBranch={onToggleBranch}
+          stepView={stepView}
         />
       ))}
     </div>

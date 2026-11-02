@@ -13,6 +13,7 @@ import {
   loadProjectProcedure,
   saveProjectProcedure,
 } from "@/features/construction-procedures/utils/project-procedure-storage";
+import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
 import type {
   DepartmentProcedureStatus,
   ProcedureDocument,
@@ -21,7 +22,18 @@ import type {
   ProjectProcedureData,
 } from "@/features/construction-procedures/types/procedure.types";
 import type { ProjectItem } from "../types/project.types";
-import { isReadyToStart, type StageSummary } from "../utils/project-procedure-flow";
+import {
+  getAppliedDepartments,
+  getProcedureProgress,
+  isReadyToStart,
+  type StageSummary,
+} from "../utils/project-procedure-flow";
+
+/** Báo ra ngoài sau mỗi thay đổi: phòng ban đang áp dụng quy trình + phần trăm hoàn thành dự án */
+export interface ProjectProcedureSync {
+  departments: string[];
+  actualProgress: number;
+}
 
 /** Phần phân công đang sửa trên bảng nhưng chưa bấm "Lưu" */
 export type StepDraft = Partial<
@@ -60,11 +72,24 @@ function toDepartmentSteps(projectId: string, department: string, procedure: Pro
     department,
     responsibleUnit: s.responsibleUnit && s.responsibleUnit !== "Chủ đầu tư" ? s.responsibleUnit : department,
     status: s.isEnabled ? "NOT_STARTED" : "DISABLED",
-    assignedTo: undefined,
-    assignedToId: undefined,
     submissionStatus: undefined,
     attachments: [],
   }));
+}
+
+/** Dữ liệu cũ chưa có người thực hiện: lấy theo người đã phân công trong quy trình gốc (cùng mã bước) */
+function withProcedureAssignees(data: ProjectProcedureData): ProjectProcedureData {
+  const library = loadProcedureLibrary();
+  let changed = false;
+  const steps = data.steps.map((step) => {
+    if (step.assignedTo || !step.department) return step;
+    const procedureId = data.departmentStatuses?.[step.department]?.procedureId;
+    const source = library.find((p) => p.id === procedureId)?.steps.find((s) => s.code === step.code);
+    if (!source?.assignedTo) return step;
+    changed = true;
+    return { ...step, assignedTo: source.assignedTo, assignedToId: source.assignedToId };
+  });
+  return changed ? { ...data, steps } : data;
 }
 
 /** Nhật ký "áp dụng quy trình cho phòng ban" */
@@ -109,13 +134,16 @@ export function initProjectProcedure(
  * Quy trình đang áp dụng cho một dự án (dùng chung dữ liệu với phân hệ "Quy trình dự án").
  * Mỗi phòng ban của dự án áp dụng một quy trình riêng; các bước gắn `department` của phòng ban đó.
  */
-export function useProjectProcedure(project: ProjectItem) {
+export function useProjectProcedure(project: ProjectItem, onSync?: (sync: ProjectProcedureSync) => void) {
   const { user } = useAuth();
   const actorName = user?.displayName || user?.name || "Cán bộ quản lý";
   const actorRole = user?.roleName || "Cán bộ Ban QLDA";
 
   const [data, setData] = useState<ProjectProcedureData>(
-    () => loadProjectProcedure(project.id, project.code) ?? createEmptyProcedure(project),
+    () => {
+      const saved = loadProjectProcedure(project.id, project.code);
+      return saved ? withProcedureAssignees(saved) : createEmptyProcedure(project);
+    },
   );
 
   // Cấu hình quy trình (chọn / đổi quy trình áp dụng) — quyền cấu hình M3
@@ -141,13 +169,14 @@ export function useProjectProcedure(project: ProjectItem) {
     next: Pick<ProjectProcedureData, "steps"> & Partial<ProjectProcedureData>,
     log: Omit<ProcedureHistoryLog, "id" | "timestamp" | "performedBy" | "role">,
   ) => {
+    const merged = { ...data, ...next };
+    const departments = getAppliedDepartments(merged.departmentStatuses, merged.steps);
     const updated: ProjectProcedureData = {
-      ...data,
-      ...next,
+      ...merged,
       projectId: project.id,
       projectCode: project.code,
       projectName: project.name,
-      departments: project.departments ?? data.departments,
+      departments,
       history: [
         {
           ...log,
@@ -161,7 +190,15 @@ export function useProjectProcedure(project: ProjectItem) {
     };
     saveProjectProcedure(updated);
     setData(updated);
+    onSync?.({
+      departments,
+      actualProgress: getProcedureProgress(departments, updated.steps, updated.stageApprovals),
+    });
   };
+
+  /** Phòng ban đang áp dụng quy trình, kèm quy trình của phòng ban đó */
+  const appliedDepartments = getAppliedDepartments(data.departmentStatuses, data.steps);
+  const progress = getProcedureProgress(appliedDepartments, data.steps, data.stageApprovals);
 
   const departmentStatus = (department: string): DepartmentProcedureStatus | undefined =>
     Object.entries(data.departmentStatuses ?? {}).find(([key]) => isSameDepartment(key, department))?.[1];
@@ -182,6 +219,46 @@ export function useProjectProcedure(project: ProjectItem) {
         },
       },
       applyLog(department, procedure, deptSteps.length),
+    );
+  };
+
+  /** Chuyển quy trình (không gắn phòng ban) từ phòng ban này sang phòng ban khác: bước được tạo lại từ đầu */
+  const retargetProcedure = (from: string, to: string, procedure: ProcedureSource) => {
+    const deptSteps = toDepartmentSteps(project.id, to, procedure);
+    const keep = (dept?: string) => !dept || (!isSameDepartment(dept, from) && !isSameDepartment(dept, to));
+    commit(
+      {
+        steps: [...data.steps.filter((s) => keep(s.department)), ...deptSteps],
+        departmentStatuses: {
+          ...Object.fromEntries(Object.entries(data.departmentStatuses ?? {}).filter(([key]) => keep(key))),
+          [to]: { department: to, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name },
+        },
+      },
+      {
+        ...applyLog(to, procedure, deptSteps.length),
+        details: `Chuyển "${procedure.name}" từ ${from} sang ${to} (${deptSteps.length} bước).`,
+      },
+    );
+  };
+
+  /** Gỡ quy trình của một phòng ban khỏi dự án (xóa các bước và tiến độ của phòng ban đó) */
+  const removeProcedure = (department: string) => {
+    const status = departmentStatus(department);
+    commit(
+      {
+        steps: data.steps.filter((s) => !s.department || !isSameDepartment(s.department, department)),
+        departmentStatuses: Object.fromEntries(
+          Object.entries(data.departmentStatuses ?? {}).filter(([key]) => !isSameDepartment(key, department)),
+        ),
+      },
+      {
+        stepId: "DEPT-CONFIG",
+        stepCode: "THIET-LAP",
+        stepName: `Quy trình ${department}`,
+        action: "TOGGLE_STEP",
+        actionLabel: "Gỡ quy trình phòng ban",
+        details: `Gỡ "${status?.procedureName ?? "quy trình"}" khỏi ${department}.`,
+      },
     );
   };
 
@@ -377,7 +454,11 @@ export function useProjectProcedure(project: ProjectItem) {
     canDecideStage,
     departmentLead,
     departmentStatus,
+    appliedDepartments,
+    progress,
     applyProcedure,
+    removeProcedure,
+    retargetProcedure,
     drafts,
     draftCount,
     withDraft,

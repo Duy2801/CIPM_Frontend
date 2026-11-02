@@ -2,7 +2,6 @@ export const NODE_W = 212;
 export const NODE_H = 58;
 export const GROUP_PAD = 10;
 export const GROUP_HEAD = 20;
-export const SLOT_W = NODE_W + GROUP_PAD * 2;
 export const COL_GAP = 40;
 export const EDIT_GAP = 76;
 export const ROW_GAP = 10;

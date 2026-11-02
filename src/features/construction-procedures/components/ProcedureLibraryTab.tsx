@@ -47,8 +47,8 @@ export default function ProcedureLibraryTab({
     return (
       <CreateProcedurePage
         onBack={backToList}
-        onCreate={({ name, version, steps }) => {
-          createProcedure({ name, version, steps, createdBy: actorName });
+        onCreate={({ name, category, version, steps }) => {
+          createProcedure({ name, category, version, steps, createdBy: actorName });
           backToList();
           toast.success("Đã tạo quy trình mới", `Đã lưu quy trình "${name}" (${steps.length} bước).`);
         }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CaretDownOutlined, CaretRightOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   COL_GAP,
@@ -15,7 +15,6 @@ import {
   PAD_X,
   PAD_Y,
   ROW_GAP,
-  SLOT_W,
   SPINE_X,
   TAIL_W,
 } from "../constants/roadmap-layout";
@@ -23,6 +22,16 @@ import { Button } from "@/components/ui";
 import type { ProcedureStep } from "../types/procedure.types";
 import { getSpanDays } from "../utils/procedure-progress";
 import { getSiblingSteps, getStageColumns, moveStepToStage } from "../utils/step-dependencies";
+
+export interface RoadmapStepView {
+  onClick?: (step: ProcedureStep) => void;
+  tone?: (step: ProcedureStep) => string | undefined;
+  badge?: (step: ProcedureStep) => ReactNode;
+  cardWidth?: number;
+  cardHeight?: number;
+  /** Chữ to hơn (thẻ lớn) */
+  large?: boolean;
+}
 
 export type ChangeStagesHandler = (stages: Map<string, number>, description?: string) => void;
 
@@ -39,6 +48,7 @@ export default function RoadmapStepFlow({
   entryColor = "#F87171",
   collapsed,
   onToggleBranch,
+  stepView,
 }: {
   steps: ProcedureStep[];
   parent: ProcedureStep;
@@ -47,19 +57,24 @@ export default function RoadmapStepFlow({
   entryColor?: string;
   collapsed: Set<string>;
   onToggleBranch: (code: string) => void;
+  stepView?: RoadmapStepView;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [over, setOver] = useState<DropTarget | null>(null);
   const children = getSiblingSteps(steps, parent.code);
   const canDrag = !!onChangeStages && children.length > 1;
+  const nodeW = stepView?.cardWidth ?? NODE_W;
+  const nodeH = stepView?.cardHeight ?? NODE_H;
+  const slotW = nodeW + GROUP_PAD * 2;
+  const large = !!stepView?.large;
   const columns = children.length > 0 ? getStageColumns(children) : [[parent]];
 
   const framed = (col: ProcedureStep[]) => canDrag || col.length > 1;
   const headOf = (col: ProcedureStep[]) => (col.length > 1 ? GROUP_HEAD : 0);
   const colHeight = (col: ProcedureStep[]) =>
     framed(col)
-      ? GROUP_PAD * 2 + headOf(col) + col.length * NODE_H + (col.length - 1) * ROW_GAP + (canDrag ? ROW_GAP + HINT_H : 0)
-      : NODE_H;
+      ? GROUP_PAD * 2 + headOf(col) + col.length * nodeH + (col.length - 1) * ROW_GAP + (canDrag ? ROW_GAP + HINT_H : 0)
+      : nodeH;
   const bodyH = Math.max(...columns.map(colHeight));
   const dragCol = draggingId ? columns.findIndex((col) => col.some((c) => c.id === draggingId)) : -1;
   const dragAlone = dragCol >= 0 && columns[dragCol].length === 1;
@@ -68,8 +83,8 @@ export default function RoadmapStepFlow({
       ? drop.target === dragCol
       : dragAlone && (drop.insertAt === dragCol || drop.insertAt === dragCol + 1);
   const gap = canDrag ? EDIT_GAP : COL_GAP;
-  const slotX = (ci: number) => PAD_X + ci * (SLOT_W + gap);
-  const lastRight = slotX(columns.length - 1) + SLOT_W;
+  const slotX = (ci: number) => PAD_X + ci * (slotW + gap);
+  const lastRight = slotX(columns.length - 1) + slotW;
   const tailX = lastRight + COL_GAP;
   const showTail =
     canDrag &&
@@ -78,7 +93,7 @@ export default function RoadmapStepFlow({
   const height = PAD_Y * 2 + HEAD_H + bodyH;
   const centerY = PAD_Y + HEAD_H + bodyH / 2;
   const edgeLeft = (ci: number) => slotX(ci) + (framed(columns[ci]) ? 0 : GROUP_PAD);
-  const edgeRight = (ci: number) => slotX(ci) + SLOT_W - (framed(columns[ci]) ? 0 : GROUP_PAD);
+  const edgeRight = (ci: number) => slotX(ci) + slotW - (framed(columns[ci]) ? 0 : GROUP_PAD);
   const frameTop = (col: ProcedureStep[]) => centerY - colHeight(col) / 2;
 
   const endDrag = () => {
@@ -128,6 +143,8 @@ export default function RoadmapStepFlow({
   const node = (s: ProcedureStep, x: number, y: number) => {
     const grand = steps.filter((g) => g.code.startsWith(`${s.code}.`));
     const optional = s.type === "CONDITIONAL";
+    const tone = stepView?.tone?.(s);
+    const badge = stepView?.badge?.(s);
     return (
       <div
         key={s.id}
@@ -139,17 +156,20 @@ export default function RoadmapStepFlow({
           setTimeout(() => setDraggingId(s.id), 0);
         }}
         onDragEnd={endDrag}
-        className={`absolute flex flex-col justify-center rounded-lg border bg-white px-3 transition-shadow hover:shadow-md ${
-          optional ? "border-dashed border-amber-300" : "border-slate-200"
-        } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""} ${draggingId === s.id ? "opacity-35" : ""}`}
-        style={{ left: x, top: y, width: NODE_W, height: NODE_H }}
+        onClick={stepView?.onClick ? () => stepView.onClick?.(s) : undefined}
+        className={`absolute flex flex-col justify-center rounded-lg border bg-white transition-shadow ${large ? "px-4" : "px-3"} hover:shadow-md ${
+          tone ?? (optional ? "border-dashed border-amber-300" : "border-slate-200")
+        } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""} ${stepView?.onClick ? "cursor-pointer" : ""} ${
+          draggingId === s.id ? "opacity-35" : ""
+        }`}
+        style={{ left: x, top: y, width: nodeW, height: nodeH }}
         title={[
           `${s.code}. ${s.name}`,
           `${getSpanDays(steps, s)} ngày${s.assignedTo ? ` · ${s.assignedTo}` : ""}`,
           ...grand.map((g) => `  ${g.code}. ${g.name}`),
         ].join("\n")}
       >
-        <div className="flex items-center gap-1.5 text-[10px] leading-none">
+        <div className={`flex items-center gap-1.5 leading-none ${large ? "text-xs" : "text-[10px]"}`}>
           <span className="font-mono font-bold text-[#DC2626]">{s.code}</span>
           {optional && <span className="shrink-0 whitespace-nowrap rounded bg-amber-50 px-1 py-px font-semibold text-amber-700">Nếu có</span>}
           {grand.length > 0 && (
@@ -157,7 +177,10 @@ export default function RoadmapStepFlow({
               type="text"
               size="small"
               draggable={false}
-              onClick={() => onToggleBranch(s.code)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleBranch(s.code);
+              }}
               title={collapsed.has(s.code) ? "Hiện các bước con bên dưới" : "Ẩn các bước con"}
               className="!h-auto !gap-0.5 !px-1 !py-px text-[10px] font-medium !text-sky-600 hover:!bg-sky-50"
             >
@@ -173,7 +196,14 @@ export default function RoadmapStepFlow({
           )}
           <span className="ml-auto shrink-0 whitespace-nowrap text-slate-400">{getSpanDays(steps, s)} ngày</span>
         </div>
-        <div className="mt-1 line-clamp-2 text-[11.5px] leading-[1.3] text-slate-700">{s.name}</div>
+        <div
+          className={`line-clamp-2 text-slate-700 ${large ? "mt-1.5 text-sm font-medium leading-snug" : "mt-1 text-[11.5px] leading-[1.3]"}`}
+        >
+          {s.name}
+        </div>
+        {badge && (
+          <div className={large ? "mt-1.5 text-xs leading-normal" : "mt-1 truncate text-[10.5px] leading-none"}>{badge}</div>
+        )}
       </div>
     );
   };
@@ -184,7 +214,7 @@ export default function RoadmapStepFlow({
         <div
           key={`head-${col[0].id}`}
           className="absolute flex items-center justify-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-slate-400"
-          style={{ left: slotX(ci), top: PAD_Y, width: SLOT_W, height: HEAD_H - 6 }}
+          style={{ left: slotX(ci), top: PAD_Y, width: slotW, height: HEAD_H - 6 }}
         >
           Bước {ci + 1}
         </div>
@@ -219,7 +249,7 @@ export default function RoadmapStepFlow({
           <div
             key={`group-${col[0].id}`}
             className={`absolute rounded-xl border ${group ? "border-violet-200 bg-violet-50/60" : "border-dashed border-slate-200 bg-white/50"}`}
-            style={{ left: slotX(ci), top: frameTop(col), width: SLOT_W, height: h }}
+            style={{ left: slotX(ci), top: frameTop(col), width: slotW, height: h }}
           >
             {group && (
               <span className="absolute left-2.5 top-1 text-[10px] font-semibold text-violet-600">
@@ -272,9 +302,9 @@ export default function RoadmapStepFlow({
       </svg>
 
       {columns.map((col, ci) => {
-        if (!framed(col)) return node(col[0], slotX(ci) + GROUP_PAD, centerY - NODE_H / 2);
+        if (!framed(col)) return node(col[0], slotX(ci) + GROUP_PAD, centerY - nodeH / 2);
         const top = frameTop(col) + GROUP_PAD + headOf(col);
-        return col.map((s, k) => node(s, slotX(ci) + GROUP_PAD, top + k * (NODE_H + ROW_GAP)));
+        return col.map((s, k) => node(s, slotX(ci) + GROUP_PAD, top + k * (nodeH + ROW_GAP)));
       })}
 
       {showTail && (
@@ -300,7 +330,7 @@ export default function RoadmapStepFlow({
 
       {draggingId && (
         <>
-          {columns.map((_, ci) => !isNoop({ target: ci }) && dropZone({ target: ci }, slotX(ci), SLOT_W))}
+          {columns.map((_, ci) => !isNoop({ target: ci }) && dropZone({ target: ci }, slotX(ci), slotW))}
           {columns.map(
             (_, ci) =>
               !isNoop({ insertAt: ci }) &&

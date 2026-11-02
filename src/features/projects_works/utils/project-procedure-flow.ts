@@ -102,3 +102,28 @@ export function groupStepsByStage(
     };
   });
 }
+
+/** Các phòng ban của dự án đang áp dụng quy trình (có bước) */
+export function getAppliedDepartments(
+  departmentStatuses: Record<string, { procedureId?: string }> = {},
+  steps: ProcedureStep[],
+): string[] {
+  return Object.keys(departmentStatuses).filter((dept) => steps.some((s) => s.department === dept));
+}
+
+/** Phần trăm hoàn thành của dự án theo quy trình: số bước việc đã xong / tổng số bước việc đang áp dụng */
+export function getProcedureProgress(
+  departments: string[],
+  steps: ProcedureStep[],
+  stageApprovals: Record<string, StageApprovalStatus> = {},
+): number {
+  let done = 0;
+  let total = 0;
+  for (const dept of departments) {
+    for (const stage of groupStepsByStage(dept, steps.filter((s) => s.department === dept), stageApprovals)) {
+      done += stage.done;
+      total += stage.total;
+    }
+  }
+  return total ? Math.round((done / total) * 100) : 0;
+}

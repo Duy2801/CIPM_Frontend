@@ -8,12 +8,13 @@ import { useStickyScrollbar } from "../hooks/useStickyScrollbar";
 import type { ProcedureStep } from "../types/procedure.types";
 import { getSiblingSteps, getStageColumns, moveStepToStage } from "../utils/step-dependencies";
 import RoadmapBranches from "./RoadmapBranches";
-import RoadmapStepFlow, { type ChangeStagesHandler } from "./RoadmapStepFlow";
+import RoadmapStepFlow, { type ChangeStagesHandler, type RoadmapStepView } from "./RoadmapStepFlow";
 
 interface ProcedureRoadmapProps {
   steps: ProcedureStep[];
   stickyBottom?: number;
   onChangeStages?: ChangeStagesHandler;
+  stepView?: RoadmapStepView;
 }
 
 const SEQUENTIAL = "__sequential__";
@@ -26,7 +27,7 @@ const GROUP_TONES = [
   { node: "border-fuchsia-500 text-fuchsia-600", pill: "bg-fuchsia-50 ring-fuchsia-200", text: "text-fuchsia-700", dot: "bg-fuchsia-500" },
 ];
 
-export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStages }: ProcedureRoadmapProps) {
+export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStages, stepView }: ProcedureRoadmapProps) {
   const mainStages = useMemo(() => getStageColumns(getSiblingSteps(steps, null)), [steps]);
 
   const { bodyRef, barRef, scrollWidth, syncFromBody, syncFromBar } = useStickyScrollbar(mainStages.length);
@@ -131,6 +132,7 @@ export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStag
               onChangeStages={onChangeStages}
               collapsed={collapsed}
               onToggleBranch={toggleBranch}
+              stepView={stepView}
             />
           </div>
           <RoadmapBranches
@@ -139,6 +141,7 @@ export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStag
             onChangeStages={onChangeStages}
             collapsed={collapsed}
             onToggleBranch={toggleBranch}
+            stepView={stepView}
           />
         </div>
       </div>

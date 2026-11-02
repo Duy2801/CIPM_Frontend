@@ -2,11 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import { App } from "antd";
-import { ArrowLeftOutlined, CloseOutlined, PlusOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
-  Checkbox,
   Input,
   MoneyInput,
   Select,
@@ -16,12 +15,12 @@ import {
 import { cn } from "@/utils/cn";
 import { parseMoney } from "@/utils/format-money";
 import { isSameDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
+import ProjectProcedurePicker, { procedureTarget } from "./ProjectProcedurePicker";
 import {
   loadProcedureLibrary,
   type ProcedureLibraryItem,
 } from "@/features/construction-procedures/utils/procedure-library";
 import {
-  DEPARTMENT_OPTIONS,
   FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
   WORK_TYPE_OPTIONS,
@@ -47,8 +46,7 @@ interface FormState {
   fundingSource: FundingSourceType | "";
   totalInvestment: number | "";
   plan2026: number | "";
-  departments: string[];
-  /** Phòng ban → id quy trình áp dụng */
+  /** Phòng ban → id quy trình áp dụng; phòng ban phụ trách của dự án lấy theo các khóa này */
   procedures: Record<string, string>;
   managerName: string;
   supervisorName: string;
@@ -67,26 +65,15 @@ function defaultProcedureId(library: ProcedureLibraryItem[], department: string)
   return (own.find((p) => p.status === "APPLIED") ?? own[0])?.id;
 }
 
-/** Giữ quy trình của phòng ban còn lại; phòng ban mới thêm (chưa có trong `previous`) lấy quy trình mặc định */
-function withDefaultProcedures(
-  library: ProcedureLibraryItem[],
-  departments: string[],
-  current: Record<string, string> = {},
-  previous: string[] = [],
-) {
+/** Quy trình mặc định của các phòng ban (phòng ban chưa có quy trình nào thì bỏ qua) */
+function withDefaultProcedures(library: ProcedureLibraryItem[], departments: string[]) {
   const next: Record<string, string> = {};
   for (const dept of departments) {
-    const id = previous.includes(dept) ? current[dept] : (current[dept] ?? defaultProcedureId(library, dept));
+    const id = defaultProcedureId(library, dept);
     if (id) next[dept] = id;
   }
   return next;
 }
-
-/** Phòng ban (theo danh mục dự án) của quy trình; quy trình tự tạo không gắn phòng ban → undefined */
-const procedureDepartment = (procedure: ProcedureLibraryItem) =>
-  procedure.department
-    ? (DEPARTMENT_OPTIONS.find((d) => isSameDepartment(d.value, procedure.department))?.value ?? procedure.department)
-    : undefined;
 
 const createInitialState = (library: ProcedureLibraryItem[]): FormState => ({
   name: "",
@@ -95,7 +82,6 @@ const createInitialState = (library: ProcedureLibraryItem[]): FormState => ({
   fundingSource: "Ngân sách thành phố",
   totalInvestment: "",
   plan2026: "",
-  departments: DEFAULT_DEPARTMENTS,
   procedures: withDefaultProcedures(library, DEFAULT_DEPARTMENTS),
   managerName: DEFAULT_PERSON,
   supervisorName: DEFAULT_PERSON,
@@ -131,10 +117,9 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
     setErrorMsg("");
   };
 
-  const setDepartments = (departments: string[]) =>
-    update({ departments, procedures: withDefaultProcedures(library, departments, form.procedures, form.departments) });
+  const departments = Object.keys(form.procedures);
 
-  /** Tích / bỏ tích quy trình: áp dụng cho phòng ban của quy trình (tự thêm phòng ban nếu chưa có) */
+  /** Tích / bỏ tích quy trình: áp dụng cho phòng ban của quy trình; bỏ tích thì phòng ban đó không còn phụ trách */
   const toggleProcedure = (procedure: ProcedureLibraryItem, checked: boolean) => {
     const rest = Object.fromEntries(Object.entries(form.procedures).filter(([, id]) => id !== procedure.id));
     if (!checked) {
@@ -142,15 +127,8 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
       return;
     }
     // Quy trình không gắn phòng ban: áp cho phòng ban đầu tiên chưa có quy trình
-    const target = procedureDepartment(procedure) ?? form.departments.find((d) => !rest[d]) ?? form.departments[0];
-    if (!target) {
-      setErrorMsg("Chọn phòng ban phụ trách trước khi chọn quy trình không gắn phòng ban.");
-      return;
-    }
-    update({
-      departments: form.departments.includes(target) ? form.departments : [...form.departments, target],
-      procedures: { ...rest, [target]: procedure.id },
-    });
+    const target = procedureTarget(procedure, rest);
+    update({ procedures: { ...rest, [target]: procedure.id } });
   };
 
   /** Đổi phòng ban áp dụng của quy trình không gắn phòng ban */
@@ -158,8 +136,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
     const rest = Object.fromEntries(Object.entries(form.procedures).filter(([, id]) => id !== procedureId));
     update({ procedures: { ...rest, [department]: procedureId } });
   };
-
-  const remainingDepartments = DEPARTMENT_OPTIONS.filter((d) => !form.departments.includes(d.value));
 
   const handleBack = () => {
     if (!isDirty) {
@@ -181,7 +157,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
   const validate = () => {
     if (!form.name.trim()) return "Vui lòng nhập tên công trình / dự án (*).";
     if (!form.type) return "Vui lòng chọn loại công trình (*).";
-    if (form.departments.length === 0) return "Vui lòng chọn ít nhất một phòng ban phụ trách (*).";
+    if (departments.length === 0) return "Vui lòng chọn ít nhất một quy trình dự án (*).";
     if (!form.startDate) return "Vui lòng chọn ngày bắt đầu (*).";
     if (!form.endDatePlanned) return "Vui lòng chọn ngày kết thúc kế hoạch (*).";
     if (new Date(form.endDatePlanned) <= new Date(form.startDate))
@@ -204,7 +180,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
         fundingSource: form.fundingSource || "Ngân sách thành phố",
         totalInvestment: form.totalInvestment === "" ? 0 : Number(form.totalInvestment),
         plan2026: form.plan2026 === "" ? 0 : Number(form.plan2026),
-        departments: form.departments,
+        departments,
         managerName: form.managerName.trim() || DEFAULT_PERSON,
         supervisorName: form.supervisorName.trim() || DEFAULT_PERSON,
         startDate: form.startDate,
@@ -237,9 +213,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
         <h1 className="m-0 min-w-0 truncate text-base font-bold text-slate-900">
           Thêm dự án mới{form.name.trim() && <span className="text-[#DC2626]"> {form.name.trim()}</span>}
         </h1>
-        <span className="rounded border border-slate-200 bg-slate-100 px-2.5 py-0.5 font-mono text-xs font-bold text-[#DC2626]">
-          {nextAutoCode}
-        </span>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -247,7 +220,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
         <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
           <div className="space-y-5 p-5">
             <FieldGroup title="Thông tin chung">
-              <Field label="Tên công trình / dự án" required className="sm:col-span-2 xl:col-span-4">
+              <Field label="Tên công trình / dự án" required className="sm:col-span-2 xl:col-span-3">
                 <Input
                   autoFocus
                   placeholder="VD: Khu TĐC Rạch Đùng – Giai đoạn 2"
@@ -310,8 +283,8 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               </Field>
             </FieldGroup>
 
-            <FieldGroup title="Nhân sự & thời gian">
-              <Field label="Người phụ trách" className="xl:col-span-2">
+            <FieldGroup title="Nhân sự & thời gian" cols={2}>
+              <Field label="Người phụ trách">
                 <Select
                   value={form.managerName}
                   onChange={(val) => update({ managerName: val as string })}
@@ -320,7 +293,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
                   popupMatchSelectWidth={false}
                 />
               </Field>
-              <Field label="Giám sát kỹ thuật" className="xl:col-span-2">
+              <Field label="Giám sát kỹ thuật">
                 <Select
                   value={form.supervisorName}
                   onChange={(val) => update({ supervisorName: val as string })}
@@ -347,17 +320,8 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               </Field>
             </FieldGroup>
 
-            <DepartmentProcedures
-              departments={form.departments}
-              procedures={form.procedures}
+            <ProjectProcedurePicker
               library={library}
-              remaining={remainingDepartments}
-              onDepartmentsChange={setDepartments}
-            />
-
-            <ProcedurePicker
-              library={library}
-              departments={form.departments}
               procedures={form.procedures}
               onToggle={toggleProcedure}
               onRetarget={retargetProcedure}
@@ -417,13 +381,27 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
 }
 
 /** Nhóm trường có tiêu đề; lưới 4 cột trên màn rộng (giống trang chi tiết dự án) */
-function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
+/** Số cột trên màn rộng: chọn theo số ô mỗi hàng để các ô dàn đều hết chiều ngang */
+const FIELD_GROUP_COLS = {
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-2 xl:grid-cols-3",
+} as const;
+
+function FieldGroup({
+  title,
+  cols = 3,
+  children,
+}: {
+  title: string;
+  cols?: keyof typeof FIELD_GROUP_COLS;
+  children: React.ReactNode;
+}) {
   return (
     <section>
       <h3 className="m-0 mb-3 border-b border-slate-100 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
         {title}
       </h3>
-      <div className="grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">{children}</div>
+      <div className={cn("grid grid-cols-1 gap-x-6 gap-y-3.5", FIELD_GROUP_COLS[cols])}>{children}</div>
     </section>
   );
 }
@@ -446,159 +424,5 @@ function Field({
       </span>
       {children}
     </div>
-  );
-}
-
-interface DepartmentProceduresProps {
-  departments: string[];
-  procedures: Record<string, string>;
-  library: ProcedureLibraryItem[];
-  remaining: readonly (typeof DEPARTMENT_OPTIONS)[number][];
-  onDepartmentsChange: (next: string[]) => void;
-}
-
-/** Phòng ban phụ trách; mỗi dòng hiện quy trình đang chọn cho phòng ban đó */
-function DepartmentProcedures({ departments, procedures, library, remaining, onDepartmentsChange }: DepartmentProceduresProps) {
-  return (
-    <section>
-      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-1.5">
-        <h3 className="m-0 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-          Phòng ban phụ trách <span className="text-rose-500">*</span>
-        </h3>
-        {departments.length > 1 && (
-          <button
-            type="button"
-            onClick={() => onDepartmentsChange([])}
-            className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-slate-400 transition-colors hover:text-red-600"
-          >
-            Xóa tất cả
-          </button>
-        )}
-      </div>
-
-      <Select
-        placeholder={remaining.length > 0 ? "+ Chọn thêm phòng ban phụ trách..." : "Đã chọn đủ tất cả phòng ban"}
-        value={null}
-        disabled={remaining.length === 0}
-        onChange={(val) => val && onDepartmentsChange([...departments, val as string])}
-        options={remaining.map((d) => ({ value: d.value, label: `${d.short} — ${d.value}` }))}
-        className="w-full text-xs"
-      />
-
-      {departments.length > 0 ? (
-        <div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
-          {departments.map((dept) => {
-            const short = DEPARTMENT_OPTIONS.find((d) => d.value === dept)?.short ?? "PB";
-            const procedure = library.find((p) => p.id === procedures[dept]);
-            return (
-              <div key={dept} className="flex items-center gap-3 bg-white px-3 py-2">
-                <span className="shrink-0 rounded bg-[#DC2626] px-2 py-0.5 font-mono text-xs font-bold text-white">
-                  {short}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800" title={dept}>
-                  {dept}
-                </span>
-                <span
-                  className={cn("min-w-0 truncate text-[11px]", procedure ? "text-slate-600" : "italic text-slate-400")}
-                  title={procedure?.name}
-                >
-                  {procedure ? `Quy trình: ${procedure.name}` : "Chưa chọn quy trình"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onDepartmentsChange(departments.filter((d) => d !== dept))}
-                  className="shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-[#DC2626]"
-                  title={`Xóa ${dept}`}
-                  aria-label={`Xóa ${dept}`}
-                >
-                  <CloseOutlined className="text-xs" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs text-slate-500">
-          Chưa có phòng ban phụ trách nào được chọn. Vui lòng chọn từ menu ở trên.
-        </div>
-      )}
-    </section>
-  );
-}
-
-interface ProcedurePickerProps {
-  library: ProcedureLibraryItem[];
-  departments: string[];
-  procedures: Record<string, string>;
-  onToggle: (procedure: ProcedureLibraryItem, checked: boolean) => void;
-  onRetarget: (procedureId: string, department: string) => void;
-}
-
-/** Tích chọn nhiều quy trình cho dự án; mỗi phòng ban áp dụng một quy trình */
-function ProcedurePicker({ library, departments, procedures, onToggle, onRetarget }: ProcedurePickerProps) {
-  // Quy trình đang tích → phòng ban áp dụng
-  const appliedTo = new Map(Object.entries(procedures).map(([dept, id]) => [id, dept]));
-
-  return (
-    <section>
-      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-1.5">
-        <h3 className="m-0 text-[11px] font-bold uppercase tracking-wide text-slate-500">Quy trình dự án</h3>
-        <span className="text-[11px] text-slate-500">
-          Đã chọn: <strong className="text-[#DC2626]">{appliedTo.size}</strong> quy trình
-        </span>
-      </div>
-
-      {library.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs text-slate-500">
-          Chưa có quy trình nào đang bật trong phân hệ Quy trình.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {library.map((procedure) => {
-            const dept = procedureDepartment(procedure);
-            const target = appliedTo.get(procedure.id);
-            const checked = Boolean(target);
-            const short = DEPARTMENT_OPTIONS.find((d) => d.value === dept)?.short;
-            const meta = [short ?? dept ?? "Không gắn phòng ban", `${procedure.steps.length} bước`];
-            if (procedure.version) meta.push(`Version ${procedure.version}`);
-            return (
-              <div
-                key={procedure.id}
-                className={cn(
-                  "rounded-lg border px-3 py-2 transition-colors",
-                  checked ? "border-[#DC2626]/50 bg-red-50/40" : "border-slate-200 bg-white hover:border-slate-300",
-                )}
-              >
-                <Checkbox
-                  checked={checked}
-                  onChange={(e) => onToggle(procedure, e.target.checked)}
-                  className="w-full text-xs [&>span:last-child]:min-w-0"
-                >
-                  <span className="block truncate text-xs font-semibold text-slate-800" title={procedure.name}>
-                    {procedure.name}
-                  </span>
-                  <span className="block text-[11px] text-slate-500">{meta.join(" · ")}</span>
-                </Checkbox>
-                {/* Quy trình không gắn phòng ban: chọn phòng ban áp dụng */}
-                {checked && !dept && (
-                  <Select
-                    size="small"
-                    aria-label={`Phòng ban áp dụng ${procedure.name}`}
-                    value={target}
-                    onChange={(v) => onRetarget(procedure.id, v as string)}
-                    options={departments.map((d) => ({ value: d, label: `Áp dụng cho: ${d}` }))}
-                    className="mt-1.5 w-full text-xs"
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <p className="m-0 mt-1.5 text-[11px] text-slate-400">
-        Mỗi phòng ban áp dụng một quy trình: tích quy trình khác cùng phòng ban sẽ thay quy trình cũ. Phòng ban của quy
-        trình được thêm tự động. Có thể đổi lại ở tab “Quy trình” của dự án.
-      </p>
-    </section>
   );
 }

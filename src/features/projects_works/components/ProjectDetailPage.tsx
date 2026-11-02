@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { App } from "antd";
 import {
   ApartmentOutlined,
@@ -9,19 +9,16 @@ import {
   EnvironmentOutlined,
   SafetyCertificateOutlined,
   ArrowLeftOutlined,
-  FormOutlined,
   HistoryOutlined,
   ProfileOutlined,
-  TeamOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Select, Tooltip } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { InlineEditField, ProjectScopeProvider, type SegmentedTabItem } from "@/components/workspace";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
 import { useAuth } from "@/features/auth";
 import { canUserDo } from "@/access-control";
 import {
-  DEPARTMENT_OPTIONS,
   FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
   WORK_TYPE_OPTIONS,
@@ -33,16 +30,34 @@ import type {
   ProjectNature,
   ProjectWorkType,
 } from "../types/project.types";
-import { useProjectProcedure } from "../hooks/useProjectProcedure";
+import { useProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
+import { loadProcedureLibrary, type ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
+import { PROCEDURE_CATEGORY } from "@/features/construction-procedures/constants/procedure-categories";
 import { SiteClearanceResettlementScreen } from "@/features/site-clearance-resettlement";
 import { BiddingManagementScreen } from "@/features/bidding-management";
 import { FinanceSettlementScreen } from "@/features/finance-settlement";
 import { WarrantyMaintenanceScreen } from "@/features/warranty-maintenance";
 import { ProjectDocumentsSection } from "./detail/ProjectViewTab";
-import ProjectProcedureConfigTab from "./detail/ProjectProcedureConfigTab";
+import ProjectProcedureTab from "./detail/ProjectProcedureTab";
+import ProjectProcedurePicker, { procedureTarget } from "./ProjectProcedurePicker";
 import ProjectHistoryTab from "./detail/ProjectHistoryTab";
 
-type DetailTab = "info" | "procedure" | "gpmb" | "bidding" | "finance" | "warranty" | "history";
+/** Tab phân hệ của dự án: chỉ hiện khi dự án có quy trình thuộc loại tương ứng */
+const MODULE_TABS: {
+  key: "gpmb" | "bidding" | "finance" | "warranty";
+  module: Parameters<typeof canUserDo>[1];
+  category: string;
+  icon: React.ReactNode;
+  label: string;
+}[] = [
+  { key: "gpmb", module: "m6_site_clearance", category: PROCEDURE_CATEGORY.GPMB, icon: <EnvironmentOutlined />, label: "GPMB" },
+  { key: "bidding", module: "m7_bidding", category: PROCEDURE_CATEGORY.BIDDING, icon: <AuditOutlined />, label: "Đấu thầu" },
+  { key: "finance", module: "m4_finance_settlement", category: PROCEDURE_CATEGORY.FINANCE, icon: <DollarOutlined />, label: "Tài chính" },
+  { key: "warranty", module: "m8_warranty", category: PROCEDURE_CATEGORY.WARRANTY, icon: <SafetyCertificateOutlined />, label: "Bảo hành & Bảo trì" },
+];
+
+/** "proc:<phòng ban>" = tab quy trình của phòng ban đó */
+type DetailTab = "info" | `proc:${string}` | "gpmb" | "bidding" | "finance" | "warranty" | "history";
 
 /** Các trường sửa được bằng bút chì trên trang chi tiết */
 type EditablePatch = Partial<
@@ -114,6 +129,8 @@ interface ProjectDetailPageProps {
   project: ProjectItem;
   onBack: () => void;
   onUpdateProject: (projectId: string, data: ProjectFormData) => void;
+  /** Quy trình thay đổi: cập nhật phòng ban phụ trách + phần trăm hoàn thành của dự án */
+  onProcedureSync: (projectId: string, sync: ProjectProcedureSync) => void;
 }
 
 /** Trang con chi tiết dự án: xem và sửa trực tiếp từng trường bằng bút chì, bấm "Lưu thay đổi" để ghi lại */
@@ -121,8 +138,9 @@ export default function ProjectDetailPage({
   project,
   onBack,
   onUpdateProject,
+  onProcedureSync,
 }: ProjectDetailPageProps) {
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const { user } = useAuth();
 
   const isClosed = project.status === "closed";
@@ -227,29 +245,99 @@ export default function ProjectDetailPage({
   const personName = (name: string) => (name === "Chưa phân công" ? "Chờ BQL phân công (M5)" : name || "—");
 
   // Quy trình áp dụng cho dự án (dùng chung dữ liệu với phân hệ Quy trình dự án)
-  const procedure = useProjectProcedure(project);
+  const procedure = useProjectProcedure(project, (sync) => onProcedureSync(project.id, sync));
+  const { appliedDepartments, departmentStatus } = procedure;
 
   const canViewProcedure = canUserDo(user, "m3_construction_procedures", "view");
-  const [activeTab, setActiveTab] = useState<DetailTab>("info");
+  const [tab, setActiveTab] = useState<DetailTab>("info");
+  // Quy trình chọn được: quy trình đang bật + quy trình dự án đang dùng (kể cả đã ngưng)
+  const library = useMemo(() => loadProcedureLibrary(), []);
+  const appliedProcedures = Object.fromEntries(
+    appliedDepartments.flatMap((dept) => {
+      const id = departmentStatus(dept)?.procedureId;
+      return id ? [[dept, id]] : [];
+    }),
+  ) as Record<string, string>;
+  const pickable = library.filter((p) => p.enabled || Object.values(appliedProcedures).includes(p.id));
+  const appliedCategories = Object.values(appliedProcedures).map((id) => library.find((p) => p.id === id)?.category);
 
   const detailTabs: SegmentedTabItem<DetailTab>[] = [
     { key: "info", icon: <ProfileOutlined />, label: "Thông tin chung" },
-    ...(canViewProcedure ? [{ key: "procedure" as const, icon: <ApartmentOutlined />, label: "Quy trình" }] : []),
-    // GPMB, đấu thầu, tài chính, bảo hành của riêng dự án này — ai có quyền xem phân hệ nào thì thấy tab đó
-    ...(canUserDo(user, "m6_site_clearance", "view")
-      ? [{ key: "gpmb" as const, icon: <EnvironmentOutlined />, label: "GPMB" }]
+    // Mỗi quy trình áp dụng cho dự án là một tab
+    ...(canViewProcedure
+      ? appliedDepartments.map((dept) => ({
+          key: `proc:${dept}` as const,
+          icon: <ApartmentOutlined />,
+          label: departmentStatus(dept)?.procedureName ?? dept,
+        }))
       : []),
-    ...(canUserDo(user, "m7_bidding", "view")
-      ? [{ key: "bidding" as const, icon: <AuditOutlined />, label: "Đấu thầu" }]
-      : []),
-    ...(canUserDo(user, "m4_finance_settlement", "view")
-      ? [{ key: "finance" as const, icon: <DollarOutlined />, label: "Tài chính" }]
-      : []),
-    ...(canUserDo(user, "m8_warranty", "view")
-      ? [{ key: "warranty" as const, icon: <SafetyCertificateOutlined />, label: "Bảo hành & Bảo trì" }]
-      : []),
+    // GPMB, đấu thầu...: chỉ hiện khi dự án có quy trình tương ứng và người dùng có quyền xem phân hệ đó
+    ...MODULE_TABS.filter(
+      (m) => appliedCategories.includes(m.category) && canUserDo(user, m.module, "view"),
+    ).map(({ key, icon, label }) => ({ key, icon, label })),
     { key: "history", icon: <HistoryOutlined />, label: "Lịch sử" },
   ];
+  // Tab vừa bị ẩn (gỡ quy trình) thì về "Thông tin chung"
+  const activeTab: DetailTab = detailTabs.some((t) => t.key === tab) ? tab : "info";
+
+  const canEditProcedures = procedure.canConfigure && !isClosed;
+
+  const confirmProcedure = (title: string, content: string, onOk: () => void) =>
+    modal.confirm({
+      centered: true,
+      width: 460,
+      title,
+      content: <p className="m-0 text-xs text-slate-600">{content}</p>,
+      okText: "Đồng ý",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk,
+    });
+
+  const toggleProcedure = (item: ProcedureLibraryItem, checked: boolean) => {
+    if (!checked) {
+      const dept = Object.entries(appliedProcedures).find(([, id]) => id === item.id)?.[0];
+      if (!dept) return;
+      confirmProcedure(
+        "Gỡ quy trình khỏi dự án?",
+        `Các bước, phân công và tiến độ của "${item.name}" (${dept}) sẽ bị xóa; tab của quy trình này sẽ ẩn đi.`,
+        () => {
+          procedure.removeProcedure(dept);
+          message.success(`Đã gỡ "${item.name}" khỏi dự án.`);
+        },
+      );
+      return;
+    }
+    const dept = procedureTarget(item, appliedProcedures);
+    const apply = () => {
+      procedure.applyProcedure(dept, item);
+      message.success(`Đã áp dụng "${item.name}" cho ${dept}.`);
+    };
+    const current = appliedProcedures[dept] && library.find((p) => p.id === appliedProcedures[dept]);
+    if (current) {
+      confirmProcedure(
+        "Thay quy trình của phòng ban?",
+        `${dept} đang áp dụng "${current.name}". Thay bằng "${item.name}" sẽ xóa các bước, phân công và tiến độ cũ.`,
+        apply,
+      );
+    } else apply();
+  };
+
+  const retargetProcedure = (procedureId: string, to: string) => {
+    const item = library.find((p) => p.id === procedureId);
+    const from = Object.entries(appliedProcedures).find(([, id]) => id === procedureId)?.[0];
+    if (!item || !from || from === to) return;
+    confirmProcedure(
+      "Chuyển quy trình sang phòng ban khác?",
+      `"${item.name}" sẽ chuyển từ ${from} sang ${to}; phân công và tiến độ hiện có sẽ bị xóa${
+        appliedProcedures[to] ? `, quy trình đang áp dụng của ${to} cũng bị thay` : ""
+      }.`,
+      () => {
+        procedure.retargetProcedure(from, to, item);
+        message.success(`Đã chuyển "${item.name}" sang ${to}.`);
+      },
+    );
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -278,7 +366,9 @@ export default function ProjectDetailPage({
         </div>
       )}
 
-      {activeTab === "procedure" && <ProjectProcedureConfigTab project={project} controller={procedure} />}
+      {activeTab.startsWith("proc:") && (
+        <ProjectProcedureTab key={activeTab} department={activeTab.slice(5)} controller={procedure} />
+      )}
       {activeTab === "history" && <ProjectHistoryTab project={project} procedureLogs={procedure.data.history ?? []} />}
       {/* GPMB, đấu thầu, tài chính, bảo hành: chỉ dữ liệu của dự án này, không chọn dự án khác */}
       <ProjectScopeProvider projectId={project.id}>
@@ -289,13 +379,13 @@ export default function ProjectDetailPage({
       </ProjectScopeProvider>
 
       {activeTab === "info" && (
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          {/* Cột trái: thông tin chung — bấm bút chì để sửa từng trường */}
+        <div className="flex flex-col gap-3">
+          {/* Thông tin dự án: tràn hết chiều ngang (cùng bố cục với trang thêm dự án) */}
           <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
             <div className="space-y-5 p-5">
               <FieldGroup title="Thông tin chung">
                 <InlineEditField
-                  className="sm:col-span-2 xl:col-span-4"
+                  className="sm:col-span-2 xl:col-span-3"
                   label={FIELD_LABELS.name}
                   changed={isChanged("name")}
                   value={view.name}
@@ -368,7 +458,7 @@ export default function ProjectDetailPage({
                 />
               </FieldGroup>
 
-              <FieldGroup title="Nhân sự & thời gian">
+              <FieldGroup title="Nhân sự & thời gian" cols={2}>
                 <InlineEditField
                   label={FIELD_LABELS.managerName}
                   changed={isChanged("managerName")}
@@ -419,25 +509,25 @@ export default function ProjectDetailPage({
                 )}
               </FieldGroup>
 
-              <DepartmentsField
-                changed={isChanged("departments")}
-                value={view.departments ?? []}
-                onSave={canEditInfo ? (next) => setField("departments", next) : undefined}
+              <ProjectProcedurePicker
+                library={pickable}
+                procedures={appliedProcedures}
+                onToggle={toggleProcedure}
+                onRetarget={retargetProcedure}
+                disabled={!canEditProcedures}
+                hint={
+                  canEditProcedures
+                    ? "Mỗi quy trình là một tab của dự án. Gỡ quy trình sẽ xóa các bước và tiến độ của quy trình đó; mỗi phòng ban áp dụng một quy trình."
+                    : "Mỗi quy trình là một tab của dự án. Cần quyền cấu hình quy trình để thêm hoặc gỡ."
+                }
               />
             </div>
           </Card>
 
-          {/* Cột phải: tài liệu đính kèm — trên màn rộng cao bằng khối thông tin bên cạnh, danh sách cuộn bên trong */}
-          <div className="relative min-h-[320px]">
-            <Card
-              surface="workspace"
-              padding="none"
-              rounded="lg"
-              className="border-0 shadow-xs xl:absolute xl:inset-0 [&>.ant-card-body]:h-full"
-            >
-              <ProjectDocumentsSection project={project} fill />
-            </Card>
-          </div>
+          {/* Tài liệu đính kèm: nằm dưới thông tin dự án */}
+          <Card surface="workspace" padding="none" rounded="lg" className="border-0 shadow-xs">
+            <ProjectDocumentsSection project={project} />
+          </Card>
         </div>
       )}
 
@@ -503,88 +593,28 @@ function DetailTabBar({
   );
 }
 
-/** Nhóm trường thông tin có tiêu đề; lưới 4 cột trên màn rộng, 2 cột trên màn vừa */
-function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
+/** Số cột trên màn rộng (cùng cách chia với trang thêm dự án) */
+const FIELD_GROUP_COLS = {
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-2 xl:grid-cols-3",
+} as const;
+
+/** Nhóm trường thông tin có tiêu đề */
+function FieldGroup({
+  title,
+  cols = 3,
+  children,
+}: {
+  title: string;
+  cols?: keyof typeof FIELD_GROUP_COLS;
+  children: React.ReactNode;
+}) {
   return (
     <section>
       <h3 className="m-0 mb-3 border-b border-slate-100 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
         {title}
       </h3>
-      <div className="grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-4">{children}</div>
+      <div className={cn("grid grid-cols-1 gap-x-6 gap-y-3.5", FIELD_GROUP_COLS[cols])}>{children}</div>
     </section>
-  );
-}
-
-interface DepartmentsFieldProps {
-  value: string[];
-  changed?: boolean;
-  onSave?: (next: string[]) => void;
-  className?: string;
-}
-
-/** Phòng ban phụ trách (chọn nhiều): bấm bút chì để mở ô chọn, bấm ra ngoài là nhận */
-function DepartmentsField({ value, changed, onSave, className }: DepartmentsFieldProps) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string[]>(value);
-
-  return (
-    <div className={`min-w-0 pt-3 border-t border-slate-100 ${className ?? ""}`}>
-      <div className="flex items-center gap-1.5">
-        <TeamOutlined className="text-xs text-blue-600" />
-        <span className="text-[11px] font-medium text-slate-500">{FIELD_LABELS.departments}</span>
-        {changed && (
-          <span className="rounded bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800">Đã sửa</span>
-        )}
-        {onSave && !editing && (
-          <Tooltip title="Sửa phòng ban phụ trách">
-            <button
-              type="button"
-              aria-label="Sửa phòng ban phụ trách"
-              onClick={() => {
-                setDraft(value);
-                setEditing(true);
-              }}
-              className="inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white p-0 text-xs text-slate-500 shadow-2xs transition-colors hover:border-[#DC2626]/40 hover:bg-red-50 hover:text-[#DC2626]"
-            >
-              <FormOutlined />
-            </button>
-          </Tooltip>
-        )}
-      </div>
-
-      {editing ? (
-        <Select
-          autoFocus
-          defaultOpen
-          mode="multiple"
-          size="small"
-          value={draft}
-          onChange={(next) => setDraft(next as string[])}
-          onBlur={() => {
-            setEditing(false);
-            onSave?.(draft);
-          }}
-          options={DEPARTMENT_OPTIONS.map((d) => ({ value: d.value, label: d.label }))}
-          placeholder="Chọn phòng ban phụ trách"
-          className="mt-1 w-full text-xs"
-        />
-      ) : (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {value.length > 0 ? (
-            value.map((dept) => (
-              <span
-                key={dept}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                {dept}
-              </span>
-            ))
-          ) : (
-            <span className="text-xs italic text-slate-400">Chưa phân công phòng ban phụ trách</span>
-          )}
-        </div>
-      )}
-    </div>
   );
 }

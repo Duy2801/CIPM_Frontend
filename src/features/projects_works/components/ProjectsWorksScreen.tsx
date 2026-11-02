@@ -17,7 +17,7 @@ import CreateProjectPage from "./CreateProjectPage";
 import ProjectActionConfirmModal, { type ProjectActionType } from "./ProjectActionConfirmModal";
 import { canUserDo } from "@/access-control";
 import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
-import { initProjectProcedure } from "../hooks/useProjectProcedure";
+import { initProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
 
 export default function ProjectsWorksScreen() {
   const { message } = App.useApp();
@@ -304,6 +304,42 @@ const STAGE_ORDER: Record<string, number> = {
     message.success("Đã cập nhật thông tin dự án thành công!");
   };
 
+  // Quy trình của dự án thay đổi: phòng ban phụ trách + phần trăm hoàn thành tự cập nhật theo quy trình
+  const handleProcedureSync = (projectId: string, sync: ProjectProcedureSync) => {
+    const updaterName = user?.name || user?.displayName || "Cán bộ quản lý";
+    setProjects((prev) =>
+      prev.map((project) => {
+        if (project.id !== projectId) return project;
+        const progressChanged = sync.actualProgress !== project.actualProgress;
+        if (!progressChanged && JSON.stringify(sync.departments) === JSON.stringify(project.departments ?? [])) {
+          return project;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        return {
+          ...project,
+          departments: sync.departments,
+          actualProgress: sync.actualProgress,
+          actualEndDate: sync.actualProgress === 100 ? project.actualEndDate || today : project.actualEndDate,
+          progressHistory: progressChanged
+            ? [
+                {
+                  id: `HIS-${Date.now()}`,
+                  updatedAt: today,
+                  updatedBy: updaterName,
+                  oldProgress: project.actualProgress,
+                  newProgress: sync.actualProgress,
+                  note: "Tự cập nhật theo tiến độ các quy trình của dự án.",
+                  actualEndDateRecorded: sync.actualProgress === 100 ? today : undefined,
+                  stageRecorded: project.currentStage,
+                },
+                ...(project.progressHistory ?? []),
+              ]
+            : project.progressHistory,
+        };
+      }),
+    );
+  };
+
   // Đóng dự án (Chuyển trạng thái sang "closed")
   const handleCloseProject = (prj: ProjectItem) => {
     if (prj.status === "closed") {
@@ -378,6 +414,7 @@ const STAGE_ORDER: Record<string, number> = {
           project={detailProject}
           onBack={closeDetail}
           onUpdateProject={handleUpdateProject}
+          onProcedureSync={handleProcedureSync}
         />
       ) : (
         <>
