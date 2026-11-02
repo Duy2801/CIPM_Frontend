@@ -57,6 +57,7 @@ export interface ApiLegalDocumentBody {
   title: string | null;
   category: string | null;
   field: string | null;
+  scope: string | null;
   issuer: string;
   gazetteNumber: string | null;
   gazetteDate: string | null;
@@ -123,6 +124,7 @@ export function toApiCreateBody(input: DocumentFields, fileIds: string[]): ApiLe
     title: toApiText(input.title),
     category: toApiText(input.category),
     field: toApiText(input.field),
+    scope: toApiText(input.scope),
     issuer: input.issuer.trim(),
     gazetteNumber: toApiText(input.gazetteNumber),
     gazetteDate: toApiDate(input.gazetteDate),
@@ -137,10 +139,12 @@ export function toApiCreateBody(input: DocumentFields, fileIds: string[]): ApiLe
   };
 }
 
-/** Body PATCH /legal-documents/:id: chỉ các trường backend cho sửa (tên văn bản, phạm vi chưa sửa được) */
+/** Body PATCH /legal-documents/:id: chỉ các trường có thay đổi */
 export function toApiUpdateBody(patch: LegalDocumentPatch, fileIds?: string[]): Partial<ApiLegalDocumentBody> {
   const body: Partial<ApiLegalDocumentBody> = {};
   if (patch.code !== undefined) body.code = patch.code.trim();
+  if (patch.title !== undefined) body.title = toApiText(patch.title);
+  if (patch.scope !== undefined) body.scope = toApiText(patch.scope);
   if (patch.category !== undefined) body.category = toApiText(patch.category);
   if (patch.field !== undefined) body.field = toApiText(patch.field);
   if (patch.issuer !== undefined) body.issuer = patch.issuer.trim();

@@ -1,20 +1,10 @@
-/**
- * procedure-templates.ts — Danh mục các Quy trình Thủ tục mẫu chuẩn hóa cho dự án
- *
- * Kiểu dữ liệu quy trình + lưu trữ các quy trình tùy chỉnh do người dùng cấu hình.
- * Quy trình thủ tục ĐTXD theo dự thảo nằm ở procedure-department-templates.ts.
- */
-
 import { PERSONNEL_MOCK_DATA } from "@/features/personnel-assignment/constants/personnel-mock-data";
 import type { ProcedureStep } from "../types/procedure.types";
 
-/** Số ngày mẫu cho bước chưa có thời gian (chưa có backend) */
 const MOCK_STEP_DAYS = [5, 7, 10, 15, 20, 30];
 
-/** Băm chuỗi ổn định → cùng một bước luôn ra cùng dữ liệu mẫu */
 export const stableHash = (text: string) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-/** Dữ liệu mẫu: bước chưa có số ngày / người thực hiện thì điền sẵn để bảng không bị trống */
 export const withMockStepDefaults = (steps: ProcedureStep[]): ProcedureStep[] => {
   const staff = PERSONNEL_MOCK_DATA.staff;
   return steps.map((s) => {
@@ -30,25 +20,11 @@ export const withMockStepDefaults = (steps: ProcedureStep[]): ProcedureStep[] =>
   });
 };
 
-export interface ProcedureProfile {
-  id: string;
-  name: string;
-  shortName: string;
-  description: string;
-  stepCount: number;
-  badge: string;
-  tagColor: "teal" | "blue" | "amber" | "purple" | "slate";
-  isSystem?: boolean;
-  createSteps: () => ProcedureStep[];
-}
-
 export interface CustomProcedureProfile {
   id: string;
   name: string;
   createdAt: string;
-  /** Người tạo (tên hiển thị) */
   createdBy?: string;
-  /** Tổ phụ trách */
   department?: string;
   isSystem?: boolean;
   steps: ProcedureStep[];
@@ -66,7 +42,6 @@ export const loadCustomProfiles = (): CustomProcedureProfile[] => {
   }
 };
 
-/** Quy trình mẫu (theo dự thảo) người dùng đã xóa khỏi danh sách chọn */
 export const HIDDEN_TEMPLATE_STORAGE_KEY = "cipm_hidden_procedure_templates";
 
 export const loadHiddenTemplateIds = (): string[] => {
@@ -80,16 +55,6 @@ export const loadHiddenTemplateIds = (): string[] => {
   }
 };
 
-export const saveHiddenTemplateIds = (ids: string[]) => {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(HIDDEN_TEMPLATE_STORAGE_KEY, JSON.stringify(ids));
-  } catch (e) {
-    console.error("Failed to save hidden procedure templates", e);
-  }
-};
-
-/** Bộ bước đã chỉnh của quy trình mẫu (theo mã quy trình), lưu trình duyệt */
 export const TEMPLATE_OVERRIDE_STORAGE_KEY = "cipm_procedure_template_overrides";
 
 const loadTemplateOverrides = (): Record<string, ProcedureStep[]> => {
@@ -115,7 +80,6 @@ export const saveTemplateOverride = (templateId: string, steps: ProcedureStep[])
   }
 };
 
-/** Bước của quy trình mẫu: bản đã chỉnh (nếu có), không thì bộ bước gốc */
 export const getTemplateSteps = (template: { id: string; createSteps: () => ProcedureStep[] }): ProcedureStep[] => {
   const override = loadTemplateOverrides()[template.id];
   return withMockStepDefaults(override ? override.map((s) => ({ ...s })) : template.createSteps());

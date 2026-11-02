@@ -16,6 +16,7 @@ export {
 export {
   login,
   logout,
+  changePassword,
   getCurrentUser,
   refreshToken,
   persistAuthSession,

@@ -12,38 +12,21 @@ export interface DepartmentTemplate {
   createSteps: () => ProcedureStep[];
 }
 
-/**
- * QUY TRÌNH THỦ TỤC ĐẦU TƯ XÂY DỰNG (Dự thảo)
- * A. Chuẩn bị đầu tư · B. Đấu thầu (5 hình thức) · C. Giám sát · D. Quy hoạch
- *
- * Mỗi nhóm của dự thảo (I, II, ...) là một BƯỚC CHÍNH (mã "I"), các dòng bên trong là BƯỚC CON (mã "I.1"),
- * bước con có thể có bước con tiếp (mã "I.1.1"...) — không giới hạn số cấp, đúng như đánh số trong dự thảo.
- * Bước ghi "(nếu có)" hoặc chỉ áp dụng theo trường hợp → bước Điều kiện (CONDITIONAL).
- * Dự thảo chưa quy định thời gian từng bước → để "Theo quy định", cấu hình số ngày khi áp dụng cho dự án.
- */
 
 interface TemplateStepDef {
   name: string;
-  /** Đơn vị xử lý theo dự thảo */
   unit: string;
   conditional?: boolean;
-  /** Danh mục hồ sơ đi kèm / ghi chú của bước */
   notes?: string;
-  /** Bước con của bước này (cấp tiếp theo); không ghi đơn vị thì lấy theo bước cha */
   children?: (Omit<TemplateStepDef, "unit"> & { unit?: string })[];
 }
 
 interface TemplateGroupDef {
   code: string;
-  /** Tên bước chính */
   title: string;
-  /** Đơn vị xử lý của bước chính (mặc định: tổng hợp đơn vị các bước con) */
   unit?: string;
-  /** Ghi chú của bước chính (phạm vi áp dụng, căn cứ pháp lý...) */
   note?: string;
-  /** Cả nhóm chỉ áp dụng theo trường hợp → mọi bước trong nhóm là bước Điều kiện */
   conditional?: boolean;
-  /** Nhóm điều kiện mặc định đang tắt (VD: hình thức lựa chọn nhà thầu — bật hình thức áp dụng cho gói thầu) */
   disabledByDefault?: boolean;
   steps: TemplateStepDef[];
 }
@@ -81,7 +64,6 @@ function buildTemplateSteps(prefix: string, department: string, groups: Template
     };
   };
 
-  // Bước con ở mọi cấp: mã = mã cha + ".n"; điều kiện / bật tắt kế thừa từ cha
   type StepNode = Omit<TemplateStepDef, "unit"> & { unit?: string };
   const buildChildren = (
     parentCode: string,
@@ -100,7 +82,6 @@ function buildTemplateSteps(prefix: string, department: string, groups: Template
     });
 
   return groups.flatMap((group) => {
-    // Bước chính: đơn vị xử lý là tổng hợp các đơn vị của bước con
     const parentUnit = group.unit ?? Array.from(new Set(group.steps.map((s) => s.unit))).join(", ");
     const enabled = !group.disabledByDefault;
     const parent = makeStep(group.code, group, group.title, parentUnit, Boolean(group.conditional), group.note, enabled);
@@ -112,14 +93,10 @@ const DEPT_KHKT = "Tổ Kế hoạch – Kỹ thuật";
 const DEPT_DT = "Tổ Quản lý Đấu thầu";
 const DEPT_GSKT = "Tổ Giám sát – Kỹ thuật";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// A. QUY TRÌNH CHUẨN BỊ ĐẦU TƯ
-// ─────────────────────────────────────────────────────────────────────────────
 const CHUAN_BI_DAU_TU_GROUPS: TemplateGroupDef[] = [
   {
     code: "I",
     title: "Lập, thẩm định và phê duyệt chủ trương đầu tư",
-    // Bước chính và các bước con đều bắt buộc
     note: "Thực hiện đối với dự án thuộc trường hợp phải quyết định chủ trương đầu tư theo pháp luật về đầu tư công và pháp luật có liên quan.",
     steps: [
       { name: "Báo cáo đề xuất chủ trương đầu tư", unit: "BQL" },
@@ -222,16 +199,11 @@ const CHUAN_BI_DAU_TU_GROUPS: TemplateGroupDef[] = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// B. QUY TRÌNH ĐẤU THẦU — bước 1, 2 (kế hoạch LCNT) + các hình thức lựa chọn nhà thầu (bật hình thức áp dụng)
-// ─────────────────────────────────────────────────────────────────────────────
-// Bước 1, 2 của dự thảo: đứng riêng ở đầu quy trình (không thuộc hình thức nào)
 const KE_HOACH_LCNT_STEPS: TemplateGroupDef[] = [
   { code: "1", title: "Tờ trình phê duyệt kế hoạch lựa chọn nhà thầu (chủ đầu tư)", unit: "BQL", steps: [] },
   { code: "2", title: "Quyết định phê duyệt kế hoạch lựa chọn nhà thầu", unit: "Chủ đầu tư", steps: [] },
 ];
 
-// Các bước chọn tư vấn đấu thầu, dùng chung cho đấu thầu rộng rãi
 const TU_VAN_DAU_THAU_STEPS: TemplateStepDef[] = [
   { name: "Tờ trình chỉ định thầu rút gọn gói thầu tư vấn lập HSMT, đánh giá HSDT", unit: "BQL" },
   { name: "Quyết định chỉ định thầu rút gọn gói thầu tư vấn lập HSMT, đánh giá HSDT", unit: "Chủ đầu tư" },
@@ -244,7 +216,7 @@ const TU_VAN_DAU_THAU_STEPS: TemplateStepDef[] = [
 ];
 
 const CHI_DINH_THAU_RUT_GON_GROUP: TemplateGroupDef = {
-  code: "", // gán khi ghép vào DAU_THAU_GROUPS
+  code: "",
   title: "Chỉ định thầu rút gọn",
   note:
     "Gói thầu thuộc dự toán mua sắm không hình thành dự án có giá gói thầu không quá 01 tỷ đồng; gói thầu dịch vụ tư vấn thuộc dự án có giá gói thầu không quá 03 tỷ đồng; gói thầu dịch vụ phi tư vấn, hàng hóa, xây lắp, hỗn hợp thuộc dự án có giá gói thầu không quá 05 tỷ đồng (khoản 5 Điều 4 – NĐ 349/2026/NĐ-CP).",
@@ -257,7 +229,7 @@ const CHI_DINH_THAU_RUT_GON_GROUP: TemplateGroupDef = {
 };
 
 const CHI_DINH_THAU_THONG_THUONG_GROUP: TemplateGroupDef = {
-  code: "", // gán khi ghép vào DAU_THAU_GROUPS
+  code: "",
   title: "Chỉ định thầu thông thường",
   note: "Điều 78 – NĐ 214/2025/NĐ-CP.",
   steps: [
@@ -274,7 +246,7 @@ const CHI_DINH_THAU_THONG_THUONG_GROUP: TemplateGroupDef = {
 };
 
 const CHAO_HANG_CANH_TRANH_GROUP: TemplateGroupDef = {
-  code: "", // gán khi ghép vào DAU_THAU_GROUPS
+  code: "",
   title: "Chào hàng cạnh tranh",
   note: "Các gói thầu có giá gói thầu không quá 10 tỷ đồng, không bao gồm gói thầu tư vấn (Điều 81 – NĐ 214/2025/NĐ-CP).",
   steps: [
@@ -295,7 +267,7 @@ const CHAO_HANG_CANH_TRANH_GROUP: TemplateGroupDef = {
 };
 
 const DAU_THAU_RONG_RAI_GROUP: TemplateGroupDef = {
-  code: "", // gán khi ghép vào DAU_THAU_GROUPS
+  code: "",
   title: "Đấu thầu rộng rãi",
   steps: [
     {
@@ -341,7 +313,6 @@ const DAU_THAU_RONG_RAI_GROUP: TemplateGroupDef = {
   ],
 };
 
-/** Các hình thức lựa chọn nhà thầu: bước Điều kiện, mặc định tắt — bật hình thức áp dụng cho gói thầu */
 const asBiddingMethod = (group: TemplateGroupDef, code: string): TemplateGroupDef => ({
   ...group,
   code,
@@ -352,8 +323,6 @@ const asBiddingMethod = (group: TemplateGroupDef, code: string): TemplateGroupDe
     .join(" "),
 });
 
-// Đánh số theo dự thảo: 1, 2 → I rút gọn → II thông thường → III chào hàng cạnh tranh
-// → IV đấu thầu rộng rãi (dự thảo ghi trùng "III"; mã bước không được trùng nên dùng IV, bên trong IV.1, IV.2)
 const DAU_THAU_GROUPS: TemplateGroupDef[] = [
   ...KE_HOACH_LCNT_STEPS,
   asBiddingMethod(CHI_DINH_THAU_RUT_GON_GROUP, "I"),
@@ -362,9 +331,6 @@ const DAU_THAU_GROUPS: TemplateGroupDef[] = [
   asBiddingMethod(DAU_THAU_RONG_RAI_GROUP, "IV"),
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// C. QUY TRÌNH GIÁM SÁT
-// ─────────────────────────────────────────────────────────────────────────────
 const GIAM_SAT_GROUPS: TemplateGroupDef[] = [
   {
     code: "I",
@@ -410,7 +376,6 @@ const GIAM_SAT_GROUPS: TemplateGroupDef[] = [
           {
             name: "Khối lượng phát sinh trong hợp đồng (không vượt tổng mức)",
             unit: "BQL – CĐT",
-            // Trong hoặc ngoài hợp đồng là 2 trường hợp loại trừ nhau → điều kiện, bật trường hợp xảy ra
             conditional: true,
             notes:
               "Lập hồ sơ khối lượng phát sinh tăng, giảm; lập báo cáo và trình chủ đầu tư phê duyệt quyết định phát sinh tăng, giảm.",
@@ -479,9 +444,6 @@ const GIAM_SAT_GROUPS: TemplateGroupDef[] = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// D. QUY TRÌNH QUY HOẠCH
-// ─────────────────────────────────────────────────────────────────────────────
 const QUY_HOACH_GROUPS: TemplateGroupDef[] = [
   {
     code: "I",
@@ -570,16 +532,11 @@ function defineTemplate(
   return {
     ...rest,
     shortName: shortLabel,
-    // Không hiện nhãn số bước ở ô chọn quy trình
     badge: "",
     createSteps: () => buildTemplateSteps(rest.id, rest.department, groups),
   };
 }
 
-/**
- * Danh mục quy trình thủ tục ĐTXD theo dự thảo.
- * Khóa là tên phòng ban cho quy trình mặc định của phòng ban đó; các quy trình khác khóa theo id.
- */
 export const DEPARTMENT_PROCEDURE_TEMPLATES: Record<string, DepartmentTemplate> = {
   [DEPT_KHKT]: defineTemplate({
     id: "template-khkt",
@@ -623,9 +580,6 @@ export const DEPARTMENT_PROCEDURE_TEMPLATES: Record<string, DepartmentTemplate> 
   }),
 };
 
-/**
- * Lấy danh sách thành viên thuộc phòng ban
- */
 export function getDepartmentStaff(deptName?: string) {
   let allStaff = PERSONNEL_MOCK_DATA.staff;
   let allTeams = PERSONNEL_MOCK_DATA.teams;
@@ -646,7 +600,6 @@ export function getDepartmentStaff(deptName?: string) {
   if (!deptName) return allStaff;
   const target = deptName.toLowerCase();
 
-  // Tìm teamId tương ứng
   const team = allTeams.find(
     (t) =>
       t.name.toLowerCase() === target ||
@@ -665,15 +618,11 @@ export function getDepartmentStaff(deptName?: string) {
     return allStaff.filter((s) => s.teamId === team.id);
   }
 
-  // Fallback match theo teamId nếu deptName là code
   return allStaff.filter(
     (s) => s.teamId.toLowerCase() === target || s.title.toLowerCase().includes(target)
   );
 }
 
-/**
- * Tổ trưởng (người duyệt cấp tổ) của phòng ban, theo `leaderId` của tổ trong cơ cấu nhân sự
- */
 export function getDepartmentLead(deptName?: string) {
   if (!deptName) return undefined;
   let allTeams = PERSONNEL_MOCK_DATA.teams;
@@ -689,14 +638,6 @@ export function getDepartmentLead(deptName?: string) {
   return staff.find((s) => s.id === team?.leaderId);
 }
 
-/**
- * Chuẩn hóa mã phòng ban để đối sánh chính xác:
- * - GSKT: Tổ Giám sát – Kỹ thuật
- * - KHKT: Tổ Kế hoạch – Kỹ thuật
- * - BT: Tổ Bồi thường – GPMB – TĐC
- * - DT: Tổ Quản lý Đấu thầu
- * - HCTH: Tổ Hành chính – Tổng hợp
- */
 export function getDepartmentCode(dept?: string): string {
   if (!dept) return "";
   const d = dept.trim().toLowerCase();
@@ -708,10 +649,6 @@ export function getDepartmentCode(dept?: string): string {
   return d;
 }
 
-/**
- * Kiểm tra xem 2 chuỗi tên phòng ban có đại diện cho cùng một phòng ban hay không.
- * Đảm bảo "Tổ Giám sát – Kỹ thuật" và "Tổ Kế hoạch – Kỹ thuật" luôn được phân biệt độc lập (KHÔNG bị trùng lặp vì chữ "kỹ thuật").
- */
 export function isSameDepartment(deptA?: string, deptB?: string): boolean {
   if (!deptA || !deptB) return false;
   if (deptA === deptB) return true;
@@ -724,18 +661,22 @@ export function isSameDepartment(deptA?: string, deptB?: string): boolean {
   return false;
 }
 
-/**
- * Kiểm tra xem user có phải là Lead của phòng ban chỉ định không
- */
-export function isLeadOfDepartment(user: any, deptName?: string): boolean {
+interface ProcedureUser {
+  name?: string;
+  displayName?: string;
+  role?: string;
+  roleCode?: string;
+  department?: string;
+  isLead?: boolean;
+}
+
+export function isLeadOfDepartment(user: ProcedureUser | null | undefined, deptName?: string): boolean {
   if (!user) return false;
-  // Ban Giám đốc không phải là Lead phòng ban
   if (user.roleCode === "ADMIN" || user.roleCode === "DEPUTY_DIRECTOR") return false;
 
   const uName = (user.displayName || user.name || "").trim().toLowerCase();
   const uRole = (user.roleCode || "").toUpperCase();
 
-  // Kiểm tra cờ isLead hoặc tên/chức danh
   const isLeadUser =
     Boolean(user.isLead) ||
     uRole.includes("LEAD") ||
@@ -753,10 +694,7 @@ export function isLeadOfDepartment(user: any, deptName?: string): boolean {
   return isSameDepartment(user.department, deptName);
 }
 
-/**
- * Kiểm tra xem user có phải là Ban Giám đốc (Giám đốc / Phó Giám đốc)
- */
-export function isDirectorUser(user: any): boolean {
+export function isDirectorUser(user: ProcedureUser | null | undefined): boolean {
   if (!user) return false;
   const role = (user.roleCode || user.role || "").toUpperCase();
   const dept = (user.department || "").toLowerCase();

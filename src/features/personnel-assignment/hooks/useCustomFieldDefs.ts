@@ -1,55 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/components/ui";
-import { hasBackendSession } from "../services/backend";
-import * as personnelApi from "../services/personnel.api";
+import { useCallback, useEffect, useState } from "react";
 import type { CustomFieldDefinition, CustomFieldTarget } from "../types/custom-fields.types";
 import { getCustomFields, saveCustomFields, subscribeCustomFieldsChange } from "../utils/custom-fields-storage";
-import { personnelKeys } from "./usePersonnelQueries";
-
-const NO_FIELDS: CustomFieldDefinition[] = [];
 
 /**
  * Danh sách trường tùy biến của cán bộ / phòng ban; tự cập nhật khi nơi khác thay đổi cấu hình.
- * Trường của cán bộ lưu backend (GET / PUT /settings/staff-custom-fields), trường của phòng ban lưu trình duyệt.
+ * Danh mục trường lưu trình duyệt (backend chưa có API danh mục); giá trị của từng cán bộ lưu trong customFields của hồ sơ.
  */
 export function useCustomFieldDefs(target: CustomFieldTarget) {
-  const queryClient = useQueryClient();
-  const queryKey = useMemo(() => [...personnelKeys.all, "custom-fields", target] as const, [target]);
-  const isStaff = target === "staff";
-
-  const { data: fields = NO_FIELDS } = useQuery({
-    queryKey,
-    queryFn: () => (isStaff ? personnelApi.getStaffCustomFields() : getCustomFields(target)),
-    // Dữ liệu backend thì chờ tải; bản lưu trình duyệt thì đọc ngay
-    initialData: isStaff && hasBackendSession() ? undefined : () => getCustomFields(target),
-    staleTime: Infinity,
-  });
+  const [fields, setFields] = useState<CustomFieldDefinition[]>(() => getCustomFields(target));
 
   useEffect(() => {
+    setFields(getCustomFields(target));
     return subscribeCustomFieldsChange((changedTarget, nextFields) => {
-      if (changedTarget === target) queryClient.setQueryData(queryKey, nextFields);
+      if (changedTarget === target) setFields(nextFields);
     });
-  }, [target, queryKey, queryClient]);
+  }, [target]);
 
   const save = useCallback(
     (nextFields: CustomFieldDefinition[]) => {
-      queryClient.setQueryData(queryKey, nextFields);
-      if (!isStaff) {
-        saveCustomFields(target, nextFields);
-        return;
-      }
-      personnelApi
-        .saveStaffCustomFields(nextFields)
-        .then((saved) => queryClient.setQueryData(queryKey, saved))
-        .catch((error) => {
-          toast.error(error instanceof Error ? error.message : "Không thể lưu trường dữ liệu, vui lòng thử lại.");
-          queryClient.invalidateQueries({ queryKey });
-        });
+      setFields(nextFields);
+      saveCustomFields(target, nextFields);
     },
-    [target, isStaff, queryKey, queryClient],
+    [target],
   );
 
   return [fields, save] as const;

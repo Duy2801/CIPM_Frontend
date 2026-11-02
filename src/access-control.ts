@@ -196,12 +196,58 @@ export function getRoleEffectivePermissions(roleCode?: string): Permission[] {
   return [];
 }
 
+/** Mã quyền backend BQL-HaTien ("project:view") → mã quyền trên ma trận phân quyền ("m2.view") */
+export const BACKEND_PERMISSION_TO_MATRIX_ID: Record<string, string> = {
+  "dashboard:view_kpi": "m1.view",
+  "dashboard:export_summary": "m1.export",
+  "project:view": "m2.view",
+  "project:create_update": "m2.create_edit",
+  "project:progress_rule4": "m2.update_progress",
+  "project:archive_rule5": "m2.close_open",
+  "project:export_report": "m2.export",
+  "procedure:view_46b": "m3.view",
+  "procedure:update_step": "m3.update_step",
+  "procedure:approve_step": "m3.approve_step",
+  "procedure:config_template": "m3.config_template",
+  "finance:view": "m4.view",
+  "finance:request_disbursement": "m4.create_disbursement",
+  "finance:approve_disbursement": "m4.approve_disbursement",
+  "finance:export_kbnn_report": "m4.export",
+  "staff:view_organization": "m5.view",
+  "staff:assign_project_leader": "m5.assign_project_leaders",
+  "staff:manage_cnda_permission": "m5.grant_cnda",
+  "staff:assign_staff_by_stage": "m5.assign_tasks",
+  "staff:review_and_supervise": "m5.review_submissions",
+  "staff:manage_users": "m5.manage_accounts",
+  "gpmb:view_16b": "m6.view",
+  "gpmb:create_update_household": "m6.input_survey",
+  "gpmb:approve_compensation_plan": "m6.approve_compensation",
+  "gpmb:export_report": "m6.export",
+  "bidding:view": "m7.view",
+  "bidding:create_evaluate": "m7.manage_tender",
+  "bidding:approve_result": "m7.approve_bid",
+  "warranty:view": "m8.view",
+  "warranty:log_issue_repair": "m8.manage_incidents",
+  "warranty:release_bond": "m8.release_bond",
+  "legal_library:view": "m9.view_search",
+  "legal_library:input": "m9.manage_docs",
+  "system:configure_permissions": "sys.config_permissions",
+  "system:view_audit_logs": "sys.audit_log",
+};
+
 /**
- * Quyền backend ("projects:view") → quyền màn hình: giữ mã gốc, thêm mã ma trận ("m2.view") và mã phân hệ ("m2_projects:view").
+ * Quyền backend ("project:view") → quyền màn hình: giữ mã gốc, thêm mã ma trận ("m2.view") và mã phân hệ ("m2_projects:view").
+ * Vẫn nhận mã kiểu cipm-service ("projects:view" = mã phân hệ bỏ tiền tố "mX_").
  */
-export function expandBackendPermissions(codes: string[]): Permission[] {
+export function expandBackendPermissions(codes: string[] = []): Permission[] {
   const granted = new Set(codes);
-  const matrixIds = MATRIX_PERMISSIONS.filter((p) => granted.has(p.code.replace(/^m\d+_/, ""))).map((p) => p.id);
+  const matrixIds = MATRIX_PERMISSIONS.filter(
+    (p) => granted.has(p.code.replace(/^m\d+_/, "")),
+  ).map((p) => p.id);
+  for (const code of codes) {
+    const id = BACKEND_PERMISSION_TO_MATRIX_ID[code];
+    if (id) matrixIds.push(id);
+  }
   return Array.from(new Set<Permission>([...(codes as Permission[]), ...convertMatrixPermIdsToPermissionCodes(matrixIds)]));
 }
 

@@ -21,6 +21,11 @@ export function apiErrorMessage(error: unknown, fallback = "Không thể hoàn t
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+/** Backend chưa có API này (404) */
+export function isNotFoundError(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 404;
+}
+
 /** Gọi backend; không có phiên thật hoặc không kết nối được server thì chạy bản mock */
 export async function withBackend<T>(remote: () => Promise<T>, fallback: () => T | Promise<T>): Promise<T> {
   if (!hasBackendSession()) return fallback();

@@ -38,21 +38,21 @@ export default function LegalDocumentRow({ document: item, isNewest, canManage, 
       }`}
     >
       {/* Số hiệu · cơ quan ban hành */}
-      <div className="flex shrink-0 flex-col items-start gap-1 text-xs md:w-28">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="font-semibold text-slate-800">{item.code}</span>
+      <div className="flex min-w-0 shrink-0 flex-col items-start gap-1 text-xs md:w-28">
+        <div className="flex max-w-full items-center gap-1.5 flex-wrap">
+          <span className="max-w-full break-words font-semibold text-slate-800">{item.code}</span>
           {isNewest && (
             <span className="inline-flex items-center rounded bg-[#DC2626] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-2xs">
               Mới thêm
             </span>
           )}
         </div>
-        <span className="text-slate-500">{item.issuer}</span>
+        <span className="max-w-full break-words text-slate-500">{item.issuer}</span>
       </div>
 
-      {/* Loại văn bản */}
-      <div className="shrink-0 md:w-24">
-        <span className="whitespace-nowrap rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+      {/* Loại văn bản: nhãn dài thì xuống dòng trong cột, không tràn sang cột tên */}
+      <div className="min-w-0 shrink-0 md:w-24">
+        <span className="inline-block max-w-full break-words rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium leading-snug text-slate-700">
           {getCategoryLabel(item.category)}
         </span>
       </div>

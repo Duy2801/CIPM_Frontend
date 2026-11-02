@@ -13,9 +13,11 @@ import { useAuth } from "@/features/auth";
 import ProjectsFilterToolbar from "./ProjectsFilterToolbar";
 import ProjectsTable from "./ProjectsTable";
 import ProjectDetailPage from "./ProjectDetailPage";
-import CreateProjectModal from "./CreateProjectModal";
+import CreateProjectPage from "./CreateProjectPage";
 import ProjectActionConfirmModal, { type ProjectActionType } from "./ProjectActionConfirmModal";
 import { canUserDo } from "@/access-control";
+import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
+import { initProjectProcedure } from "../hooks/useProjectProcedure";
 
 export default function ProjectsWorksScreen() {
   const { message } = App.useApp();
@@ -217,7 +219,19 @@ const STAGE_ORDER: Record<string, number> = {
       ],
     };
 
+    // Quy trình đã chọn cho từng phòng ban lúc tạo
+    const library = loadProcedureLibrary();
+    initProjectProcedure(
+      newProject,
+      Object.entries(data.procedures ?? {}).flatMap(([department, procedureId]) => {
+        const procedure = library.find((p) => p.id === procedureId);
+        return procedure && newProject.departments?.includes(department) ? [{ department, procedure }] : [];
+      }),
+      { name: creatorName, role: user?.roleName || "Cán bộ Ban QLDA" },
+    );
+
     setProjects((prev) => [newProject, ...prev]);
+    setIsCreateOpen(false);
     setSortBy("latest");
     setCurrentPage(1);
     if (statusFilter === "closed") {
@@ -351,8 +365,14 @@ const STAGE_ORDER: Record<string, number> = {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-2.5 select-none">
-      {/* Trang con chi tiết dự án (BRD 4.2.2, 4.2.3, 4.2.4) — thay cho bộ lọc + bảng */}
-      {detailProject ? (
+      {/* Trang con thêm dự án / chi tiết dự án (BRD 4.2.2, 4.2.3, 4.2.4) — thay cho bộ lọc + bảng */}
+      {isCreateOpen ? (
+        <CreateProjectPage
+          nextAutoCode={nextAutoCode}
+          onBack={() => setIsCreateOpen(false)}
+          onCreateProject={handleCreateProject}
+        />
+      ) : detailProject ? (
         <ProjectDetailPage
           key={detailProject.id}
           project={detailProject}
@@ -388,17 +408,6 @@ const STAGE_ORDER: Record<string, number> = {
             onCloseProject={handleTableProjectAction}
           />
         </>
-      )}
-
-      {/* 4. Modal Tạo mới dự án với mã tự sinh (BRD 4.2.2) */}
-      {isCreateOpen && (
-        <CreateProjectModal
-          key="create-project"
-          open={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-          nextAutoCode={nextAutoCode}
-          onCreateProject={handleCreateProject}
-        />
       )}
 
       {/* 5. Modal xác nhận hành động căn giữa khung trắng (Quy tắc 5, Đóng, Xóa, Mở lại) */}

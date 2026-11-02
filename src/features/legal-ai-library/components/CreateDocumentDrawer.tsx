@@ -32,6 +32,7 @@ import {
 } from "../utils/legal-document-form";
 import { LegalFormField, LegalFormSection } from "./LegalFormSection";
 import { SelectWithAddOption } from "@/components/workspace";
+import { useCatalog } from "@/features/catalogs";
 
 /** Loại văn bản chọn được khi thêm (biểu mẫu chuẩn không thêm ở đây) */
 const CREATABLE_CATEGORIES = CATEGORY_DISPLAY_ORDER.filter((cat) => cat !== "TEMPLATE");
@@ -84,19 +85,43 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
 
   const update = (patch: Partial<LegalDocumentFormValues>) => setValues((prev) => ({ ...prev, ...patch }));
 
+  // Danh mục backend (tài khoản thật); mục thêm bằng "+ Thêm" lưu luôn vào danh mục để lần sau chọn lại được
+  const categoryCatalog = useCatalog("LEGAL_CATEGORY");
+  const issuerCatalog = useCatalog("LEGAL_ISSUER");
+  const fieldCatalog = useCatalog("LEGAL_FIELD");
+
   const categoryOptions = useMemo(
     () =>
       uniqueOptions(
-        [...CREATABLE_CATEGORIES, ...getCustomCategories(documents), ...addedCategories, values.category],
+        [
+          ...CREATABLE_CATEGORIES,
+          // Loại mặc định của hệ thống có mã trùng mã loại văn bản ("law" → "LAW"); loại tự thêm dùng tên làm khóa
+          ...categoryCatalog.items
+            .map((item) => (item.isSystem ? item.code.toUpperCase() : item.name))
+            .filter((key) => key !== "TEMPLATE"),
+          ...getCustomCategories(documents),
+          ...addedCategories,
+          values.category,
+        ],
         getCategoryLabel,
       ),
-    [documents, addedCategories, values.category],
+    [categoryCatalog.items, documents, addedCategories, values.category],
   );
   const issuerOptions = useMemo(
-    () => uniqueOptions([...COMMON_ISSUERS, ...documents.map((doc) => doc.issuer), ...addedIssuers, values.issuer]),
-    [documents, addedIssuers, values.issuer],
+    () =>
+      uniqueOptions([
+        ...COMMON_ISSUERS,
+        ...issuerCatalog.items.map((item) => item.name),
+        ...documents.map((doc) => doc.issuer),
+        ...addedIssuers,
+        values.issuer,
+      ]),
+    [issuerCatalog.items, documents, addedIssuers, values.issuer],
   );
-  const fieldOptions = useMemo(() => uniqueOptions([...COMMON_FIELDS, ...addedFields]), [addedFields]);
+  const fieldOptions = useMemo(
+    () => uniqueOptions([...COMMON_FIELDS, ...fieldCatalog.items.map((item) => item.name), ...addedFields]),
+    [fieldCatalog.items, addedFields],
+  );
 
   // Đổi loại văn bản: cơ quan ban hành đang trống / đang là gợi ý mặc định thì đổi theo loại mới
   const changeCategory = (category: string) => {
@@ -186,6 +211,7 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
                 onAdd={(name) => {
                   setAddedCategories((prev) => [...prev, name]);
                   changeCategory(name);
+                  void categoryCatalog.add(name);
                 }}
                 addPlaceholder="Nhập loại văn bản mới..."
               />
@@ -211,6 +237,7 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
                 onAdd={(name) => {
                   setAddedFields((prev) => [...prev, name]);
                   update({ field: name });
+                  void fieldCatalog.add(name);
                 }}
                 addPlaceholder="Nhập lĩnh vực mới..."
               />
@@ -226,6 +253,7 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
                 onAdd={(name) => {
                   setAddedIssuers((prev) => [...prev, name]);
                   update({ issuer: name });
+                  void issuerCatalog.add(name);
                 }}
                 addPlaceholder="Tìm hoặc nhập cơ quan mới..."
                 notFoundContent={<div className="py-1 text-xs text-slate-400">Chưa có cơ quan này trong danh sách.</div>}

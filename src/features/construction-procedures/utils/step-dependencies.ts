@@ -1,22 +1,11 @@
-/**
- * step-dependencies.ts — Thứ tự thực hiện giữa các bước cùng cấp: chia thành các "đợt"
- * (cùng đợt = làm song song; đợt sau bắt đầu khi đợt trước xong hết)
- */
-
 import type { ProcedureStep } from "../types/procedure.types";
 
-/** Bước cha trực tiếp: "III.1.1" → "III.1"; bước chính → null */
 export const getParentCode = (code: string): string | null =>
   code.includes(".") ? code.slice(0, code.lastIndexOf(".")) : null;
 
-/** Các bước con trực tiếp của một bước (null = các bước chính), theo thứ tự trong quy trình */
 export const getSiblingSteps = (steps: ProcedureStep[], parentCode: string | null): ProcedureStep[] =>
   steps.filter((s) => getParentCode(s.code) === parentCode);
 
-/**
- * Các đợt của một nhóm bước cùng cấp, đánh số liền 1..n.
- * Bước chưa đặt đợt thì đứng riêng một đợt ngay sau bước liền trước (làm lần lượt).
- */
 export function getStageColumns(siblings: ProcedureStep[]): ProcedureStep[][] {
   let last = 0;
   const raw = siblings.map((s) => {
@@ -27,11 +16,6 @@ export function getStageColumns(siblings: ProcedureStep[]): ProcedureStep[][] {
   return order.map((stage) => raw.filter((r) => r.stage === stage).map((r) => r.step));
 }
 
-/**
- * Đặt lại đợt cho cả nhóm sau khi kéo một bước:
- * `target` = chỉ số cột thả vào; `insertAt` = chèn một đợt mới tại vị trí này (đẩy các đợt sau lùi lại).
- * Trả về đợt mới (1..n, không có đợt trống) của từng bước trong nhóm.
- */
 export function moveStepToStage(
   siblings: ProcedureStep[],
   stepId: string,
@@ -46,4 +30,60 @@ export function moveStepToStage(
   const result = new Map<string, number>();
   columns.filter((col) => col.length > 0).forEach((col, i) => col.forEach((s) => result.set(s.id, i + 1)));
   return result;
+}
+
+export function fromRoman(str: string): number {
+  const romanMap: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let sum = 0;
+  let prev = 0;
+  const upper = str.toUpperCase().trim();
+  for (let i = upper.length - 1; i >= 0; i--) {
+    const val = romanMap[upper[i]] || 0;
+    if (val < prev) sum -= val;
+    else sum += val;
+    prev = val;
+  }
+  return sum;
+}
+
+const codeRanks = (code: string): number[] =>
+  code.split(".").map((part) => (/^\d+$/.test(part) ? Number(part) : fromRoman(part)));
+
+export function compareStepCodes(a: string, b: string): number {
+  const ra = codeRanks(a);
+  const rb = codeRanks(b);
+  for (let i = 0; i < Math.min(ra.length, rb.length); i++) {
+    if (ra[i] !== rb[i]) return ra[i] - rb[i];
+  }
+  return ra.length - rb.length;
+}
+
+export function applyStageOrder(steps: ProcedureStep[], stages: Map<string, number>): ProcedureStep[] {
+  const staged = steps.map((s) => (stages.has(s.id) ? { ...s, flowStage: stages.get(s.id) } : s));
+  const first = staged.find((s) => stages.has(s.id));
+  if (!first) return staged;
+
+  const siblings = getSiblingSteps(staged, getParentCode(first.code));
+  const codes = siblings.map((s) => s.code).sort(compareStepCodes);
+  const ordered = siblings
+    .map((step, index) => ({ step, index }))
+    .sort((a, b) => (a.step.flowStage ?? Infinity) - (b.step.flowStage ?? Infinity) || a.index - b.index)
+    .map(({ step }) => step);
+  const rename = new Map(ordered.map((s, i) => [s.code, codes[i]]));
+
+  const renameCode = (code: string) => {
+    for (const [from, to] of rename) {
+      if (code === from || code.startsWith(`${from}.`)) return to + code.slice(from.length);
+    }
+    return code;
+  };
+
+  return staged
+    .map((s) => {
+      const code = renameCode(s.code);
+      const groupCode = renameCode(s.groupCode);
+      return code === s.code && groupCode === s.groupCode ? s : { ...s, code, groupCode };
+    })
+    .sort((a, b) => compareStepCodes(a.code, b.code))
+    .map((s, index) => ({ ...s, order: index + 1 }));
 }

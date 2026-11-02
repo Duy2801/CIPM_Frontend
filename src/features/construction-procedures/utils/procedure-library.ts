@@ -1,21 +1,15 @@
-/**
- * procedure-library.ts — Danh mục quy trình thủ tục: quy trình mẫu (theo dự thảo) + quy trình tự tạo
- */
-
-import { PERSONNEL_MOCK_DATA } from "@/features/personnel-assignment/constants/personnel-mock-data";
-import { DEPARTMENT_PROCEDURE_TEMPLATES, isSameDepartment } from "../constants/procedure-department-templates";
+import { DEPARTMENT_PROCEDURE_TEMPLATES } from "../constants/procedure-department-templates";
 import {
   getTemplateSteps,
   loadCustomProfiles,
   loadHiddenTemplateIds,
   saveCustomProfiles,
-  saveHiddenTemplateIds,
+  saveTemplateOverride,
   withMockStepDefaults,
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
 import type { ProcedureStep } from "../types/procedure.types";
 
-/** Trạng thái quy trình; APPLIED = đã có người duyệt; STOPPED = đã tắt bằng công tắc */
 export type ProcedureStatus = "APPLIED" | "PROCESSING" | "PENDING_APPROVAL" | "STOPPED";
 
 export const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
@@ -28,42 +22,35 @@ export const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
 export interface ProcedureLibraryItem {
   id: string;
   name: string;
-  /** Tổ phụ trách của quy trình mẫu; quy trình tự tạo không có */
   department?: string;
   isCustom: boolean;
   status: ProcedureStatus;
-  /** Đang bật (STOPPED khi tắt) */
   enabled: boolean;
-  /** Người duyệt; null = chưa duyệt */
+  version: string;
+  submittedBy: string | null;
+  submittedAt: string | null;
   approvedBy: string | null;
-  /** Lúc bấm "Duyệt quy trình" (ISO); null = duyệt từ dữ liệu mẫu / chưa duyệt */
   approvedAt: string | null;
-  /** Ngày tạo (YYYY-MM-DD); null = không rõ */
   createdAt: string | null;
   createdBy: string | null;
-  /** Lần bấm "Lưu quy trình" gần nhất (ISO); null = chưa cập nhật */
   updatedAt: string | null;
   updatedBy: string | null;
   steps: ProcedureStep[];
 }
 
 type ProcedureMeta = Pick<ProcedureLibraryItem, "createdAt" | "createdBy" | "updatedAt" | "updatedBy" | "approvedBy"> & {
-  /** Trạng thái khi đang bật và chưa duyệt */
   status: Exclude<ProcedureStatus, "STOPPED" | "APPLIED">;
-  /** false = dữ liệu mẫu đang tắt sẵn (Đã ngưng) */
   enabled?: boolean;
 };
 
-/** Tắt → Đã ngưng; đã có người duyệt → Đang áp dụng; còn lại theo trạng thái xử lý */
 const resolveStatus = (
   enabled: boolean,
   approvedBy: string | null,
+  submitted: boolean,
   pending: Exclude<ProcedureStatus, "STOPPED" | "APPLIED">,
-): ProcedureStatus => (!enabled ? "STOPPED" : approvedBy ? "APPLIED" : pending);
+): ProcedureStatus => (!enabled ? "STOPPED" : approvedBy ? "APPLIED" : submitted ? "PENDING_APPROVAL" : pending);
 
-/** Dữ liệu mẫu cho các quy trình theo dự thảo (chưa có backend) — đủ 4 trạng thái */
 const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
-  // Đang áp dụng
   "template-khkt": {
     status: "PROCESSING",
     approvedBy: "Trần Minh Ơn",
@@ -72,7 +59,6 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
     updatedAt: "2026-09-18T09:30:00+07:00",
     updatedBy: "Trần Trung Tín",
   },
-  // Đang xử lý
   "template-dauthau": {
     status: "PROCESSING",
     approvedBy: null,
@@ -81,7 +67,6 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
     updatedAt: null,
     updatedBy: null,
   },
-  // Chờ duyệt
   "template-gskt": {
     status: "PENDING_APPROVAL",
     approvedBy: null,
@@ -90,7 +75,6 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
     updatedAt: "2026-10-02T14:15:00+07:00",
     updatedBy: "Trần Minh Ơn",
   },
-  // Đã ngưng
   "template-quy-hoach": {
     status: "PROCESSING",
     enabled: false,
@@ -102,14 +86,12 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
   },
 };
 
-/** Bật / tắt quy trình do người dùng chọn (lưu trình duyệt); ghi cả bật để bật lại được quy trình mẫu đang tắt sẵn */
 const ENABLED_STORAGE_KEY = "cipm_procedure_disabled_ids";
 
 function loadEnabledOverrides(): Record<string, boolean> {
   if (typeof window === "undefined") return {};
   try {
     const parsed = JSON.parse(localStorage.getItem(ENABLED_STORAGE_KEY) ?? "{}");
-    // Dữ liệu cũ: mảng id đang tắt
     if (Array.isArray(parsed)) return Object.fromEntries(parsed.map((id: string) => [id, false]));
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
@@ -117,7 +99,6 @@ function loadEnabledOverrides(): Record<string, boolean> {
   }
 }
 
-/** Bật / tắt quy trình */
 export function setProcedureEnabled(procedureId: string, enabled: boolean) {
   if (typeof window === "undefined") return;
   try {
@@ -127,7 +108,6 @@ export function setProcedureEnabled(procedureId: string, enabled: boolean) {
   }
 }
 
-/** Các lần duyệt quy trình (lưu trình duyệt) */
 const APPROVAL_STORAGE_KEY = "cipm_procedure_approvals";
 
 function loadApprovals(): Record<string, { approvedBy: string; approvedAt: string }> {
@@ -140,7 +120,6 @@ function loadApprovals(): Record<string, { approvedBy: string; approvedAt: strin
   }
 }
 
-/** Duyệt quy trình: ghi người duyệt → trạng thái chuyển sang "Đang áp dụng" */
 export function approveProcedure(procedureId: string, approvedBy: string) {
   if (typeof window === "undefined") return;
   try {
@@ -153,7 +132,56 @@ export function approveProcedure(procedureId: string, approvedBy: string) {
   }
 }
 
-/** Lần cập nhật gần nhất của từng quy trình (lưu trình duyệt) */
+const SUBMISSION_STORAGE_KEY = "cipm_procedure_submissions";
+
+function loadSubmissions(): Record<string, { submittedBy: string; submittedAt: string }> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SUBMISSION_STORAGE_KEY) ?? "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function submitProcedure(procedureId: string, submittedBy: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      SUBMISSION_STORAGE_KEY,
+      JSON.stringify({ ...loadSubmissions(), [procedureId]: { submittedBy, submittedAt: new Date().toISOString() } }),
+    );
+  } catch (e) {
+    console.error("Failed to save procedure submission", e);
+  }
+}
+
+const VERSION_STORAGE_KEY = "cipm_procedure_versions";
+export const DEFAULT_PROCEDURE_VERSION = "1.0";
+
+function loadVersions(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(VERSION_STORAGE_KEY) ?? "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function setProcedureVersion(procedureId: string, version: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const versions = loadVersions();
+    const value = version.trim();
+    if (value) versions[procedureId] = value;
+    else delete versions[procedureId];
+    localStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(versions));
+  } catch (e) {
+    console.error("Failed to save procedure version", e);
+  }
+}
+
 const UPDATE_META_STORAGE_KEY = "cipm_procedure_update_meta";
 
 function loadUpdateMeta(): Record<string, { updatedAt: string; updatedBy: string }> {
@@ -167,7 +195,6 @@ function loadUpdateMeta(): Record<string, { updatedAt: string; updatedBy: string
   }
 }
 
-/** Ghi nhận vừa bấm "Lưu quy trình" */
 export function markProcedureUpdated(procedureId: string, updatedBy: string) {
   if (typeof window === "undefined") return;
   try {
@@ -180,12 +207,13 @@ export function markProcedureUpdated(procedureId: string, updatedBy: string) {
   }
 }
 
-/** Quy trình mẫu chưa bị xóa khỏi danh sách, rồi tới quy trình tự tạo (mới nhất trước) */
 export function loadProcedureLibrary(): ProcedureLibraryItem[] {
   const hidden = loadHiddenTemplateIds();
   const updates = loadUpdateMeta();
   const enabledOverrides = loadEnabledOverrides();
   const approvals = loadApprovals();
+  const submissions = loadSubmissions();
+  const versions = loadVersions();
   const templates = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES)
     .filter((tpl) => !hidden.includes(tpl.id))
     .map<ProcedureLibraryItem>((tpl) => {
@@ -198,7 +226,10 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
         department: tpl.department,
         isCustom: false,
         enabled,
-        status: resolveStatus(enabled, approvedBy, mock?.status ?? "PROCESSING"),
+        status: resolveStatus(enabled, approvedBy, !!submissions[tpl.id], mock?.status ?? "PROCESSING"),
+        version: versions[tpl.id] ?? DEFAULT_PROCEDURE_VERSION,
+        submittedBy: submissions[tpl.id]?.submittedBy ?? null,
+        submittedAt: submissions[tpl.id]?.submittedAt ?? null,
         approvedBy,
         approvedAt: approvals[tpl.id]?.approvedAt ?? null,
         createdAt: mock?.createdAt ?? null,
@@ -214,8 +245,15 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
     department: p.department,
     isCustom: true,
     enabled: enabledOverrides[p.id] ?? true,
-    // Quy trình tự tạo: chờ duyệt cho tới khi có người bấm "Duyệt quy trình"
-    status: resolveStatus(enabledOverrides[p.id] ?? true, approvals[p.id]?.approvedBy ?? null, "PENDING_APPROVAL"),
+    status: resolveStatus(
+      enabledOverrides[p.id] ?? true,
+      approvals[p.id]?.approvedBy ?? null,
+      !!submissions[p.id],
+      "PROCESSING",
+    ),
+    version: versions[p.id] ?? DEFAULT_PROCEDURE_VERSION,
+    submittedBy: submissions[p.id]?.submittedBy ?? null,
+    submittedAt: submissions[p.id]?.submittedAt ?? null,
     approvedBy: approvals[p.id]?.approvedBy ?? null,
     approvedAt: approvals[p.id]?.approvedAt ?? null,
     createdAt: p.createdAt || null,
@@ -227,50 +265,32 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
   return [...templates, ...customs];
 }
 
-/** Bản sao các bước của một quy trình (để sao chép sang quy trình mới) */
-export function getProcedureSteps(procedureId: string): ProcedureStep[] {
-  const custom = loadCustomProfiles().find((p) => p.id === procedureId);
-  if (custom) return withMockStepDefaults(custom.steps ?? []);
-  const template = Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).find((tpl) => tpl.id === procedureId);
-  return template ? getTemplateSteps(template) : [];
-}
-
-/** Tổ có thể phụ trách quy trình: tổ của các quy trình mẫu + các ban / tổ trong cơ cấu nhân sự */
-export function getProcedureDepartmentOptions(): string[] {
-  const names = [
-    ...Object.values(DEPARTMENT_PROCEDURE_TEMPLATES).map((tpl) => tpl.department),
-    ...PERSONNEL_MOCK_DATA.teams.map((team) => team.name),
-  ];
-  return names.filter((name, index) => names.findIndex((other) => isSameDepartment(other, name)) === index);
+export function saveProcedureSteps(procedureId: string, steps: ProcedureStep[]) {
+  const customs = loadCustomProfiles();
+  if (customs.some((p) => p.id === procedureId)) {
+    saveCustomProfiles(customs.map((p) => (p.id === procedureId ? { ...p, steps } : p)));
+    return;
+  }
+  saveTemplateOverride(procedureId, steps);
 }
 
 export interface CreateProcedureInput {
   name: string;
-  department?: string;
   steps: ProcedureStep[];
   createdBy?: string;
+  version?: string;
 }
 
-/** Tạo và lưu quy trình tự tạo mới (đưa lên đầu danh sách quy trình tự tạo) */
-export function createProcedure({ name, department, steps, createdBy }: CreateProcedureInput): CustomProcedureProfile {
+export function createProcedure({ name, steps, createdBy, version }: CreateProcedureInput): CustomProcedureProfile {
   const created: CustomProcedureProfile = {
     id: `custom_${Date.now()}`,
     name,
     createdAt: new Date().toISOString().slice(0, 10),
     createdBy,
-    department,
     steps,
   };
   saveCustomProfiles([created, ...loadCustomProfiles()]);
+  if (version?.trim()) setProcedureVersion(created.id, version);
   return created;
 }
 
-/** Xóa khỏi danh sách: quy trình tự tạo thì xóa hẳn, quy trình mẫu thì ẩn đi */
-export function deleteProcedure(procedureId: string) {
-  const customs = loadCustomProfiles();
-  if (customs.some((p) => p.id === procedureId)) {
-    saveCustomProfiles(customs.filter((p) => p.id !== procedureId));
-    return;
-  }
-  saveHiddenTemplateIds([...new Set([...loadHiddenTemplateIds(), procedureId])]);
-}

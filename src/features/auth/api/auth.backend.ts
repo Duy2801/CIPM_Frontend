@@ -17,6 +17,11 @@ export async function logoutApi(): Promise<void> {
   await apiClient.post("auth/logout", {});
 }
 
+/** POST /auth/change-password — mật khẩu mới tối thiểu 6 ký tự */
+export async function changePasswordApi(oldPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post("auth/change-password", { oldPassword, newPassword });
+}
+
 /** POST /auth/refresh — trả accessToken mới (refreshToken giữ nguyên) */
 export async function refreshTokenApi(refreshToken: string): Promise<string> {
   const response = await apiClient.post<{ accessToken: string }>("auth/refresh", {}, {

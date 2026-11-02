@@ -60,6 +60,17 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
     customFields: staff.customFields || {},
   };
 
+  // Trường bổ sung riêng của cán bộ (chỉ những trường người này có). Khóa là tên trường;
+  // dữ liệu cũ dạng "field_..." thì lấy nhãn trong danh mục cũ.
+  const ownCustomFields = Object.entries(staff.customFields || {})
+    .filter(([, value]) => !isEmptyValue(value))
+    .map(([key, value]) => ({
+      key,
+      value,
+      label: customFieldDefs.find((def) => def.name === key)?.label ?? key,
+      editable: editable && (typeof value === "string" || typeof value === "number"),
+    }));
+
   // So sánh giá trị đang nhập với hồ sơ để biết có thay đổi nào chưa lưu
   const watched = Form.useWatch([], form) as StaffInfoFormValues | undefined;
   const fieldLabels: { key: keyof Omit<StaffInfoFormValues, "customFields">; label: string }[] = [
@@ -81,27 +92,23 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
             from: key === "teamId" ? teamName(staff.teamId) : staff[key],
             to: key === "teamId" ? teamName(watched.teamId) : watched[key],
           })),
-        ...customFieldDefs
-          .filter((def) => watched.customFields && !sameValue(watched.customFields[def.name], staff.customFields?.[def.name]))
-          .map((def) => ({ label: def.label, from: staff.customFields?.[def.name], to: watched.customFields?.[def.name] })),
+        ...ownCustomFields
+          .filter((f) => f.editable && watched.customFields && !sameValue(watched.customFields[f.key], f.value))
+          .map((f) => ({ label: f.label, from: f.value, to: watched.customFields?.[f.key] })),
       ]
     : [];
   const isDirty = changes.length > 0;
 
-  // Chỉ xem: ẩn trường tùy biến chưa có giá trị. Sửa được: hiện đủ để nhập bổ sung.
-  const visibleCustomFields = customFieldDefs.filter(
-    (def) => editable || !isEmptyValue(staff.customFields?.[def.name])
-  );
 
   const resetChanges = () => form.setFieldsValue(initialValues);
 
   const saveChanges = async (values: StaffInfoFormValues) => {
-    // Giữ lại các trường tùy biến chưa cấu hình để không làm mất dữ liệu cũ
+    // Sửa giá trị các trường bổ sung của cán bộ; xóa trắng ô = bỏ trường đó
     const nextCustomFields: Record<string, unknown> = { ...(staff.customFields || {}) };
-    for (const field of customFieldDefs) {
-      const val = values.customFields?.[field.name];
-      if (isEmptyValue(val)) delete nextCustomFields[field.name];
-      else nextCustomFields[field.name] = val;
+    for (const field of ownCustomFields.filter((f) => f.editable)) {
+      const val = values.customFields?.[field.key];
+      if (isEmptyValue(val) || String(val).trim() === "") delete nextCustomFields[field.key];
+      else nextCustomFields[field.key] = typeof val === "string" ? val.trim() : val;
     }
 
     // Đổi chức danh chỉ đổi tên gọi — không đổi vai trò, phòng ban hay quyền hạn
@@ -221,10 +228,11 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
                   variant="borderless"
                   suffixIcon={null}
                   className={INLINE_SELECT_CLASS}
-                  options={[
-                    { value: "Viên chức", label: "Viên chức" },
-                    { value: "Hợp đồng", label: "Hợp đồng" },
-                  ]}
+                  // Giữ chữ backend đang lưu (VD "Biên chế chính thức") làm một lựa chọn
+                  options={[...new Set([staff.employment, "Viên chức", "Hợp đồng"].filter(Boolean))].map((value) => ({
+                    value,
+                    label: value,
+                  }))}
                 />
               </Form.Item>
             ) : (
@@ -268,47 +276,18 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
             )}
           </StaffInfoFieldBox>
 
-          {visibleCustomFields.map((field) => (
-            <div key={field.id} className={field.type === "textarea" ? "sm:col-span-2" : undefined}>
-              <StaffInfoFieldBox label={field.label} editable={editable}>
-                {editable ? (
-                  <Form.Item
-                    name={["customFields", field.name]}
-                    className={INLINE_FORM_ITEM_CLASS}
-                    rules={field.required ? [{ required: true, message: `Vui lòng nhập ${field.label.toLowerCase()}.` }] : []}
-                  >
-                    {field.type === "textarea" ? (
-                      <Input.TextArea
-                        rows={2}
-                        variant="borderless"
-                        className={INLINE_INPUT_CLASS}
-                        placeholder={field.placeholder || "Chưa cập nhật"}
-                      />
-                    ) : field.type === "select" ? (
-                      <Select
-                        size="small"
-                        variant="borderless"
-                        allowClear
-                        suffixIcon={null}
-                        className={INLINE_SELECT_CLASS}
-                        placeholder={field.placeholder || "Chưa cập nhật"}
-                        options={(field.options || []).map((opt) => ({ value: opt, label: opt }))}
-                      />
-                    ) : (
-                      <Input
-                        size="small"
-                        variant="borderless"
-                        className={INLINE_INPUT_CLASS}
-                        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-                        placeholder={field.placeholder || "Chưa cập nhật"}
-                      />
-                    )}
-                  </Form.Item>
-                ) : (
-                  String(staff.customFields?.[field.name])
-                )}
-              </StaffInfoFieldBox>
-            </div>
+          {ownCustomFields.map((field) => (
+            <StaffInfoFieldBox key={field.key} label={field.label} editable={field.editable}>
+              {field.editable ? (
+                <Form.Item name={["customFields", field.key]} className={INLINE_FORM_ITEM_CLASS}>
+                  <Input size="small" variant="borderless" className={INLINE_INPUT_CLASS} placeholder="Chưa cập nhật" />
+                </Form.Item>
+              ) : typeof field.value === "object" ? (
+                JSON.stringify(field.value)
+              ) : (
+                String(field.value)
+              )}
+            </StaffInfoFieldBox>
           ))}
         </div>
       </Form>

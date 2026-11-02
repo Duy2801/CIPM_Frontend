@@ -116,7 +116,12 @@ export function useDirectoryStaffColumns(onEditStaff: (person: Staff) => void): 
       title: "Hình thức",
       key: "employment",
       width: "11%",
-      render: (_, person) => <span className="text-xs text-slate-600">{person.employment || "Viên chức"}</span>,
+      render: (_, person) =>
+        person.employment ? (
+          <span className="text-xs text-slate-600">{person.employment}</span>
+        ) : (
+          <span className="text-xs text-slate-300">—</span>
+        ),
     },
     {
       title: "Email",

@@ -1,5 +1,6 @@
 export type TeamId = "BGD" | "PGD" | "GSKT" | "HCTH" | "BT" | "KHKT" | "DT" | (string & {});
-export type Employment = "Viên chức" | "Hợp đồng";
+/** Hình thức tuyển dụng: chữ tự do do backend trả về (VD "Viên chức", "Hợp đồng", "Biên chế chính thức") */
+export type Employment = string;
 export interface Team {
   id: TeamId;
   name: string;

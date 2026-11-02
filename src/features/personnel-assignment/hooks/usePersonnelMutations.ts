@@ -154,8 +154,11 @@ export function useUpdateStaff() {
 /** Lưu quyền riêng của cán bộ: quyền thực tế sau khi lưu đúng bằng `selected` */
 export function useUpdateStaffPermissions() {
   return usePersonnelAction(
-    ({ staffId, ...codes }: { staffId: string; staffName: string; selected: string[]; current: string[]; base: string[] }) =>
-      personnelApi.saveStaffPermissions(staffId, codes),
+    // Trả true khi lưu xong (lỗi → run trả null) để màn hình biết thoát chế độ chỉnh
+    async ({ staffId, ...codes }: { staffId: string; staffName: string; selected: string[]; current: string[]; base: string[] }) => {
+      await personnelApi.saveStaffPermissions(staffId, codes);
+      return true;
+    },
     {
       successText: ({ staffName }) => `Đã cập nhật quyền hạn riêng của cán bộ ${staffName}.`,
       log: ({ staffId, staffName, selected, current }) => ({

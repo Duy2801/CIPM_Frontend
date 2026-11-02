@@ -7,11 +7,9 @@ interface ProcedurePageHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   onBack: () => void;
-  /** Nút thao tác bên phải tiêu đề (VD: Duyệt quy trình) */
   actions?: React.ReactNode;
 }
 
-/** Đầu trang con của tab "Quy trình" (chi tiết / thêm mới): nút quay lại + tiêu đề */
 export default function ProcedurePageHeader({ title, subtitle, onBack, actions }: ProcedurePageHeaderProps) {
   return (
     <div className="flex items-center gap-3">

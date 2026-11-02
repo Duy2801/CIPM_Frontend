@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Input, toast } from "@/components/ui";
+import { Form, Input, toast } from "@/components/ui";
 import type { ProcedureStep } from "../types/procedure.types";
+import { DEFAULT_PROCEDURE_VERSION } from "../utils/procedure-library";
 import ProcedurePageHeader from "./ProcedurePageHeader";
-import StepConfigModal from "./StepConfigModal";
+import ProcedureStepEditor from "./ProcedureStepEditor";
+import ProcedureVersionInput from "./ProcedureVersionInput";
 
-/** Quy trình mới bắt đầu trống (hằng số để bảng bước không bị nạp lại mỗi lần render) */
 const NO_STEPS: ProcedureStep[] = [];
 
 export interface CreateProcedurePageValues {
   name: string;
+  version: string;
   steps: ProcedureStep[];
 }
 
@@ -19,32 +21,20 @@ interface CreateProcedurePageProps {
   onCreate: (values: CreateProcedurePageValues) => void;
 }
 
-/** Nhãn trường (dấu * nếu bắt buộc) */
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
-  return (
-    <label className="mb-1 block text-xs font-semibold text-slate-700">
-      {children} {required && <span className="text-rose-500">*</span>}
-    </label>
-  );
-}
-
-/** Trang "Thêm quy trình mới": nhập thông tin chung rồi thêm bước ngay bên dưới, bấm "Tạo quy trình" mới lưu */
-export default function CreateProcedurePage({
-  onBack,
-  onCreate,
-}: CreateProcedurePageProps) {
+export default function CreateProcedurePage({ onBack, onCreate }: CreateProcedurePageProps) {
   const [name, setName] = useState("");
-  const [errors, setErrors] = useState<{ name?: string }>({});
+  const [version, setVersion] = useState(DEFAULT_PROCEDURE_VERSION);
+  const [nameError, setNameError] = useState("");
 
   const handleCreate = (steps: ProcedureStep[]) => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setErrors({ name: "Vui lòng nhập tên quy trình" });
+      setNameError("Vui lòng nhập tên quy trình");
       toast.warning("Thiếu thông tin quy trình", "Vui lòng nhập tên quy trình");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    onCreate({ name: trimmed, steps });
+    onCreate({ name: trimmed, version: version.trim(), steps });
   };
 
   return (
@@ -55,34 +45,42 @@ export default function CreateProcedurePage({
         onBack={onBack}
       />
 
-      {/* Thông tin chung */}
-      <div className="flex flex-wrap items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-        <div className="w-full sm:w-96">
-          <FieldLabel required>Tên quy trình</FieldLabel>
-          <Input
-            placeholder="VD: Quy trình Giám sát công trình đặc thù..."
-            value={name}
-            status={errors.name ? "error" : undefined}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (errors.name) setErrors({});
-            }}
-            className="h-9 w-full text-xs"
-            autoFocus
-          />
-          {errors.name && <p className="m-0 mt-1 text-[11px] text-rose-500">{errors.name}</p>}
-        </div>
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-xs">
+        <Form
+          layout="vertical"
+          layoutType="compact"
+          requiredMark
+          className="flex flex-wrap items-start gap-4 [&_.ant-form-item]:!mb-0 [&_.ant-form-item-label>label]:text-xs [&_.ant-form-item-label>label]:font-semibold"
+        >
+          <Form.Item
+            label="Tên quy trình"
+            required
+            validateStatus={nameError ? "error" : undefined}
+            help={nameError || undefined}
+            className="w-full sm:w-96"
+          >
+            <Input
+              placeholder="VD: Quy trình Giám sát công trình đặc thù..."
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) setNameError("");
+              }}
+              className="h-9 w-full text-xs"
+              autoFocus
+            />
+          </Form.Item>
 
+          <Form.Item label="Version" className="w-40">
+            <ProcedureVersionInput value={version} onChange={setVersion} className="h-9 w-full text-xs" />
+          </Form.Item>
+        </Form>
       </div>
 
-      <StepConfigModal
-        open
-        variant="page"
+      <ProcedureStepEditor
         steps={NO_STEPS}
-        onBack={onBack}
-        onCreateNew={handleCreate}
-        onClose={() => {}}
-        onSaveConfig={() => {}}
+        onCreate={handleCreate}
+        addLockedReason={name.trim() ? undefined : "Nhập tên quy trình trước khi thêm bước"}
       />
     </div>
   );

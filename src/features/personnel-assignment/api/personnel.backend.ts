@@ -4,8 +4,8 @@ import type {
   ApiDepartment,
   ApiDepartmentPosition,
   ApiPage,
-  ApiStaffCustomField,
   ApiUser,
+  ApiUserPermissions,
 } from "../services/personnel.mapper";
 
 /**
@@ -68,24 +68,24 @@ export async function changeUserRoleApi(userId: string, fromRoleCode: string, to
   await apiClient.patch(`user/${userId}/roles`, { fromRoleCode, toRoleCode });
 }
 
-/** PATCH /user/:id/lock */
+/** POST /user/:id/lock (backend chỉ nhận POST) */
 export async function lockUserApi(userId: string, reason?: string): Promise<void> {
-  await apiClient.patch(`user/${userId}/lock`, { reason });
+  await apiClient.post(`user/${userId}/lock`, { reason });
 }
 
-/** PATCH /user/:id/unlock */
+/** POST /user/:id/unlock (backend chỉ nhận POST) */
 export async function unlockUserApi(userId: string): Promise<void> {
-  await apiClient.patch(`user/${userId}/unlock`, {});
+  await apiClient.post(`user/${userId}/unlock`, {});
 }
 
 // ── Quyền & lịch sử ──
 
-/** GET /user/:id/permissions — mã quyền backend, VD "projects:view" */
-export async function getUserPermissionsApi(userId: string): Promise<string[]> {
-  return (await apiClient.get<{ userId: string; permissions: string[] }>(`user/${userId}/permissions`)).data.permissions;
+/** GET /user/:id/permissions — quyền theo chức danh, quyền riêng và quyền thực tế (mã backend, VD "project:view") */
+export async function getUserPermissionsApi(userId: string): Promise<ApiUserPermissions> {
+  return (await apiClient.get<ApiUserPermissions>(`user/${userId}/permissions`)).data;
 }
 
-/** PUT /user/:id/permissions — cấp / chặn từng quyền */
+/** PUT /user/:id/permissions — ghi đè toàn bộ quyền riêng (cấp thêm / thu hồi so với chức danh) */
 export async function updateUserPermissionsApi(userId: string, body: { grant: string[]; revoke: string[] }): Promise<void> {
   await apiClient.put(`user/${userId}/permissions`, body);
 }
@@ -98,16 +98,4 @@ export async function getUserActivityApi(userId: string): Promise<ApiAuditLog[]>
 /** GET /audit-logs?module=... */
 export async function getAuditLogsApi(module: string): Promise<ApiAuditLog[]> {
   return (await apiClient.get<ApiAuditLog[]>("audit-logs", { params: { module } })).data;
-}
-
-// ── Trường tùy biến hồ sơ ──
-
-/** GET /settings/staff-custom-fields */
-export async function getStaffCustomFieldsApi(): Promise<ApiStaffCustomField[]> {
-  return (await apiClient.get<ApiStaffCustomField[]>("settings/staff-custom-fields")).data;
-}
-
-/** PUT /settings/staff-custom-fields */
-export async function saveStaffCustomFieldsApi(fields: ApiStaffCustomField[]): Promise<ApiStaffCustomField[]> {
-  return (await apiClient.put<ApiStaffCustomField[]>("settings/staff-custom-fields", fields)).data;
 }

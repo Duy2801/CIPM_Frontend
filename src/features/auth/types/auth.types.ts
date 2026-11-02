@@ -63,7 +63,7 @@ export interface LogoutResponse {
   message?: string;
 }
 
-/** POST /auth/login (backend cipm-service): body `{ email, password }` */
+/** POST /auth/login (backend BQL-HaTien): body `{ email, password }`, mật khẩu tối thiểu 8 ký tự */
 export interface BackendLoginResponse {
   accessToken: string;
   refreshToken: string;
@@ -73,10 +73,12 @@ export interface BackendLoginResponse {
     fullName: string;
     positionTitle?: string | null;
     department?: { id: string; code: string; name: string } | null;
+    gender?: string | null;
+    status?: string;
     roles: string[];
   };
-  /** Quyền thực tế của tài khoản, VD "projects:view" */
-  userPermissions: string[];
+  /** Quyền thực tế của tài khoản, VD "project:view" */
+  permissions: string[];
 }
 
 export interface AuthResponse {

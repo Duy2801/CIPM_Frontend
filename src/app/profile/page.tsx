@@ -25,6 +25,7 @@ import {
   Tag,
   Text,
 } from "@/components/ui";
+import { changePassword } from "@/features/auth";
 import { useAuthStore } from "@/stores/auth.store";
 
 interface ProfileFormValues {
@@ -92,6 +93,12 @@ export default function ProfilePage() {
   const handleChangePassword = async (values: PasswordFormValues) => {
     setSavingPassword(true);
     try {
+      // Tài khoản thật: đổi trên backend; tài khoản thử nghiệm: chạy bản mock bên dưới
+      if (await changePassword(values.currentPassword, values.newPassword)) {
+        message.success("Đổi mật khẩu thành công! Vui lòng ghi nhớ mật khẩu mới.");
+        passwordForm.resetFields();
+        return;
+      }
       if (values.currentPassword !== "123456") {
         message.error("Mật khẩu hiện tại không chính xác (mật khẩu mặc định là '123456')");
         setSavingPassword(false);
@@ -101,8 +108,8 @@ export default function ProfilePage() {
       await new Promise((resolve) => setTimeout(resolve, 500));
       message.success("Đổi mật khẩu thành công! Vui lòng ghi nhớ mật khẩu mới.");
       passwordForm.resetFields();
-    } catch {
-      message.error("Đã xảy ra lỗi khi đổi mật khẩu!");
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : "Đã xảy ra lỗi khi đổi mật khẩu!");
     } finally {
       setSavingPassword(false);
     }

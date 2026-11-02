@@ -4,6 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { SafetyCertificateOutlined } from "@ant-design/icons";
 import { Input, Select } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
+import { useCatalog } from "@/features/catalogs";
 import { COMMON_FIELDS, STATUS_META, STATUS_ORDER, getCategoryLabel } from "../constants/legal-labels";
 import { useLegalDocuments } from "../hooks/useLegalQueries";
 import type { LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types";
@@ -12,7 +13,6 @@ import { getCategoryKeys } from "../utils/legal-document-filters";
 import DocumentInfoCell, { type CellEditorRender } from "./DocumentInfoCell";
 
 const STATUS_OPTIONS = STATUS_ORDER.map((value) => ({ value, label: STATUS_META[value].label }));
-const FIELD_OPTIONS = COMMON_FIELDS.map((f) => ({ value: f, label: f }));
 
 /** Các trường nhập bằng ô chữ / ô ngày */
 type TextField = "issuer" | "gazetteNumber" | "code" | "gazetteDate" | "signer" | "issueDate" | "expiredDate" | "effectiveDate";
@@ -29,6 +29,15 @@ interface DocumentInfoTableProps {
 /** Bảng "Thông tin ban hành & hiệu lực": hai cặp ô mỗi hàng, bấm vào giá trị để sửa */
 export default function DocumentInfoTable({ document, isChanged, onChange }: DocumentInfoTableProps) {
   const { data: documents = [] } = useLegalDocuments();
+  // Lĩnh vực: gợi ý sẵn + danh mục backend (tài khoản thật) + lĩnh vực đang lưu của văn bản
+  const { items: fieldCatalog } = useCatalog("LEGAL_FIELD");
+  const fieldOptions = useMemo(
+    () =>
+      [...new Set([...COMMON_FIELDS, ...fieldCatalog.map((item) => item.name), document.field ?? ""].filter(Boolean))].map(
+        (f) => ({ value: f, label: f }),
+      ),
+    [fieldCatalog, document.field],
+  );
   const categoryOptions = useMemo(() => {
     const options = getCategoryKeys(documents).map((cat) => ({ value: cat, label: getCategoryLabel(cat) }));
     return options.some((o) => o.value === document.category)
@@ -241,7 +250,7 @@ export default function DocumentInfoTable({ document, isChanged, onChange }: Doc
                   )
                 }
                 changed={isChanged("field")}
-                editor={editable(selectEditor(document.field ?? "", FIELD_OPTIONS, (field) => onChange?.({ field })))}
+                editor={editable(selectEditor(document.field ?? "", fieldOptions, (field) => onChange?.({ field })))}
               />
               <td colSpan={2} className="border border-slate-200 bg-slate-50/40" />
             </tr>

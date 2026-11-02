@@ -116,4 +116,6 @@ export interface ProjectFormData {
   /** Ghi chú riêng cho nhật ký tiến độ tuần (không ghi đè ghi chú của dự án) */
   progressNote?: string;
   documents?: ProjectDocument[];
+  /** Quy trình áp dụng khi tạo dự án: phòng ban → id quy trình (chỉ dùng lúc tạo mới) */
+  procedures?: Record<string, string>;
 }

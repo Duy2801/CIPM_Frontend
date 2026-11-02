@@ -5,22 +5,21 @@ import { InfoCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { Button, Col, Drawer, Form, Input, Row, Select, Text, toast } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 import type { StaffInput, TeamId } from "../types/personnel.types";
-import type { CustomFieldDefinition } from "../types/custom-fields.types";
 import { dobGetValueProps, dobInputProps, dobNormalize } from "../utils/dob-date";
 import { inferRoleCode, isLeaderTitle } from "../utils/role-code-inference";
 import { BASE_TEAM_POSITIONS, toTeamRoleValue } from "../utils/staff-role-options";
 import { useConfirmAction } from "../hooks/useConfirmAction";
-import { useCustomFieldDefs } from "../hooks/useCustomFieldDefs";
 import { useStaffRoleOptions } from "../hooks/useStaffRoleOptions";
 import { useCreateStaff, useCreateTeam, useUpdateTeam } from "../hooks/usePersonnelMutations";
 import { useTeams } from "../hooks/usePersonnelQueries";
 import StaffFormAddOption from "./StaffFormAddOption";
-import StaffFormCustomFields from "./StaffFormCustomFields";
+import StaffFormCustomFields, { type StaffCustomField } from "./StaffFormCustomFields";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
   title?: string;
   teamRole: string;
-  customFields?: Record<string, any>;
+  /** Mã trường → giá trị nhập */
+  customFields?: Record<string, string | undefined>;
 }
 
 interface StaffModalProps {
@@ -40,9 +39,8 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
   const [form] = Form.useForm<StaffFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const confirmAction = useConfirmAction();
-  const [customFields] = useCustomFieldDefs("staff");
-  // Trường bị bỏ tích "Áp dụng" (chưa có trong danh sách = đang áp dụng)
-  const [appliedFieldIds, setAppliedFieldIds] = useState<Record<string, boolean>>({});
+  // Trường bổ sung riêng của cán bộ đang thêm: mỗi lần thêm người mới bắt đầu trống
+  const [customFields, setCustomFields] = useState<StaffCustomField[]>([]);
 
   // Danh mục phòng ban (thêm phòng ban / chức danh ngay trên form)
   const { data: teams = [] } = useTeams();
@@ -137,11 +135,9 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
     return true;
   };
 
-  const handleToggleFieldApplied = (field: CustomFieldDefinition, applied: boolean) => {
-    setAppliedFieldIds((prev) => ({ ...prev, [field.id]: applied }));
-    if (!applied) {
-      form.setFieldValue(["customFields", field.name], undefined);
-    }
+  const handleRemoveCustomField = (field: StaffCustomField) => {
+    setCustomFields((prev) => prev.filter((f) => f.id !== field.id));
+    form.setFieldValue(["customFields", field.id], undefined);
   };
 
   // Luôn đồng bộ giá trị khởi tạo khi danh sách vai trò sẵn sàng
@@ -185,19 +181,13 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
       const title = matchedOpt?.title || values.title || "Thành viên";
       const roleCode = values.roleCode || matchedOpt?.roleCode || "TECHNICAL_OFFICER";
 
-      let filteredCustomFields: Record<string, any> | undefined = undefined;
-      if (values.customFields) {
-        const result: Record<string, any> = {};
-        for (const field of customFields) {
-          const isApplied = appliedFieldIds[field.id] !== false;
-          if (isApplied && values.customFields[field.name] !== undefined && values.customFields[field.name] !== "") {
-            result[field.name] = values.customFields[field.name];
-          }
-        }
-        if (Object.keys(result).length > 0) {
-          filteredCustomFields = result;
-        }
+      // Lưu theo tên trường: { "Size áo": "XL" }; ô để trống thì bỏ
+      const result: Record<string, string> = {};
+      for (const field of customFields) {
+        const value = String(values.customFields?.[field.id] ?? "").trim();
+        if (value) result[field.label] = value;
       }
+      const filteredCustomFields = Object.keys(result).length > 0 ? result : undefined;
 
       const payload: StaffInput = {
         name: values.name.trim(),
@@ -218,6 +208,7 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
       };
       if (await createStaff.run(payload)) {
         form.resetFields();
+        setCustomFields([]);
         onCreated?.();
         onClose();
       }
@@ -473,8 +464,9 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
 
         {/* Section 2: Trường thông tin tùy biến (cấu hình động - áp dụng linh hoạt khi thêm) */}
         <StaffFormCustomFields
-          appliedFieldIds={appliedFieldIds}
-          onToggleApplied={handleToggleFieldApplied}
+          fields={customFields}
+          onAdd={(field) => setCustomFields((prev) => [...prev, field])}
+          onRemove={handleRemoveCustomField}
         />
       </Form>
     </Drawer>

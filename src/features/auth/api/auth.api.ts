@@ -13,7 +13,7 @@ import {
   isBackendToken,
   persistAuthSession,
 } from "./auth-session";
-import { loginApi, logoutApi, refreshTokenApi } from "./auth.backend";
+import { changePasswordApi, loginApi, logoutApi, refreshTokenApi } from "./auth.backend";
 import { mockDefaultUser, mockLogin, mockRefreshToken } from "./auth.mock";
 
 /**
@@ -51,10 +51,10 @@ function toAuthData(data: BackendLoginResponse): AuthResponse {
       department: user.department?.name ?? "",
       initials: user.fullName.trim().split(/\s+/).slice(-2).map((w) => w[0]?.toUpperCase() ?? "").join(""),
       authSource: "backend",
-      permissions: data.userPermissions,
+      permissions: data.permissions,
     },
     tokens: { accessToken: data.accessToken, refreshToken: data.refreshToken },
-    permissions: data.userPermissions,
+    permissions: data.permissions,
   };
 }
 
@@ -68,11 +68,11 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
     // Không kết nối được server → đăng nhập bằng tài khoản thử nghiệm
     if (isAxiosError(error) && !error.response) return mockLogin(credentials);
     const status = isAxiosError(error) ? error.response?.status : undefined;
-    const backendMessage = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined;
-    if (status === 400) throw new Error("Vui lòng đăng nhập bằng email công vụ (VD: ten@hatien.gov.vn).");
-    if (status === 401 && backendMessage === "Tài khoản không còn hoạt động") {
-      throw new Error("Tài khoản đã bị khóa, vui lòng liên hệ quản trị.");
-    }
+    const rawMessage = isAxiosError<{ message?: string | string[] }>(error) ? error.response?.data?.message : undefined;
+    const backendMessage = Array.isArray(rawMessage) ? rawMessage[0] : rawMessage;
+    // 400: sai định dạng (email không hợp lệ, mật khẩu dưới 8 ký tự...) → hiện đúng câu backend báo
+    if (status === 400) throw new Error(backendMessage || "Vui lòng đăng nhập bằng email công vụ (VD: ten@hatien.gov.vn).");
+    if (status === 403) throw new Error("Tài khoản đã bị khóa, vui lòng liên hệ quản trị.");
     if (status === 401) throw new Error("Email hoặc mật khẩu không chính xác.");
     throw new Error("Đăng nhập thất bại, vui lòng thử lại.");
   }
@@ -81,7 +81,7 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
   // Cookie giữ mã quyền backend để khôi phục phiên khi tải lại trang
   persistAuthSession(authData, credentials.rememberMe ?? true);
   // Phiên đang chạy dùng quyền đã đổi sang mã màn hình
-  const permissions = expandBackendPermissions(data.userPermissions);
+  const permissions = expandBackendPermissions(data.permissions);
   return {
     status: true,
     statusCode: 200,
@@ -128,4 +128,20 @@ export async function refreshToken(): Promise<ApiResponse<AuthTokens>> {
   const accessToken = await refreshTokenApi(storedRefreshToken);
   Cookies.set("access_token", accessToken, COOKIE_OPTIONS);
   return { status: true, statusCode: 200, data: { accessToken, refreshToken: storedRefreshToken } };
+}
+
+/**
+ * Đổi mật khẩu tài khoản đang đăng nhập. Tài khoản thử nghiệm (không có phiên backend) trả về false
+ * để màn hình tự xử lý theo bản mock.
+ */
+export async function changePassword(oldPassword: string, newPassword: string): Promise<boolean> {
+  if (!isBackendToken(getStoredAccessToken())) return false;
+  try {
+    await changePasswordApi(oldPassword, newPassword);
+    return true;
+  } catch (error) {
+    const rawMessage = isAxiosError<{ message?: string | string[] }>(error) ? error.response?.data?.message : undefined;
+    const message = Array.isArray(rawMessage) ? rawMessage[0] : rawMessage;
+    throw new Error(message || "Không đổi được mật khẩu, vui lòng thử lại.");
+  }
 }

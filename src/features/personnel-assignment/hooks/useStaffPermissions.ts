@@ -30,8 +30,8 @@ export interface StaffPermissionData {
 }
 
 /**
- * Quyền của một cán bộ. Đăng nhập tài khoản thật: quyền thực tế từ GET /user/:id/permissions,
- * quyền theo chức danh từ GET /role; bản mock: danh mục quyền nghiệp vụ theo chức danh & tổ.
+ * Quyền của một cán bộ. Đăng nhập tài khoản thật: quyền thực tế và quyền theo chức danh từ GET /user/:id/permissions;
+ * bản mock: danh mục quyền nghiệp vụ theo chức danh & tổ.
  */
 export function useStaffPermissions(staffId: string): StaffPermissionData | null {
   const detail = useStaffDetail(staffId);
@@ -55,9 +55,12 @@ export function useStaffPermissions(staffId: string): StaffPermissionData | null
       };
     }
     if (!backendCodes) return null;
+    // Quyền theo chức danh: backend trả sẵn (rolePermissions); không có thì tính theo ma trận phân quyền
     const roleIds = new Set(permissionsMap[staff.roleCode] ?? []);
-    const baseCodes = new Set(MATRIX_PERMISSIONS.filter((p) => roleIds.has(p.id)).map((p) => toApiPermissionCode(p.code)));
-    const granted = new Set(backendCodes);
+    const baseCodes = new Set(
+      backendCodes.role ?? MATRIX_PERMISSIONS.filter((p) => roleIds.has(p.id)).map((p) => toApiPermissionCode(p.code)),
+    );
+    const granted = new Set(backendCodes.effective);
     return {
       staffName: staff.name,
       catalog: BACKEND_PERMISSION_CATALOG,

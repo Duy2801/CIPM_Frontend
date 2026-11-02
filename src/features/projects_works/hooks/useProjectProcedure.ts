@@ -28,6 +28,8 @@ export type StepDraft = Partial<
   Pick<ProcedureStep, "assignedTo" | "assignedToId" | "assignedBy" | "assignedAt" | "startDatePlanned" | "endDatePlanned">
 >;
 
+type ProcedureSource = { id: string; name: string; steps: ProcedureStep[] };
+
 /** Dự án chưa có dữ liệu quy trình: dựng khung rỗng từ thông tin dự án */
 function createEmptyProcedure(project: ProjectItem): ProjectProcedureData {
   return {
@@ -47,6 +49,60 @@ function createEmptyProcedure(project: ProjectItem): ProjectProcedureData {
     steps: [],
     history: [],
   };
+}
+
+/** Các bước của quy trình khi áp dụng cho một phòng ban của dự án: chưa giao người, trạng thái về ban đầu */
+function toDepartmentSteps(projectId: string, department: string, procedure: ProcedureSource): ProcedureStep[] {
+  const prefix = `${projectId}-${department}`.replace(/\s+/g, "_");
+  return procedure.steps.map<ProcedureStep>((s) => ({
+    ...s,
+    id: `${prefix}-${s.id}`,
+    department,
+    responsibleUnit: s.responsibleUnit && s.responsibleUnit !== "Chủ đầu tư" ? s.responsibleUnit : department,
+    status: s.isEnabled ? "NOT_STARTED" : "DISABLED",
+    assignedTo: undefined,
+    assignedToId: undefined,
+    submissionStatus: undefined,
+    attachments: [],
+  }));
+}
+
+/** Nhật ký "áp dụng quy trình cho phòng ban" */
+const applyLog = (department: string, procedure: ProcedureSource, stepCount: number) => ({
+  stepId: "DEPT-CONFIG",
+  stepCode: "THIET-LAP",
+  stepName: `Quy trình ${department}`,
+  action: "TOGGLE_STEP" as const,
+  actionLabel: "Cấu hình quy trình phòng ban",
+  details: `Áp dụng "${procedure.name}" (${stepCount} bước) cho ${department}.`,
+});
+
+/** Dự án vừa tạo: ghi quy trình đã chọn cho từng phòng ban (không chọn phòng ban nào thì không ghi) */
+export function initProjectProcedure(
+  project: ProjectItem,
+  selections: { department: string; procedure: ProcedureSource }[],
+  actor: { name: string; role: string },
+) {
+  if (selections.length === 0) return;
+  const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const steps = selections.map(({ department, procedure }) => toDepartmentSteps(project.id, department, procedure));
+  saveProjectProcedure({
+    ...createEmptyProcedure(project),
+    steps: steps.flat(),
+    departmentStatuses: Object.fromEntries(
+      selections.map(({ department, procedure }) => [
+        department,
+        { department, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name },
+      ]),
+    ),
+    history: selections.map(({ department, procedure }, i) => ({
+      ...applyLog(department, procedure, steps[i].length),
+      id: `LOG-${Date.now()}-${i}`,
+      timestamp,
+      performedBy: actor.name,
+      role: actor.role,
+    })),
+  });
 }
 
 /**
@@ -111,19 +167,8 @@ export function useProjectProcedure(project: ProjectItem) {
     Object.entries(data.departmentStatuses ?? {}).find(([key]) => isSameDepartment(key, department))?.[1];
 
   /** Áp dụng (hoặc đổi) quy trình cho một phòng ban: thay toàn bộ bước cũ của phòng ban đó */
-  const applyProcedure = (department: string, procedure: { id: string; name: string; steps: ProcedureStep[] }) => {
-    const prefix = `${project.id}-${department}`.replace(/\s+/g, "_");
-    const deptSteps = procedure.steps.map<ProcedureStep>((s) => ({
-      ...s,
-      id: `${prefix}-${s.id}`,
-      department,
-      responsibleUnit: s.responsibleUnit && s.responsibleUnit !== "Chủ đầu tư" ? s.responsibleUnit : department,
-      status: s.isEnabled ? "NOT_STARTED" : "DISABLED",
-      assignedTo: undefined,
-      assignedToId: undefined,
-      submissionStatus: undefined,
-      attachments: [],
-    }));
+  const applyProcedure = (department: string, procedure: ProcedureSource) => {
+    const deptSteps = toDepartmentSteps(project.id, department, procedure);
     const otherSteps = data.steps.filter((s) => !s.department || !isSameDepartment(s.department, department));
     const statuses = Object.fromEntries(
       Object.entries(data.departmentStatuses ?? {}).filter(([key]) => !isSameDepartment(key, department)),
@@ -136,14 +181,7 @@ export function useProjectProcedure(project: ProjectItem) {
           [department]: { department, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name },
         },
       },
-      {
-        stepId: "DEPT-CONFIG",
-        stepCode: "THIET-LAP",
-        stepName: `Quy trình ${department}`,
-        action: "TOGGLE_STEP",
-        actionLabel: "Cấu hình quy trình phòng ban",
-        details: `Áp dụng "${procedure.name}" (${deptSteps.length} bước) cho ${department}.`,
-      },
+      applyLog(department, procedure, deptSteps.length),
     );
   };
 

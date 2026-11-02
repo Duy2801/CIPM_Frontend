@@ -6,47 +6,29 @@ import ActivityTimeline from "@/features/personnel-assignment/components/Activit
 import { PERSONNEL_MOCK_DATA } from "@/features/personnel-assignment/constants/personnel-mock-data";
 import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
 import { stableHash } from "../constants/procedure-templates";
-import type { ProcedureHistoryLog, ProcedureStep } from "../types/procedure.types";
+import type { ProcedureStep } from "../types/procedure.types";
 import { getPlannedDays } from "../utils/procedure-progress";
 import { loadProcedureLibrary } from "../utils/procedure-library";
+import { loadLibraryHistory } from "../utils/procedure-library-history";
 
 interface ProcedureChangeHistoryProps {
   procedureId?: string;
   steps: ProcedureStep[];
 }
 
-/** Nhật ký "Lưu quy trình" ở tab Quy trình (ghi ở ConstructionProceduresScreen) */
-const LIBRARY_HISTORY_STORAGE_KEY = "cipm_procedure_library_history";
-
 const roleOf = (name: string | null | undefined) => PERSONNEL_MOCK_DATA.staff.find((s) => s.name === name)?.title;
 
-/** "2026-10-22 08:30" hoặc ISO → ISO */
 const toIso = (value: string) => {
   const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
   return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
 };
 
-/** Ngày gốc + n ngày, giờ cố định (giờ Việt Nam) */
 const shiftDate = (date: string, days: number, time: string) => {
   const d = new Date(`${date}T00:00:00+07:00`);
   d.setDate(d.getDate() + days);
   return new Date(`${d.toISOString().slice(0, 10)}T${time}:00+07:00`).toISOString();
 };
 
-function loadSavedLogs(procedureId: string): ProcedureHistoryLog[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(localStorage.getItem(LIBRARY_HISTORY_STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((log: ProcedureHistoryLog) => log.stepId === procedureId) : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Lịch sử của một quy trình: tạo, duyệt, các lần chỉnh bước (dữ liệu mẫu theo quy trình)
- * và các lần bấm "Lưu quy trình" thật.
- */
 function buildEntries(procedureId: string, steps: ProcedureStep[]): ActivityEntry[] {
   const meta = loadProcedureLibrary().find((p) => p.id === procedureId);
   if (!meta) return [];
@@ -109,6 +91,14 @@ function buildEntries(procedureId: string, steps: ProcedureStep[]): ActivityEntr
     );
   }
 
+  if (meta.submittedBy && meta.submittedAt) {
+    entries.push(
+      entry("submit", meta.submittedAt, meta.submittedBy, "Nộp quy trình", {
+        changes: [{ label: "Trạng thái", from: "Đang xử lý", to: "Chờ duyệt" }],
+      }),
+    );
+  }
+
   if (meta.approvedBy) {
     entries.push(
       entry("approve", meta.approvedAt ?? shiftDate(base, 4, "09:00"), meta.approvedBy, "Duyệt quy trình", {
@@ -117,8 +107,7 @@ function buildEntries(procedureId: string, steps: ProcedureStep[]): ActivityEntr
     );
   }
 
-  const saved = loadSavedLogs(procedureId);
-  // Lần cập nhật mẫu (chưa có lần lưu thật nào) để dòng "Ngày cập nhật" ở danh sách có dấu vết
+  const saved = loadLibraryHistory().filter((log) => log.stepId === procedureId);
   if (meta.updatedAt && saved.length === 0) {
     const optional = steps.find((s) => s.type === "CONDITIONAL");
     entries.push(
@@ -151,7 +140,6 @@ function buildEntries(procedureId: string, steps: ProcedureStep[]): ActivityEntr
   return entries.sort((x, y) => y.at.localeCompare(x.at));
 }
 
-/** Tab "Lịch sử thay đổi" của một quy trình: ai sửa gì, lúc nào — bấm dòng để xem cũ → mới */
 export default function ProcedureChangeHistory({ procedureId, steps }: ProcedureChangeHistoryProps) {
   const [historyDate, setHistoryDate] = useState("");
   const all = useMemo(() => (procedureId ? buildEntries(procedureId, steps) : []), [procedureId, steps]);

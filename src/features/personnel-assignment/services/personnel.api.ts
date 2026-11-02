@@ -1,20 +1,17 @@
 import { toast } from "@/components/ui";
-import type { CustomFieldDefinition } from "../types/custom-fields.types";
 import type { Staff, StaffInput, Team, TeamId } from "../types/personnel.types";
 import { getPermissionChangeHistory, getStaffProfileHistory, type ActivityEntry } from "../utils/activity-log";
-import { getCustomFields, saveCustomFields } from "../utils/custom-fields-storage";
 import { inferRoleCode, isLeaderTitle } from "../utils/role-code-inference";
-import { withBackend } from "./backend";
+import { isNotFoundError, withBackend } from "./backend";
 import { mockPersonnelRepository } from "./mock-personnel.repository";
 import * as backend from "../api/personnel.backend";
 import {
   toActivityEntry,
   toApiDate,
   toApiGender,
+  toApiPositionRole,
   toApiRoleCode,
-  toApiStaffCustomField,
   toApiUserUpdate,
-  toCustomFieldDefinition,
   toStaff,
   toTeam,
   type ApiDepartment,
@@ -49,16 +46,21 @@ async function departmentOf(teamId: TeamId): Promise<ApiDepartment> {
   return department;
 }
 
-/** Danh sách vị trí gửi backend: vị trí sẵn có giữ vai trò cũ, vị trí mới suy vai trò theo tên */
+/** Danh sách vị trí gửi backend: vị trí sẵn có giữ vai trò cũ, vị trí mới lấy vai trò của vị trí cùng cấp / suy theo tên */
 function toPositions(teamId: TeamId, titles: string[], current: ApiDepartmentPosition[] = []): ApiDepartmentPosition[] {
   const roleOf = new Map(current.map((position) => [position.title.trim().toLowerCase(), position.roleCode]));
   return titles
     .map((title) => title.trim())
     .filter(Boolean)
-    .map((title) => ({
-      title,
-      roleCode: roleOf.get(title.toLowerCase()) ?? toApiRoleCode(inferRoleCode(teamId, title, isLeaderTitle(title))),
-    }));
+    .map((title) => {
+      const isLeader = isLeaderTitle(title);
+      return {
+        title,
+        roleCode:
+          roleOf.get(title.toLowerCase()) ??
+          toApiPositionRole(inferRoleCode(teamId, title, isLeader), title, isLeader, current),
+      };
+    });
 }
 
 // ── Đọc dữ liệu ──
@@ -99,9 +101,13 @@ export function getStaff(staffId: string): Promise<Staff> {
   );
 }
 
-/** Quyền thực tế của cán bộ (mã quyền backend, VD "projects:view") */
-export function getStaffPermissionCodes(staffId: string): Promise<string[]> {
-  return backend.getUserPermissionsApi(staffId);
+/**
+ * Quyền của cán bộ (mã quyền backend, VD "project:view"): quyền thực tế và quyền theo chức danh.
+ * Backend kiểu cũ chỉ trả quyền thực tế → `role` để trống, màn hình tự tính theo ma trận phân quyền.
+ */
+export async function getStaffPermissionCodes(staffId: string): Promise<{ effective: string[]; role?: string[] }> {
+  const data = await backend.getUserPermissionsApi(staffId);
+  return { effective: data.effectivePermissions ?? data.permissions ?? [], role: data.rolePermissions };
 }
 
 /** Lịch sử thay đổi hồ sơ cán bộ */
@@ -120,14 +126,6 @@ export function getPermissionHistory(): Promise<ActivityEntry[]> {
   );
 }
 
-/** Danh mục trường tùy biến của hồ sơ cán bộ */
-export function getStaffCustomFields(): Promise<CustomFieldDefinition[]> {
-  return withBackend(
-    async () => (await backend.getStaffCustomFieldsApi()).map(toCustomFieldDefinition),
-    () => getCustomFields("staff"),
-  );
-}
-
 // ── Ghi dữ liệu ──
 
 /** Thêm cán bộ + tạo tài khoản (mật khẩu gửi qua email) */
@@ -143,6 +141,7 @@ export function createStaff(input: StaffInput): Promise<Staff> {
         departmentId: department.id,
         positionTitle: input.title.trim(),
         employmentType: input.employment,
+        phone: input.phone?.trim() || undefined,
         customFields: input.customFields,
       });
       if (data.mailSent === false && data.temporaryPassword) {
@@ -165,10 +164,16 @@ export function updateStaff(staffId: string, input: Partial<StaffInput>): Promis
       if (input.roleCode) {
         const current = await getStaff(staffId);
         const toRoleCode = toApiRoleCode(input.roleCode);
-        if (!current.roleCode) {
-          await backend.setUserRolesApi(staffId, [toRoleCode]);
-        } else if (current.roleCode !== input.roleCode) {
-          await backend.changeUserRoleApi(staffId, toApiRoleCode(current.roleCode), toRoleCode);
+        try {
+          if (!current.roleCode) {
+            await backend.setUserRolesApi(staffId, [toRoleCode]);
+          } else if (current.roleCode !== input.roleCode) {
+            await backend.changeUserRoleApi(staffId, toApiRoleCode(current.roleCode), toRoleCode);
+          }
+        } catch (error) {
+          // Backend BQL-HaTien chưa có API đổi vai trò: hồ sơ đã lưu, vai trò giữ nguyên
+          if (!isNotFoundError(error)) throw error;
+          toast.warning("Đã lưu hồ sơ. Máy chủ chưa hỗ trợ đổi vai trò nên vai trò của cán bộ giữ nguyên.");
         }
       }
       return getStaff(staffId);
@@ -179,22 +184,21 @@ export function updateStaff(staffId: string, input: Partial<StaffInput>): Promis
 
 /**
  * Lưu quyền riêng của cán bộ để quyền thực tế đúng bằng `selected`.
- * Backend chỉ ghi đè từng quyền (cấp / chặn), nên gửi phần chênh lệch so với quyền hiện có.
- * Bản mock lưu phần khác biệt so với quyền theo chức danh (Staff.permissions / revokedPermissions).
+ * Backend ghi đè toàn bộ quyền riêng, nên gửi đủ phần khác biệt so với quyền theo chức danh (`base`):
+ * cấp thêm = có trong selected mà chức danh không có, thu hồi = chức danh có mà selected bỏ.
+ * Bản mock lưu cùng phần khác biệt đó (Staff.permissions / revokedPermissions).
  */
 export function saveStaffPermissions(
   staffId: string,
-  { selected, current, base }: { selected: string[]; current: string[]; base: string[] },
+  { selected, base }: { selected: string[]; current: string[]; base: string[] },
 ): Promise<void> {
   const not = (list: string[]) => (code: string) => !list.includes(code);
+  const grant = selected.filter(not(base));
+  const revoke = base.filter(not(selected));
   return withBackend(
-    () =>
-      backend.updateUserPermissionsApi(staffId, {
-        grant: selected.filter(not(current)),
-        revoke: current.filter(not(selected)),
-      }),
+    () => backend.updateUserPermissionsApi(staffId, { grant, revoke }),
     async () => {
-      await repo.updateStaff(staffId, { permissions: selected.filter(not(base)), revokedPermissions: base.filter(not(selected)) });
+      await repo.updateStaff(staffId, { permissions: grant, revokedPermissions: revoke });
     },
   );
 }
@@ -204,7 +208,8 @@ export function setAccountActive(staffId: string, active: boolean, reason?: stri
   return withBackend(
     async () => {
       if (active) await backend.unlockUserApi(staffId);
-      else await backend.lockUserApi(staffId, reason?.trim());
+      // Backend bắt buộc có lý do khóa
+      else await backend.lockUserApi(staffId, reason?.trim() || "Không ghi lý do");
       return getStaff(staffId);
     },
     () => repo.setAccountActive(staffId, active, reason),
@@ -241,16 +246,5 @@ export function updateTeam(teamId: string, input: TeamInput): Promise<Team> {
       return toTeam(data);
     },
     () => repo.updateTeam(teamId, input),
-  );
-}
-
-/** Lưu danh mục trường tùy biến của hồ sơ cán bộ */
-export function saveStaffCustomFields(fields: CustomFieldDefinition[]): Promise<CustomFieldDefinition[]> {
-  return withBackend(
-    async () => (await backend.saveStaffCustomFieldsApi(fields.map(toApiStaffCustomField))).map(toCustomFieldDefinition),
-    () => {
-      saveCustomFields("staff", fields);
-      return fields;
-    },
   );
 }

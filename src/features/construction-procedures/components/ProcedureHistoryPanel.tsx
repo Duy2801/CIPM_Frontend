@@ -8,7 +8,6 @@ import type { ActivityEntry } from "@/features/personnel-assignment/utils/activi
 import type { ProjectProcedureData, StepStatus } from "../types/procedure.types";
 
 interface ProcedureHistoryPanelProps {
-  /** Toàn bộ dự án — lịch sử gộp của tất cả dự án, mới nhất lên đầu */
   projects: ProjectProcedureData[];
 }
 
@@ -20,13 +19,11 @@ const STEP_STATUS_LABELS: Record<StepStatus, string> = {
   DISABLED: "Đã tắt",
 };
 
-/** "2026-10-22 08:30" hoặc ISO → ISO (cùng cách đọc với lịch sử trong hồ sơ cán bộ) */
 function toIso(value: string): string {
   const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
   return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
 }
 
-/** Đổi nhật ký từng bước thủ tục sang dòng lịch sử dùng chung (giống các phân hệ khác) */
 function toActivityEntries(projects: ProjectProcedureData[]): ActivityEntry[] {
   return projects
     .flatMap((project) =>
@@ -59,9 +56,7 @@ function toActivityEntries(projects: ProjectProcedureData[]): ActivityEntry[] {
     .sort((a, b) => b.at.localeCompare(a.at));
 }
 
-/** Tab "Lịch sử thay đổi": cùng kiểu với Thư viện pháp lý / Nhân sự — lọc theo ngày, bấm dòng để xem chi tiết */
 export default function ProcedureHistoryPanel({ projects }: ProcedureHistoryPanelProps) {
-  // Lọc theo một ngày (yyyy-mm-dd), rỗng = tất cả
   const [historyDate, setHistoryDate] = useState("");
 
   const entries = useMemo(() => {
