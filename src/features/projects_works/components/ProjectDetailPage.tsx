@@ -4,16 +4,12 @@ import React, { useState } from "react";
 import { App } from "antd";
 import {
   ApartmentOutlined,
-  AuditOutlined,
-  DollarOutlined,
-  EnvironmentOutlined,
-  SafetyCertificateOutlined,
   ArrowLeftOutlined,
   HistoryOutlined,
   ProfileOutlined,
 } from "@ant-design/icons";
 import { Button, Card } from "@/components/ui";
-import { InlineEditField, ProjectScopeProvider, type SegmentedTabItem } from "@/components/workspace";
+import { InlineEditField, type SegmentedTabItem } from "@/components/workspace";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
@@ -34,32 +30,13 @@ import type {
 import { useProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
 import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
 import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
-import { PROCEDURE_CATEGORY } from "@/features/construction-procedures/constants/procedure-categories";
-import { SiteClearanceResettlementScreen } from "@/features/site-clearance-resettlement";
-import { BiddingManagementScreen } from "@/features/bidding-management";
-import { FinanceSettlementScreen } from "@/features/finance-settlement";
-import { WarrantyMaintenanceScreen } from "@/features/warranty-maintenance";
 import { ProjectDocumentsSection } from "./detail/ProjectViewTab";
 import ProjectProcedureTab from "./detail/ProjectProcedureTab";
 import ProjectProcedurePicker, { procedureTarget } from "./ProjectProcedurePicker";
 import ProjectHistoryTab from "./detail/ProjectHistoryTab";
 
-/** Tab phân hệ của dự án: chỉ hiện khi dự án có quy trình thuộc loại tương ứng */
-const MODULE_TABS: {
-  key: "gpmb" | "bidding" | "finance" | "warranty";
-  module: Parameters<typeof canUserDo>[1];
-  category: string;
-  icon: React.ReactNode;
-  label: string;
-}[] = [
-  { key: "gpmb", module: "m6_site_clearance", category: PROCEDURE_CATEGORY.GPMB, icon: <EnvironmentOutlined />, label: "GPMB" },
-  { key: "bidding", module: "m7_bidding", category: PROCEDURE_CATEGORY.BIDDING, icon: <AuditOutlined />, label: "Đấu thầu" },
-  { key: "finance", module: "m4_finance_settlement", category: PROCEDURE_CATEGORY.FINANCE, icon: <DollarOutlined />, label: "Tài chính" },
-  { key: "warranty", module: "m8_warranty", category: PROCEDURE_CATEGORY.WARRANTY, icon: <SafetyCertificateOutlined />, label: "Bảo hành & Bảo trì" },
-];
-
 /** "proc:<phòng ban>" = tab quy trình của phòng ban đó */
-type DetailTab = "info" | `proc:${string}` | "gpmb" | "bidding" | "finance" | "warranty" | "history";
+type DetailTab = "info" | `proc:${string}` | "history";
 
 /** Các trường sửa được bằng bút chì trên trang chi tiết */
 type EditablePatch = Partial<
@@ -261,7 +238,6 @@ export default function ProjectDetailPage({
     }),
   ) as Record<string, string>;
   const pickable = library.filter((p) => p.enabled || Object.values(appliedProcedures).includes(p.id));
-  const appliedCategories = Object.values(appliedProcedures).map((id) => library.find((p) => p.id === id)?.category);
 
   const detailTabs: SegmentedTabItem<DetailTab>[] = [
     { key: "info", icon: <ProfileOutlined />, label: "Thông tin chung" },
@@ -273,10 +249,6 @@ export default function ProjectDetailPage({
           label: departmentStatus(dept)?.procedureName ?? dept,
         }))
       : []),
-    // GPMB, đấu thầu...: chỉ hiện khi dự án có quy trình tương ứng và người dùng có quyền xem phân hệ đó
-    ...MODULE_TABS.filter(
-      (m) => appliedCategories.includes(m.category) && canUserDo(user, m.module, "view"),
-    ).map(({ key, icon, label }) => ({ key, icon, label })),
     { key: "history", icon: <HistoryOutlined />, label: "Lịch sử" },
   ];
   // Tab vừa bị ẩn (gỡ quy trình) thì về "Thông tin chung"
@@ -372,13 +344,6 @@ export default function ProjectDetailPage({
         <ProjectProcedureTab key={activeTab} department={activeTab.slice(5)} controller={procedure} />
       )}
       {activeTab === "history" && <ProjectHistoryTab project={project} procedureLogs={procedure.data.history ?? []} />}
-      {/* GPMB, đấu thầu, tài chính, bảo hành: chỉ dữ liệu của dự án này, không chọn dự án khác */}
-      <ProjectScopeProvider projectId={project.id}>
-        {activeTab === "gpmb" && <SiteClearanceResettlementScreen projectId={project.id} />}
-        {activeTab === "bidding" && <BiddingManagementScreen projectId={project.id} />}
-        {activeTab === "finance" && <FinanceSettlementScreen projectId={project.id} />}
-        {activeTab === "warranty" && <WarrantyMaintenanceScreen projectId={project.id} />}
-      </ProjectScopeProvider>
 
       {activeTab === "info" && (
         <div className="flex flex-col gap-3">
