@@ -33,7 +33,13 @@ export interface RoadmapStepView {
   large?: boolean;
 }
 
-export type ChangeStagesHandler = (stages: Map<string, number>, description?: string) => void;
+/** Bước vừa chuyển lượt: làm song song với một bước cùng cấp, hoặc tách thành lượt riêng (vị trí tính từ 0) */
+export interface StageMove {
+  stepId: string;
+  drop: { parallelWith: string } | { insertAt: number };
+}
+
+export type ChangeStagesHandler = (stages: Map<string, number>, description?: string, move?: StageMove) => void;
 
 type DropTarget = { target: number } | { insertAt: number };
 
@@ -124,7 +130,11 @@ export default function RoadmapStepFlow({
                       ? "ở cuối"
                       : `giữa Bước ${drop.insertAt} và Bước ${drop.insertAt + 1}`
                 }.`;
-          onChangeStages?.(moveStepToStage(children, draggingId, drop), description);
+          const partner = "target" in drop ? columns[drop.target]?.find((c) => c.id !== draggingId) : undefined;
+          onChangeStages?.(moveStepToStage(children, draggingId, drop), description, {
+            stepId: draggingId,
+            drop: "target" in drop ? { parallelWith: partner?.id ?? "" } : { insertAt: drop.insertAt },
+          });
         }
         endDrag();
       }}

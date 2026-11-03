@@ -15,9 +15,9 @@ import {
 import { cn } from "@/utils/cn";
 import { parseMoney } from "@/utils/format-money";
 import { isSameDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
+import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
 import ProjectProcedurePicker, { procedureTarget } from "./ProjectProcedurePicker";
 import {
-  loadProcedureLibrary,
   type ProcedureLibraryItem,
 } from "@/features/construction-procedures/utils/procedure-library";
 import {
@@ -105,7 +105,9 @@ const PERSONNEL_SELECT_OPTIONS = PERSONNEL_OPTIONS.map((p) => ({
 export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProject }: CreateProjectPageProps) {
   const { modal } = App.useApp();
   // Chỉ quy trình đang bật mới được chọn áp dụng
-  const library = useMemo(() => loadProcedureLibrary().filter((p) => p.enabled), []);
+  // Quy trình đang bật (tài khoản thật: tải mới từ backend khi mở trang)
+  const { procedures } = useProcedureLibrary();
+  const library = useMemo(() => procedures.filter((p) => p.enabled), [procedures]);
   const [initial] = useState(() => createInitialState(library));
   const [form, setForm] = useState<FormState>(initial);
   const [errorMsg, setErrorMsg] = useState("");

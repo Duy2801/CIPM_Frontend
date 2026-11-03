@@ -11,12 +11,15 @@ import { useStepRowEdit } from "../hooks/useStepRowEdit";
 import { useStepStaff } from "../hooks/useStepStaff";
 import { useStepTree } from "../hooks/useStepTree";
 import type { ProcedureStep, StepChange } from "../types/procedure.types";
+import { moveProcedureStepStage } from "../services/procedure.service";
 import { applyStageOrder } from "../utils/step-dependencies";
+import { diffSteps } from "../utils/step-diff";
 import { withParentRollups } from "../utils/step-duration";
 import { isDescendantOf } from "../utils/step-tree";
 import ProcedureChangeHistory from "./ProcedureChangeHistory";
 import ProcedureEditorTabs, { type ProcedureEditorView } from "./ProcedureEditorTabs";
 import ProcedureRoadmap from "./ProcedureRoadmap";
+import type { StageMove } from "./RoadmapStepFlow";
 import StepTable from "./StepTable";
 
 interface ProcedureStepEditorProps {
@@ -40,7 +43,7 @@ export default function ProcedureStepEditor({
   const isCreate = !!onCreate;
   const autoSave = !isCreate && !!procedureId;
   const [view, setView] = useState<ProcedureEditorView>(isCreate ? "table" : "flow");
-  const { localSteps, setLocalSteps, autoSavedAt } = useAutoSavedSteps(steps, {
+  const { localSteps, setLocalSteps, autoSavedAt, hasPendingChanges, acceptSaved } = useAutoSavedSteps(steps, {
     procedureId: autoSave ? procedureId : undefined,
     onAutoSave,
   });
@@ -64,9 +67,22 @@ export default function ProcedureStepEditor({
     onUpdate: (stepId, updates) => setLocalSteps((prev) => prev.map((s) => (s.id === stepId ? { ...s, ...updates } : s))),
   });
 
-  const handleChangeStages = (stages: Map<string, number>) => {
-    setLocalSteps((prev) => applyStageOrder(prev, stages));
+  const handleChangeStages = async (stages: Map<string, number>, move?: StageMove) => {
     adding.closeSub();
+    // Tài khoản thật, không còn phần sửa chờ lưu: đổi lượt bằng API riêng (2.4), backend đánh lại mã
+    if (autoSave && procedureId && move && !hasPendingChanges()) {
+      try {
+        const saved = await moveProcedureStepStage(procedureId, move.stepId, move.drop);
+        if (saved) {
+          acceptSaved(saved, diffSteps(localSteps, saved));
+          return;
+        }
+      } catch (error) {
+        toast.error("Chưa đổi được thứ tự làm", error instanceof Error ? error.message : "Vui lòng thử lại.");
+        return;
+      }
+    }
+    setLocalSteps((prev) => applyStageOrder(prev, stages));
   };
 
   const removeStep = (target: ProcedureStep) => {
@@ -139,11 +155,11 @@ export default function ProcedureStepEditor({
             <ProcedureRoadmap
               steps={localSteps}
               stickyBottom={stickyBottom}
-              onChangeStages={(stages, description) =>
+              onChangeStages={(stages, description, move) =>
                 confirmChange(
                   "Lưu thay đổi thứ tự?",
                   description ?? "Cập nhật thứ tự thực hiện (song song / lần lượt) của các bước.",
-                  () => handleChangeStages(stages),
+                  () => void handleChangeStages(stages, move),
                 )
               }
             />

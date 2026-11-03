@@ -403,7 +403,7 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
   const returnStep = (step: ProcedureStep, reason: string) =>
     patchStep(
       step,
-      { status: "IN_PROGRESS", submissionStatus: "REJECTED", rejectionReason: reason },
+      { status: "IN_PROGRESS", submissionStatus: "REJECTED", rejectionReason: reason, rejectedBy: actorName, rejectedAt: today() },
       {
         action: "START_STEP",
         actionLabel: "Từ chối kết quả bước",

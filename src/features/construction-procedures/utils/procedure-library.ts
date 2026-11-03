@@ -10,6 +10,7 @@ import {
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
 import type { ProcedureStep } from "../types/procedure.types";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 
 export type ProcedureStatus = "APPLIED" | "PROCESSING" | "PENDING_APPROVAL" | "STOPPED";
 
@@ -209,7 +210,65 @@ export function markProcedureUpdated(procedureId: string, updatedBy: string) {
   }
 }
 
+// ── Bản sao quy trình lấy từ backend: các màn khác (dự án, thêm dự án...) đọc đồng bộ từ đây ──
+
+const BACKEND_CACHE_KEY = "cipm_procedure_backend_cache_v1";
+
+function readBackendCache(): ProcedureLibraryItem[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(BACKEND_CACHE_KEY) ?? "null");
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveBackendProcedureCache(items: ProcedureLibraryItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BACKEND_CACHE_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.error("Failed to cache backend procedures", e);
+  }
+}
+
+/** Loại quy trình người dùng chọn khi tạo (backend chưa lưu trường này) */
+const BACKEND_CATEGORY_KEY = "cipm_procedure_backend_categories_v1";
+
+export function loadBackendProcedureCategories(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(BACKEND_CATEGORY_KEY) ?? "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setBackendProcedureCategory(id: string, category: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BACKEND_CATEGORY_KEY, JSON.stringify({ ...loadBackendProcedureCategories(), [id]: category }));
+  } catch (e) {
+    console.error("Failed to save procedure category", e);
+  }
+}
+
+/** Cập nhật một quy trình trong bản sao backend (sau khi lưu bước, bật/tắt, nộp, duyệt) */
+export function patchBackendProcedureCache(id: string, patch: Partial<ProcedureLibraryItem>) {
+  const items = readBackendCache();
+  if (!items) return;
+  saveBackendProcedureCache(items.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+}
+
+/** Thư viện quy trình: đăng nhập tài khoản thật → bản sao từ backend; tài khoản thử nghiệm → dữ liệu mẫu */
 export function loadProcedureLibrary(): ProcedureLibraryItem[] {
+  if (hasBackendSession()) return readBackendCache() ?? [];
+  return loadMockProcedureLibrary();
+}
+
+function loadMockProcedureLibrary(): ProcedureLibraryItem[] {
   const hidden = loadHiddenTemplateIds();
   const updates = loadUpdateMeta();
   const enabledOverrides = loadEnabledOverrides();

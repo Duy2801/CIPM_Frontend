@@ -3,6 +3,7 @@ import {
   AppstoreOutlined,
   AuditOutlined,
   BookOutlined,
+  CheckSquareOutlined,
   DollarOutlined,
   EnvironmentOutlined,
   FileProtectOutlined,
@@ -21,6 +22,12 @@ export const sidebarMenuItems: MenuItem[] = [
     key: "/dashboard",
     label: "Bảng điều khiển",
     icon: React.createElement(AppstoreOutlined),
+  },
+  {
+    // Mọi cán bộ đều có: việc được giao, nộp / duyệt / từ chối kết quả
+    key: "/my-tasks",
+    label: "Việc cần xử lý",
+    icon: React.createElement(CheckSquareOutlined),
   },
   {
     key: "/projects_works",
@@ -67,6 +74,8 @@ export const sidebarMenuItems: MenuItem[] = [
 import { getUserEffectivePermissions } from "@/access-control";
 
 export function getSidebarMenuItemsForUser(user: AuthUser | null): MenuItem[] {
+  // Chưa tải xong phiên đăng nhập: chưa hiện mục nào, để các mục (kể cả mục không cần quyền) hiện cùng lúc
+  if (!user) return [];
   const permissions = getUserEffectivePermissions(user);
 
   return sidebarMenuItems.filter((item) => {

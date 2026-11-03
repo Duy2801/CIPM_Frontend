@@ -3,7 +3,10 @@
 import { CheckOutlined, SendOutlined } from "@ant-design/icons";
 import { App } from "antd";
 import { Button, toast, Tooltip } from "@/components/ui";
-import { approveProcedure, submitProcedure, type ProcedureLibraryItem } from "../utils/procedure-library";
+import { approveProcedureReview, submitProcedureForReview } from "../services/procedure.service";
+import type { ProcedureLibraryItem } from "../utils/procedure-library";
+
+const errorText = (error: unknown) => (error instanceof Error ? error.message : "Không thể hoàn tất thao tác, vui lòng thử lại.");
 
 interface ProcedureReviewActionProps {
   procedure: ProcedureLibraryItem;
@@ -23,10 +26,14 @@ export default function ProcedureReviewAction({ procedure, actorName, canApprove
         content: `Quy trình "${procedure.name}" sẽ chuyển sang trạng thái Chờ duyệt.`,
         okText: "Nộp",
         cancelText: "Hủy",
-        onOk: () => {
-          submitProcedure(procedure.id, actorName);
-          onChanged();
-          toast.success("Đã nộp quy trình", `Quy trình "${procedure.name}" đang chờ duyệt.`);
+        onOk: async () => {
+          try {
+            await submitProcedureForReview(procedure.id, actorName);
+            onChanged();
+            toast.success("Đã nộp quy trình", `Quy trình "${procedure.name}" đang chờ duyệt.`);
+          } catch (error) {
+            toast.error("Không nộp được quy trình", errorText(error));
+          }
         },
       });
     return (
@@ -45,10 +52,14 @@ export default function ProcedureReviewAction({ procedure, actorName, canApprove
         content: `Quy trình "${procedure.name}" sẽ chuyển sang trạng thái Đang áp dụng, người duyệt: ${actorName}.`,
         okText: "Duyệt",
         cancelText: "Hủy",
-        onOk: () => {
-          approveProcedure(procedure.id, actorName);
-          onChanged();
-          toast.success("Đã duyệt quy trình", `Quy trình "${procedure.name}" đang được áp dụng.`);
+        onOk: async () => {
+          try {
+            await approveProcedureReview(procedure.id, actorName);
+            onChanged();
+            toast.success("Đã duyệt quy trình", `Quy trình "${procedure.name}" đang được áp dụng.`);
+          } catch (error) {
+            toast.error("Không duyệt được quy trình", errorText(error));
+          }
         },
       });
     return (

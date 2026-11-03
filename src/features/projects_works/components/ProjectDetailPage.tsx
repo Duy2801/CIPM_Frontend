@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { App } from "antd";
 import {
   ApartmentOutlined,
@@ -16,6 +16,7 @@ import { Button, Card } from "@/components/ui";
 import { InlineEditField, ProjectScopeProvider, type SegmentedTabItem } from "@/components/workspace";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
+import { formatDateVi } from "@/utils/date";
 import { useAuth } from "@/features/auth";
 import { canUserDo } from "@/access-control";
 import {
@@ -31,7 +32,8 @@ import type {
   ProjectWorkType,
 } from "../types/project.types";
 import { useProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
-import { loadProcedureLibrary, type ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
+import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
+import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
 import { PROCEDURE_CATEGORY } from "@/features/construction-procedures/constants/procedure-categories";
 import { SiteClearanceResettlementScreen } from "@/features/site-clearance-resettlement";
 import { BiddingManagementScreen } from "@/features/bidding-management";
@@ -251,7 +253,7 @@ export default function ProjectDetailPage({
   const canViewProcedure = canUserDo(user, "m3_construction_procedures", "view");
   const [tab, setActiveTab] = useState<DetailTab>("info");
   // Quy trình chọn được: quy trình đang bật + quy trình dự án đang dùng (kể cả đã ngưng)
-  const library = useMemo(() => loadProcedureLibrary(), []);
+  const { procedures: library } = useProcedureLibrary();
   const appliedProcedures = Object.fromEntries(
     appliedDepartments.flatMap((dept) => {
       const id = departmentStatus(dept)?.procedureId;
@@ -382,10 +384,9 @@ export default function ProjectDetailPage({
         <div className="flex flex-col gap-3">
           {/* Thông tin dự án: tràn hết chiều ngang (cùng bố cục với trang thêm dự án) */}
           <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
-            <div className="space-y-5 p-5">
+            <div className="space-y-4 p-4">
               <FieldGroup title="Thông tin chung">
                 <InlineEditField
-                  className="sm:col-span-2 xl:col-span-3"
                   label={FIELD_LABELS.name}
                   changed={isChanged("name")}
                   value={view.name}
@@ -423,13 +424,9 @@ export default function ProjectDetailPage({
                   editor={{ kind: "text", placeholder: "Phường / xã" }}
                   onSave={infoSaver("location", (v) => v)}
                 />
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500">Cơ quan quản lý</span>
-                  <div className="mt-0.5 text-xs font-semibold text-slate-900">Ban QLDA ĐTXD Hà Tiên</div>
-                </div>
               </FieldGroup>
 
-              <FieldGroup title="Vốn đầu tư">
+              <FieldGroup title="Vốn đầu tư" cols="even3">
                 <InlineEditField
                   label={FIELD_LABELS.fundingSource}
                   changed={isChanged("fundingSource")}
@@ -479,7 +476,7 @@ export default function ProjectDetailPage({
                   label={FIELD_LABELS.startDate}
                   changed={isChanged("startDate")}
                   value={view.startDate}
-                  display={<span className="font-mono">{view.startDate}</span>}
+                  display={view.startDate ? formatDateVi(view.startDate) : "—"}
                   editor={{ kind: "date" }}
                   validate={(next) =>
                     view.endDatePlanned && next > view.endDatePlanned
@@ -492,7 +489,7 @@ export default function ProjectDetailPage({
                   label={FIELD_LABELS.endDatePlanned}
                   changed={isChanged("endDatePlanned")}
                   value={view.endDatePlanned}
-                  display={<span className="font-mono">{view.endDatePlanned}</span>}
+                  display={view.endDatePlanned ? formatDateVi(view.endDatePlanned) : "—"}
                   editor={{ kind: "date" }}
                   validate={(next) =>
                     view.startDate && next <= view.startDate
@@ -504,7 +501,7 @@ export default function ProjectDetailPage({
                 {project.actualEndDate && (
                   <div>
                     <span className="text-[11px] font-medium text-slate-500">Hoàn thành thực tế</span>
-                    <div className="mt-0.5 font-mono text-xs font-semibold text-slate-900">{project.actualEndDate}</div>
+                    <div className="mt-0.5 text-xs font-semibold text-slate-900">{formatDateVi(project.actualEndDate)}</div>
                   </div>
                 )}
               </FieldGroup>
@@ -593,10 +590,12 @@ function DetailTabBar({
   );
 }
 
-/** Số cột trên màn rộng (cùng cách chia với trang thêm dự án) */
+/** Số cột theo độ rộng màn hình: màn rộng 4 cột cho đỡ trống */
 const FIELD_GROUP_COLS = {
-  2: "sm:grid-cols-2",
-  3: "sm:grid-cols-2 xl:grid-cols-3",
+  2: "sm:grid-cols-2 xl:grid-cols-4",
+  3: "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+  /** Nhóm đúng 3 trường: chia 3 ô bằng nhau, kín hết hàng */
+  even3: "sm:grid-cols-3",
 } as const;
 
 /** Nhóm trường thông tin có tiêu đề */
@@ -611,10 +610,17 @@ function FieldGroup({
 }) {
   return (
     <section>
-      <h3 className="m-0 mb-3 border-b border-slate-100 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-        {title}
-      </h3>
-      <div className={cn("grid grid-cols-1 gap-x-6 gap-y-3.5", FIELD_GROUP_COLS[cols])}>{children}</div>
+      <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+      {/* Mỗi trường là một ô nền nhạt để khối thông tin gọn, dễ dò theo hàng */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-2",
+          "[&>*]:min-h-[52px] [&>*]:rounded-lg [&>*]:border [&>*]:border-slate-100 [&>*]:bg-slate-50/70 [&>*]:px-3 [&>*]:py-2",
+          FIELD_GROUP_COLS[cols],
+        )}
+      >
+        {children}
+      </div>
     </section>
   );
 }

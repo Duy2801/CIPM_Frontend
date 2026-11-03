@@ -44,9 +44,13 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
 
   const selectedKeys = React.useMemo(() => {
     if (pathname === "/") return ["/dashboard"];
-    const matchedKey = ROUTE_KEYS.find((key) => pathname.startsWith(key));
+    // Dò theo chính các mục trên menu (gồm cả trang không cần quyền như "Việc cần xử lý")
+    const menuKeys = menuItems.flatMap((item) => (item && "key" in item && typeof item.key === "string" ? [item.key] : []));
+    const matchedKey = [...menuKeys, ...ROUTE_KEYS].find(
+      (key) => pathname === key || pathname.startsWith(`${key}/`),
+    );
     return matchedKey ? [matchedKey] : ["/dashboard"];
-  }, [pathname]);
+  }, [pathname, menuItems]);
 
   // Lấy chức vụ sạch không có dấu gạch chéo (/) hoặc vai trò phụ trong ngoặc (Thành viên...)
   const displayRole = React.useMemo(() => {

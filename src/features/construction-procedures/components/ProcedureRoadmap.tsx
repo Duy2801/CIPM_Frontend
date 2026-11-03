@@ -63,6 +63,7 @@ export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStag
         onChangeStages?.(
           moveStepToStage(mains, step.id, { insertAt: si + 1 }),
           `Giai đoạn ${step.code} làm lần lượt, không song song với giai đoạn khác.`,
+          { stepId: step.id, drop: { insertAt: si + 1 } },
         );
       return;
     }
@@ -71,6 +72,7 @@ export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStag
       onChangeStages?.(
         moveStepToStage(mains, step.id, { target }),
         `Giai đoạn ${step.code} làm song song với giai đoạn ${mainStages[target].map((m) => m.code).join(", ")}.`,
+        { stepId: step.id, drop: { parallelWith: mainStages[target][0].id } },
       );
   };
 

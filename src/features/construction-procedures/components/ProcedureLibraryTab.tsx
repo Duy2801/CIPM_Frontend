@@ -2,13 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui";
+import { useProcedureLibrary } from "../hooks/useProcedureLibrary";
+import { createProcedure, toggleProcedure } from "../services/procedure.service";
 import type { StepChange } from "../types/procedure.types";
-import {
-  createProcedure,
-  loadProcedureLibrary,
-  markProcedureUpdated,
-  setProcedureEnabled,
-} from "../utils/procedure-library";
 import CreateProcedurePage from "./CreateProcedurePage";
 import ProcedureDetailPage from "./ProcedureDetailPage";
 import ProcedureListView from "./ProcedureListView";
@@ -22,16 +18,16 @@ interface ProcedureLibraryTabProps {
 
 type LibraryView = { kind: "list" } | { kind: "detail"; id: string } | { kind: "create" };
 
+const errorText = (error: unknown) => (error instanceof Error ? error.message : "Không thể hoàn tất thao tác, vui lòng thử lại.");
+
 export default function ProcedureLibraryTab({
   actorName,
   canApprove,
   onAutoSaved,
   onSubPageChange,
 }: ProcedureLibraryTabProps) {
-  const [procedures, setProcedures] = useState(loadProcedureLibrary);
+  const { procedures, reload, refresh } = useProcedureLibrary();
   const [view, setView] = useState<LibraryView>({ kind: "list" });
-
-  const reload = () => setProcedures(loadProcedureLibrary());
 
   const goTo = (next: LibraryView) => {
     setView(next);
@@ -39,18 +35,22 @@ export default function ProcedureLibraryTab({
   };
 
   const backToList = () => {
-    reload();
     goTo({ kind: "list" });
+    void refresh();
   };
 
   if (view.kind === "create") {
     return (
       <CreateProcedurePage
         onBack={backToList}
-        onCreate={({ name, category, version, steps }) => {
-          createProcedure({ name, category, version, steps, createdBy: actorName });
-          backToList();
-          toast.success("Đã tạo quy trình mới", `Đã lưu quy trình "${name}" (${steps.length} bước).`);
+        onCreate={async ({ name, category, version, steps }) => {
+          try {
+            await createProcedure({ name, category, version, steps, createdBy: actorName });
+            backToList();
+            toast.success("Đã tạo quy trình mới", `Đã lưu quy trình "${name}" (${steps.length} bước).`);
+          } catch (error) {
+            toast.error("Không tạo được quy trình", errorText(error));
+          }
         }}
       />
     );
@@ -67,7 +67,6 @@ export default function ProcedureLibraryTab({
         onBack={backToList}
         onChanged={reload}
         onAutoSave={(_steps, changes) => {
-          markProcedureUpdated(opened.id, actorName);
           reload();
           onAutoSaved(opened.id, opened.name, changes);
         }}
@@ -80,13 +79,17 @@ export default function ProcedureLibraryTab({
       procedures={procedures}
       onOpen={(id) => goTo({ kind: "detail", id })}
       onCreate={() => goTo({ kind: "create" })}
-      onToggle={(procedure, enabled) => {
-        setProcedureEnabled(procedure.id, enabled);
-        reload();
-        toast.info(
-          enabled ? "Đã bật quy trình" : "Đã ngưng quy trình",
-          `Quy trình "${procedure.name}" ${enabled ? "đã được bật lại" : "đã chuyển sang Đã ngưng"}.`,
-        );
+      onToggle={async (procedure, enabled) => {
+        try {
+          await toggleProcedure(procedure.id, enabled);
+          reload();
+          toast.info(
+            enabled ? "Đã bật quy trình" : "Đã ngưng quy trình",
+            `Quy trình "${procedure.name}" ${enabled ? "đã được bật lại" : "đã chuyển sang Đã ngưng"}.`,
+          );
+        } catch (error) {
+          toast.error("Không đổi được trạng thái quy trình", errorText(error));
+        }
       }}
     />
   );

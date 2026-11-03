@@ -90,6 +90,8 @@ export interface ProcedureStep {
   approvedBy?: string;
   approvedAt?: string;
   rejectionReason?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
 
   skipReason?: string;
   skipDocumentCode?: string;
