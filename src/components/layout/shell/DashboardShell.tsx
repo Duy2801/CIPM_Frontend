@@ -19,6 +19,7 @@ import {
 import { useAppRefreshStore } from "@/stores/app-refresh.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { getUserEffectivePermissions } from "@/access-control";
+import { ensureMyTasksDemo } from "@/features/my-tasks/utils/my-tasks-demo";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -88,6 +89,12 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     // Chỉ khôi phục phiên một lần khi mở ứng dụng
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Tài khoản thử nghiệm: nạp dữ liệu demo (quy trình, dự án, việc cần xử lý) cho người đang đăng nhập
+  const userName = useAuthStore((state) => state.user?.displayName || state.user?.name || "");
+  React.useEffect(() => {
+    if (userName) ensureMyTasksDemo(userName);
+  }, [userName]);
 
   // Lắng nghe sự kiện cập nhật Ma trận phân quyền để cập nhật tức thì toàn bộ màn hình
   React.useEffect(() => {

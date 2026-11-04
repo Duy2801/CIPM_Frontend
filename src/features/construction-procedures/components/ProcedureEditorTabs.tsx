@@ -6,8 +6,8 @@ import { Segmented } from "@/components/ui";
 export type ProcedureEditorView = "flow" | "table" | "history";
 
 const CREATE_OPTIONS = [
-  { value: "table" as const, label: "1. Danh sách các bước" },
-  { value: "flow" as const, label: "2. Sơ đồ quy trình" },
+  { value: "table" as const, label: "Danh sách các bước" },
+  { value: "flow" as const, label: "Sơ đồ quy trình" },
 ];
 
 const DETAIL_OPTIONS = [

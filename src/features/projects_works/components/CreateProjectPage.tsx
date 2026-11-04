@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { App } from "antd";
-import { ArrowLeftOutlined, PlusOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { parseMoney } from "@/utils/format-money";
-import { isSameDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
 import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
 import ProjectProcedurePicker, { procedureTarget } from "./ProjectProcedurePicker";
 import {
@@ -48,6 +47,8 @@ interface FormState {
   plan2026: number | "";
   /** Phòng ban → id quy trình áp dụng; phòng ban phụ trách của dự án lấy theo các khóa này */
   procedures: Record<string, string>;
+  /** Tên đầu mục (tên tab) của quy trình đã tích: id quy trình → tên; trống = tên quy trình rút gọn */
+  tabLabels: Record<string, string>;
   managerName: string;
   supervisorName: string;
   startDate: string;
@@ -56,33 +57,18 @@ interface FormState {
   documents: ProjectDocument[];
 }
 
-const DEFAULT_DEPARTMENTS = ["Tổ Giám sát – Kỹ thuật", "Tổ Kế hoạch – Kỹ thuật"];
 const DEFAULT_PERSON = "Huỳnh Thái Hải";
 
-/** Quy trình mặc định của phòng ban: quy trình đang bật của chính phòng ban, ưu tiên quy trình đã duyệt */
-function defaultProcedureId(library: ProcedureLibraryItem[], department: string) {
-  const own = library.filter((p) => p.enabled && p.department && isSameDepartment(p.department, department));
-  return (own.find((p) => p.status === "APPLIED") ?? own[0])?.id;
-}
-
-/** Quy trình mặc định của các phòng ban (phòng ban chưa có quy trình nào thì bỏ qua) */
-function withDefaultProcedures(library: ProcedureLibraryItem[], departments: string[]) {
-  const next: Record<string, string> = {};
-  for (const dept of departments) {
-    const id = defaultProcedureId(library, dept);
-    if (id) next[dept] = id;
-  }
-  return next;
-}
-
-const createInitialState = (library: ProcedureLibraryItem[]): FormState => ({
+const createInitialState = (): FormState => ({
   name: "",
   type: "Giao thông",
   location: "",
   fundingSource: "Ngân sách thành phố",
   totalInvestment: "",
   plan2026: "",
-  procedures: withDefaultProcedures(library, DEFAULT_DEPARTMENTS),
+  // Mới tạo dự án: chưa tích quy trình nào, người dùng tự chọn
+  procedures: {},
+  tabLabels: {},
   managerName: DEFAULT_PERSON,
   supervisorName: DEFAULT_PERSON,
   startDate: new Date().toISOString().slice(0, 10),
@@ -108,7 +94,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
   // Quy trình đang bật (tài khoản thật: tải mới từ backend khi mở trang)
   const { procedures } = useProcedureLibrary();
   const library = useMemo(() => procedures.filter((p) => p.enabled), [procedures]);
-  const [initial] = useState(() => createInitialState(library));
+  const [initial] = useState(createInitialState);
   const [form, setForm] = useState<FormState>(initial);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -131,12 +117,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
     // Quy trình không gắn phòng ban: áp cho phòng ban đầu tiên chưa có quy trình
     const target = procedureTarget(procedure, rest);
     update({ procedures: { ...rest, [target]: procedure.id } });
-  };
-
-  /** Đổi phòng ban áp dụng của quy trình không gắn phòng ban */
-  const retargetProcedure = (procedureId: string, department: string) => {
-    const rest = Object.fromEntries(Object.entries(form.procedures).filter(([, id]) => id !== procedureId));
-    update({ procedures: { ...rest, [department]: procedureId } });
   };
 
   const handleBack = () => {
@@ -194,6 +174,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
         note: "",
         documents: form.documents,
         procedures: form.procedures,
+        procedureTabLabels: form.tabLabels,
       },
       nextAutoCode,
     );
@@ -228,15 +209,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
                   placeholder="VD: Khu TĐC Rạch Đùng – Giai đoạn 2"
                   value={form.name}
                   onChange={(e) => update({ name: e.target.value })}
-                  className="w-full text-xs"
-                />
-              </Field>
-              <Field label="Loại dự án" required>
-                <Select
-                  placeholder="— Chọn loại công trình —"
-                  value={form.type || undefined}
-                  onChange={(val) => update({ type: val as ProjectWorkType })}
-                  options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
                   className="w-full text-xs"
                 />
               </Field>
@@ -326,7 +298,25 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               library={library}
               procedures={form.procedures}
               onToggle={toggleProcedure}
-              onRetarget={retargetProcedure}
+              // Loại dự án đặt ngay trên Loại quy trình, giống trang chi tiết dự án
+              leading={{
+                label: "Loại dự án",
+                control: (
+                  <Select
+                    aria-label="Loại dự án"
+                    placeholder="— Chọn loại công trình —"
+                    value={form.type || undefined}
+                    onChange={(val) => update({ type: val as ProjectWorkType })}
+                    options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
+                    className="w-full text-xs"
+                  />
+                ),
+              }}
+              tabLabels={form.tabLabels}
+              onTabLabelChange={(procedureId, label) => {
+                const rest = Object.fromEntries(Object.entries(form.tabLabels).filter(([id]) => id !== procedureId));
+                update({ tabLabels: label.trim() ? { ...rest, [procedureId]: label.trim() } : rest });
+              }}
             />
           </div>
         </Card>
@@ -360,18 +350,15 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
         </Card>
       </div>
 
-      {/* Thanh lưu bám đáy màn hình */}
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
-        <span className={cn("mr-auto text-xs", errorMsg ? "font-medium text-rose-600" : "text-slate-500")}>
-          {errorMsg || "Các trường có dấu * là bắt buộc"}
-        </span>
+      {/* Nút lưu ở cuối trang, không khung */}
+      <div className="flex flex-wrap items-center justify-end gap-2.5">
+        {errorMsg && <span className="mr-auto text-xs font-medium text-rose-600">{errorMsg}</span>}
         <Button intent="outline" scale="sm" onClick={handleBack} className="px-5">
           Hủy
         </Button>
         <Button
           intent="primary"
           scale="sm"
-          icon={<PlusOutlined />}
           onClick={handleSubmit}
           className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] px-5 font-semibold"
         >

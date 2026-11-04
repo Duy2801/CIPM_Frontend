@@ -16,7 +16,8 @@ import {
   type CreateProcedureInput,
   type ProcedureLibraryItem,
 } from "../utils/procedure-library";
-import { isBackendId, toLibraryItem, toProcedureSteps, toStepInput } from "./procedure.mapper";
+import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
+import { isBackendId, toLibraryItem, toProcedureActivityEntry, toProcedureSteps, toStepInput } from "./procedure.mapper";
 
 /**
  * Quy trình thủ tục (Module 3): đăng nhập tài khoản thật thì gọi backend (api/procedure.backend.ts),
@@ -160,5 +161,17 @@ export async function createProcedure(input: CreateProcedureInput): Promise<void
     () => {
       createMock(input);
     },
+  );
+}
+
+/**
+ * Lịch sử thay đổi của một quy trình từ backend (audit log).
+ * Trả về null khi không dùng backend (tài khoản thử nghiệm / quy trình mẫu / mất kết nối) để màn hình dùng lịch sử mẫu.
+ */
+export async function fetchProcedureHistory(id: string): Promise<ActivityEntry[] | null> {
+  if (!isBackendId(id)) return null;
+  return withBackend(
+    async () => (await backend.getProcedureAuditLogsApi(id)).map(toProcedureActivityEntry),
+    () => null,
   );
 }

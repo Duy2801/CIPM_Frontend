@@ -68,6 +68,8 @@ export interface NewStepInput {
   days: string;
   assignedTo?: string;
   assignedToId?: string;
+  supervisor?: string;
+  supervisorId?: string;
 }
 
 export function buildNewStep(steps: ProcedureStep[], parentCode: string | null, input: NewStepInput): ProcedureStep {
@@ -87,6 +89,8 @@ export function buildNewStep(steps: ProcedureStep[], parentCode: string | null, 
     assignedTo: input.assignedTo || undefined,
     assignedToId: input.assignedTo ? input.assignedToId : undefined,
     assignedAt: input.assignedTo ? new Date().toISOString().slice(0, 10) : undefined,
+    supervisor: input.supervisor || undefined,
+    supervisorId: input.supervisor ? input.supervisorId : undefined,
     ...buildDurationFields(input.days),
     isEnabled: true,
     status: "NOT_STARTED",

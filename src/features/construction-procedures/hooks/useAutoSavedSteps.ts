@@ -26,13 +26,14 @@ const saveKey = (steps: ProcedureStep[]) =>
 
 /** Bước mới do backend cấp mã thật: gắn mã đó vào bước trên màn hình (khớp theo mã bước) */
 function adoptSavedIds(steps: ProcedureStep[], saved: ProcedureStep[]): ProcedureStep[] {
-  const idByCode = new Map(saved.map((s) => [s.code, s.id]));
+  // Lấy mã bước backend cấp + số ngày backend tính (bước cha tính từ bước con)
+  const savedByCode = new Map(saved.map((s) => [s.code, s]));
   let changed = false;
   const next = steps.map((s) => {
-    const id = idByCode.get(s.code);
-    if (!id || id === s.id) return s;
+    const match = savedByCode.get(s.code);
+    if (!match || (match.id === s.id && match.spanDays === s.spanDays)) return s;
     changed = true;
-    return { ...s, id };
+    return { ...s, id: match.id, spanDays: match.spanDays };
   });
   return changed ? next : steps;
 }

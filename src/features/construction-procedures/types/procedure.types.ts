@@ -68,6 +68,8 @@ export interface ProcedureStep {
   isEnabled: boolean;
   status: StepStatus;
   plannedDays?: number;
+  /** Số ngày thực hiện do backend tính (bước có bước con = tính từ các bước con); chỉ đọc */
+  spanDays?: number;
   startDatePlanned?: string;
   endDatePlanned?: string;
   actualStartDate?: string;
@@ -78,6 +80,9 @@ export interface ProcedureStep {
   assignedToId?: string;
   assignedBy?: string;
   assignedAt?: string;
+  /** Người giám sát bước (không bắt buộc) */
+  supervisor?: string;
+  supervisorId?: string;
 
   submissionStatus?:
     | "PENDING_SUBMISSION"
@@ -93,6 +98,19 @@ export interface ProcedureStep {
   rejectedBy?: string;
   rejectedAt?: string;
 
+  /** Người thực hiện tiếp nhận việc được giao ("Việc cần xử lý") */
+  acceptedBy?: string;
+  acceptedAt?: string;
+  /** Sự cố người thực hiện báo khi đang làm; Tổ trưởng xử lý xong thì xóa */
+  incidentReason?: string;
+  incidentReportedBy?: string;
+  incidentReportedAt?: string;
+  /** Người thực hiện trả việc về Tổ trưởng: Từ chối (chưa nhận) / Hoàn trả (đã nhận, đang làm) */
+  handbackType?: "DECLINED" | "RETURNED";
+  handbackReason?: string;
+  handbackBy?: string;
+  handbackAt?: string;
+
   skipReason?: string;
   skipDocumentCode?: string;
   skipIssuer?: string;
@@ -105,6 +123,8 @@ export interface DepartmentProcedureStatus {
   department?: string;
   procedureId?: string;
   procedureName?: string;
+  /** Tên đầu mục hiện trên tab của dự án (để trống = tên quy trình rút gọn) */
+  tabLabel?: string;
   isCompletedByLead: boolean;
   completedAt?: string;
   completedBy?: string;

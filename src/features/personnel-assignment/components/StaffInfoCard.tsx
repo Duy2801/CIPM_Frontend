@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarOutlined } from "@ant-design/icons";
+import { CalendarOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons";
 import { App } from "antd";
-import { Button, Form, Input, Select, Text } from "@/components/ui";
+import { Button, Form, Input, Select, Text, Tooltip } from "@/components/ui";
 import type { Employment, Staff, TeamId } from "../types/personnel.types";
 import { useCustomFieldDefs } from "../hooks/useCustomFieldDefs";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
@@ -23,6 +23,15 @@ interface StaffInfoFormValues {
   dob?: string;
   customFields?: Record<string, unknown>;
 }
+
+interface NewField {
+  id: string;
+  label: string;
+  value: string;
+}
+
+/** Tên các ô có sẵn (thông tin bổ sung không được trùng) */
+const FIXED_LABELS = ["chức danh", "phòng ban", "phòng ban / tổ chuyên môn", "email công vụ", "hình thức tuyển dụng", "giới tính", "ngày sinh"];
 
 const EMPTY_TEXT = <span className="font-normal italic text-slate-400">Chưa cập nhật</span>;
 
@@ -97,8 +106,59 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
           .map((f) => ({ label: f.label, from: f.value, to: watched.customFields?.[f.key] })),
       ]
     : [];
-  const isDirty = changes.length > 0;
+  // Thông tin bổ sung mới đang nhập (chưa lưu): mỗi dòng một tên thông tin + nội dung
+  const [newFields, setNewFields] = useState<NewField[]>([]);
+  const [newFieldError, setNewFieldError] = useState<string>();
+  const [savingFieldId, setSavingFieldId] = useState<string>();
+  // Thông tin bổ sung mới lưu ngay từng dòng, không tính vào thanh "Lưu thay đổi"
+  const allChanges = changes;
+  const isDirty = allChanges.length > 0;
 
+  const addNewField = () => {
+    setNewFields((prev) => [...prev, { id: `nf-${Date.now()}`, label: "", value: "" }]);
+    setNewFieldError(undefined);
+  };
+  const updateNewField = (id: string, patch: Partial<NewField>) => {
+    setNewFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    setNewFieldError(undefined);
+  };
+  const removeNewField = (id: string) => setNewFields((prev) => prev.filter((f) => f.id !== id));
+
+  /** Kiểm tra một dòng mới: đủ tên + nội dung, tên không trùng thông tin đã có */
+  const validateNewField = (f: NewField): string | undefined => {
+    const label = f.label.trim();
+    if (!label) return "Vui lòng nhập tên thông tin.";
+    if (!f.value.trim()) return `Vui lòng nhập nội dung cho "${label}".`;
+    const taken = new Set([
+      ...FIXED_LABELS,
+      ...ownCustomFields.map((c) => c.label.toLowerCase()),
+      ...ownCustomFields.map((c) => c.key.toLowerCase()),
+    ]);
+    if (taken.has(label.toLowerCase())) return `Thông tin "${label}" đã có, vui lòng đặt tên khác.`;
+  };
+
+  /** Lưu ngay một thông tin bổ sung vào hồ sơ (chỉ ghi phần thông tin bổ sung) */
+  const saveNewField = async (f: NewField) => {
+    const problem = validateNewField(f);
+    if (problem) {
+      setNewFieldError(problem);
+      return;
+    }
+    setSavingFieldId(f.id);
+    try {
+      await updateStaff.run({
+        staffId: staff.id,
+        input: { customFields: { ...(staff.customFields || {}), [f.label.trim()]: f.value.trim() } },
+        successText: `Đã bổ sung "${f.label.trim()}" vào hồ sơ của cán bộ ${staff.name}.`,
+      });
+      // Form dựng từ hồ sơ lúc mở: ghi luôn giá trị mới vào form để ô vừa thêm hiện đúng nội dung,
+      // không bị tính là "thay đổi chưa lưu"
+      form.setFieldValue(["customFields", f.label.trim()], f.value.trim());
+      removeNewField(f.id);
+    } finally {
+      setSavingFieldId(undefined);
+    }
+  };
 
   const resetChanges = () => form.setFieldsValue(initialValues);
 
@@ -132,7 +192,7 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
             : {}),
           ...(titleInput ?? {}),
         },
-        successText: `Đã lưu ${changes.length} thay đổi trong hồ sơ của cán bộ ${staff.name}.`,
+        successText: `Đã lưu ${allChanges.length} thay đổi trong hồ sơ của cán bộ ${staff.name}.`,
       });
     } finally {
       setSaving(false);
@@ -151,7 +211,7 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
       centered: true,
       width: 460,
       title: "Xác nhận thay đổi thông tin",
-      content: <StaffChangeSummary staffName={staff.name} changes={changes} />,
+      content: <StaffChangeSummary staffName={staff.name} changes={allChanges} />,
       okText: "Đồng ý lưu",
       cancelText: "Xem lại",
       okButtonProps: { className: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C]" },
@@ -161,9 +221,20 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
 
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
-      <Text className="mb-1 block text-xs font-bold text-slate-800 uppercase tracking-wide">
-        Thông tin cá nhân & công tác
-      </Text>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <Text className="block text-xs font-bold text-slate-800 uppercase tracking-wide">Thông tin cá nhân & công tác</Text>
+        {editable && (
+          <Button
+            intent="outline"
+            scale="compact"
+            icon={<PlusOutlined />}
+            onClick={addNewField}
+            className="!border-slate-200 text-xs font-semibold !text-slate-700 hover:!border-[#DC2626] hover:!text-[#DC2626]"
+          >
+            Bổ sung thông tin
+          </Button>
+        )}
+      </div>
       {anyEditable && <p className="m-0 mb-3 text-[11px] text-slate-500">Bấm vào ô thông tin để sửa trực tiếp.</p>}
 
       <Form form={form} layout="vertical" requiredMark={false} initialValues={initialValues}>
@@ -289,14 +360,63 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
               )}
             </StaffInfoFieldBox>
           ))}
+
+          {/* Thông tin bổ sung mới: nhập tên + nội dung, lưu cùng thanh "Lưu thay đổi" */}
+          {newFields.map((f, i) => (
+            <div
+              key={f.id}
+              className="flex items-start gap-2 rounded-lg border border-dashed border-[#DC2626]/40 bg-red-50/30 px-3 py-2 sm:col-span-2"
+            >
+              <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                <Input
+                  size="small"
+                  autoFocus={i === newFields.length - 1}
+                  value={f.label}
+                  maxLength={60}
+                  placeholder="Tên thông tin (VD: Số CCCD)"
+                  onChange={(e) => updateNewField(f.id, { label: e.target.value })}
+                />
+                <Input
+                  size="small"
+                  value={f.value}
+                  maxLength={500}
+                  placeholder="Nội dung"
+                  onChange={(e) => updateNewField(f.id, { value: e.target.value })}
+                  onPressEnter={() => saveNewField(f)}
+                />
+              </div>
+              <Tooltip title="Lưu thông tin">
+                <button
+                  type="button"
+                  aria-label="Lưu thông tin bổ sung"
+                  disabled={savingFieldId === f.id}
+                  onClick={() => saveNewField(f)}
+                  className="mt-0.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-[#DC2626] text-white hover:bg-[#B91C1C] disabled:cursor-wait disabled:opacity-60"
+                >
+                  {savingFieldId === f.id ? <LoadingOutlined className="text-xs" /> : <CheckOutlined className="text-xs" />}
+                </button>
+              </Tooltip>
+              <Tooltip title="Bỏ dòng này">
+                <button
+                  type="button"
+                  aria-label="Bỏ thông tin bổ sung"
+                  onClick={() => removeNewField(f.id)}
+                  className="mt-0.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-transparent text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <CloseOutlined className="text-xs" />
+                </button>
+              </Tooltip>
+            </div>
+          ))}
         </div>
+        {newFieldError && <p className="m-0 mt-2 text-xs text-rose-600">{newFieldError}</p>}
       </Form>
 
       {/* Thanh lưu chỉ hiện khi có thay đổi chưa lưu */}
       {anyEditable && isDirty && (
         <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">
           <span className="text-xs text-amber-900">
-            Có <strong>{changes.length}</strong> thay đổi chưa lưu
+            Có <strong>{allChanges.length}</strong> thay đổi chưa lưu
           </span>
           <div className="flex items-center gap-2">
             <Button intent="outline" scale="compact" disabled={saving} onClick={resetChanges}>

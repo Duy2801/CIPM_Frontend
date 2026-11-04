@@ -118,4 +118,6 @@ export interface ProjectFormData {
   documents?: ProjectDocument[];
   /** Quy trình áp dụng khi tạo dự án: phòng ban → id quy trình (chỉ dùng lúc tạo mới) */
   procedures?: Record<string, string>;
+  /** Tên đầu mục (tên tab) đặt lúc tạo: id quy trình → tên (chỉ dùng lúc tạo mới) */
+  procedureTabLabels?: Record<string, string>;
 }

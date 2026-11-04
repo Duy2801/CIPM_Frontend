@@ -1,3 +1,5 @@
+import type { ApiAuditLog } from "@/features/personnel-assignment/services/personnel.mapper";
+import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
 import { PROCEDURE_CATEGORY } from "../constants/procedure-categories";
 import type { ProcedureStep, StepType } from "../types/procedure.types";
 import type { ProcedureLibraryItem, ProcedureStatus } from "../utils/procedure-library";
@@ -110,6 +112,7 @@ export function toProcedureStep(step: ApiProcedureStep, all: ApiProcedureStep[])
     durationDaysMin: days,
     durationDaysMax: days,
     plannedDays: days ?? undefined,
+    spanDays: step.spanDays ?? undefined,
     flowStage: step.flowStage ?? undefined,
     isEnabled: step.type === "MANDATORY" ? true : step.isEnabled,
     status: "NOT_STARTED",
@@ -176,3 +179,18 @@ export function toLibraryItem(api: ApiProcedure, steps: ProcedureStep[] = [], ca
     steps,
   };
 }
+
+/** Một dòng lịch sử backend (GET /audit-logs?module=procedures) → dòng trên dòng thời gian */
+export const toProcedureActivityEntry = (log: ApiAuditLog): ActivityEntry => ({
+  id: log.id,
+  at: log.at,
+  actorName: log.actorName || "Hệ thống",
+  actorRole: log.actorRole ?? undefined,
+  module: "Thủ tục XDCB",
+  action: log.action,
+  targetType: "procedure",
+  targetId: log.targetId ?? undefined,
+  targetName: log.targetName ?? undefined,
+  changes: log.changes ?? [],
+  note: log.note ?? undefined,
+});

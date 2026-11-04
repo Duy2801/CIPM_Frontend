@@ -5,7 +5,7 @@ import { FLOW_GUTTER, FLOW_INDENT, STEP_TYPE_OPTIONS, TYPE_COL } from "../consta
 import type { NewStepDraft } from "../hooks/useStepInlineAdd";
 import type { StepType } from "../types/procedure.types";
 import { getStepDepth } from "../utils/step-tree";
-import { InlineRowActions, StepAssigneeCells, StepDurationInput } from "./StepTableCells";
+import { InlineRowActions, StepAssigneeCells, StepDurationInput, StepSupervisorCell } from "./StepTableCells";
 
 const TONES = {
   main: {
@@ -50,7 +50,7 @@ export default function StepInlineAddRow({
     <div className={`flex flex-col gap-1 px-3.5 py-2 shadow-2xs ${tone.row}`}>
       <div className="flex items-center gap-3 w-full">
         <div
-          className={`w-32 shrink-0 flex items-center ${isSub ? "gap-0.5" : "gap-1.5 text-left"}`}
+          className={`w-24 shrink-0 flex items-center ${isSub ? "gap-0.5" : "gap-1.5 text-left"}`}
           style={{ paddingLeft: FLOW_GUTTER + (parentCode ? FLOW_INDENT * (getStepDepth(parentCode) + 1) : 0) }}
         >
           {isSub && <span className="text-[#DC2626] font-mono text-xs select-none">└</span>}
@@ -73,7 +73,7 @@ export default function StepInlineAddRow({
                 : "Nhập tên bước chính (nhấn Enter để thêm)..."
             }
             autoFocus
-            className={`h-7 text-xs bg-white w-full ${draft.error ? "border-rose-500 ring-1 ring-rose-200" : tone.name}`}
+            className={`h-7 text-xs bg-white w-full ${draft.missing.includes("name") ? "border-rose-500 ring-1 ring-rose-200" : tone.name}`}
             onKeyDown={onKeyDown}
           />
         </div>
@@ -83,9 +83,20 @@ export default function StepInlineAddRow({
           options={staffOptions}
           email={email}
           onChange={(assignee) => onChange({ assignee })}
+          invalid={draft.missing.includes("assignee")}
         />
 
-        <StepDurationInput days={draft.days} onChange={(days) => onChange({ days })} />
+        <StepSupervisorCell
+          value={draft.supervisor}
+          options={staffOptions}
+          onChange={(supervisor) => onChange({ supervisor })}
+        />
+
+        <StepDurationInput
+          days={draft.days}
+          onChange={(days) => onChange({ days })}
+          invalid={draft.missing.includes("days")}
+        />
 
         <div className={`${TYPE_COL} flex items-center justify-center`}>
           <Select

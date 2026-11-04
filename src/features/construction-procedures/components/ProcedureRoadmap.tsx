@@ -7,6 +7,7 @@ import { EDGE_SCROLL_ZONE } from "../constants/roadmap-layout";
 import { useStickyScrollbar } from "../hooks/useStickyScrollbar";
 import type { ProcedureStep } from "../types/procedure.types";
 import { getSiblingSteps, getStageColumns, moveStepToStage } from "../utils/step-dependencies";
+import { getSpanDays } from "../utils/procedure-progress";
 import RoadmapBranches from "./RoadmapBranches";
 import RoadmapStepFlow, { type ChangeStagesHandler, type RoadmapStepView } from "./RoadmapStepFlow";
 
@@ -59,12 +60,15 @@ export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStag
 
   const setOrder = (step: ProcedureStep, si: number, value: string) => {
     if (value === SEQUENTIAL) {
-      if (mainStages[si].length > 1)
+      if (mainStages[si].length > 1) {
+        // Giữ đúng thứ tự giai đoạn: bước đứng đầu nhóm song song tách ra phía trước, còn lại tách ra phía sau
+        const insertAt = mainStages[si][0].id === step.id ? si : si + 1;
         onChangeStages?.(
-          moveStepToStage(mains, step.id, { insertAt: si + 1 }),
+          moveStepToStage(mains, step.id, { insertAt }),
           `Giai đoạn ${step.code} làm lần lượt, không song song với giai đoạn khác.`,
-          { stepId: step.id, drop: { insertAt: si + 1 } },
+          { stepId: step.id, drop: { insertAt } },
         );
+      }
       return;
     }
     const target = stageOf(value);
@@ -96,6 +100,12 @@ export default function ProcedureRoadmap({ steps, stickyBottom = 0, onChangeStag
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1.5">
             <span className="text-[14.5px] font-semibold text-slate-900">{s.name}</span>
+            <span
+              className="rounded-full bg-red-50 px-2 py-0.5 text-[11.5px] font-semibold text-[#DC2626] ring-1 ring-red-100"
+              title="Tổng số ngày hoàn thành giai đoạn: các bước làm lần lượt cộng lại, bước song song lấy bước lâu nhất"
+            >
+              {getSpanDays(steps, s)} ngày
+            </span>
             {mains.length > 1 &&
               (onChangeStages ? (
                 <span className={`inline-flex items-center rounded-full pl-2.5 ring-1 ${tone ? tone.pill : "bg-slate-50 ring-slate-200"}`}>

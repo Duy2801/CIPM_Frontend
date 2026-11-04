@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { EditOutlined, StopOutlined } from "@ant-design/icons";
-import { Button, Card, Flex, Pagination, Tag, Text, Tooltip } from "@/components/ui";
+import { EditOutlined } from "@ant-design/icons";
+import { Button, Card, Flex, Pagination, Switch, Tag, Text, Tooltip } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
+import { formatDateVi } from "@/utils/date";
 import { useAuth } from "@/features/auth";
 import {
   getProjectHealthStatus,
@@ -152,9 +153,9 @@ function SortColumnHeader({
   return (
     <th
       scope="col"
-      className={`${widthClass} ${paddingClass} group/col cursor-pointer transition-colors select-none hover:bg-slate-100/90 ${
+      className={`${widthClass} ${paddingClass} group/col cursor-pointer transition-colors select-none hover:bg-slate-200/70 ${
         align === "center" ? "text-center" : "text-left"
-      } ${direction ? "bg-slate-100/60" : ""}`}
+      } ${direction ? "bg-red-50/70" : ""}`}
       onClick={handleClick}
       title={title}
       aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none"}
@@ -165,14 +166,38 @@ function SortColumnHeader({
         }`}
       >
         <span
-          className={`transition-colors text-[11px] font-bold uppercase tracking-wider ${
-            direction ? "text-[#DC2626] font-extrabold" : "text-slate-600 group-hover/col:text-slate-900"
+          className={`whitespace-nowrap transition-colors text-[11px] font-bold uppercase tracking-wider ${
+            direction ? "text-[#DC2626] font-extrabold" : "text-slate-700 group-hover/col:text-slate-900"
           }`}
         >
           {label}
         </span>
         <SortIcon direction={direction} />
       </div>
+    </th>
+  );
+}
+
+/** Tiêu đề cột không sắp xếp */
+function PlainColumnHeader({
+  label,
+  widthClass,
+  align = "left",
+  paddingClass = "px-3 py-2",
+}: {
+  label: string;
+  widthClass: string;
+  align?: "left" | "center";
+  paddingClass?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      className={`${widthClass} ${paddingClass} whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-slate-700 ${
+        align === "center" ? "text-center" : "text-left"
+      }`}
+    >
+      {label}
     </th>
   );
 }
@@ -211,23 +236,11 @@ export default function ProjectsTable({
       rounded="lg"
       className="w-full border border-slate-200/80 shadow-xs overflow-hidden select-none flex-1 flex flex-col justify-between [&>.ant-card-body]:flex-1 [&>.ant-card-body]:flex [&>.ant-card-body]:flex-col [&>.ant-card-body]:justify-between [&>.ant-card-body]:h-full"
     >
-      <div className="order-last w-full overflow-x-auto flex-1 flex flex-col">
-        <table className="w-full min-w-[960px] table-fixed text-left border-collapse flex-1 h-full">
+      <div className="w-full overflow-x-auto flex-1 flex flex-col">
+        <table className="w-full min-w-[960px] table-fixed text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-600 uppercase tracking-wider h-[40px]">
-              <SortColumnHeader
-                label="DỰ ÁN"
-                widthClass="w-[30%]"
-                paddingClass="px-3.5 py-2"
-                currentSort={sortBy}
-                onSortChange={onSortChange}
-                sortKeys={{
-                  asc: "code_asc",
-                  desc: "code_desc",
-                  matches: (s) => s.startsWith("code_") || s.startsWith("name_"),
-                }}
-                defaultSort="asc"
-              />
+            <tr className="h-[44px] border-b-2 border-slate-200 bg-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-700">
+              <PlainColumnHeader label="DỰ ÁN" widthClass="w-[30%]" paddingClass="px-3.5 py-2" />
               <SortColumnHeader
                 label="VỐN ĐẦU TƯ (VNĐ)"
                 widthClass="w-[12%]"
@@ -247,25 +260,8 @@ export default function ProjectsTable({
                 sortKeys={{ asc: "progress_asc", desc: "progress_desc" }}
                 defaultSort="desc"
               />
-              <SortColumnHeader
-                label="CHỦ NHIỆM"
-                widthClass="w-[15%]"
-                paddingClass="px-3 py-2"
-                currentSort={sortBy}
-                onSortChange={onSortChange}
-                sortKeys={{ asc: "manager_asc", desc: "manager_desc" }}
-                defaultSort="asc"
-              />
-              <SortColumnHeader
-                label="BẮT ĐẦU"
-                widthClass="w-[10%]"
-                align="center"
-                paddingClass="px-2.5 py-2"
-                currentSort={sortBy}
-                onSortChange={onSortChange}
-                sortKeys={{ asc: "startDate_asc", desc: "startDate_desc" }}
-                defaultSort="desc"
-              />
+              <PlainColumnHeader label="CHỦ NHIỆM" widthClass="w-[15%]" paddingClass="px-3 py-2" />
+              <PlainColumnHeader label="BẮT ĐẦU" widthClass="w-[10%]" align="center" paddingClass="px-2.5 py-2" />
               <SortColumnHeader
                 label="HOÀN THÀNH"
                 widthClass="w-[10%]"
@@ -276,12 +272,10 @@ export default function ProjectsTable({
                 sortKeys={{ asc: "endDate_asc", desc: "endDate_desc" }}
                 defaultSort="asc"
               />
-              <th className="w-[11%] px-2 py-2 text-center text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                THAO TÁC
-              </th>
+              <PlainColumnHeader label="THAO TÁC" widthClass="w-[11%]" align="center" paddingClass="px-2 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-xs h-full">
+          <tbody className="divide-y divide-slate-100 text-xs">
             {projects.length === 0 ? (
               <tr>
                 <td colSpan={7} className="h-full text-center text-slate-400 py-16">
@@ -307,13 +301,12 @@ export default function ProjectsTable({
                   return (
                     <tr
                       key={prj.id}
-                      style={{ height: `${100 / pageSize}%` }}
-                      className={`transition-colors group cursor-pointer ${isClosed ? "bg-slate-50/60 opacity-85 hover:bg-slate-100/70" : "hover:bg-slate-50/70"
+                      className={`h-12 transition-colors group cursor-pointer ${isClosed ? "bg-slate-50/60 opacity-85 hover:bg-slate-100/70" : "hover:bg-slate-50/70"
                         }`}
                       onClick={() => onViewDetail(prj)}
                     >
                       <td className="px-3.5 py-1.5 align-middle">
-                        <Flex vertical gap={1} className="min-w-0">
+                        <Flex vertical className="min-w-0">
                           <Flex align="center" gap={6}>
                             <Text
                               strong
@@ -328,9 +321,6 @@ export default function ProjectsTable({
                               </Tag>
                             )}
                           </Flex>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {prj.code} {prj.location ? `• ${prj.location}` : ""}
-                          </span>
                         </Flex>
                       </td>
 
@@ -353,12 +343,12 @@ export default function ProjectsTable({
                         </Text>
                       </td>
 
-                      <td className="px-2.5 py-1.5 align-middle text-center whitespace-nowrap font-mono text-slate-700 text-xs">
-                        {prj.startDate}
+                      <td className="px-2.5 py-1.5 align-middle text-center whitespace-nowrap text-slate-700 text-xs">
+                        {prj.startDate ? formatDateVi(prj.startDate) : "—"}
                       </td>
 
-                      <td className="px-2.5 py-1.5 align-middle text-center whitespace-nowrap font-mono text-slate-700 text-xs">
-                        {prj.endDatePlanned}
+                      <td className="px-2.5 py-1.5 align-middle text-center whitespace-nowrap text-slate-700 text-xs">
+                        {prj.endDatePlanned ? formatDateVi(prj.endDatePlanned) : "—"}
                       </td>
 
                       <td
@@ -381,23 +371,15 @@ export default function ProjectsTable({
                           </Tooltip>
 
                           {onCloseProject && deletePerm.allowed && (
-                            <Tooltip
-                              title={
-                                isClosed
-                                  ? "Mở lại dự án"
-                                  : "Đóng dự án (Quy tắc 5)"
-                              }
-                            >
-                              <Button
-                                scale="compact"
-                                className="h-7 w-7 p-0 flex items-center justify-center text-rose-600 hover:bg-rose-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onCloseProject(prj);
-                                }}
-                              >
-                                <StopOutlined className="text-xs" />
-                              </Button>
+                            <Tooltip title={isClosed ? "Bật lại dự án" : "Tắt (đóng) dự án"}>
+                              <Switch
+                                size="small"
+                                checked={!isClosed}
+                                aria-label={`${isClosed ? "Bật lại" : "Tắt"} dự án ${prj.code}`}
+                                onClick={(_checked, e) => e.stopPropagation()}
+                                onChange={() => onCloseProject(prj)}
+                                className={isClosed ? "" : "!bg-[#DC2626]"}
+                              />
                             </Tooltip>
                           )}
                         </Flex>
@@ -406,12 +388,6 @@ export default function ProjectsTable({
                   );
                 })}
 
-                {/* Giữ đúng chiều cao cố định cho các hàng kể cả khi trang có ít hơn pageSize dự án */}
-                {Array.from({ length: Math.max(0, pageSize - projects.length) }).map((_, idx) => (
-                  <tr key={`empty-slot-${idx}`} style={{ height: `${100 / pageSize}%` }} className="border-b border-transparent">
-                    <td colSpan={7} className="px-3.5 py-1.5 pointer-events-none select-none">&nbsp;</td>
-                  </tr>
-                ))}
               </>
             )}
           </tbody>

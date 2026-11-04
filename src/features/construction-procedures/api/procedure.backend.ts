@@ -1,4 +1,5 @@
 import apiClient from "@/config";
+import type { ApiAuditLog } from "@/features/personnel-assignment/services/personnel.mapper";
 import type {
   ApiProcedure,
   ApiProcedureDetail,
@@ -62,4 +63,10 @@ export async function createProcedureApi(body: {
   steps: ApiStepInput[];
 }): Promise<ApiProcedureDetail> {
   return (await apiClient.post<ApiProcedureDetail>("procedures", body)).data;
+}
+
+/** GET /audit-logs?module=procedures&targetId=:id — lịch sử thay đổi của một quy trình (mới nhất trước, tối đa 200) */
+export async function getProcedureAuditLogsApi(procedureId: string): Promise<ApiAuditLog[]> {
+  return (await apiClient.get<ApiAuditLog[]>("audit-logs", { params: { module: "procedures", targetId: procedureId } }))
+    .data;
 }

@@ -3,13 +3,22 @@
 import { useRef } from "react";
 import { FolderAddOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui";
-import { ACTION_COL, ASSIGNEE_COL, DATE_COL, EMAIL_COL, STICKY_HEADER_TOP, TYPE_COL } from "../constants/step-table";
+import {
+  ACTION_COL,
+  ASSIGNEE_COL,
+  DATE_COL,
+  EMAIL_COL,
+  STICKY_HEADER_TOP,
+  SUPERVISOR_COL,
+  TYPE_COL,
+} from "../constants/step-table";
 import type { StepInlineAdd } from "../hooks/useStepInlineAdd";
 import type { StepRowEdit } from "../hooks/useStepRowEdit";
 import type { StepStaff } from "../hooks/useStepStaff";
 import type { StepTree } from "../hooks/useStepTree";
 import { useStickyScrollbar } from "../hooks/useStickyScrollbar";
 import type { ProcedureStep } from "../types/procedure.types";
+import { buildDurationFields, getSpanDays } from "../utils/step-duration";
 import StepInlineAddRow from "./StepInlineAddRow";
 import StepTableRow from "./StepTableRow";
 
@@ -43,6 +52,13 @@ export default function StepTable({
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const { bodyRef, barRef, scrollWidth, overflows, syncFromBody, syncFromBar } = useStickyScrollbar();
 
+  // Số ngày tính theo cả số đang gõ (dòng đang sửa, dòng thêm bước con) để bước cha nhảy ngay, chưa cần lưu
+  const previewSteps = adding.withDraftDays(
+    edit.editingStepId
+      ? steps.map((s) => (s.id === edit.editingStepId ? { ...s, ...buildDurationFields(edit.draft.days) } : s))
+      : steps,
+  );
+
   const lastCodeForActiveParent = adding.activeParent
     ? tree.visibleSteps.reduce(
         (last, s) => (s.code === adding.activeParent || s.code.startsWith(`${adding.activeParent}.`) ? s.code : last),
@@ -60,22 +76,11 @@ export default function StepTable({
         <div
           className={`flex ${TABLE_MIN_WIDTH} items-center gap-3 border-l-[3px] border-l-transparent px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600`}
         >
-          <div className="flex w-32 shrink-0 items-center gap-1.5 pl-1 text-left">
-            Mã bước
-            {tree.canToggleAll && (
-              <Button
-                intent="textLink"
-                size="small"
-                onClick={tree.toggleAll}
-                className="!px-1 text-[10px] normal-case tracking-normal"
-              >
-                {tree.allExpanded ? "Thu gọn" : "Mở hết"}
-              </Button>
-            )}
-          </div>
+          <div className="w-24 shrink-0 pl-1 text-left">Mã bước</div>
           <div className="min-w-0 flex-1">Tên bước / Bước con</div>
           <div className={ASSIGNEE_COL}>Người thực hiện</div>
           <div className={`${EMAIL_COL} pl-2`}>Email</div>
+          <div className={SUPERVISOR_COL}>Người giám sát</div>
           <div className={`${DATE_COL} hidden sm:block text-center`}>Thời gian</div>
           <div className={`${TYPE_COL} text-center`}>Loại</div>
           <div className={`${ACTION_COL} text-center`}>Thao tác</div>
@@ -118,6 +123,8 @@ export default function StepTable({
                   <StepTableRow
                     step={step}
                     flow={tree.getFlowProps(step)}
+                    spanDays={getSpanDays(previewSteps, step)}
+                    durationFromChildren={previewSteps.some((s) => s.code.startsWith(`${step.code}.`))}
                     edit={edit}
                     staff={staff}
                     isAddingChild={adding.activeParent === step.code}

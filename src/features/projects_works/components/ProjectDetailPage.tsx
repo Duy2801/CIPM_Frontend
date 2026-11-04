@@ -5,10 +5,11 @@ import { App } from "antd";
 import {
   ApartmentOutlined,
   ArrowLeftOutlined,
+  DollarOutlined,
   HistoryOutlined,
   ProfileOutlined,
 } from "@ant-design/icons";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, Select } from "@/components/ui";
 import { InlineEditField, type SegmentedTabItem } from "@/components/workspace";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
@@ -32,11 +33,12 @@ import type { ProcedureLibraryItem } from "@/features/construction-procedures/ut
 import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
 import { ProjectDocumentsSection } from "./detail/ProjectViewTab";
 import ProjectProcedureTab from "./detail/ProjectProcedureTab";
-import ProjectProcedurePicker, { procedureTarget } from "./ProjectProcedurePicker";
+import ProjectProcedurePicker, { procedureTarget, shortProcedureLabel } from "./ProjectProcedurePicker";
 import ProjectHistoryTab from "./detail/ProjectHistoryTab";
+import ProjectDisbursementTab from "./detail/ProjectDisbursementTab";
 
 /** "proc:<phòng ban>" = tab quy trình của phòng ban đó */
-type DetailTab = "info" | `proc:${string}` | "history";
+type DetailTab = "info" | `proc:${string}` | "disbursement" | "history";
 
 /** Các trường sửa được bằng bút chì trên trang chi tiết */
 type EditablePatch = Partial<
@@ -110,6 +112,8 @@ interface ProjectDetailPageProps {
   onUpdateProject: (projectId: string, data: ProjectFormData) => void;
   /** Quy trình thay đổi: cập nhật phòng ban phụ trách + phần trăm hoàn thành của dự án */
   onProcedureSync: (projectId: string, sync: ProjectProcedureSync) => void;
+  /** Tổng giải ngân của dự án thay đổi (thêm / xóa đợt ở tab Giải ngân) */
+  onDisbursedChange: (projectId: string, total: number) => void;
 }
 
 /** Trang con chi tiết dự án: xem và sửa trực tiếp từng trường bằng bút chì, bấm "Lưu thay đổi" để ghi lại */
@@ -118,6 +122,7 @@ export default function ProjectDetailPage({
   onBack,
   onUpdateProject,
   onProcedureSync,
+  onDisbursedChange,
 }: ProjectDetailPageProps) {
   const { modal, message } = App.useApp();
   const { user } = useAuth();
@@ -228,6 +233,8 @@ export default function ProjectDetailPage({
   const { appliedDepartments, departmentStatus } = procedure;
 
   const canViewProcedure = canUserDo(user, "m3_construction_procedures", "view");
+  // Nhập giải ngân: quyền nhập liệu M4 (Tài chính & Quyết toán)
+  const canDisburse = canUserDo(user, "m4_finance_settlement", "input") && !isClosed;
   const [tab, setActiveTab] = useState<DetailTab>("info");
   // Quy trình chọn được: quy trình đang bật + quy trình dự án đang dùng (kể cả đã ngưng)
   const { procedures: library } = useProcedureLibrary();
@@ -246,9 +253,11 @@ export default function ProjectDetailPage({
       ? appliedDepartments.map((dept) => ({
           key: `proc:${dept}` as const,
           icon: <ApartmentOutlined />,
-          label: departmentStatus(dept)?.procedureName ?? dept,
+          // Tên đầu mục đã đặt, không có thì tên quy trình rút gọn
+          label: departmentStatus(dept)?.tabLabel || shortProcedureLabel(departmentStatus(dept)?.procedureName ?? dept),
         }))
       : []),
+    { key: "disbursement", icon: <DollarOutlined />, label: "Giải ngân" },
     { key: "history", icon: <HistoryOutlined />, label: "Lịch sử" },
   ];
   // Tab vừa bị ẩn (gỡ quy trình) thì về "Thông tin chung"
@@ -297,22 +306,6 @@ export default function ProjectDetailPage({
     } else apply();
   };
 
-  const retargetProcedure = (procedureId: string, to: string) => {
-    const item = library.find((p) => p.id === procedureId);
-    const from = Object.entries(appliedProcedures).find(([, id]) => id === procedureId)?.[0];
-    if (!item || !from || from === to) return;
-    confirmProcedure(
-      "Chuyển quy trình sang phòng ban khác?",
-      `"${item.name}" sẽ chuyển từ ${from} sang ${to}; phân công và tiến độ hiện có sẽ bị xóa${
-        appliedProcedures[to] ? `, quy trình đang áp dụng của ${to} cũng bị thay` : ""
-      }.`,
-      () => {
-        procedure.retargetProcedure(from, to, item);
-        message.success(`Đã chuyển "${item.name}" sang ${to}.`);
-      },
-    );
-  };
-
   return (
     <div className="flex flex-col gap-3">
       {/* Đầu trang: quay lại + tên dự án đang xem */}
@@ -343,6 +336,14 @@ export default function ProjectDetailPage({
       {activeTab.startsWith("proc:") && (
         <ProjectProcedureTab key={activeTab} department={activeTab.slice(5)} controller={procedure} />
       )}
+      {activeTab === "disbursement" && (
+        <ProjectDisbursementTab
+          project={project}
+          operatorName={user?.name || user?.displayName || "Cán bộ quản lý"}
+          canDisburse={canDisburse}
+          onTotalChange={(total) => onDisbursedChange(project.id, total)}
+        />
+      )}
       {activeTab === "history" && <ProjectHistoryTab project={project} procedureLogs={procedure.data.history ?? []} />}
 
       {activeTab === "info" && (
@@ -350,7 +351,7 @@ export default function ProjectDetailPage({
           {/* Thông tin dự án: tràn hết chiều ngang (cùng bố cục với trang thêm dự án) */}
           <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
             <div className="space-y-4 p-4">
-              <FieldGroup title="Thông tin chung">
+              <FieldGroup title="Thông tin chung" cols="even3">
                 <InlineEditField
                   label={FIELD_LABELS.name}
                   changed={isChanged("name")}
@@ -358,14 +359,6 @@ export default function ProjectDetailPage({
                   display={view.name}
                   editor={{ kind: "text", placeholder: "Tên công trình" }}
                   onSave={infoSaver("name", (v) => v)}
-                />
-                <InlineEditField
-                  label={FIELD_LABELS.type}
-                  changed={isChanged("type")}
-                  value={view.type}
-                  display={view.type}
-                  editor={{ kind: "select", options: WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t })) }}
-                  onSave={infoSaver("type", (v) => v as ProjectWorkType)}
                 />
                 <InlineEditField
                   label={FIELD_LABELS.nature}
@@ -474,12 +467,44 @@ export default function ProjectDetailPage({
               <ProjectProcedurePicker
                 library={pickable}
                 procedures={appliedProcedures}
+                tabLabels={Object.fromEntries(
+                  appliedDepartments.flatMap((dept) => {
+                    const st = departmentStatus(dept);
+                    return st?.procedureId && st.tabLabel ? [[st.procedureId, st.tabLabel]] : [];
+                  }),
+                )}
+                onTabLabelChange={(procedureId, label) => {
+                  const dept = Object.entries(appliedProcedures).find(([, id]) => id === procedureId)?.[0];
+                  if (dept) procedure.setTabLabel(dept, label);
+                }}
+                appliedNames={Object.fromEntries(
+                  appliedDepartments.flatMap((dept) => {
+                    const st = departmentStatus(dept);
+                    return st?.procedureId ? [[st.procedureId, st.procedureName ?? dept]] : [];
+                  }),
+                )}
                 onToggle={toggleProcedure}
-                onRetarget={retargetProcedure}
                 disabled={!canEditProcedures}
+                leading={{
+                  label: FIELD_LABELS.type,
+                  // Đổi loại dự án vẫn chờ "Lưu thay đổi" như các ô khác
+                  control: (
+                    <Select
+                      aria-label={FIELD_LABELS.type}
+                      value={view.type}
+                      disabled={!canEditInfo}
+                      onChange={(v: ProjectWorkType) => setField("type", v)}
+                      options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
+                      className={cn(
+                        "w-full text-xs",
+                        isChanged("type") && "[&_.ant-select-selector]:!border-amber-400 [&_.ant-select-selector]:!bg-amber-50/60",
+                      )}
+                    />
+                  ),
+                }}
                 hint={
                   canEditProcedures
-                    ? "Mỗi quy trình là một tab của dự án. Gỡ quy trình sẽ xóa các bước và tiến độ của quy trình đó; mỗi phòng ban áp dụng một quy trình."
+                    ? "Mỗi quy trình là một tab của dự án. Gỡ quy trình sẽ xóa các bước và tiến độ của quy trình đó."
                     : "Mỗi quy trình là một tab của dự án. Cần quyền cấu hình quy trình để thêm hoặc gỡ."
                 }
               />

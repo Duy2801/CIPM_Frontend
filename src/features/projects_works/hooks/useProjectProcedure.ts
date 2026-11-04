@@ -28,6 +28,7 @@ import {
   isReadyToStart,
   type StageSummary,
 } from "../utils/project-procedure-flow";
+import { withPlannedDates } from "../utils/step-schedule";
 
 /** Báo ra ngoài sau mỗi thay đổi: phòng ban đang áp dụng quy trình + phần trăm hoàn thành dự án */
 export interface ProjectProcedureSync {
@@ -105,7 +106,7 @@ const applyLog = (department: string, procedure: ProcedureSource, stepCount: num
 /** Dự án vừa tạo: ghi quy trình đã chọn cho từng phòng ban (không chọn phòng ban nào thì không ghi) */
 export function initProjectProcedure(
   project: ProjectItem,
-  selections: { department: string; procedure: ProcedureSource }[],
+  selections: { department: string; procedure: ProcedureSource; tabLabel?: string }[],
   actor: { name: string; role: string },
 ) {
   if (selections.length === 0) return;
@@ -113,11 +114,17 @@ export function initProjectProcedure(
   const steps = selections.map(({ department, procedure }) => toDepartmentSteps(project.id, department, procedure));
   saveProjectProcedure({
     ...createEmptyProcedure(project),
-    steps: steps.flat(),
+    steps: withPlannedDates(steps.flat(), project.startDate),
     departmentStatuses: Object.fromEntries(
-      selections.map(({ department, procedure }) => [
+      selections.map(({ department, procedure, tabLabel }) => [
         department,
-        { department, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name },
+        {
+          department,
+          isCompletedByLead: false,
+          procedureId: procedure.id,
+          procedureName: procedure.name,
+          tabLabel: tabLabel?.trim() || undefined,
+        },
       ]),
     ),
     history: selections.map(({ department, procedure }, i) => ({
@@ -142,7 +149,10 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
   const [data, setData] = useState<ProjectProcedureData>(
     () => {
       const saved = loadProjectProcedure(project.id, project.code);
-      return saved ? withProcedureAssignees(saved) : createEmptyProcedure(project);
+      if (!saved) return createEmptyProcedure(project);
+      const withAssignees = withProcedureAssignees(saved);
+      // Bước chưa có ngày kế hoạch: tự tính theo ngày bắt đầu dự án + số ngày từng bước
+      return { ...withAssignees, steps: withPlannedDates(withAssignees.steps, project.startDate) };
     },
   );
 
@@ -169,7 +179,7 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     next: Pick<ProjectProcedureData, "steps"> & Partial<ProjectProcedureData>,
     log: Omit<ProcedureHistoryLog, "id" | "timestamp" | "performedBy" | "role">,
   ) => {
-    const merged = { ...data, ...next };
+    const merged = { ...data, ...next, steps: withPlannedDates(next.steps, project.startDate) };
     const departments = getAppliedDepartments(merged.departmentStatuses, merged.steps);
     const updated: ProjectProcedureData = {
       ...merged,
@@ -222,21 +232,22 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     );
   };
 
-  /** Chuyển quy trình (không gắn phòng ban) từ phòng ban này sang phòng ban khác: bước được tạo lại từ đầu */
-  const retargetProcedure = (from: string, to: string, procedure: ProcedureSource) => {
-    const deptSteps = toDepartmentSteps(project.id, to, procedure);
-    const keep = (dept?: string) => !dept || (!isSameDepartment(dept, from) && !isSameDepartment(dept, to));
+  /** Đặt tên đầu mục (tên tab) cho quy trình của một phòng ban; để trống = dùng tên quy trình */
+  const setTabLabel = (department: string, label: string) => {
+    const entry = Object.entries(data.departmentStatuses ?? {}).find(([key]) => isSameDepartment(key, department));
+    if (!entry) return;
+    const [key, status] = entry;
+    const next = label.trim() || undefined;
+    if ((status.tabLabel ?? undefined) === next) return;
     commit(
+      { steps: data.steps, departmentStatuses: { ...data.departmentStatuses, [key]: { ...status, tabLabel: next } } },
       {
-        steps: [...data.steps.filter((s) => keep(s.department)), ...deptSteps],
-        departmentStatuses: {
-          ...Object.fromEntries(Object.entries(data.departmentStatuses ?? {}).filter(([key]) => keep(key))),
-          [to]: { department: to, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name },
-        },
-      },
-      {
-        ...applyLog(to, procedure, deptSteps.length),
-        details: `Chuyển "${procedure.name}" từ ${from} sang ${to} (${deptSteps.length} bước).`,
+        stepId: "DEPT-CONFIG",
+        stepCode: "THIET-LAP",
+        stepName: `Quy trình ${department}`,
+        action: "TOGGLE_STEP",
+        actionLabel: "Đổi tên tab quy trình",
+        details: `Đặt tên tab của "${status.procedureName ?? "quy trình"}" là "${next ?? "mặc định"}".`,
       },
     );
   };
@@ -362,6 +373,9 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
         submittedBy: actorName,
         submittedAt: date,
         submissionNote: input.note || step.submissionNote,
+        // Lần nộp mới chưa ai duyệt
+        approvedBy: undefined,
+        approvedAt: undefined,
       },
       {
         action: "START_STEP",
@@ -403,7 +417,15 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
   const returnStep = (step: ProcedureStep, reason: string) =>
     patchStep(
       step,
-      { status: "IN_PROGRESS", submissionStatus: "REJECTED", rejectionReason: reason, rejectedBy: actorName, rejectedAt: today() },
+      {
+        status: "IN_PROGRESS",
+        submissionStatus: "REJECTED",
+        rejectionReason: reason,
+        rejectedBy: actorName,
+        rejectedAt: today(),
+        approvedBy: undefined,
+        approvedAt: undefined,
+      },
       {
         action: "START_STEP",
         actionLabel: "Từ chối kết quả bước",
@@ -458,7 +480,7 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     progress,
     applyProcedure,
     removeProcedure,
-    retargetProcedure,
+    setTabLabel,
     drafts,
     draftCount,
     withDraft,

@@ -55,6 +55,18 @@ export function FlowBadge({ step }: { step: ProcedureStep }) {
 
 const date = (value?: string) => (value ? formatDateVi(value) : "—");
 
+/** Có ngày thực tế thì hiện ngày thực tế; chưa có thì hiện ngày kế hoạch (tự tính theo số ngày của bước) */
+const dateWithPlan = (actual?: string, planned?: string) =>
+  actual ? (
+    date(actual)
+  ) : planned ? (
+    <span>
+      {date(planned)} <span className="font-normal text-slate-400">(dự kiến)</span>
+    </span>
+  ) : (
+    "—"
+  );
+
 function StepDetail({
   step,
   controller,
@@ -98,13 +110,16 @@ function StepDetail({
             }
           />
           <Fact label="Trạng thái" value={<FlowBadge step={step} />} />
-          <Fact label="Bắt đầu thực tế" value={date(step.actualStartDate)} />
+          <Fact label="Ngày bắt đầu" value={dateWithPlan(step.actualStartDate, step.startDatePlanned)} />
           <Fact
-            label="Kết thúc thực tế"
-            value={date(step.actualEndDate || (step.status === "COMPLETED" ? step.approvedAt : undefined))}
+            label="Ngày kết thúc"
+            value={dateWithPlan(
+              step.actualEndDate || (step.status === "COMPLETED" ? step.approvedAt : undefined),
+              step.endDatePlanned,
+            )}
           />
           {step.submittedBy && <Fact label="Nộp kết quả" value={`${step.submittedBy} · ${date(step.submittedAt)}`} />}
-          {step.approvedBy && <Fact label="Duyệt bởi" value={`${step.approvedBy} · ${date(step.approvedAt)}`} />}
+          {step.approvedBy && step.status === "COMPLETED" && <Fact label="Duyệt bởi" value={`${step.approvedBy} · ${date(step.approvedAt)}`} />}
         </Section>
 
         {flow === "RETURNED" && step.rejectionReason && (

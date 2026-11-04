@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
 import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
 import { PERSONNEL_MOCK_DATA } from "@/features/personnel-assignment/constants/personnel-mock-data";
 import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
 import { stableHash } from "../constants/procedure-templates";
+import { fetchProcedureHistory } from "../services/procedure.service";
 import type { ProcedureStep } from "../types/procedure.types";
 import { getPlannedDays } from "../utils/procedure-progress";
 import { loadProcedureLibrary } from "../utils/procedure-library";
@@ -140,10 +141,41 @@ function buildEntries(procedureId: string, steps: ProcedureStep[]): ActivityEntr
   return entries.sort((x, y) => y.at.localeCompare(x.at));
 }
 
+type RemoteHistory =
+  | { status: "loading" }
+  | { status: "ready"; entries: ActivityEntry[] }
+  /** Không dùng backend: hiện lịch sử mẫu */
+  | { status: "local" }
+  | { status: "error"; message: string };
+
 export default function ProcedureChangeHistory({ procedureId, steps }: ProcedureChangeHistoryProps) {
   const [historyDate, setHistoryDate] = useState("");
-  const all = useMemo(() => (procedureId ? buildEntries(procedureId, steps) : []), [procedureId, steps]);
+  const [remote, setRemote] = useState<RemoteHistory>({ status: "loading" });
+
+  // Mỗi lần mở tab lấy lại lịch sử từ backend để thấy cả thay đổi vừa tự lưu
+  useEffect(() => {
+    if (!procedureId) return;
+    let cancelled = false;
+    fetchProcedureHistory(procedureId)
+      .then((entries) => {
+        if (!cancelled) setRemote(entries ? { status: "ready", entries } : { status: "local" });
+      })
+      .catch((e: unknown) => {
+        if (!cancelled)
+          setRemote({ status: "error", message: e instanceof Error ? e.message : "Không tải được lịch sử thay đổi." });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [procedureId]);
+
+  const all = useMemo(() => {
+    if (!procedureId) return [];
+    if (remote.status === "ready") return remote.entries;
+    return remote.status === "local" ? buildEntries(procedureId, steps) : [];
+  }, [procedureId, remote, steps]);
   const entries = historyDate ? all.filter((e) => toLocalDate(e.at) === historyDate) : all;
+  const loading = !!procedureId && remote.status === "loading";
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
@@ -161,9 +193,13 @@ export default function ProcedureChangeHistory({ procedureId, steps }: Procedure
           emptyText={
             !procedureId
               ? "Quy trình chưa được lưu nên chưa có lịch sử."
-              : historyDate
-                ? "Không có thay đổi nào trong ngày đã chọn."
-                : "Chưa có thay đổi nào được ghi nhận."
+              : loading
+                ? "Đang tải lịch sử thay đổi..."
+                : remote.status === "error"
+                  ? remote.message
+                  : historyDate
+                    ? "Không có thay đổi nào trong ngày đã chọn."
+                    : "Chưa có thay đổi nào được ghi nhận."
           }
         />
       </div>

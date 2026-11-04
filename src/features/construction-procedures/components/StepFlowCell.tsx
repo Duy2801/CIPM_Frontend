@@ -34,7 +34,7 @@ export default function StepFlowCell({
   const r = nodeR(depth);
   const isMain = depth === 0;
   return (
-    <div className="relative min-w-32 shrink-0 self-stretch -my-2.5">
+    <div className="relative min-w-24 shrink-0 self-stretch -my-2.5">
       {passLevels.map((level) => (
         <FlowVLine key={level} level={level} style={{ top: 0, bottom: 0 }} />
       ))}

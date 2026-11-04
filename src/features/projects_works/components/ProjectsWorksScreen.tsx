@@ -29,7 +29,8 @@ export default function ProjectsWorksScreen() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "active" | "closed">("ALL");
   const [sortBy, setSortBy] = useState<string>("latest");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 10;
+  // Hiện 15 dự án mỗi trang rồi mới phân trang
+  const pageSize = 15;
 
   // Trang con xem chi tiết và cập nhật inline (tiến độ tuần / thông tin dự án)
   const [detailProjectId, setDetailProjectId] = useState<string | null>(null);
@@ -225,7 +226,9 @@ const STAGE_ORDER: Record<string, number> = {
       newProject,
       Object.entries(data.procedures ?? {}).flatMap(([department, procedureId]) => {
         const procedure = library.find((p) => p.id === procedureId);
-        return procedure && newProject.departments?.includes(department) ? [{ department, procedure }] : [];
+        return procedure && newProject.departments?.includes(department)
+          ? [{ department, procedure, tabLabel: data.procedureTabLabels?.[procedureId] }]
+          : [];
       }),
       { name: creatorName, role: user?.roleName || "Cán bộ Ban QLDA" },
     );
@@ -305,6 +308,10 @@ const STAGE_ORDER: Record<string, number> = {
   };
 
   // Quy trình của dự án thay đổi: phòng ban phụ trách + phần trăm hoàn thành tự cập nhật theo quy trình
+  // Tab Giải ngân: cập nhật tổng đã giải ngân của dự án (dùng cho quy tắc không xóa dự án đã phát sinh tài chính)
+  const handleDisbursedChange = (projectId: string, total: number) =>
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, disbursedAmount: total } : p)));
+
   const handleProcedureSync = (projectId: string, sync: ProjectProcedureSync) => {
     const updaterName = user?.name || user?.displayName || "Cán bộ quản lý";
     setProjects((prev) =>
@@ -415,6 +422,7 @@ const STAGE_ORDER: Record<string, number> = {
           onBack={closeDetail}
           onUpdateProject={handleUpdateProject}
           onProcedureSync={handleProcedureSync}
+          onDisbursedChange={handleDisbursedChange}
         />
       ) : (
         <>

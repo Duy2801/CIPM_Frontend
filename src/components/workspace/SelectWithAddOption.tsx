@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button, Divider, Input, Select } from "@/components/ui";
+import { Button, cn, Divider, Input, Select } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 
 interface SelectWithAddOptionProps {
@@ -17,8 +17,9 @@ interface SelectWithAddOptionProps {
   placeholder?: string;
   notFoundContent?: ReactNode;
   /** Ô nhỏ (dùng trong dòng bảng) */
-  size?: "small" | "middle";
+  size?: "small" | "middle" | "large";
   "aria-label"?: string;
+  className?: string;
 }
 
 /** Ô chọn có thêm ô nhập ở cuối danh sách: gõ tên mới rồi bấm "Thêm" (hoặc Enter) */
@@ -33,6 +34,7 @@ export default function SelectWithAddOption({
   notFoundContent,
   size,
   "aria-label": ariaLabel,
+  className,
 }: SelectWithAddOptionProps) {
   const [query, setQuery] = useState("");
   const name = query.trim();
@@ -63,7 +65,7 @@ export default function SelectWithAddOption({
         setQuery("");
       }}
       notFoundContent={notFoundContent}
-      className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+      className={cn("w-full text-xs [&_.ant-select-selector]:!rounded-lg", className)}
       popupRender={(menu) => (
         <>
           {menu}

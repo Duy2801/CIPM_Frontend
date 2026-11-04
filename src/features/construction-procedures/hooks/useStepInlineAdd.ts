@@ -9,18 +9,39 @@ import {
   insertStepHierarchically,
   isDescendantOf,
 } from "../utils/step-tree";
+import { missingFieldsMessage, missingStepFields, type StepRequiredField } from "../utils/step-validation";
 import type { StepStaff } from "./useStepStaff";
 
 export interface NewStepDraft {
   code: string;
   name: string;
   assignee: string;
+  /** Người giám sát (không bắt buộc) */
+  supervisor: string;
   days: string;
   type: StepType;
   error: string;
+  /** Ô bắt buộc còn trống (chỉ có sau khi bấm thêm) */
+  missing: StepRequiredField[];
 }
 
-const EMPTY_DRAFT: NewStepDraft = { code: "", name: "", assignee: "", days: "", type: "MANDATORY", error: "" };
+const EMPTY_DRAFT: NewStepDraft = { code: "", name: "", assignee: "", supervisor: "", days: "", type: "MANDATORY", error: "", missing: [] };
+
+/** Đã báo thiếu thì kiểm tra lại mỗi lần nhập, ô nào đủ thì bỏ tô đỏ */
+const patchDraft = (d: NewStepDraft, patch: Partial<NewStepDraft>): NewStepDraft => {
+  const next = { ...d, ...patch };
+  if (!d.error) return next;
+  const missing = missingStepFields(next);
+  return { ...next, missing, error: missing.length ? missingFieldsMessage(missing) : "" };
+};
+
+/** Trả về bản nháp kèm lỗi nếu còn thiếu thông tin, null nếu đã đủ */
+const withMissing = (d: NewStepDraft): NewStepDraft | null => {
+  const missing = missingStepFields(d);
+  return missing.length ? { ...d, missing, error: missingFieldsMessage(missing) } : null;
+};
+
+const CLEARED = { name: "", assignee: "", supervisor: "", days: "", error: "", missing: [] as StepRequiredField[] };
 
 interface UseStepInlineAddOptions {
   steps: ProcedureStep[];
@@ -44,6 +65,8 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
       days: draft.days,
       assignedTo: draft.assignee,
       assignedToId: staff.staffIdOf(draft.assignee),
+      supervisor: draft.supervisor,
+      supervisorId: staff.staffIdOf(draft.supervisor),
     });
 
   const toggleMain = () => {
@@ -58,12 +81,12 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
 
   const closeMain = () => setIsAddingMain(false);
 
-  const updateMain = (patch: Partial<NewStepDraft>) =>
-    setMainDraft((d) => ({ ...d, ...patch, ...("name" in patch ? { error: "" } : {}) }));
+  const updateMain = (patch: Partial<NewStepDraft>) => setMainDraft((d) => patchDraft(d, patch));
 
   const saveMain = () => {
-    if (!mainDraft.name.trim()) {
-      setMainDraft((d) => ({ ...d, error: "Vui lòng nhập tên bước chính" }));
+    const invalid = withMissing(mainDraft);
+    if (invalid) {
+      setMainDraft(invalid);
       return;
     }
     confirmChange(
@@ -72,11 +95,11 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
       () => {
         setSteps(insertStepHierarchically(steps, build(steps, null, mainDraft)));
         setIsAddingMain(false);
-        setMainDraft((d) => ({ ...d, name: "", error: "" }));
+        setMainDraft((d) => ({ ...d, ...CLEARED }));
       },
       () => {
         setIsAddingMain(false);
-        setMainDraft((d) => ({ ...d, name: "", error: "" }));
+        setMainDraft((d) => ({ ...d, ...CLEARED }));
       },
     );
   };
@@ -93,13 +116,13 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
 
   const closeSub = () => setActiveParent(null);
 
-  const updateSub = (patch: Partial<NewStepDraft>) =>
-    setSubDraft((d) => ({ ...d, ...patch, ...("name" in patch ? { error: "" } : {}) }));
+  const updateSub = (patch: Partial<NewStepDraft>) => setSubDraft((d) => patchDraft(d, patch));
 
   const saveSub = (keepOpen = false) => {
     if (!activeParent) return;
-    if (!subDraft.name.trim()) {
-      setSubDraft((d) => ({ ...d, error: "Vui lòng nhập tên bước con" }));
+    const invalid = withMissing(subDraft);
+    if (invalid) {
+      setSubDraft(invalid);
       return;
     }
     const parentCode = activeParent;
@@ -110,15 +133,15 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
         const updated = insertStepHierarchically(steps, build(steps, parentCode, subDraft), parentCode);
         setSteps(updated);
         if (keepOpen) {
-          setSubDraft((d) => ({ ...d, name: "", error: "", assignee: "", code: getNextSubCode(parentCode, updated) }));
+          setSubDraft((d) => ({ ...d, ...CLEARED, code: getNextSubCode(parentCode, updated) }));
         } else {
           setActiveParent(null);
-          setSubDraft((d) => ({ ...d, name: "", error: "", assignee: "" }));
+          setSubDraft((d) => ({ ...d, ...CLEARED }));
         }
       },
       () => {
         setActiveParent(null);
-        setSubDraft((d) => ({ ...d, name: "", error: "", assignee: "" }));
+        setSubDraft((d) => ({ ...d, ...CLEARED }));
       },
     );
   };
@@ -134,6 +157,12 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
       pending = insertStepHierarchically(pending, build(pending, activeParent, subDraft), activeParent);
     return pending;
   };
+
+  /** Bước con đang nhập (chưa lưu) đã có số ngày: đưa vào để số ngày bước cha nhảy ngay khi gõ */
+  const withDraftDays = (list: ProcedureStep[]): ProcedureStep[] =>
+    activeParent && Number(subDraft.days) > 0
+      ? insertStepHierarchically(list, build(list, activeParent, subDraft), activeParent)
+      : list;
 
   const closeAll = () => {
     setIsAddingMain(false);
@@ -157,6 +186,7 @@ export function useStepInlineAdd({ steps, setSteps, staff, confirmChange, expand
     saveSub,
     onStepRemoved,
     withPending,
+    withDraftDays,
     closeAll,
     hasPendingMain: isAddingMain && !!mainDraft.name.trim(),
   };

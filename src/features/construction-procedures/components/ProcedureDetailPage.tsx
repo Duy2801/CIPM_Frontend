@@ -31,15 +31,23 @@ export default function ProcedureDetailPage({
             Chi tiết quy trình <span className="text-[#DC2626]">{procedure.name}</span>
           </>
         }
-        subtitle={[procedure.department, `${procedure.steps.length} bước`].filter(Boolean).join(" · ")}
+        subtitle={procedure.department}
         onBack={onBack}
         actions={
-          <ProcedureReviewAction
-            procedure={procedure}
-            actorName={actorName}
-            canApprove={canApprove}
-            onChanged={onChanged}
-          />
+          <>
+            {procedure.category && (
+              <div className="hidden text-right leading-tight sm:block">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Loại quy trình</div>
+                <div className="text-[13px] font-semibold text-slate-700">{procedure.category}</div>
+              </div>
+            )}
+            <ProcedureReviewAction
+              procedure={procedure}
+              actorName={actorName}
+              canApprove={canApprove}
+              onChanged={onChanged}
+            />
+          </>
         }
       />
 

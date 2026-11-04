@@ -53,7 +53,6 @@ export default function CreateProcedurePage({ onBack, onCreate }: CreateProcedur
     <div className="space-y-3">
       <ProcedurePageHeader
         title="Thêm quy trình mới"
-        subtitle="Nhập thông tin chung, thêm các bước bên dưới rồi bấm “Tạo quy trình”"
         onBack={onBack}
       />
 

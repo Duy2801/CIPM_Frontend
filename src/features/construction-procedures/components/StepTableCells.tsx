@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { Button, InputNumber, Select, Tooltip } from "@/components/ui";
-import { ACTION_COL, ASSIGNEE_COL, DATE_COL, EMAIL_COL } from "../constants/step-table";
+import { ACTION_COL, ASSIGNEE_COL, DATE_COL, EMAIL_COL, SUPERVISOR_COL } from "../constants/step-table";
 import { FLOATING_LAYER_SELECTOR } from "../hooks/useStepRowEdit";
 import type { ProcedureStep } from "../types/procedure.types";
 import { getStepDays } from "../utils/step-duration";
@@ -18,7 +18,9 @@ export function StepAssigneeSelect({
   onChange,
   placeholder = "— Phân công —",
   allowClear = true,
+  invalid = false,
 }: {
+  invalid?: boolean;
   value?: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
@@ -33,6 +35,7 @@ export function StepAssigneeSelect({
       className="w-full text-xs"
       placeholder={placeholder}
       allowClear={allowClear}
+      status={invalid ? "error" : undefined}
       showSearch
       optionFilterProp="label"
       options={options}
@@ -49,7 +52,62 @@ export function StepEmailCell({ email }: { email?: string }) {
   );
 }
 
-export function StepDuration({ step, onEdit }: { step: ProcedureStep; onEdit: () => void }) {
+/** Ô chọn người giám sát bước (không bắt buộc) */
+export function StepSupervisorCell({
+  value,
+  options,
+  onChange,
+  onClick,
+  allowClear = true,
+}: {
+  value?: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+  onClick?: (e: React.MouseEvent) => void;
+  allowClear?: boolean;
+}) {
+  return (
+    <div className={SUPERVISOR_COL} onClick={onClick ?? ((e) => e.stopPropagation())}>
+      <StepAssigneeSelect
+        value={value}
+        options={options}
+        onChange={onChange}
+        placeholder="— Chọn giám sát —"
+        allowClear={allowClear}
+      />
+    </div>
+  );
+}
+
+export function StepDuration({
+  step,
+  onEdit,
+  hasChildren,
+  spanDays,
+}: {
+  step: ProcedureStep;
+  onEdit: () => void;
+  hasChildren?: boolean;
+  /** Số ngày tính từ các bước con */
+  spanDays?: number;
+}) {
+  // Bước có bước con: số ngày tính từ các bước con, chỉ xem, không nhập tay
+  if (hasChildren) {
+    return (
+      <div className={`${DATE_COL} hidden sm:block text-center text-xs font-medium text-slate-700`}>
+        {spanDays ? (
+          <Tooltip title="Tính từ các bước con: làm lần lượt thì cộng, làm song song lấy bước lâu nhất">
+            <span className="cursor-help">{spanDays} ngày</span>
+          </Tooltip>
+        ) : (
+          // Bước con (cấp cuối) chưa đặt số ngày nên hệ thống tính ra 0
+          <Tooltip title="Số ngày của bước này tính từ các bước con. Hãy nhập số ngày cho bước con cấp cuối.">
+            <span className="cursor-help text-[11px] font-normal italic text-amber-600">Chờ bước con</span>
+          </Tooltip>
+        )}
+      </div>
+    );
+  }
   const days = getStepDays(step);
   return (
     <div className={`${DATE_COL} hidden sm:block text-center text-xs font-medium text-slate-700`}>
@@ -66,7 +124,15 @@ export function StepDuration({ step, onEdit }: { step: ProcedureStep; onEdit: ()
   );
 }
 
-export function StepDurationInput({ days, onChange }: { days: string; onChange: (value: string) => void }) {
+export function StepDurationInput({
+  days,
+  onChange,
+  invalid = false,
+}: {
+  days: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+}) {
   return (
     <div className={`${DATE_COL} hidden sm:flex items-center justify-center gap-1.5 text-xs text-slate-500`} onClick={(e) => e.stopPropagation()}>
       <InputNumber
@@ -77,6 +143,7 @@ export function StepDurationInput({ days, onChange }: { days: string; onChange: 
         value={days ? Number(days) : null}
         onChange={(value) => onChange(value == null ? "" : String(value))}
         aria-label="Số ngày"
+        status={invalid ? "error" : undefined}
         className="!w-12 text-xs [&_input]:!text-center"
       />
       <span>ngày</span>
@@ -140,16 +207,18 @@ export function StepAssigneeCells({
   options,
   email,
   onChange,
+  invalid = false,
 }: {
   value?: string;
   options: { value: string; label: string }[];
   email?: string;
   onChange: (value: string) => void;
+  invalid?: boolean;
 }) {
   return (
     <>
       <div className={ASSIGNEE_COL}>
-        <StepAssigneeSelect value={value} options={options} onChange={onChange} />
+        <StepAssigneeSelect value={value} options={options} onChange={onChange} invalid={invalid} />
       </div>
       <StepEmailCell email={email} />
     </>

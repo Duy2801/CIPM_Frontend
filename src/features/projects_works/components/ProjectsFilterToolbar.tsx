@@ -2,7 +2,7 @@
 
 import React from "react";
 import { App } from "antd";
-import { DownloadOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Input, Select } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import { useAuthStore } from "@/stores/auth.store";
@@ -184,7 +184,6 @@ export default function ProjectsFilterToolbar({
                 intent="primary"
                 scale="compact"
                 className="h-8 rounded-lg border-[#DC2626] bg-[#DC2626] px-3.5 font-semibold text-white shadow-xs hover:bg-[#B91C1C] text-xs"
-                icon={<PlusOutlined />}
                 onClick={onOpenCreateModal}
               >
                 Thêm dự án

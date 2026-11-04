@@ -15,11 +15,16 @@ import {
   StepDuration,
   StepDurationInput,
   StepEmailCell,
+  StepSupervisorCell,
 } from "./StepTableCells";
 
 interface StepTableRowProps {
   step: ProcedureStep;
   flow: StepFlowProps;
+  /** Số ngày của bước (bước cha tính từ bước con) */
+  spanDays: number;
+  /** Có bước con (kể cả bước con đang nhập): số ngày lấy từ bước con */
+  durationFromChildren: boolean;
   edit: StepRowEdit;
   staff: StepStaff;
   isAddingChild: boolean;
@@ -31,6 +36,8 @@ interface StepTableRowProps {
 export default function StepTableRow({
   step,
   flow,
+  spanDays,
+  durationFromChildren,
   edit,
   staff,
   isAddingChild,
@@ -75,7 +82,7 @@ export default function StepTableRow({
               }}
               placeholder="Tên bước (nhấn Enter để lưu)..."
               className={`h-7 text-xs bg-white w-full ${
-                edit.error ? "border-rose-500 ring-1 ring-rose-200" : "border-red-300 focus:border-[#DC2626]"
+                edit.missing.includes("name") ? "border-rose-500 ring-1 ring-rose-200" : "border-red-300 focus:border-[#DC2626]"
               }`}
             />
             {edit.error && <div className="mt-0.5 text-[11px] text-rose-600">{edit.error}</div>}
@@ -120,16 +127,31 @@ export default function StepTableRow({
           value={isEditing ? edit.draft.assignedTo : step.assignedTo}
           placeholder="— Chọn cán bộ —"
           allowClear={isEditing}
+          invalid={isEditing && edit.missing.includes("assignee")}
           options={staff.staffOptions}
           onChange={(assignedTo) => edit.updateDraft({ assignedTo })}
         />
       </div>
       <StepEmailCell email={staff.emailOf(isEditing ? edit.draft.assignedTo : step.assignedTo)} />
+      <StepSupervisorCell
+        value={isEditing ? edit.draft.supervisor : step.supervisor}
+        options={staff.staffOptions}
+        allowClear={isEditing}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!isEditing) edit.start(step, true);
+        }}
+        onChange={(supervisor) => edit.updateDraft({ supervisor })}
+      />
 
-      {isEditing ? (
-        <StepDurationInput days={edit.draft.days} onChange={(days) => edit.updateDraft({ days })} />
+      {isEditing && !durationFromChildren ? (
+        <StepDurationInput
+          days={edit.draft.days}
+          onChange={(days) => edit.updateDraft({ days })}
+          invalid={edit.missing.includes("days")}
+        />
       ) : (
-        <StepDuration step={step} onEdit={() => edit.start(step)} />
+        <StepDuration step={step} hasChildren={durationFromChildren} spanDays={spanDays} onEdit={() => edit.start(step)} />
       )}
 
       <div className={`${TYPE_COL} flex items-center justify-center`}>

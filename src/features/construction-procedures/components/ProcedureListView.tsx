@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BranchesOutlined, EditOutlined, FolderAddOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Input, Switch, Table, Tag, Tooltip, type ColumnsType } from "@/components/ui";
+import { Button, Input, Select, Switch, Table, Tag, Tooltip, type ColumnsType } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { normalizeSearchText } from "@/utils/search-text";
 import {
@@ -38,14 +38,20 @@ const formatLocalDate = (iso: string | null) => {
 
 const EMPTY = <span className="text-slate-300">—</span>;
 
+const timeOf = (iso: string | null) => (iso ? new Date(iso).getTime() || 0 : 0);
+
 export default function ProcedureListView({ procedures, onOpen, onCreate, onToggle }: ProcedureListViewProps) {
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<ProcedureStatus | undefined>();
 
   const visible = useMemo(() => {
     const key = normalizeSearchText(search.trim());
-    if (!key) return procedures;
-    return procedures.filter((p) => normalizeSearchText(`${p.name} ${p.category} ${p.department ?? ""}`).includes(key));
-  }, [procedures, search]);
+    return procedures.filter(
+      (p) =>
+        (!status || p.status === status) &&
+        (!key || normalizeSearchText(`${p.name} ${p.category} ${p.department ?? ""}`).includes(key)),
+    );
+  }, [procedures, search, status]);
 
   const columns: ColumnsType<ProcedureLibraryItem> = [
     {
@@ -81,7 +87,7 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
     {
       title: "Trạng thái",
       key: "status",
-      width: 120,
+      width: 130,
       align: "center",
       render: (_, p) => (
         <Tag intent={STATUS_INTENTS[p.status]} scale="md" className="whitespace-nowrap !rounded-full font-semibold">
@@ -113,8 +119,9 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
     {
       title: "Ngày cập nhật",
       key: "updatedAt",
-      width: 120,
+      width: 140,
       align: "center",
+      sorter: (a, b) => timeOf(a.updatedAt ?? a.createdAt) - timeOf(b.updatedAt ?? b.createdAt),
       render: (_, p) => (
         <span className="tabular-nums">{formatLocalDate(p.updatedAt) ?? formatDate(p.createdAt) ?? EMPTY}</span>
       ),
@@ -153,16 +160,30 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-        <Input
-          allowClear
-          intent="clean"
-          aria-label="Tìm quy trình"
-          prefix={<SearchOutlined className="text-slate-400" />}
-          placeholder="Tìm tên hoặc loại quy trình..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 w-full text-sm sm:max-w-md"
-        />
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-1 sm:flex-nowrap">
+          <Input
+            allowClear
+            intent="clean"
+            aria-label="Tìm quy trình"
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm tên hoặc loại quy trình..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 w-full text-sm sm:max-w-md"
+          />
+          <Select
+            allowClear
+            aria-label="Lọc theo trạng thái"
+            placeholder="Tất cả trạng thái"
+            value={status}
+            onChange={(v) => setStatus(v as ProcedureStatus | undefined)}
+            options={(Object.keys(PROCEDURE_STATUS_LABELS) as ProcedureStatus[]).map((s) => ({
+              value: s,
+              label: PROCEDURE_STATUS_LABELS[s],
+            }))}
+            className="h-9 w-full text-sm sm:w-48"
+          />
+        </div>
         <Button
           intent="primary"
           scale="compact"
@@ -180,11 +201,12 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
         columns={columns}
         dataSource={visible}
         pagination={false}
-        scroll={{ x: 1160 }}
+        scroll={{ x: 1200 }}
         locale={{
-          emptyText: search.trim()
-            ? "Không tìm thấy quy trình phù hợp với từ khóa."
-            : 'Chưa có quy trình nào. Bấm "Thêm quy trình mới" để bắt đầu.',
+          emptyText:
+            search.trim() || status
+              ? "Không tìm thấy quy trình phù hợp với bộ lọc."
+              : 'Chưa có quy trình nào. Bấm "Thêm quy trình mới" để bắt đầu.',
         }}
         onRow={(p) => ({ onClick: () => onOpen(p.id), className: "cursor-pointer" })}
         className="text-xs [&_.ant-table-thead>tr>th]:!bg-slate-100 [&_.ant-table-thead>tr>th]:!text-[11px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-thead>tr>th]:tracking-wider [&_.ant-table-thead>tr>th]:!text-slate-600 [&_.ant-table-tbody>tr:hover>td]:!bg-red-50/40"

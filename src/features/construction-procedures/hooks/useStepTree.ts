@@ -68,17 +68,11 @@ export function useStepTree(steps: ProcedureStep[]) {
     };
   };
 
-  const expandableCodes = useMemo(() => [...links.childCount.keys()], [links]);
-  const allExpanded = expandableCodes.length > 0 && expandableCodes.every((code) => expandedCodes.has(code));
-
   return {
     visibleSteps,
     getFlowProps,
     toggleExpanded,
     expandTo,
-    canToggleAll: expandableCodes.length > 0,
-    allExpanded,
-    toggleAll: () => setExpandedCodes(allExpanded ? new Set() : new Set(expandableCodes)),
   };
 }
 
