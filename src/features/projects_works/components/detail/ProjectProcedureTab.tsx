@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { Card } from "@/components/ui";
 import ProcedureRoadmap from "@/features/construction-procedures/components/ProcedureRoadmap";
-import { isSameDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
 import type { ProcedureStep } from "@/features/construction-procedures/types/procedure.types";
 import { isHeadingStep } from "@/features/construction-procedures/utils/procedure-rules";
 import { cn } from "@/utils/cn";
 import { STEP_FLOW_META, STEP_FLOW_TONE } from "../../constants/procedure-step-status";
-import type { ProjectProcedureController } from "../../hooks/useProjectProcedure";
+import { sameDepartmentKey, type ProjectProcedureController } from "../../hooks/useProjectProcedure";
 import { getStepFlow, type StepFlowKey } from "../../utils/project-procedure-flow";
 import ProcedureStepFlowDrawer from "./ProcedureStepFlowDrawer";
 
@@ -28,7 +27,7 @@ export default function ProjectProcedureTab({ department, controller }: ProjectP
   const [openStepId, setOpenStepId] = useState<string | null>(null);
   const { data, departmentStatus } = controller;
 
-  const steps = data.steps.filter((s) => s.department && isSameDepartment(s.department, department));
+  const steps = data.steps.filter((s) => s.department && sameDepartmentKey(s.department, department));
   const openStep = steps.find((s) => s.id === openStepId) ?? null;
 
   /** Bước có bước con (mục lớn): số bước con đã xong */

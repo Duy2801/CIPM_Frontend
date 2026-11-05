@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import {
+  ApartmentOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  DownOutlined,
   ExclamationCircleOutlined,
   FlagOutlined,
   HolderOutlined,
@@ -15,19 +15,16 @@ import {
   UserOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { Dropdown, Tooltip } from "@/components/ui";
+import { Tooltip } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
 import {
   DROP_HINT,
   MY_TASK_COLUMN_ORDER,
   MY_TASK_COLUMNS,
-  REJECTED_FILTERS,
   dropActionOf,
-  matchesRejectedFilter,
   type MyTaskColumn,
   type MyTaskDropAction,
-  type RejectedFilter,
 } from "../constants/my-task-tabs";
 import type { MyTask, MyTaskTab } from "../utils/my-tasks";
 
@@ -49,47 +46,66 @@ interface MyTaskBoardProps {
 const date = (value?: string) => (value ? formatDateVi(value) : "—");
 const keyOf = (item: MyTaskItem) => `${item.task.projectId}:${item.task.step.id}`;
 /** Màu + biểu tượng riêng của từng cột (viền trên, ô biểu tượng) */
-const COLUMN_STYLE: Record<MyTaskColumn, { icon: React.ReactNode; bar: string; iconBox: string }> = {
+const COLUMN_STYLE: Record<
+  MyTaskColumn,
+  { icon: React.ReactNode; bar: string; iconBox: string; header: string; title: string }
+> = {
   accept: {
     icon: <InboxOutlined />,
     bar: "border-t-violet-500",
-    iconBox: "bg-violet-100 text-violet-600",
+    iconBox: "bg-violet-500 text-white shadow-sm shadow-violet-200",
+    header: "bg-gradient-to-b from-violet-50 to-white",
+    title: "text-violet-900",
   },
   processing: {
     icon: <SyncOutlined />,
     bar: "border-t-blue-500",
-    iconBox: "bg-blue-100 text-blue-600",
+    iconBox: "bg-blue-500 text-white shadow-sm shadow-blue-200",
+    header: "bg-gradient-to-b from-blue-50 to-white",
+    title: "text-blue-900",
   },
   pending: {
     icon: <ClockCircleOutlined />,
     bar: "border-t-amber-500",
-    iconBox: "bg-amber-100 text-amber-600",
+    iconBox: "bg-amber-500 text-white shadow-sm shadow-amber-200",
+    header: "bg-gradient-to-b from-amber-50 to-white",
+    title: "text-amber-900",
   },
   done: {
     icon: <CheckCircleOutlined />,
     bar: "border-t-emerald-500",
-    iconBox: "bg-emerald-100 text-emerald-600",
+    iconBox: "bg-emerald-500 text-white shadow-sm shadow-emerald-200",
+    header: "bg-gradient-to-b from-emerald-50 to-white",
+    title: "text-emerald-900",
+  },
+  incident: {
+    icon: <WarningOutlined />,
+    bar: "border-t-orange-500",
+    iconBox: "bg-orange-500 text-white shadow-sm shadow-orange-200",
+    header: "bg-gradient-to-b from-orange-50 to-white",
+    title: "text-orange-900",
   },
   rejected: {
     icon: <StopOutlined />,
     bar: "border-t-rose-500",
-    iconBox: "bg-rose-100 text-rose-600",
+    iconBox: "bg-rose-500 text-white shadow-sm shadow-rose-200",
+    header: "bg-gradient-to-b from-rose-50 to-white",
+    title: "text-rose-900",
   },
 };
 
-/** Việc kéo được: việc mới giao, việc mình cần nộp / nộp lại, việc chờ mình duyệt, sự cố */
+/** Việc kéo được: việc mình cần nộp / nộp lại, việc chờ mình duyệt, sự cố (việc chờ tiếp nhận: mở thẻ, bấm "Thực hiện") */
 const isDraggable = (kind: MyTaskTab) =>
-  kind === "accept" || kind === "todo" || kind === "returned" || kind === "review" || kind === "incident";
+  kind === "todo" || kind === "returned" || kind === "review" || kind === "incident";
 
 /**
- * Bảng việc 5 cột: Chờ tiếp nhận · Đang xử lý · Chờ duyệt · Hoàn thành · Từ chối / Sự cố.
- * Kéo việc mới giao sang Đang xử lý = tiếp nhận; việc đang làm sang Chờ duyệt = nộp kết quả, sang Từ chối / Sự cố = báo sự cố;
- * việc chờ duyệt sang Hoàn thành = duyệt, sang Từ chối / Sự cố = từ chối; sự cố về Đang xử lý = đã xử lý xong.
+ * Bảng việc 6 cột: Chờ tiếp nhận · Đang xử lý · Chờ duyệt · Hoàn thành · Từ chối · Sự cố.
+ * Việc mới giao: mở thẻ, bấm "Thực hiện" để chuyển sang Đang xử lý; việc đang làm sang Chờ duyệt = nộp kết quả, sang Sự cố = báo sự cố;
+ * việc chờ duyệt sang Hoàn thành = duyệt, sang Từ chối = từ chối; sự cố về Đang xử lý = đã xử lý xong.
  */
 export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProps) {
   const [dragging, setDragging] = useState<MyTaskItem | null>(null);
   const [over, setOver] = useState<MyTaskColumn | null>(null);
-  const [rejectedFilter, setRejectedFilter] = useState<RejectedFilter>("all");
 
   const endDrag = () => {
     setDragging(null);
@@ -101,8 +117,7 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
       {MY_TASK_COLUMN_ORDER.map((col) => {
         const meta = MY_TASK_COLUMNS[col];
         const action = dragging ? dropActionOf(dragging.kind, col) : null;
-        const all = columns[col];
-        const items = col === "rejected" ? all.filter((item) => matchesRejectedFilter(item.kind, rejectedFilter)) : all;
+        const items = columns[col];
         return (
           <section
             key={col}
@@ -122,9 +137,10 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
               endDrag();
             }}
             className={cn(
-              "flex min-h-[320px] w-[340px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-t-[3px] bg-slate-50/80 transition-colors sm:w-[360px] xl:h-[calc(100vh-200px)]",
-              COLUMN_STYLE[col].bar,
+              // Cột cao vừa màn hình, thẻ cuộn bên trong cột (kiểu Trello) — không tràn ra ngoài
+              "flex h-[calc(100vh-210px)] min-h-[360px] w-[340px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-t-[3px] bg-slate-100/70 shadow-xs transition-colors sm:w-[360px]",
               action ? "border-dashed border-slate-300" : "border-slate-200/80",
+              COLUMN_STYLE[col].bar,
               action && over === col && "border-[#DC2626] bg-red-50/60",
               dragging && !action && "opacity-60",
             )}
@@ -132,35 +148,9 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
             <ColumnHeader
               column={col}
               hint={meta.hint}
-              label={
-                col === "rejected" ? (
-                  <Dropdown
-                    trigger={["click"]}
-                    menu={{
-                      selectable: true,
-                      selectedKeys: [rejectedFilter],
-                      onClick: ({ key }) => setRejectedFilter(key as RejectedFilter),
-                      items: REJECTED_FILTERS.map((f) => ({
-                        key: f.value,
-                        label: <span className="text-[13px]">{f.label}</span>,
-                      })),
-                    }}
-                  >
-                    <button
-                      type="button"
-                      aria-label="Lọc từ chối hay sự cố"
-                      className="-mx-1 inline-flex cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-1 py-0.5 text-[13px] font-semibold text-slate-800 transition-colors hover:bg-slate-100"
-                    >
-                      {REJECTED_FILTERS.find((f) => f.value === rejectedFilter)?.label}
-                      <DownOutlined className="text-[9px] text-slate-400" />
-                    </button>
-                  </Dropdown>
-                ) : (
-                  meta.label
-                )
-              }
+              label={meta.label}
             />
-            <div className="flex-1 space-y-2 overflow-y-auto px-2.5 py-2.5">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2.5 py-2.5 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
               {action && (
                 <div
                   className={cn(
@@ -173,7 +163,7 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
               )}
               {items.length === 0 && !action ? (
                 <p className="m-0 px-2 py-8 text-center text-xs text-slate-400">
-                  {col === "rejected" && all.length > 0 ? "Không có việc nào theo bộ lọc." : meta.empty}
+                  {meta.empty}
                 </p>
               ) : (
                 items.map((item) => (
@@ -207,7 +197,7 @@ function ColumnHeader({
 }) {
   const style = COLUMN_STYLE[column];
   return (
-    <header className="flex items-center gap-2.5 border-b border-slate-200/80 bg-white px-3 py-2.5">
+    <header className={cn("flex items-center justify-center gap-2.5 border-b border-slate-200/80 px-3 py-3", style.header)}>
       <Tooltip title={hint} placement="topLeft">
         <span
           className={cn("flex h-7 w-7 shrink-0 cursor-help items-center justify-center rounded-lg text-sm", style.iconBox)}
@@ -216,7 +206,7 @@ function ColumnHeader({
           {style.icon}
         </span>
       </Tooltip>
-      <h2 className="m-0 min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-800">{label}</h2>
+      <h2 className={cn("m-0 min-w-0 truncate text-[15px] font-bold tracking-tight", style.title)}>{label}</h2>
     </header>
   );
 }
@@ -323,8 +313,19 @@ function CardBody({
   const { step } = task;
   return (
     <>
-        {/* Mã + tên bước trên cùng một dòng, dài thì xuống dòng */}
+        {/* Thứ tự: Dự án · Quy trình → Bước → Giai đoạn · Người thực hiện */}
         <div className="flex items-start gap-1.5">
+          <dl className="m-0 min-w-0 flex-1 space-y-1 text-xs">
+            <InfoRow icon={<ProjectOutlined />} label="Dự án" value={task.projectName} strong />
+            <InfoRow icon={<ApartmentOutlined />} label="Quy trình" value={task.procedureName} />
+          </dl>
+          {draggable && (
+            <HolderOutlined className="mt-0.5 shrink-0 text-slate-300 group-hover:text-slate-500" aria-hidden />
+          )}
+        </div>
+
+        {/* Mã + tên bước trên cùng một dòng, dài thì xuống dòng */}
+        <div className="mt-2 flex items-start gap-1.5 border-t border-slate-100 pt-2">
           <p className="m-0 min-w-0 flex-1 text-[13px] font-semibold leading-snug text-slate-900 group-hover:text-[#DC2626]">
             <span className="mr-1.5 font-mono text-[12px] font-semibold text-slate-500">{step.code}</span>
             {step.name}
@@ -339,13 +340,9 @@ function CardBody({
               <WarningOutlined className="mt-0.5 shrink-0 cursor-help text-orange-500" />
             </Tooltip>
           )}
-          {draggable && (
-            <HolderOutlined className="mt-0.5 shrink-0 text-slate-300 group-hover:text-slate-500" aria-hidden />
-          )}
         </div>
 
         <dl className="m-0 mt-2 space-y-1 text-xs">
-          <InfoRow icon={<ProjectOutlined />} label="Dự án" value={task.projectName} strong />
           <InfoRow icon={<FlagOutlined />} label="Giai đoạn" value={step.groupCode} />
           <InfoRow icon={<UserOutlined />} label="Người thực hiện" value={step.assignedTo || "Chưa giao"} />
         </dl>
@@ -356,16 +353,10 @@ function CardBody({
           </p>
         )}
 
-        <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2 text-[11px]">
-          {/* Chờ tiếp nhận: chân thẻ cho biết bước đã tới lượt chưa; cột khác hiện tên quy trình */}
-          {kind === "accept" ? (
-            <TurnBadge reached={task.reached} />
-          ) : (
-            <span className="truncate text-slate-400" title={task.procedureName}>
-              {task.procedureName}
-            </span>
-          )}
-          <span className="shrink-0 tabular-nums text-slate-500">
+        <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2 text-[11px]">
+          {/* Chờ tiếp nhận: chân thẻ cho biết bước đã tới lượt chưa */}
+          {kind === "accept" && <TurnBadge reached={task.reached} />}
+          <span className="ml-auto shrink-0 tabular-nums text-slate-500">
             {time.label} {time.value}
           </span>
         </div>

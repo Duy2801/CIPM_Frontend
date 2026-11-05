@@ -154,7 +154,7 @@ export default function MyTaskDrawer({
             {canAccept && (
               <Button intent="primary" scale="sm" onClick={() => onAccept(task)}
                 className="!border-[#DC2626] !bg-[#DC2626] font-semibold hover:!bg-[#B91C1C]">
-                Tiếp nhận
+                Thực hiện
               </Button>
             )}
             {canResolveIncident && (

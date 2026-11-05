@@ -22,6 +22,25 @@ import type {
   ProjectProcedureData,
 } from "@/features/construction-procedures/types/procedure.types";
 import type { ProjectItem } from "../types/project.types";
+
+/** Thay đổi quy trình của dự án chờ lưu: gỡ (theo khóa phòng ban), thêm mới, đổi tên tab (khóa phòng ban → tên) */
+export interface ProcedureChanges {
+  remove: string[];
+  add: { department: string; procedure: ProcedureSource }[];
+  labels: Record<string, string>;
+}
+
+/**
+ * So khóa phòng ban của quy trình trong dự án. Một phòng ban có thể áp dụng nhiều quy trình
+ * ("Tổ Kế hoạch – Kỹ thuật", "Tổ Kế hoạch – Kỹ thuật (2)"...) nên khóa có số thứ tự phải trùng khớp tuyệt đối;
+ * khóa thường thì vẫn nhận các cách viết khác nhau của cùng phòng ban (dữ liệu cũ).
+ */
+const SLOT_SUFFIX = /\s\(\d+\)$/;
+export function sameDepartmentKey(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (SLOT_SUFFIX.test(a) || SLOT_SUFFIX.test(b)) return false;
+  return isSameDepartment(a, b);
+}
 import {
   getAppliedDepartments,
   getProcedureProgress,
@@ -41,7 +60,7 @@ export type StepDraft = Partial<
   Pick<ProcedureStep, "assignedTo" | "assignedToId" | "assignedBy" | "assignedAt" | "startDatePlanned" | "endDatePlanned">
 >;
 
-type ProcedureSource = { id: string; name: string; steps: ProcedureStep[] };
+export type ProcedureSource = { id: string; name: string; steps: ProcedureStep[] };
 
 /** Dự án chưa có dữ liệu quy trình: dựng khung rỗng từ thông tin dự án */
 function createEmptyProcedure(project: ProjectItem): ProjectProcedureData {
@@ -211,64 +230,40 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
   const progress = getProcedureProgress(appliedDepartments, data.steps, data.stageApprovals);
 
   const departmentStatus = (department: string): DepartmentProcedureStatus | undefined =>
-    Object.entries(data.departmentStatuses ?? {}).find(([key]) => isSameDepartment(key, department))?.[1];
+    Object.entries(data.departmentStatuses ?? {}).find(([key]) => sameDepartmentKey(key, department))?.[1];
 
-  /** Áp dụng (hoặc đổi) quy trình cho một phòng ban: thay toàn bộ bước cũ của phòng ban đó */
-  const applyProcedure = (department: string, procedure: ProcedureSource) => {
-    const deptSteps = toDepartmentSteps(project.id, department, procedure);
-    const otherSteps = data.steps.filter((s) => !s.department || !isSameDepartment(s.department, department));
-    const statuses = Object.fromEntries(
-      Object.entries(data.departmentStatuses ?? {}).filter(([key]) => !isSameDepartment(key, department)),
+  /**
+   * Lưu một lần mọi thay đổi quy trình của dự án (sau khi bấm "Lưu thay đổi"):
+   * gỡ quy trình (xóa bước + tiến độ), áp dụng quy trình mới, đổi tên đầu mục (tên tab).
+   */
+  const saveProcedureChanges = (changes: ProcedureChanges) => {
+    const removed = new Set(changes.remove);
+    const keep = (dept?: string) => !dept || ![...removed].some((r) => sameDepartmentKey(dept, r));
+    let steps = data.steps.filter((s) => keep(s.department));
+    const statuses: Record<string, DepartmentProcedureStatus> = Object.fromEntries(
+      Object.entries(data.departmentStatuses ?? {}).filter(([key]) => keep(key)),
     );
+    for (const { department, procedure } of changes.add) {
+      steps = [...steps.filter((s) => !s.department || !sameDepartmentKey(s.department, department)), ...toDepartmentSteps(project.id, department, procedure)];
+      statuses[department] = { department, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name };
+    }
+    for (const [department, label] of Object.entries(changes.labels)) {
+      if (statuses[department]) statuses[department] = { ...statuses[department], tabLabel: label.trim() || undefined };
+    }
+    const parts = [
+      ...changes.add.map(({ procedure }) => `áp dụng "${procedure.name}"`),
+      ...changes.remove.map((dept) => `gỡ "${data.departmentStatuses?.[dept]?.procedureName ?? dept}"`),
+      ...Object.entries(changes.labels).map(([dept, label]) => `đổi tên tab "${statuses[dept]?.procedureName ?? dept}" thành "${label.trim() || "mặc định"}"`),
+    ];
     commit(
-      {
-        steps: [...otherSteps, ...deptSteps],
-        departmentStatuses: {
-          ...statuses,
-          [department]: { department, isCompletedByLead: false, procedureId: procedure.id, procedureName: procedure.name },
-        },
-      },
-      applyLog(department, procedure, deptSteps.length),
-    );
-  };
-
-  /** Đặt tên đầu mục (tên tab) cho quy trình của một phòng ban; để trống = dùng tên quy trình */
-  const setTabLabel = (department: string, label: string) => {
-    const entry = Object.entries(data.departmentStatuses ?? {}).find(([key]) => isSameDepartment(key, department));
-    if (!entry) return;
-    const [key, status] = entry;
-    const next = label.trim() || undefined;
-    if ((status.tabLabel ?? undefined) === next) return;
-    commit(
-      { steps: data.steps, departmentStatuses: { ...data.departmentStatuses, [key]: { ...status, tabLabel: next } } },
+      { steps, departmentStatuses: statuses },
       {
         stepId: "DEPT-CONFIG",
         stepCode: "THIET-LAP",
-        stepName: `Quy trình ${department}`,
+        stepName: "Quy trình dự án",
         action: "TOGGLE_STEP",
-        actionLabel: "Đổi tên tab quy trình",
-        details: `Đặt tên tab của "${status.procedureName ?? "quy trình"}" là "${next ?? "mặc định"}".`,
-      },
-    );
-  };
-
-  /** Gỡ quy trình của một phòng ban khỏi dự án (xóa các bước và tiến độ của phòng ban đó) */
-  const removeProcedure = (department: string) => {
-    const status = departmentStatus(department);
-    commit(
-      {
-        steps: data.steps.filter((s) => !s.department || !isSameDepartment(s.department, department)),
-        departmentStatuses: Object.fromEntries(
-          Object.entries(data.departmentStatuses ?? {}).filter(([key]) => !isSameDepartment(key, department)),
-        ),
-      },
-      {
-        stepId: "DEPT-CONFIG",
-        stepCode: "THIET-LAP",
-        stepName: `Quy trình ${department}`,
-        action: "TOGGLE_STEP",
-        actionLabel: "Gỡ quy trình phòng ban",
-        details: `Gỡ "${status?.procedureName ?? "quy trình"}" khỏi ${department}.`,
+        actionLabel: "Cập nhật quy trình dự án",
+        details: `Cập nhật quy trình dự án: ${parts.join("; ")}.`,
       },
     );
   };
@@ -478,9 +473,7 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     departmentStatus,
     appliedDepartments,
     progress,
-    applyProcedure,
-    removeProcedure,
-    setTabLabel,
+    saveProcedureChanges,
     drafts,
     draftCount,
     withDraft,

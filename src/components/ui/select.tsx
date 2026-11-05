@@ -44,7 +44,8 @@ export const Select = React.forwardRef<RefSelectProps, SelectProps>(
       className,
       dropdownStyle,
       styles,
-      popupMatchSelectWidth = false,
+      // Danh sách gợi ý rộng ít nhất bằng ô chọn (tên dài thì giãn rộng hơn nhờ minWidth: max-content)
+      popupMatchSelectWidth = true,
       ...props
     },
     ref,

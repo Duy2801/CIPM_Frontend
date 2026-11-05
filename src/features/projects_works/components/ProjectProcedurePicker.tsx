@@ -18,11 +18,24 @@ export const procedureDepartment = (procedure: ProcedureLibraryItem) =>
     ? (DEPARTMENT_OPTIONS.find((d) => isSameDepartment(d.value, procedure.department))?.value ?? procedure.department)
     : undefined;
 
-/** Phòng ban sẽ áp dụng quy trình vừa chọn: phòng ban của quy trình, không có thì phòng ban đầu tiên còn trống */
-export const procedureTarget = (procedure: ProcedureLibraryItem, procedures: Record<string, string>) =>
-  procedureDepartment(procedure) ??
-  DEPARTMENT_OPTIONS.find((d) => !procedures[d.value])?.value ??
-  DEPARTMENT_OPTIONS[0].value;
+/**
+ * Chỗ áp dụng quy trình vừa chọn (khóa theo phòng ban): phòng ban của quy trình, không có thì phòng ban đầu tiên còn trống.
+ * Một phòng ban áp dụng được nhiều quy trình: phòng ban đã có quy trình khác thì dùng "Tên phòng ban (2)", "(3)"...
+ */
+export const procedureTarget = (procedure: ProcedureLibraryItem, procedures: Record<string, string>) => {
+  const dept =
+    procedureDepartment(procedure) ??
+    DEPARTMENT_OPTIONS.find((d) => !procedures[d.value])?.value ??
+    DEPARTMENT_OPTIONS[0].value;
+  if (!procedures[dept] || procedures[dept] === procedure.id) return dept;
+  for (let n = 2; ; n++) {
+    const key = `${dept} (${n})`;
+    if (!procedures[key] || procedures[key] === procedure.id) return key;
+  }
+};
+
+/** Tên phòng ban để hiển thị (bỏ hậu tố "(2)" của quy trình thứ hai trở đi) */
+export const departmentName = (key: string) => key.replace(/\s\(\d+\)$/, "");
 
 /** Tên tab mặc định: bỏ chữ "Quy trình" ở đầu ("Quy trình giám sát" → "Giám sát") */
 export function shortProcedureLabel(name: string): string {
@@ -198,7 +211,7 @@ export default function ProjectProcedurePicker({
                   key={p.id}
                   procedure={p}
                   checked={appliedTo.has(p.id)}
-                  dept={appliedTo.get(p.id) ?? (p.category ? procedureDepartment(p) : undefined)}
+                  dept={departmentName(appliedTo.get(p.id) ?? (p.category ? procedureDepartment(p) : undefined) ?? "") || undefined}
                   label={tabLabels?.[p.id]}
                   disabled={disabled}
                   onToggle={(checked) => onToggle(p, checked)}

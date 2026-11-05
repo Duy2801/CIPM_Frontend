@@ -19,7 +19,42 @@ export interface DisbursementAttachment {
   id: string;
   name: string;
   size: string;
+  type: string;  /** Nội dung tệp nhỏ (data URL) để xem lại sau khi tải lại trang */
+  dataUrl?: string;
+}
+
+/** Tệp lớn chỉ xem được trong phiên làm việc hiện tại (đường dẫn tạm của trình duyệt) */
+const sessionFileUrls = new Map<string, string>();
+/** Tệp ≤ 1,5MB được lưu kèm nội dung; lớn hơn thì chỉ giữ đường dẫn tạm */
+const MAX_STORED_FILE_BYTES = 1.5 * 1024 * 1024;
+
+/** Đường dẫn xem tệp (undefined = tệp demo / không còn nội dung) */
+export function attachmentUrl(file: DisbursementAttachment): string | undefined {
+  return file.dataUrl ?? sessionFileUrls.get(file.id);
+}
+
+/** Chuyển tệp vừa tải lên thành chứng từ lưu được (đọc nội dung tệp nhỏ) */
+export async function toDisbursementAttachment(file: {
+  id: string;
+  name: string;
+  size: string;
   type: string;
+  rawFile?: File;
+}): Promise<DisbursementAttachment> {
+  const base = { id: file.id, name: file.name, size: file.size, type: file.type };
+  const raw = file.rawFile;
+  if (!raw) return base;
+  if (raw.size > MAX_STORED_FILE_BYTES) {
+    sessionFileUrls.set(file.id, URL.createObjectURL(raw));
+    return base;
+  }
+  const dataUrl = await new Promise<string | undefined>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : undefined);
+    reader.onerror = () => resolve(undefined);
+    reader.readAsDataURL(raw);
+  });
+  return dataUrl ? { ...base, dataUrl } : base;
 }
 
 /** Loại đợt: giải ngân (cộng) hoặc thu hồi (trừ vào số đã giải ngân của danh mục) */
@@ -146,4 +181,78 @@ export function saveProjectDisbursements(projectId: string, entries: Disbursemen
   } catch (e) {
     console.error("Failed to save project disbursements", e);
   }
+}
+
+const DEMO_SEEDED_KEY = "cipm_project_disbursements_demo_v1";
+
+/** Dự án có cần tạo dữ liệu demo không: chưa có đợt nào và chưa từng tạo demo */
+export function shouldSeedDemoDisbursements(projectId: string): boolean {
+  if (typeof window === "undefined" || (readStore()[projectId]?.length ?? 0) > 0) return false;
+  try {
+    const seeded = JSON.parse(localStorage.getItem(DEMO_SEEDED_KEY) ?? "[]");
+    return !(Array.isArray(seeded) && seeded.includes(projectId));
+  } catch {
+    return true;
+  }
+}
+
+/** Ghi nhận đã tạo demo cho dự án (xóa hết đợt demo sau đó thì không tạo lại) */
+export function markDemoDisbursementsSeeded(projectId: string) {
+  try {
+    const seeded = JSON.parse(localStorage.getItem(DEMO_SEEDED_KEY) ?? "[]");
+    const list = Array.isArray(seeded) ? seeded : [];
+    localStorage.setItem(DEMO_SEEDED_KEY, JSON.stringify([...list, projectId]));
+  } catch (e) {
+    console.error("Failed to mark demo disbursements", e);
+  }
+}
+
+/** Nội dung mẫu cho các đợt giải ngân demo */
+const DEMO_CONTENTS = [
+  "Tạm ứng hợp đồng đợt 1",
+  "Thanh toán khối lượng hoàn thành đợt 1",
+  "Thanh toán khối lượng hoàn thành đợt 2",
+];
+
+/**
+ * Dữ liệu demo (chỉ tạo một lần cho dự án chưa có dữ liệu): mỗi đầu mục 1–3 đợt,
+ * tổng khoảng 45% TMĐT, đầu mục cuối để trống để thấy cả dòng chưa giải ngân.
+ */
+export function buildDemoDisbursements(
+  headings: readonly string[],
+  totalInvestment: number,
+  operatorName: string,
+): DisbursementEntry[] {
+  const base = totalInvestment > 0 ? totalInvestment : 10_000_000_000;
+  const unit = base >= 1_000_000_000 ? 1_000_000 : 100_000;
+  const round = (v: number) => Math.max(unit, Math.round(v / unit) * unit);
+  const filled = headings.length > 1 ? headings.slice(0, -1) : headings;
+  const perHeading = (base * 0.45) / Math.max(1, filled.length);
+  const now = Date.now();
+  const day = 86_400_000;
+  const entries: DisbursementEntry[] = [];
+
+  filled.forEach((category, i) => {
+    const rounds = (i % 3) + 1;
+    for (let r = 0; r < rounds; r++) {
+      const date = new Date(now - ((filled.length - i) * 20 + (rounds - r) * 9) * day);
+      const iso = date.toISOString();
+      entries.push({
+        id: `GN-DEMO-${i}-${r}`,
+        kind: "disburse",
+        category,
+        amount: round((perHeading * (r + 1)) / ((rounds * (rounds + 1)) / 2)),
+        date: iso.slice(0, 10),
+        content: DEMO_CONTENTS[r % DEMO_CONTENTS.length],
+        attachments: [
+          { id: `DEMO-${i}-${r}`, name: `Uy-nhiem-chi-dot-${r + 1}.pdf`, size: "240 KB", type: "application/pdf" },
+        ],
+        createdBy: operatorName,
+        createdAt: iso,
+      });
+    }
+  });
+
+  // Mới nhất lên đầu
+  return entries.sort((a, b) => b.date.localeCompare(a.date));
 }

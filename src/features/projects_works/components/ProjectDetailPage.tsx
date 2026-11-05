@@ -137,7 +137,7 @@ export default function ProjectDetailPage({
   // Dự án đang hiển thị = bản gốc + các trường đang sửa
   const view: ProjectItem = { ...project, ...pending };
   const isChanged = (field: EditableField) => field in pending;
-  const isDirty = Object.keys(pending).length > 0;
+  const infoDirty = Object.keys(pending).length > 0;
 
   // Ghi nhận trường vừa sửa; sửa về đúng giá trị cũ thì bỏ khỏi danh sách chờ lưu
   const setField = <K extends EditableField>(field: K, value: EditablePatch[K]) => {
@@ -150,7 +150,11 @@ export default function ProjectDetailPage({
   const infoSaver = <K extends EditableField>(field: K, parse: (raw: string) => EditablePatch[K]) =>
     canEditInfo ? (raw: string) => setField(field, parse(raw)) : undefined;
 
-  const discardChanges = () => setPending({});
+  const discardChanges = () => {
+    setPending({});
+    setProcDraft(null);
+    setLabelDraft({});
+  };
 
   const pendingChanges = (Object.keys(pending) as EditableField[]).map((field) => ({
     label: FIELD_LABELS[field],
@@ -166,7 +170,7 @@ export default function ProjectDetailPage({
       content: (
         <div className="space-y-2.5 text-xs">
           <p className="m-0 text-slate-600">
-            Bạn có đồng ý cập nhật {pendingChanges.length} thông tin sau cho dự án{" "}
+            Bạn có đồng ý cập nhật {changeCount} thay đổi sau cho dự án{" "}
             <strong className="text-slate-900">{project.code}</strong>?
           </p>
           <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
@@ -178,6 +182,27 @@ export default function ProjectDetailPage({
                 <span className="font-semibold text-[#DC2626]">{c.to || "Trống"}</span>
               </div>
             ))}
+            {addedProcedures.map((id) => (
+              <div key={`add-${id}`}>
+                <span className="font-semibold text-slate-700">Áp dụng quy trình:</span>{" "}
+                <span className="font-semibold text-emerald-700">{procedureName(id)}</span>
+              </div>
+            ))}
+            {removedProcedures.map(([dept, id]) => (
+              <div key={`rm-${dept}`}>
+                <span className="font-semibold text-slate-700">Gỡ quy trình:</span>{" "}
+                <span className="font-semibold text-[#DC2626]">{procedureName(id)}</span>{" "}
+                <span className="text-slate-500">(xóa các bước và tiến độ)</span>
+              </div>
+            ))}
+            {renamedProcedures.map(([id, label]) => (
+              <div key={`rn-${id}`} className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="font-semibold text-slate-700">Tên tab {procedureName(id)}:</span>
+                <span className="text-slate-500 line-through">{savedTabLabels[id] || "Mặc định"}</span>
+                <span className="text-slate-400">→</span>
+                <span className="font-semibold text-[#DC2626]">{label || "Mặc định"}</span>
+              </div>
+            ))}
           </div>
         </div>
       ),
@@ -185,22 +210,26 @@ export default function ProjectDetailPage({
       cancelText: "Xem lại",
       okButtonProps: { className: "!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C]" },
       onOk: () => {
-        onUpdateProject(project.id, {
-          ...pending,
-          name: view.name,
-          type: view.type,
-          startDate: view.startDate,
-          endDatePlanned: view.endDatePlanned,
-          // Ghi vào lịch sử dự án: các trường đã đổi (cũ → mới)
-          progressNote: pendingChanges.map((c) => `${c.label}: ${c.from || "Trống"} → ${c.to || "Trống"}`).join("; "),
-        });
+        if (infoDirty) {
+          onUpdateProject(project.id, {
+            ...pending,
+            name: view.name,
+            type: view.type,
+            startDate: view.startDate,
+            endDatePlanned: view.endDatePlanned,
+            // Ghi vào lịch sử dự án: các trường đã đổi (cũ → mới)
+            progressNote: pendingChanges.map((c) => `${c.label}: ${c.from || "Trống"} → ${c.to || "Trống"}`).join("; "),
+          });
+        }
+        if (procedureChangeCount > 0) saveProcedureDraft();
         discardChanges();
+        message.success("Đã cập nhật dự án.");
       },
     });
 
   // Quay lại khi còn thay đổi chưa lưu: hỏi trước để không mất dữ liệu
   const handleBack = () => {
-    const unsavedProcedure = procedure.draftCount > 0;
+    const unsavedProcedure = procedure.draftCount > 0 || procedureChangeCount > 0;
     if (!isDirty && !unsavedProcedure) {
       onBack();
       return;
@@ -211,11 +240,11 @@ export default function ProjectDetailPage({
       title: "Bỏ các thay đổi chưa lưu?",
       content: (
         <p className="m-0 text-xs text-slate-600">
-          {isDirty && unsavedProcedure
+          {infoDirty && unsavedProcedure
             ? "Có thay đổi thông tin dự án và phân công quy trình chưa lưu."
-            : isDirty
+            : infoDirty
               ? "Có thay đổi thông tin dự án chưa lưu."
-              : `Có ${procedure.draftCount} bước quy trình đã sửa chưa lưu.`}{" "}
+              : "Có thay đổi quy trình chưa lưu."}{" "}
           Quay lại sẽ bỏ các thay đổi này.
         </p>
       ),
@@ -245,6 +274,13 @@ export default function ProjectDetailPage({
     }),
   ) as Record<string, string>;
   const pickable = library.filter((p) => p.enabled || Object.values(appliedProcedures).includes(p.id));
+  // Tên đầu mục (tên tab) đã lưu của từng quy trình (id → tên)
+  const savedTabLabels: Record<string, string> = Object.fromEntries(
+    appliedDepartments.flatMap((dept) => {
+      const st = departmentStatus(dept);
+      return st?.procedureId && st.tabLabel ? [[st.procedureId, st.tabLabel]] : [];
+    }),
+  );
 
   const detailTabs: SegmentedTabItem<DetailTab>[] = [
     { key: "info", icon: <ProfileOutlined />, label: "Thông tin chung" },
@@ -265,45 +301,57 @@ export default function ProjectDetailPage({
 
   const canEditProcedures = procedure.canConfigure && !isClosed;
 
-  const confirmProcedure = (title: string, content: string, onOk: () => void) =>
-    modal.confirm({
-      centered: true,
-      width: 460,
-      title,
-      content: <p className="m-0 text-xs text-slate-600">{content}</p>,
-      okText: "Đồng ý",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk,
-    });
+  // ── Quy trình: tích / bỏ tích / đổi tên tab chỉ ghi vào bản nháp, bấm "Lưu thay đổi" mới áp dụng ──
+  const [procDraft, setProcDraft] = useState<Record<string, string> | null>(null);
+  const [labelDraft, setLabelDraft] = useState<Record<string, string>>({});
+  const shownProcedures = procDraft ?? appliedProcedures;
+  const shownLabels = { ...savedTabLabels, ...labelDraft };
 
   const toggleProcedure = (item: ProcedureLibraryItem, checked: boolean) => {
-    if (!checked) {
-      const dept = Object.entries(appliedProcedures).find(([, id]) => id === item.id)?.[0];
-      if (!dept) return;
-      confirmProcedure(
-        "Gỡ quy trình khỏi dự án?",
-        `Các bước, phân công và tiến độ của "${item.name}" (${dept}) sẽ bị xóa; tab của quy trình này sẽ ẩn đi.`,
-        () => {
-          procedure.removeProcedure(dept);
-          message.success(`Đã gỡ "${item.name}" khỏi dự án.`);
-        },
-      );
-      return;
-    }
-    const dept = procedureTarget(item, appliedProcedures);
-    const apply = () => {
-      procedure.applyProcedure(dept, item);
-      message.success(`Đã áp dụng "${item.name}" cho ${dept}.`);
-    };
-    const current = appliedProcedures[dept] && library.find((p) => p.id === appliedProcedures[dept]);
-    if (current) {
-      confirmProcedure(
-        "Thay quy trình của phòng ban?",
-        `${dept} đang áp dụng "${current.name}". Thay bằng "${item.name}" sẽ xóa các bước, phân công và tiến độ cũ.`,
-        apply,
-      );
-    } else apply();
+    const rest = Object.fromEntries(Object.entries(shownProcedures).filter(([, id]) => id !== item.id));
+    setProcDraft(checked ? { ...rest, [procedureTarget(item, rest)]: item.id } : rest);
+  };
+
+  const changeTabLabel = (procedureId: string, label: string) =>
+    setLabelDraft((prev) => {
+      const next = { ...prev, [procedureId]: label.trim() };
+      if ((savedTabLabels[procedureId] ?? "") === label.trim()) delete next[procedureId];
+      return next;
+    });
+
+  const appliedIds = new Set(Object.values(appliedProcedures));
+  const shownIds = new Set(Object.values(shownProcedures));
+  const removedProcedures = Object.entries(appliedProcedures).filter(([, id]) => !shownIds.has(id));
+  const addedProcedures = Object.values(shownProcedures).filter((id) => !appliedIds.has(id));
+  const renamedProcedures = Object.entries(labelDraft).filter(([id]) => shownIds.has(id));
+  const procedureChangeCount = removedProcedures.length + addedProcedures.length + renamedProcedures.length;
+  // Còn thay đổi chưa lưu (thông tin dự án hoặc quy trình)
+  const isDirty = infoDirty || procedureChangeCount > 0;
+  const changeCount = pendingChanges.length + procedureChangeCount;
+  const procedureName = (id: string) =>
+    library.find((p) => p.id === id)?.name ??
+    Object.values(procedure.data.departmentStatuses ?? {}).find((st) => st.procedureId === id)?.procedureName ??
+    "Quy trình";
+
+  /** Ghi các thay đổi quy trình đang chờ */
+  const saveProcedureDraft = () => {
+    // Quy trình giữ nguyên dùng đúng khóa đã lưu; quy trình mới lấy chỗ còn trống (không đè lên quy trình đang giữ)
+    const occupied: Record<string, string> = Object.fromEntries(
+      Object.entries(appliedProcedures).filter(([, id]) => shownIds.has(id)),
+    );
+    const add = addedProcedures.flatMap((id) => {
+      const item = library.find((p) => p.id === id);
+      if (!item) return [];
+      const department = procedureTarget(item, occupied);
+      occupied[department] = id;
+      return [{ department, procedure: item }];
+    });
+    const keyOf = Object.fromEntries(Object.entries(occupied).map(([dept, id]) => [id, dept]));
+    procedure.saveProcedureChanges({
+      remove: removedProcedures.map(([dept]) => dept),
+      add,
+      labels: Object.fromEntries(renamedProcedures.flatMap(([id, label]) => (keyOf[id] ? [[keyOf[id], label]] : []))),
+    });
   };
 
   return (
@@ -341,6 +389,11 @@ export default function ProjectDetailPage({
           project={project}
           operatorName={user?.name || user?.displayName || "Cán bộ quản lý"}
           canDisburse={canDisburse}
+          // Đầu mục giải ngân = tên các tab quy trình của dự án
+          headings={appliedDepartments.map(
+            (dept) =>
+              departmentStatus(dept)?.tabLabel || shortProcedureLabel(departmentStatus(dept)?.procedureName ?? dept),
+          )}
           onTotalChange={(total) => onDisbursedChange(project.id, total)}
         />
       )}
@@ -466,17 +519,9 @@ export default function ProjectDetailPage({
 
               <ProjectProcedurePicker
                 library={pickable}
-                procedures={appliedProcedures}
-                tabLabels={Object.fromEntries(
-                  appliedDepartments.flatMap((dept) => {
-                    const st = departmentStatus(dept);
-                    return st?.procedureId && st.tabLabel ? [[st.procedureId, st.tabLabel]] : [];
-                  }),
-                )}
-                onTabLabelChange={(procedureId, label) => {
-                  const dept = Object.entries(appliedProcedures).find(([, id]) => id === procedureId)?.[0];
-                  if (dept) procedure.setTabLabel(dept, label);
-                }}
+                procedures={shownProcedures}
+                tabLabels={shownLabels}
+                onTabLabelChange={changeTabLabel}
                 appliedNames={Object.fromEntries(
                   appliedDepartments.flatMap((dept) => {
                     const st = departmentStatus(dept);
@@ -504,7 +549,7 @@ export default function ProjectDetailPage({
                 }}
                 hint={
                   canEditProcedures
-                    ? "Mỗi quy trình là một tab của dự án. Gỡ quy trình sẽ xóa các bước và tiến độ của quy trình đó."
+                    ? "Mỗi quy trình là một tab của dự án. Tích / bỏ tích xong bấm \"Lưu thay đổi\" để cập nhật; gỡ quy trình sẽ xóa các bước và tiến độ của quy trình đó."
                     : "Mỗi quy trình là một tab của dự án. Cần quyền cấu hình quy trình để thêm hoặc gỡ."
                 }
               />
@@ -518,11 +563,11 @@ export default function ProjectDetailPage({
         </div>
       )}
 
-      {/* Có thay đổi chưa lưu: thanh lưu bám đáy màn hình */}
+      {/* Có thay đổi chưa lưu: nút lưu ở cuối trang, không khung */}
       {isDirty && activeTab === "info" && (
-        <div className="sticky bottom-0 z-10 flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
           <span className="mr-auto text-xs text-slate-600">
-            Có <strong className="text-slate-900">{pendingChanges.length}</strong> thông tin đã sửa chưa lưu
+            Có <strong className="text-slate-900">{changeCount}</strong> thay đổi chưa lưu
           </span>
           <Button intent="outline" scale="sm" onClick={discardChanges} className="px-5">
             Hủy thay đổi

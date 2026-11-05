@@ -4,6 +4,9 @@ import { useCallback, useMemo, useState } from "react";
 import { useCatalog } from "@/features/catalogs";
 import {
   DEFAULT_DISBURSEMENT_CATEGORIES,
+  buildDemoDisbursements,
+  markDemoDisbursementsSeeded,
+  shouldSeedDemoDisbursements,
   loadCustomCategories,
   loadProjectDisbursements,
   saveCustomCategories,
@@ -15,17 +18,36 @@ import {
 export type NewDisbursement = Pick<DisbursementEntry, "kind" | "category" | "amount" | "content" | "attachments">;
 
 /** Giải ngân của một dự án: danh sách đợt, tổng hợp theo danh mục, thêm / xóa đợt, thêm danh mục */
-export function useProjectDisbursements(projectId: string, operatorName: string) {
+export function useProjectDisbursements(
+  projectId: string,
+  operatorName: string,
+  headings?: readonly string[],
+  totalInvestment = 0,
+) {
   // Tab chỉ hiện sau khi người dùng bấm vào (chạy trên trình duyệt) nên đọc thẳng lúc khởi tạo
-  const [entries, setEntries] = useState<DisbursementEntry[]>(() => loadProjectDisbursements(projectId));
+  const [entries, setEntries] = useState<DisbursementEntry[]>(() => {
+    // Dự án chưa từng có dữ liệu: tạo sẵn vài đợt demo theo đầu mục để xem thử
+    if (shouldSeedDemoDisbursements(projectId) && headings && headings.length > 0) {
+      const demo = buildDemoDisbursements(headings, totalInvestment, operatorName);
+      saveProjectDisbursements(projectId, demo);
+      markDemoDisbursementsSeeded(projectId);
+      return demo;
+    }
+    return loadProjectDisbursements(projectId);
+  });
   const [customCategories, setCustomCategories] = useState<string[]>(loadCustomCategories);
 
   // Danh mục chi phí: danh mục backend (EXPENSE_TYPE) nếu có, không thì danh sách mặc định; cộng các danh mục tự thêm
   const { items: catalog, add: addToCatalog } = useCatalog("EXPENSE_TYPE");
+  // Khóa ổn định cho useMemo (mảng đầu mục tạo mới mỗi lần render)
+  const headingKey = JSON.stringify(headings ?? []);
   const categories = useMemo(() => {
+    // Dự án đã có đầu mục (tên tab quy trình) thì giải ngân theo các đầu mục đó
+    const list = JSON.parse(headingKey) as string[];
+    if (list.length > 0) return list;
     const base = catalog.length > 0 ? catalog.map((c) => c.name) : [...DEFAULT_DISBURSEMENT_CATEGORIES];
     return [...base, ...customCategories.filter((c) => !base.includes(c))];
-  }, [catalog, customCategories]);
+  }, [catalog, customCategories, headingKey]);
 
   const summary = useMemo(() => summarizeDisbursements(entries, categories), [entries, categories]);
 

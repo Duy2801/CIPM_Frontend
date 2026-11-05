@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type React from "react";
 import { App } from "antd";
 import {
   CalendarOutlined,
-  DeleteOutlined,
+  EyeOutlined,
   ArrowLeftOutlined,
   ExclamationCircleOutlined,
   PaperClipOutlined,
   PlusOutlined,
-  RollbackOutlined,
   RightOutlined,
   UserOutlined,
   WalletOutlined,
@@ -37,11 +36,14 @@ import {
 } from "../../hooks/useProjectDisbursements";
 import {
   signedAmount,
+  toDisbursementAttachment,
   validateDisbursement,
   type DisbursementKind,
   type CategorySummary,
+  type DisbursementAttachment,
   type DisbursementEntry,
 } from "../../utils/project-disbursement";
+import DisbursementFilePreview from "./DisbursementFilePreview";
 
 const money = (v: number) => `${formatMoneyString(v)} VNĐ`;
 const percent = (part: number, whole: number) =>
@@ -60,6 +62,8 @@ interface ProjectDisbursementTabProps {
   operatorName: string;
   /** Được nhập giải ngân (quyền nhập liệu M4, dự án chưa đóng) */
   canDisburse: boolean;
+  /** Đầu mục của dự án (tên tab quy trình); có thì giải ngân theo đầu mục thay cho danh mục chi phí */
+  headings?: string[];
   /** Tổng giải ngân thay đổi sau khi thêm / xóa đợt */
   onTotalChange: (total: number) => void;
 }
@@ -69,11 +73,19 @@ export default function ProjectDisbursementTab({
   project,
   operatorName,
   canDisburse,
+  headings,
   onTotalChange,
 }: ProjectDisbursementTabProps) {
-  const { modal, message } = App.useApp();
-  const { entries, categories, summary, add, remove, addCategory } =
-    useProjectDisbursements(project.id, operatorName);
+  const { message } = App.useApp();
+  const byHeading = (headings?.length ?? 0) > 0;
+  const { entries, summary, add, addCategory } =
+    useProjectDisbursements(
+      project.id,
+      operatorName,
+      byHeading ? [...new Set(headings)] : undefined,
+      project.totalInvestment || 0,
+    );
+  const unit = byHeading ? "đầu mục" : "danh mục";
 
   // Các danh mục đang mở xem đợt
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -87,6 +99,11 @@ export default function ProjectDisbursementTab({
       : undefined;
   const rate = percent(summary.total, totalInvestment);
 
+  // Giữ "đã giải ngân" của dự án khớp với số liệu trong tab (kể cả dữ liệu demo tạo sẵn)
+  useEffect(() => {
+    if ((project.disbursedAmount ?? 0) !== summary.total) onTotalChange(summary.total);
+  }, [project.disbursedAmount, summary.total, onTotalChange]);
+
   const toggle = (category: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -95,27 +112,8 @@ export default function ProjectDisbursementTab({
       return next;
     });
 
-  const confirmRemove = (entry: DisbursementEntry) =>
-    modal.confirm({
-      centered: true,
-      width: 420,
-      title: "Xóa đợt giải ngân?",
-      content: (
-        <p className="m-0 text-xs text-slate-600">
-          Xóa đợt {entry.kind === "withdraw" ? "thu hồi" : "giải ngân"}{" "}
-          <strong>{money(entry.amount)}</strong> của danh mục{" "}
-          <strong>{entry.category}</strong> ngày {formatDateVi(entry.date)}.
-        </p>
-      ),
-      okText: "Xóa",
-      cancelText: "Hủy",
-      okButtonProps: { danger: true },
-      onOk: () => {
-        remove(entry.id);
-        onTotalChange(summary.total - signedAmount(entry));
-        message.success("Đã xóa đợt.");
-      },
-    });
+  // Đợt đang xem chi tiết
+  const [viewing, setViewing] = useState<DisbursementEntry>();
 
   return (
     <Card
@@ -128,22 +126,12 @@ export default function ProjectDisbursementTab({
       <div className="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3">
         <div className="mr-auto min-w-0">
           <h3 className="m-0 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-            Giải ngân theo danh mục
+            Giải ngân theo {unit}
           </h3>
           <p className="m-0 mt-0.5 text-[11px] text-slate-400">
-            Bấm vào danh mục để xem các đợt đã giải ngân.
+            Bấm vào từng {unit} để xem lịch sử giải ngân.
           </p>
         </div>
-        {canDisburse && (
-          <Button
-            intent="primary"
-            scale="comfortable"
-            onClick={() => setForm({ kind: "disburse", category: "" })}
-            className="min-w-[132px] px-6"
-          >
-            Giải ngân
-          </Button>
-        )}
       </div>
 
       {/* Tổng quan vốn: một dải số liệu */}
@@ -191,7 +179,7 @@ export default function ProjectDisbursementTab({
               "border-y border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold text-slate-500",
             )}
           >
-            <span className="pl-5">Danh mục</span>
+            <span className="pl-5">{byHeading ? "Đầu mục" : "Danh mục"}</span>
             <span className="text-center">Số đợt</span>
             <span className="text-right">Đã giải ngân</span>
             <span>Tỷ lệ / TMĐT</span>
@@ -214,27 +202,34 @@ export default function ProjectDisbursementTab({
               onWithdraw={() =>
                 setForm({ kind: "withdraw", category: row.category })
               }
-              onRemove={confirmRemove}
+              onView={setViewing}
             />
           ))}
 
-          <div
-            className={cn(
-              GRID,
-              "bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-900",
-            )}
-          >
-            <span className="pl-5">Tổng cộng</span>
-            <span className="text-center">{summary.count}</span>
-            <span className="text-right text-[#DC2626]">
-              {money(summary.total)}
-            </span>
-            <span className="text-slate-600">{rate.toFixed(1)}%</span>
-            <span />
-            <span />
-          </div>
+          {/* Thêm dòng giải ngân: mở form, chọn đầu mục có sẵn hoặc gõ đầu mục mới */}
+          {canDisburse && (
+            <button
+              type="button"
+              onClick={() => setForm({ kind: "disburse", category: "" })}
+              className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-4 py-2.5 text-left text-xs font-semibold text-[#DC2626] transition-colors hover:bg-red-50/60"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded border border-dashed border-[#DC2626]/60 text-[10px]">
+                <PlusOutlined />
+              </span>
+              Thêm dòng giải ngân
+            </button>
+          )}
         </div>
       </div>
+
+      {viewing && (
+        <DisbursementDetailDrawer
+          entry={viewing}
+          projectName={project.name}
+          unit={unit}
+          onClose={() => setViewing(undefined)}
+        />
+      )}
 
       {form && (
         <DisbursementFormDrawer
@@ -242,12 +237,14 @@ export default function ProjectDisbursementTab({
           projectName={project.name}
           operatorName={operatorName}
           initialCategory={form.category}
-          categories={categories}
+          categories={summary.byCategory.map((row) => row.category)}
+          unit={unit}
           remaining={remaining}
           categoryTotal={(c) =>
             summary.byCategory.find((row) => row.category === c)?.total ?? 0
           }
-          onAddCategory={addCategory}
+          // Đầu mục mới chỉ dùng cho dự án này (không thêm vào danh mục chi phí chung)
+          onAddCategory={byHeading ? () => undefined : addCategory}
           onCancel={() => setForm(undefined)}
           onSubmit={(input) => {
             add(input);
@@ -308,7 +305,7 @@ function CategoryRow({
   canDisburse,
   onDisburse,
   onWithdraw,
-  onRemove,
+  onView,
 }: {
   row: CategorySummary;
   totalInvestment: number;
@@ -318,7 +315,7 @@ function CategoryRow({
   canDisburse: boolean;
   onDisburse: () => void;
   onWithdraw: () => void;
-  onRemove: (entry: DisbursementEntry) => void;
+  onView: (entry: DisbursementEntry) => void;
 }) {
   const hasData = row.count > 0;
   // Bấm nút thao tác không mở / đóng dòng
@@ -332,20 +329,19 @@ function CategoryRow({
   return (
     <div className="border-b border-slate-100">
       <div
-        role={hasData ? "button" : undefined}
-        tabIndex={hasData ? 0 : undefined}
-        aria-expanded={hasData ? open : undefined}
-        onClick={hasData ? onToggle : undefined}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={onToggle}
         onKeyDown={(e) => {
-          if (hasData && (e.key === "Enter" || e.key === " ")) {
+          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             onToggle();
           }
         }}
         className={cn(
           GRID,
-          "group px-4 py-2.5 text-xs transition-colors hover:bg-slate-50",
-          hasData && "cursor-pointer",
+          "group cursor-pointer px-4 py-2.5 text-xs transition-colors hover:bg-slate-50",
           open && "bg-red-50/40 hover:bg-red-50/60",
         )}
       >
@@ -353,7 +349,6 @@ function CategoryRow({
           <RightOutlined
             className={cn(
               "w-3 shrink-0 text-[10px] text-slate-400 transition-transform",
-              !hasData && "invisible",
               open && "rotate-90 !text-[#DC2626]",
             )}
           />
@@ -399,7 +394,6 @@ function CategoryRow({
                 <Button
                   intent="outline"
                   scale="xs"
-                  icon={<PlusOutlined />}
                   onClick={act(onDisburse)}
                   className="px-2"
                 >
@@ -408,7 +402,6 @@ function CategoryRow({
                 <Button
                   intent="outline"
                   scale="xs"
-                  icon={<RollbackOutlined />}
                   onClick={act(onWithdraw)}
                   disabled={row.total <= 0}
                   className="px-2 hover:!border-rose-400 hover:!text-rose-600"
@@ -420,7 +413,6 @@ function CategoryRow({
               <Button
                 intent="outline"
                 scale="xs"
-                icon={<PlusOutlined />}
                 onClick={act(onDisburse)}
                 className="px-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
               >
@@ -431,66 +423,69 @@ function CategoryRow({
       </div>
 
       {/* Các đợt của danh mục: Nội dung · người nhập | — | Số tiền | — | Ngày | Xóa */}
-      {open && hasData && (
-        <ul className="m-0 list-none border-t border-dashed border-slate-200 bg-slate-50/50 p-0 py-1">
-          {entries.map((e) => (
-            <li
-              key={e.id}
-              className={cn(GRID, "group/entry px-4 py-1.5 text-xs")}
+      {open && !hasData && (
+        <div className="border-t border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 pl-9 text-xs text-slate-400">
+          Chưa có đợt giải ngân nào.
+          {canDisburse && (
+            <button
+              type="button"
+              onClick={onDisburse}
+              className="ml-2 cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-[#DC2626] hover:underline"
             >
-              <span className="flex min-w-0 items-center gap-2 pl-5">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
-                <span className="truncate text-slate-600" title={e.content}>
-                  {e.content || (
-                    <span className="italic text-slate-400">
-                      Không có nội dung
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 text-[11px] text-slate-400">
-                  · {e.createdBy}
-                </span>
-                {(e.attachments?.length ?? 0) > 0 && (
-                  <Tooltip title={e.attachments!.map((a) => a.name).join(", ")}>
-                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-white px-1.5 py-px text-[11px] text-slate-500 ring-1 ring-slate-200">
-                      <PaperClipOutlined />
-                      {e.attachments!.length}
-                    </span>
-                  </Tooltip>
-                )}
-              </span>
-              <span />
-              <span
+              Giải ngân ngay
+            </button>
+          )}
+        </div>
+      )}
+      {open && hasData && (
+        <ul className="m-0 list-none border-t border-slate-100 bg-slate-50/60 p-0">
+          {entries.map((e) => {
+            const withdraw = e.kind === "withdraw";
+            const files = e.attachments?.length ?? 0;
+            return (
+              <li
+                key={e.id}
+                onClick={() => onView(e)}
                 className={cn(
-                  "text-right font-medium",
-                  e.kind === "withdraw" ? "text-rose-600" : "text-slate-800",
+                  GRID,
+                  "group/entry cursor-pointer border-b border-slate-100 px-4 py-2 text-xs transition-colors last:border-b-0 hover:bg-white",
                 )}
               >
-                {e.kind === "withdraw" && (
-                  <span className="mr-1.5 rounded bg-rose-50 px-1.5 py-px text-[10px] font-semibold text-rose-600 ring-1 ring-rose-200">
-                    Thu hồi
+                <span className="min-w-0 pl-5">
+                  <span className="block truncate font-medium text-slate-700" title={e.content}>
+                    {withdraw && <span className="mr-1.5 font-semibold text-rose-600">Thu hồi ·</span>}
+                    {e.content || <span className="font-normal italic text-slate-400">Không có nội dung</span>}
                   </span>
-                )}
-                {e.kind === "withdraw" ? "−" : ""}
-                {money(e.amount)}
-              </span>
-              <span />
-              <span className="text-slate-600">{formatDateVi(e.date)}</span>
-              <span className="flex justify-end">
-                {canDisburse && (
-                  <Tooltip title="Xóa đợt">
-                    <Button
-                      intent="link"
-                      aria-label="Xóa đợt"
-                      icon={<DeleteOutlined />}
-                      onClick={() => onRemove(e)}
-                      className="!text-slate-400 opacity-0 transition-opacity group-hover/entry:opacity-100 hover:!text-rose-600 focus-visible:opacity-100"
-                    />
+                  <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                    {e.createdBy}
+                    {files > 0 && ` · ${files} tệp đính kèm`}
+                  </span>
+                </span>
+                <span />
+                <span className={cn("text-right font-semibold", withdraw ? "text-rose-600" : "text-slate-800")}>
+                  {withdraw ? "−" : ""}
+                  {money(e.amount)}
+                </span>
+                <span />
+                <span className="text-slate-600">{formatDateVi(e.date)}</span>
+                <span className="flex justify-end">
+                  <Tooltip title="Xem chi tiết">
+                    <button
+                      type="button"
+                      aria-label="Xem chi tiết đợt"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        onView(e);
+                      }}
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-sm text-slate-400 transition-colors hover:bg-red-50 hover:text-[#DC2626] group-hover/entry:text-slate-600"
+                    >
+                      <EyeOutlined />
+                    </button>
                   </Tooltip>
-                )}
-              </span>
-            </li>
-          ))}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -543,11 +538,14 @@ function DisbursementFormDrawer({
   operatorName,
   initialCategory,
   categories,
+  unit,
   remaining,
   onAddCategory,
   onCancel,
   onSubmit,
 }: {
+  /** "đầu mục" hoặc "danh mục" */
+  unit: string;
   kind: DisbursementKind;
   /** Số đã giải ngân (thực còn) của một danh mục */
   categoryTotal: (category: string) => number;
@@ -569,16 +567,17 @@ function DisbursementFormDrawer({
   const [error, setError] = useState<string>();
 
   const withdraw = kind === "withdraw";
+  const label = unit === "đầu mục" ? "Đầu mục" : "Danh mục chi phí";
   const verb = withdraw ? "thu hồi" : "giải ngân";
   const amount = parseMoney(amountRaw);
   // Hạn mức: giải ngân = phần còn lại của TMĐT; thu hồi = số đã giải ngân của danh mục
   const limit = withdraw ? (category ? categoryTotal(category) : 0) : remaining;
   const overLimit = limit !== undefined && amount > limit;
-  const after = limit !== undefined ? limit - amount : undefined;
 
   const clearError = () => setError(undefined);
 
-  const submit = () => {
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
     const err = validateDisbursement(
       { kind, category, amount, attachmentCount: files.length, content },
       limit,
@@ -587,18 +586,10 @@ function DisbursementFormDrawer({
       setError(err);
       return;
     }
-    onSubmit({
-      kind,
-      category: category!,
-      amount,
-      content: content.trim() || undefined,
-      attachments: files.map(({ id, name, size, type }) => ({
-        id,
-        name,
-        size,
-        type,
-      })),
-    });
+    setSaving(true);
+    // Đọc nội dung tệp để xem lại được trong chi tiết đợt
+    const attachments = await Promise.all(files.map(toDisbursementAttachment));
+    onSubmit({ kind, category: category!, amount, content: content.trim() || undefined, attachments });
   };
 
   return (
@@ -633,7 +624,7 @@ function DisbursementFormDrawer({
       }
       footer={
         <div className="flex w-full items-center gap-2.5 py-2">
-          <Button intent="primary" scale="sm" onClick={submit} className="px-5">
+          <Button intent="primary" scale="sm" loading={saving} onClick={() => void submit()} className="px-5">
             Xác nhận {verb}
           </Button>
           <Button
@@ -668,22 +659,22 @@ function DisbursementFormDrawer({
             {withdraw ? (
               <ReadonlyField
                 icon={<WalletOutlined />}
-                label="Danh mục chi phí"
+                label={label}
                 value={category ?? ""}
               />
             ) : (
               <div>
-                <FieldLabel text="Danh mục chi phí" required />
+                <FieldLabel text={label} required />
                 <SelectWithAddOption
-                  aria-label="Danh mục chi phí"
-                  placeholder="Chọn danh mục hoặc gõ để thêm mới"
+                  aria-label={label}
+                  placeholder={`Chọn ${unit} hoặc gõ để thêm mới`}
                   value={category}
                   options={categories.map((c) => ({ value: c, label: c }))}
                   filterByQuery
-                  addPlaceholder="Gõ tên danh mục mới…"
+                  addPlaceholder={`Gõ tên ${unit} mới…`}
                   notFoundContent={
                     <span className="text-xs text-slate-400">
-                      Không có danh mục phù hợp, bấm “Thêm” để tạo mới
+                      Không có {unit} phù hợp, bấm “Thêm” để tạo mới
                     </span>
                   }
                   onChange={(v) => {
@@ -718,33 +709,6 @@ function DisbursementFormDrawer({
                 className="h-9 text-sm font-semibold"
               />
 
-              {/* Vốn còn lại trước / sau đợt này */}
-              {limit !== undefined && (
-                <div className="mt-1.5 text-[11px]">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-500">
-                    <span>
-                      {withdraw ? "Đã giải ngân của danh mục" : "Còn lại"}:{" "}
-                      <strong className="text-slate-700">{money(limit)}</strong>
-                    </span>
-                    {amount > 0 && (
-                      <span>
-                        {withdraw ? "Sau thu hồi" : "Sau đợt này"}:{" "}
-                        <strong
-                          className={
-                            overLimit ? "text-rose-600" : "text-emerald-600"
-                          }
-                        >
-                          {overLimit
-                            ? withdraw
-                              ? "Vượt số đã giải ngân"
-                              : "Vượt TMĐT"
-                            : money(after ?? 0)}
-                        </strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div>
@@ -779,7 +743,7 @@ function DisbursementFormDrawer({
           title={`Chứng từ ${verb} *`}
           extra={
             files.length > 0 ? (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                 {files.length} tệp
               </span>
             ) : (
@@ -849,5 +813,130 @@ function ReadonlyField({
         </span>
       </div>
     </div>
+  );
+}
+
+/** Drawer xem chi tiết một đợt giải ngân / thu hồi (chỉ xem) */
+function DisbursementDetailDrawer({
+  entry,
+  projectName,
+  unit,
+  onClose,
+}: {
+  entry: DisbursementEntry;
+  projectName: string;
+  unit: string;
+  onClose: () => void;
+}) {
+  const withdraw = entry.kind === "withdraw";
+  const verb = withdraw ? "thu hồi" : "giải ngân";
+  const files = entry.attachments ?? [];
+  const [preview, setPreview] = useState<DisbursementAttachment>();
+
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      width={STANDARD_DRAWER_WIDTH}
+      styles={{ body: { background: "#f8fafc", padding: 16 } }}
+      title={
+        <div className="flex items-center gap-3 py-1">
+          <Button
+            intent="outline"
+            scale="compact"
+            icon={<ArrowLeftOutlined />}
+            aria-label="Quay lại"
+            title="Quay lại"
+            onClick={onClose}
+            className="h-9! w-9! shrink-0 p-0!"
+          />
+          <div className="min-w-0">
+            <div className="text-base font-bold text-slate-900">Chi tiết đợt {verb}</div>
+            <div className="truncate text-xs font-normal text-slate-500" title={projectName}>
+              {projectName}
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {/* Số tiền nổi bật */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+            Số tiền {verb}
+            {withdraw && (
+              <span className="rounded bg-rose-50 px-1.5 py-px text-[10px] font-semibold text-rose-600 ring-1 ring-rose-200">
+                Thu hồi
+              </span>
+            )}
+          </div>
+          <div className={cn("mt-1 text-xl font-bold", withdraw ? "text-rose-600" : "text-[#DC2626]")}>
+            {withdraw ? "−" : ""}
+            {money(entry.amount)}
+          </div>
+        </div>
+
+        <FormSection icon={<WalletOutlined />} title={`Thông tin ${verb}`}>
+          <div className="flex flex-col gap-3.5">
+            <ReadonlyField
+              icon={<WalletOutlined />}
+              label={unit === "đầu mục" ? "Đầu mục" : "Danh mục chi phí"}
+              value={entry.category}
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <ReadonlyField icon={<CalendarOutlined />} label={`Ngày ${verb}`} value={formatDateVi(entry.date)} />
+              <ReadonlyField icon={<UserOutlined />} label="Người thực hiện" value={entry.createdBy} />
+            </div>
+            <div>
+              <FieldLabel text={withdraw ? "Lý do thu hồi" : "Nội dung thanh toán"} />
+              <div className="min-h-9 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                {entry.content || <span className="italic text-slate-400">Không có nội dung</span>}
+              </div>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection
+          icon={<PaperClipOutlined />}
+          title={`Chứng từ ${verb}`}
+          extra={<span className="text-[11px] text-slate-400">{files.length} tệp</span>}
+        >
+          {files.length === 0 ? (
+            <div className="text-xs italic text-slate-400">Không có tệp đính kèm</div>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
+              {files.map((f) => (
+                <li key={f.id}>
+                  <button
+                    type="button"
+                    onClick={() => setPreview(f)}
+                    title="Bấm để xem tệp"
+                    className="group/file flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs transition-colors hover:border-red-200 hover:bg-red-50/50"
+                  >
+                    <PaperClipOutlined className="text-slate-400" />
+                    <span className="min-w-0 flex-1 truncate font-medium text-slate-700 group-hover/file:text-[#DC2626]">
+                      {f.name}
+                    </span>
+                    {f.size && <span className="shrink-0 text-[11px] text-slate-400">{f.size}</span>}
+                    <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-400 group-hover/file:text-[#DC2626]">
+                      <EyeOutlined /> Xem
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </FormSection>
+      </div>
+
+      {preview && (
+        <DisbursementFilePreview
+          file={preview}
+          entry={entry}
+          projectName={projectName}
+          onClose={() => setPreview(undefined)}
+        />
+      )}
+    </Drawer>
   );
 }

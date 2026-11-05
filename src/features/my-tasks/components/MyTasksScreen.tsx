@@ -25,7 +25,7 @@ const keyOfTask = (task: MyTask): TaskKey => ({ projectId: task.projectId, stepI
 
 /**
  * "Việc cần xử lý" — chọn dự án · tìm kiếm → bảng 5 cột kéo thả
- * (Chờ tiếp nhận · Đang xử lý · Chờ duyệt · Hoàn thành · Từ chối / Sự cố).
+ * (Chờ tiếp nhận · Đang xử lý · Chờ duyệt · Hoàn thành · Từ chối · Sự cố).
  */
 export default function MyTasksScreen() {
   const { message, modal } = App.useApp();
@@ -102,6 +102,7 @@ export default function MyTasksScreen() {
       pending: build("pending"),
       done: build("done"),
       rejected: build("rejected"),
+      incident: build("incident"),
     };
   }, [ctl.groups, ctl.others, ctl.isReviewer]);
 
@@ -171,7 +172,7 @@ export default function MyTasksScreen() {
 
   const handleAccept = (task: MyTask) => {
     if (!ctl.accept(task)) return notFound();
-    message.success(`Đã tiếp nhận bước ${task.step.code}.`);
+    message.success(`Đã chuyển bước ${task.step.code} sang Đang xử lý.`);
     setViewing(null);
   };
 

@@ -163,9 +163,9 @@ export function StandardFileUpload({
       case "PDF":
         return "bg-rose-50 text-rose-600 border border-rose-200";
       case "DOCX":
-        return "bg-blue-50 text-blue-600 border border-blue-200";
+        return "bg-amber-50 text-amber-700 border border-amber-200";
       case "EXCEL":
-        return "bg-emerald-50 text-emerald-600 border border-emerald-200";
+        return "bg-amber-50 text-amber-700 border border-amber-200";
       case "IMAGE":
         return "bg-violet-50 text-violet-600 border border-violet-200";
       default:
@@ -188,7 +188,7 @@ export function StandardFileUpload({
             {required && <span className="text-rose-500">*</span>}
           </span>
           {activeFiles.length > 0 && (
-            <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
               Đã chọn {activeFiles.length} tệp
             </span>
           )}

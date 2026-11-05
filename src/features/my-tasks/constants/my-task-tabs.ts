@@ -46,9 +46,9 @@ export const MY_TASK_KIND_META: Record<MyTaskTab, MyTaskKindMeta> = {
 };
 
 /** Cột của bảng việc (cột Lịch sử lấy từ nhật ký, không theo loại việc) */
-export type MyTaskColumn = "accept" | "processing" | "pending" | "done" | "rejected";
+export type MyTaskColumn = "accept" | "processing" | "pending" | "done" | "rejected" | "incident";
 
-export const MY_TASK_COLUMN_ORDER: MyTaskColumn[] = ["accept", "processing", "pending", "done", "rejected"];
+export const MY_TASK_COLUMN_ORDER: MyTaskColumn[] = ["accept", "processing", "pending", "done", "rejected", "incident"];
 
 export const MY_TASK_COLUMNS: Record<
   MyTaskColumn,
@@ -79,24 +79,18 @@ export const MY_TASK_COLUMNS: Record<
     empty: "Kéo việc chờ duyệt vào đây để duyệt.",
   },
   rejected: {
-    label: "Từ chối / Sự cố",
-    hint: "Bị trả về làm lại hoặc đang vướng sự cố",
-    kinds: ["incident", "returned", "rejected"],
-    empty: "Kéo việc chờ duyệt vào đây để từ chối, kéo việc đang làm vào để báo sự cố.",
+    label: "Từ chối",
+    hint: "Bị trả về làm lại",
+    kinds: ["returned", "rejected"],
+    empty: "Kéo việc chờ duyệt vào đây để từ chối.",
+  },
+  incident: {
+    label: "Sự cố",
+    hint: "Đang vướng sự cố, chờ Tổ trưởng xử lý",
+    kinds: ["incident"],
+    empty: "Kéo việc đang làm vào đây để báo sự cố.",
   },
 };
-
-/** Lọc trong cột Từ chối / Sự cố */
-export type RejectedFilter = "all" | "returned" | "incident";
-
-export const REJECTED_FILTERS: { value: RejectedFilter; label: string }[] = [
-  { value: "all", label: "Từ chối / Sự cố" },
-  { value: "returned", label: "Từ chối" },
-  { value: "incident", label: "Sự cố" },
-];
-
-export const matchesRejectedFilter = (kind: MyTaskTab, filter: RejectedFilter) =>
-  filter === "all" || (filter === "incident" ? kind === "incident" : kind !== "incident");
 
 export type MyTaskDropAction = "accept" | "submit" | "approve" | "reject" | "incident" | "resolve";
 
@@ -107,7 +101,7 @@ export function dropActionOf(kind: MyTaskTab, column: MyTaskColumn): MyTaskDropA
   if (column === "pending" && (kind === "todo" || kind === "returned")) return "submit";
   if (column === "done" && kind === "review") return "approve";
   if (column === "rejected" && kind === "review") return "reject";
-  if (column === "rejected" && (kind === "todo" || kind === "returned")) return "incident";
+  if (column === "incident" && (kind === "todo" || kind === "returned")) return "incident";
   return null;
 }
 

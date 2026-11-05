@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { App } from "antd";
+import StaffFormAddOption from "@/features/personnel-assignment/components/StaffFormAddOption";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import {
   Button,
@@ -82,6 +83,36 @@ const PROJECT_NATURE_OPTIONS = [
   { value: "transitional", label: "Dự án cũ (Chuyển tiếp)" },
 ];
 
+
+
+/** Danh sách chọn hiện 5 dòng (32px/dòng), còn lại lăn chuột */
+const DROPDOWN_LIST_HEIGHT = 5 * 32;
+
+/** Lựa chọn tự thêm (nguồn vốn, tính chất dự án) — lưu trên máy để lần sau vẫn có */
+const FUNDING_STORAGE_KEY = "cipm_custom_funding_sources";
+const NATURE_STORAGE_KEY = "cipm_custom_project_natures";
+
+const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+function loadCustomOptions(key: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomOptions(key: string, list: string[]): string[] {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {
+    // Không lưu được thì vẫn dùng trong phiên này
+  }
+  return list;
+}
+
 const PERSONNEL_SELECT_OPTIONS = PERSONNEL_OPTIONS.map((p) => ({
   value: p.name,
   label: `${p.name} — ${p.role} (${p.dept})`,
@@ -96,6 +127,10 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
   const library = useMemo(() => procedures.filter((p) => p.enabled), [procedures]);
   const [initial] = useState(createInitialState);
   const [form, setForm] = useState<FormState>(initial);
+  const [customFunding, setCustomFunding] = useState(() => loadCustomOptions(FUNDING_STORAGE_KEY));
+  const [customNatures, setCustomNatures] = useState(() => loadCustomOptions(NATURE_STORAGE_KEY));
+  const fundingOptions = [...FUNDING_SOURCE_OPTIONS, ...customFunding].map((v) => ({ value: v, label: v }));
+  const natureOptions = [...PROJECT_NATURE_OPTIONS, ...customNatures.map((v) => ({ value: v, label: v }))];
   const [errorMsg, setErrorMsg] = useState("");
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(initial);
@@ -214,10 +249,28 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               </Field>
               <Field label="Tính chất dự án" required>
                 <Select
+                  showSearch
+                  optionFilterProp="label"
                   value={form.nature}
                   onChange={(val) => update({ nature: val as ProjectNature })}
-                  options={PROJECT_NATURE_OPTIONS}
+                  options={natureOptions}
+                  listHeight={DROPDOWN_LIST_HEIGHT}
                   className="w-full text-xs"
+                  popupRender={(menu) => (
+                    <>
+                      {menu}
+                      <StaffFormAddOption
+                        placeholder="Nhập tính chất dự án mới..."
+                        isDuplicate={(name) => natureOptions.some((o) => sameText(o.label, name))}
+                        onAdd={async (name) => {
+                          const label = name.trim();
+                          setCustomNatures((prev) => saveCustomOptions(NATURE_STORAGE_KEY, [...prev, label]));
+                          update({ nature: label as ProjectNature });
+                          return true;
+                        }}
+                      />
+                    </>
+                  )}
                 />
               </Field>
               <Field label="Địa bàn xây dựng">
@@ -233,10 +286,28 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
             <FieldGroup title="Vốn đầu tư">
               <Field label="Nguồn vốn">
                 <Select
+                  showSearch
+                  optionFilterProp="label"
                   value={form.fundingSource || undefined}
                   onChange={(val) => update({ fundingSource: val as FundingSourceType })}
-                  options={FUNDING_SOURCE_OPTIONS.map((s) => ({ value: s, label: s }))}
+                  options={fundingOptions}
+                  listHeight={DROPDOWN_LIST_HEIGHT}
                   className="w-full text-xs"
+                  popupRender={(menu) => (
+                    <>
+                      {menu}
+                      <StaffFormAddOption
+                        placeholder="Nhập nguồn vốn mới..."
+                        isDuplicate={(name) => fundingOptions.some((o) => sameText(o.label, name))}
+                        onAdd={async (name) => {
+                          const label = name.trim();
+                          setCustomFunding((prev) => saveCustomOptions(FUNDING_STORAGE_KEY, [...prev, label]));
+                          update({ fundingSource: label as FundingSourceType });
+                          return true;
+                        }}
+                      />
+                    </>
+                  )}
                 />
               </Field>
               <Field label="Tổng mức đầu tư (VNĐ)">
@@ -264,7 +335,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
                   onChange={(val) => update({ managerName: val as string })}
                   options={PERSONNEL_SELECT_OPTIONS}
                   className="w-full text-xs"
-                  popupMatchSelectWidth={false}
                 />
               </Field>
               <Field label="Giám sát kỹ thuật">
@@ -273,7 +343,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
                   onChange={(val) => update({ supervisorName: val as string })}
                   options={PERSONNEL_SELECT_OPTIONS}
                   className="w-full text-xs"
-                  popupMatchSelectWidth={false}
                 />
               </Field>
               <Field label="Ngày bắt đầu" required>
