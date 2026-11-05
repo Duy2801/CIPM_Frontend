@@ -42,9 +42,6 @@ export default function StaffDetailDrawer({ staffId, onClose }: { staffId: strin
         <div className="flex items-center justify-between gap-3">
           <div>
             <span className="font-bold text-sm text-slate-800">Hồ sơ & phân quyền</span>
-            <div className="text-xs text-slate-500 mt-0.5">
-              Thông tin cá nhân, quyền hệ thống & nghiệp vụ chuyên môn
-            </div>
           </div>
         </div>
       }

@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { App } from "antd";
 import StaffFormAddOption from "@/features/personnel-assignment/components/StaffFormAddOption";
+import WorkTypeSelect from "./WorkTypeSelect";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import {
   Button,
@@ -23,7 +24,6 @@ import {
 import {
   FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
-  WORK_TYPE_OPTIONS,
 } from "../constants/project-enums";
 import type {
   FundingSourceType,
@@ -370,14 +370,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               leading={{
                 label: "Loại dự án",
                 control: (
-                  <Select
-                    aria-label="Loại dự án"
-                    placeholder="— Chọn loại công trình —"
-                    value={form.type || undefined}
-                    onChange={(val) => update({ type: val as ProjectWorkType })}
-                    options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
-                    className="w-full text-xs"
-                  />
+                  <WorkTypeSelect value={form.type} onChange={(val) => update({ type: val })} />
                 ),
               }}
               tabLabels={form.tabLabels}

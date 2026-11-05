@@ -53,7 +53,6 @@ export default function RolePermissionMatrixModal({ onClose }: { onClose: () => 
               <Title level={4} className="!m-0 text-slate-900 font-bold text-lg sm:text-xl">
                 Quản lý chức danh
               </Title>
-              <p className="m-0 mt-1 text-sm text-slate-500">Quản lý các chức danh và phân quyền trong hệ thống</p>
             </div>
             {canManage && listTab === "roles" && (
               <Button

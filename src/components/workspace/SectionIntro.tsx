@@ -27,10 +27,11 @@ export default function SectionIntro({
 }: SectionIntroProps) {
   return (
     <header className="border-b border-slate-100 px-5 py-4">
-      <Flex justify="space-between" align="start" wrap="wrap" gap="middle">
+      {/* Chỉ có tiêu đề (không mô tả / gợi ý) thì căn giữa theo chiều dọc với các nút bên phải */}
+      <Flex justify="space-between" align={description || guide ? "start" : "center"} wrap="wrap" gap="middle">
         <section className="min-w-0 flex-1">
           <Flex align="center" gap="small" wrap="wrap">
-            <Text className="text-base font-bold text-[#102A43]">{title}</Text>
+            <Text className="text-lg font-bold leading-tight text-[#102A43]">{title}</Text>
             {countLabel && (
               <Tag intent="subtle" scale="sm" className="m-0 font-semibold">
                 {countLabel}

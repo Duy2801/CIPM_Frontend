@@ -276,9 +276,6 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
           <Text className="text-base font-bold text-[#102A43]">
             Thêm nhân sự mới
           </Text>
-          <Text className="block text-xs font-normal text-slate-500">
-            Khởi tạo hồ sơ và chức danh của cán bộ trên hệ thống
-          </Text>
         </div>
       }
       footer={

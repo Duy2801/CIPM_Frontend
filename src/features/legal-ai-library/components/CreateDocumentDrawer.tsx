@@ -162,9 +162,6 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
             <SafetyCertificateOutlined className="text-[#DC2626]" />
             Thêm văn bản pháp luật
           </div>
-          <div className="mt-0.5 text-xs font-normal text-slate-500">
-            Bổ sung luật, nghị định, thông tư, nghị quyết, quyết định vào thư viện tra cứu
-          </div>
         </div>
       }
       footer={

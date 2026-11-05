@@ -95,9 +95,6 @@ export default function DocumentDetailDrawer({ documentId, onClose }: { document
             <SafetyCertificateOutlined className="text-[#DC2626]" />
             <span>Cập nhật văn bản pháp luật</span>
           </div>
-          <div className="mt-0.5 text-xs font-normal text-slate-500">
-            Chỉnh sửa số hiệu, cơ quan ban hành, hiệu lực pháp lý và tệp tài liệu số hóa
-          </div>
         </div>
       }
       footer={

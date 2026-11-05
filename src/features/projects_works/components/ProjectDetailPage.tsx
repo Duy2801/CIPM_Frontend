@@ -9,7 +9,7 @@ import {
   HistoryOutlined,
   ProfileOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Select } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { InlineEditField, type SegmentedTabItem } from "@/components/workspace";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
@@ -19,14 +19,12 @@ import { canUserDo } from "@/access-control";
 import {
   FUNDING_SOURCE_OPTIONS,
   PERSONNEL_OPTIONS,
-  WORK_TYPE_OPTIONS,
 } from "../constants/project-enums";
 import type {
   FundingSourceType,
   ProjectFormData,
   ProjectItem,
   ProjectNature,
-  ProjectWorkType,
 } from "../types/project.types";
 import { useProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
 import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
@@ -36,6 +34,7 @@ import ProjectProcedureTab from "./detail/ProjectProcedureTab";
 import ProjectProcedurePicker, { procedureTarget, shortProcedureLabel } from "./ProjectProcedurePicker";
 import ProjectHistoryTab from "./detail/ProjectHistoryTab";
 import ProjectDisbursementTab from "./detail/ProjectDisbursementTab";
+import WorkTypeSelect from "./WorkTypeSelect";
 
 /** "proc:<phòng ban>" = tab quy trình của phòng ban đó */
 type DetailTab = "info" | `proc:${string}` | "disbursement" | "history";
@@ -530,14 +529,11 @@ export default function ProjectDetailPage({
                   label: FIELD_LABELS.type,
                   // Đổi loại dự án vẫn chờ "Lưu thay đổi" như các ô khác
                   control: (
-                    <Select
-                      aria-label={FIELD_LABELS.type}
+                    <WorkTypeSelect
                       value={view.type}
                       disabled={!canEditInfo}
-                      onChange={(v: ProjectWorkType) => setField("type", v)}
-                      options={WORK_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))}
+                      onChange={(v) => setField("type", v)}
                       className={cn(
-                        "w-full text-xs",
                         isChanged("type") && "[&_.ant-select-selector]:!border-amber-400 [&_.ant-select-selector]:!bg-amber-50/60",
                       )}
                     />

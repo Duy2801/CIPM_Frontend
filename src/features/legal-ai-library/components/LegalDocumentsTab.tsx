@@ -61,12 +61,9 @@ export default function LegalDocumentsTab() {
         className="overflow-hidden border border-slate-200 shadow-xs bg-white"
       >
         {/* Hàng 1: tiêu đề · thêm văn bản */}
-        <div className="flex items-start justify-between gap-3 px-4 pt-3.5">
+        <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
           <div className="min-w-0">
             <h2 className="m-0 text-base font-bold text-slate-900">Văn bản pháp luật</h2>
-            <p className="m-0 mt-0.5 text-xs text-slate-500">
-              Luật, nghị định, thông tư, nghị quyết và quyết định áp dụng cho công tác quản lý dự án.
-            </p>
           </div>
           {canManage && (
             <Button

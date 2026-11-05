@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PlusOutlined } from "@ant-design/icons";
 import { Button, Divider, Input } from "@/components/ui";
 
 interface StaffFormAddOptionProps {
@@ -45,7 +44,6 @@ export default function StaffFormAddOption({ placeholder, loading, isDuplicate, 
         <Button
           type="primary"
           size="small"
-          icon={<PlusOutlined />}
           disabled={!canAdd}
           loading={loading}
           onClick={submit}

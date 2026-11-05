@@ -1,7 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import { Card } from "@/components/ui";
+import { cn } from "@/utils/cn";
 
 export interface MyTaskStatSegment {
   key: string;
@@ -27,6 +29,8 @@ export default function MyTaskStatsChart({
   /** Nội dung đặt dưới dãy thẻ trong cùng khung (VD: ô tìm kiếm) */
   toolbar?: ReactNode;
 }) {
+  // Thu gọn: ẩn biểu đồ + thẻ, chỉ còn một hàng số liệu nhỏ và ô tìm
+  const [collapsed, setCollapsed] = useState(false);
   const total = segments.reduce((sum, s) => sum + s.count, 0);
   const gap = segments.filter((s) => s.count > 0).length > 1 ? SEGMENT_GAP : 0;
   const arcLength = (count: number) => (total > 0 ? (count / total) * DONUT_CIRCUMFERENCE : 0);
@@ -39,7 +43,8 @@ export default function MyTaskStatsChart({
 
   return (
     <Card surface="flat" padding="none" rounded="lg" className="overflow-hidden border border-slate-200 bg-white shadow-xs">
-      <div className="flex flex-col gap-4 px-5 py-5">
+      <div className={cn("flex flex-col gap-4 px-5", collapsed ? "py-3" : "py-5")}>
+      {!collapsed && (
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
         <div className="relative mx-auto shrink-0 sm:mx-0" style={{ width: DONUT_SIZE, height: DONUT_SIZE }}>
           <svg
@@ -94,8 +99,32 @@ export default function MyTaskStatsChart({
           </ul>
         </div>
       </div>
-      {/* Ô tìm: hàng riêng, trải hết bề ngang dưới biểu đồ */}
-      {toolbar}
+      )}
+      {/* Hàng dưới: (thu gọn thì có số liệu nhỏ) · ô tìm · nút thu gọn / mở rộng */}
+      <div className="flex flex-wrap items-center gap-3">
+        {collapsed && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+            <span className="font-semibold text-slate-900">{total} việc</span>
+            {segments.map((s) => (
+              <span key={s.key} className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
+                {s.label}
+                <strong className="tabular-nums text-slate-900">{s.count}</strong>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="min-w-[240px] flex-1">{toolbar}</div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+          className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
+        >
+          {collapsed ? <DownOutlined className="text-[10px]" /> : <UpOutlined className="text-[10px]" />}
+          {collapsed ? "Mở rộng" : "Thu gọn"}
+        </button>
+      </div>
       </div>
     </Card>
   );

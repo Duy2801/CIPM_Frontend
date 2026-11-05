@@ -53,7 +53,6 @@ export default function PersonnelDirectoryTab() {
       <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm">
         <SectionIntro
           title="Cơ cấu tổ chức, tài khoản & phân quyền"
-          description="Cán bộ theo từng phòng ban. Quản lý thông tin, trạng thái tài khoản và chức danh của cán bộ."
           countLabel={
             filteredStaff.length === staff.length
               ? `${staff.length} cán bộ · ${teams.length} phòng ban`
