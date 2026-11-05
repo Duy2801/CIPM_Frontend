@@ -23,9 +23,12 @@ const SEGMENT_GAP = 3;
 /** Thống kê việc của tôi theo tình trạng: vành khuyên (tổng ở giữa) + thẻ số lượng — cùng kiểu thư viện pháp lý */
 export default function MyTaskStatsChart({
   segments,
+  projectCount,
   toolbar,
 }: {
   segments: MyTaskStatSegment[];
+  /** Số dự án có các việc này */
+  projectCount: number;
   /** Nội dung đặt dưới dãy thẻ trong cùng khung (VD: ô tìm kiếm) */
   toolbar?: ReactNode;
 }) {
@@ -80,8 +83,14 @@ export default function MyTaskStatsChart({
             )}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="text-2xl font-bold leading-none tracking-tight text-slate-900">{total}</span>
-            <span className="mt-0.5 text-[10px] leading-tight text-slate-500">việc</span>
+            {/* Số việc và chữ "việc" trên cùng một hàng */}
+            <span className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold leading-none tracking-tight text-slate-900">{total}</span>
+              <span className="text-[11px] leading-none text-slate-500">việc</span>
+            </span>
+            <span className="mt-1 rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-semibold leading-tight text-slate-600">
+              {projectCount} dự án
+            </span>
           </div>
         </div>
 
@@ -104,7 +113,9 @@ export default function MyTaskStatsChart({
       <div className="flex flex-wrap items-center gap-3">
         {collapsed && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-            <span className="font-semibold text-slate-900">{total} việc</span>
+            <span className="font-semibold text-slate-900">
+              {total} việc · {projectCount} dự án
+            </span>
             {segments.map((s) => (
               <span key={s.key} className="inline-flex items-center gap-1.5">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />

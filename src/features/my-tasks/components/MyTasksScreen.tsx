@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type React from "react";
 import { App, AutoComplete } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import { Input } from "@/components/ui";
+import { Input, Select } from "@/components/ui";
 import { ReasonModal } from "@/components/workspace";
 import {
   HANDBACK_REASON_PRESETS,
@@ -36,6 +36,8 @@ export default function MyTasksScreen() {
   const [viewingKey, setViewingKey] = useState<TaskKey | null>(null);
   const [rejecting, setRejecting] = useState<MyTask | null>(null);
   const [reporting, setReporting] = useState<MyTask | null>(null);
+  // Lọc thêm theo quy trình (chỉ khi đã chọn một dự án)
+  const [procedureFilter, setProcedureFilter] = useState<string>();
   const [handingBack, setHandingBack] = useState<{ task: MyTask; mode: HandbackMode } | null>(null);
   const viewing = viewingKey ? (ctl.findTask(viewingKey.projectId, viewingKey.stepId) ?? null) : null;
   const setViewing = (task: MyTask | null) => setViewingKey(task && keyOfTask(task));
@@ -278,32 +280,70 @@ export default function MyTasksScreen() {
         ];
 
   // Số liệu tổng quan: chỉ đếm việc của mình (không tính việc người khác chỉ xem), theo ô tìm hiện tại
-  const mineOf = (col: MyTaskColumn) => columns[col].filter((it) => !it.readonly);
+  // Đã chọn đúng một dự án (ô tìm khớp tên dự án) → chọn thêm quy trình của dự án đó
+  const selectedProject = ctl.projectOptions.find((p) => p.name.toLowerCase() === q);
+  const procedureOptions = selectedProject
+    ? [
+        ...new Set(
+          Object.values(columns)
+            .flat()
+            .filter((it) => it.task.projectId === selectedProject.id)
+            .map((it) => it.task.procedureName),
+        ),
+      ].sort((a, b) => a.localeCompare(b, "vi"))
+    : [];
+  // Quy trình đã chọn chỉ còn hiệu lực khi vẫn thuộc dự án đang chọn
+  const activeProcedure = procedureFilter && procedureOptions.includes(procedureFilter) ? procedureFilter : undefined;
+  const shownColumns = activeProcedure
+    ? (Object.fromEntries(
+        Object.entries(columns).map(([col, items]) => [col, items.filter((it) => it.task.procedureName === activeProcedure)]),
+      ) as typeof columns)
+    : columns;
+
+  const mineOf = (col: MyTaskColumn) => shownColumns[col].filter((it) => !it.readonly);
+  const projectCount = new Set(
+    (Object.keys(shownColumns) as MyTaskColumn[]).flatMap(mineOf).map((it) => it.task.projectId),
+  ).size;
 
   return (
     <div className="mx-auto flex w-full max-w-[2560px] flex-col gap-4">
       {/* Thống kê + ô tìm chung một khung (chọn gợi ý dự án thì tên dự án được điền vào ô) */}
       <MyTaskStatsChart
+        projectCount={projectCount}
         toolbar={
-            <AutoComplete
-              value={ctl.keyword}
-              onChange={(next: string) => ctl.setKeyword(next ?? "")}
-              options={projectSuggestions}
-              popupMatchSelectWidth
-              listHeight={320}
-              className="w-full"
-              classNames={{
-                popup: {
-                  root: "[&_.ant-select-item]:!rounded-lg [&_.ant-select-item-option-active]:!bg-slate-50",
-                },
-              }}
-            >
-              <Input
-                prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder="Tìm việc, mã bước hoặc tên dự án..."
-                className="!border-slate-200 !shadow-none hover:!border-slate-300 [&.ant-input-affix-wrapper-focused]:!border-slate-400"
-              />
-            </AutoComplete>
+            <div className="flex flex-wrap items-center gap-2">
+              <AutoComplete
+                value={ctl.keyword}
+                onChange={(next: string) => ctl.setKeyword(next ?? "")}
+                options={projectSuggestions}
+                popupMatchSelectWidth
+                listHeight={320}
+                className="min-w-0 flex-1"
+                classNames={{
+                  popup: {
+                    root: "[&_.ant-select-item]:!rounded-lg [&_.ant-select-item-option-active]:!bg-slate-50",
+                  },
+                }}
+              >
+                <Input
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  placeholder="Tìm việc, mã bước hoặc tên dự án..."
+                  className="!border-slate-200 !shadow-none hover:!border-slate-300 [&.ant-input-affix-wrapper-focused]:!border-slate-400"
+                />
+              </AutoComplete>
+              {/* Chọn dự án xong thì lọc thêm theo quy trình của dự án đó */}
+              {selectedProject && procedureOptions.length > 0 && (
+                <Select
+                  aria-label="Quy trình"
+                  allowClear
+                  placeholder="Tất cả quy trình"
+                  value={activeProcedure}
+                  onChange={(v?: string) => setProcedureFilter(v)}
+                  options={procedureOptions.map((name) => ({ value: name, label: name }))}
+                  className="w-full sm:w-[280px]"
+                />
+              )}
+            </div>
         }
         segments={[
           { key: "accept", label: "Chờ tiếp nhận", count: mineOf("accept").length, color: "#8b5cf6" },
@@ -316,7 +356,7 @@ export default function MyTasksScreen() {
       />
 
       <MyTaskBoard
-        columns={columns}
+        columns={shownColumns}
         onOpen={setViewing}
         onDrop={handleDrop}
       />
