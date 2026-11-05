@@ -1,16 +1,13 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
-import { Checkbox, Input, Select, Tooltip } from "@/components/ui";
+import { CheckOutlined } from "@ant-design/icons";
+import { Checkbox, Input, Select } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { getProcedureCategories } from "@/features/construction-procedures/constants/procedure-categories";
 import { isSameDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
 import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
 import { DEPARTMENT_OPTIONS } from "../constants/project-enums";
-
-/** Số loại quy trình hiện thành thẻ bên phải ô chọn; nhiều hơn thì gộp "+N" */
-const MAX_VISIBLE_CATEGORIES = 3;
 
 /** Phòng ban (theo danh mục dự án) của quy trình; quy trình tự tạo không gắn phòng ban → undefined */
 export const procedureDepartment = (procedure: ProcedureLibraryItem) =>
@@ -47,6 +44,8 @@ export interface ProcedurePickerProps {
   library: ProcedureLibraryItem[];
   procedures: Record<string, string>;
   onToggle: (procedure: ProcedureLibraryItem, checked: boolean) => void;
+  /** Bỏ tích nhiều quy trình một lúc (khi bỏ chọn loại quy trình) */
+  onUncheckMany?: (procedures: ProcedureLibraryItem[]) => void;
   disabled?: boolean;
   hint?: string;
   /** Ô đặt đầu hàng lọc (VD: Loại dự án) */
@@ -68,6 +67,7 @@ export default function ProjectProcedurePicker({
   library,
   procedures,
   onToggle,
+  onUncheckMany,
   disabled,
   leading,
   hint,
@@ -124,7 +124,16 @@ export default function ProjectProcedurePicker({
             mode="multiple"
             placeholder="Chọn loại quy trình"
             value={categories}
-            onChange={(v: string[]) => setCategories(v)}
+            onChange={(v: string[]) => {
+              // Bỏ chọn loại quy trình: bỏ tích luôn các quy trình thuộc loại đó (tab đầu mục mất theo)
+              const removed = categories.filter((c) => !v.includes(c));
+              const dropped = selected.filter((p) => removed.includes(p.category));
+              if (dropped.length > 0) {
+                if (onUncheckMany) onUncheckMany(dropped);
+                else dropped.forEach((p) => onToggle(p, false));
+              }
+              setCategories(v);
+            }}
             options={categoryOptions}
             menuItemSelectedIcon={null}
             popupMatchSelectWidth
@@ -149,40 +158,6 @@ export default function ProjectProcedurePicker({
             }}
             className="w-full shrink-0 text-xs md:w-[320px]"
           />
-          {categories.length > 0 && (
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              {categories.slice(0, MAX_VISIBLE_CATEGORIES).map((c) => (
-                <span
-                  key={c}
-                  className="inline-flex h-7 items-center gap-2 rounded-sm border border-red-200 bg-red-50 pl-2.5 pr-1.5 text-xs font-medium text-slate-800"
-                >
-                  {c}
-                  <button
-                    type="button"
-                    aria-label={`Bỏ ${c}`}
-                    onClick={() => setCategories((prev) => prev.filter((x) => x !== c))}
-                    className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-slate-400 hover:bg-red-100 hover:text-[#DC2626]"
-                  >
-                    <CloseOutlined className="text-[9px]" />
-                  </button>
-                </span>
-              ))}
-              {categories.length > MAX_VISIBLE_CATEGORIES && (
-                <Tooltip title={categories.slice(MAX_VISIBLE_CATEGORIES).join(", ")}>
-                  <span className="inline-flex h-7 cursor-help items-center rounded-sm border border-slate-200 bg-slate-50 px-2 text-xs font-semibold text-slate-600">
-                    +{categories.length - MAX_VISIBLE_CATEGORIES}
-                  </span>
-                </Tooltip>
-              )}
-              <button
-                type="button"
-                onClick={() => setCategories([])}
-                className="ml-1 cursor-pointer border-0 bg-transparent p-0 text-[11px] font-medium text-slate-500 hover:text-[#DC2626] hover:underline"
-              >
-                Bỏ chọn tất cả
-              </button>
-            </div>
-          )}
         </div>
       </div>
       </div>

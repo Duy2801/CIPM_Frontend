@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type React from "react";
 import { App, AutoComplete } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { Input } from "@/components/ui";
@@ -17,6 +18,7 @@ import {
 import { useMyTasks } from "../hooks/useMyTasks";
 import { hasIncident, isMine, type HandbackMode, type MyTask } from "../utils/my-tasks";
 import MyTaskBoard, { type MyTaskItem } from "./MyTaskBoard";
+import MyTaskStatsChart from "./MyTaskStatsChart";
 import { toProcedureDocuments } from "../utils/task-documents";
 import MyTaskDrawer, { type TaskWorkActions } from "./MyTaskDrawer";
 
@@ -117,12 +119,15 @@ export default function MyTasksScreen() {
     isMine(task.step, ctl.me) &&
     !ctl.groups.accept.includes(task) &&
     !hasIncident(task.step);
+  // Báo cáo sự cố: bấm được ở mọi việc chưa xong (kể cả chưa tới lượt / đang chờ duyệt) của mình hoặc tổ mình duyệt
   const canReportIncidentTask = (task: MyTask) =>
-    task.reached && isWorking(task) && isMine(task.step, ctl.me) && !hasIncident(task.step);
+    !["COMPLETED", "SKIPPED", "DISABLED"].includes(task.flow) &&
+    (isMine(task.step, ctl.me) || ctl.canReview(task.department)) &&
+    !hasIncident(task.step);
   const canResolveIncidentTask = (task: MyTask) => hasIncident(task.step) && ctl.canReview(task.department);
   // Hoàn trả: việc của mình đã nộp, đang chờ duyệt → rút về Đang xử lý
   // Từ chối (trả việc về Tổ trưởng): được cả lúc chờ tiếp nhận lẫn đang xử lý — đi cùng Báo cáo sự cố
-  const canDeclineTask = (task: MyTask) => canReportIncidentTask(task);
+  const canDeclineTask = (task: MyTask) => isWorking(task) && isMine(task.step, ctl.me) && !hasIncident(task.step);
   const canGiveBackTask = (task: MyTask) => task.flow === "AWAITING_APPROVAL" && isMine(task.step, ctl.me);
   const notFound = () => message.error("Không tìm thấy quy trình của dự án, vui lòng tải lại trang.");
 
@@ -272,30 +277,43 @@ export default function MyTasksScreen() {
           },
         ];
 
+  // Số liệu tổng quan: chỉ đếm việc của mình (không tính việc người khác chỉ xem), theo ô tìm hiện tại
+  const mineOf = (col: MyTaskColumn) => columns[col].filter((it) => !it.readonly);
+
   return (
     <div className="mx-auto flex w-full max-w-[2560px] flex-col gap-4">
-      {/* Một ô duy nhất: gõ để tìm việc; chọn gợi ý dự án thì tên dự án được điền vào ô */}
-      <div className="flex flex-wrap items-center gap-2">
-        <AutoComplete
-          value={ctl.keyword}
-          onChange={(next: string) => ctl.setKeyword(next ?? "")}
-          options={projectSuggestions}
-          popupMatchSelectWidth
-          listHeight={320}
-          className="min-w-0 flex-1 sm:max-w-[640px]"
-          classNames={{
-            popup: {
-              root: "[&_.ant-select-item]:!rounded-lg [&_.ant-select-item-option-active]:!bg-slate-50",
-            },
-          }}
-        >
-          <Input
-            prefix={<SearchOutlined className="text-slate-400" />}
-            placeholder="Tìm việc, mã bước hoặc tên dự án..."
-            className="!border-slate-200 !shadow-none hover:!border-slate-300 [&.ant-input-affix-wrapper-focused]:!border-slate-400"
-          />
-        </AutoComplete>
-      </div>
+      {/* Thống kê + ô tìm chung một khung (chọn gợi ý dự án thì tên dự án được điền vào ô) */}
+      <MyTaskStatsChart
+        toolbar={
+            <AutoComplete
+              value={ctl.keyword}
+              onChange={(next: string) => ctl.setKeyword(next ?? "")}
+              options={projectSuggestions}
+              popupMatchSelectWidth
+              listHeight={320}
+              className="w-full"
+              classNames={{
+                popup: {
+                  root: "[&_.ant-select-item]:!rounded-lg [&_.ant-select-item-option-active]:!bg-slate-50",
+                },
+              }}
+            >
+              <Input
+                prefix={<SearchOutlined className="text-slate-400" />}
+                placeholder="Tìm việc, mã bước hoặc tên dự án..."
+                className="!border-slate-200 !shadow-none hover:!border-slate-300 [&.ant-input-affix-wrapper-focused]:!border-slate-400"
+              />
+            </AutoComplete>
+        }
+        segments={[
+          { key: "accept", label: "Chờ tiếp nhận", count: mineOf("accept").length, color: "#8b5cf6" },
+          { key: "processing", label: "Đang xử lý", count: mineOf("processing").length, color: "#3b82f6" },
+          { key: "pending", label: "Chờ duyệt", count: mineOf("pending").length, color: "#f59e0b" },
+          { key: "done", label: "Hoàn thành", count: mineOf("done").length, color: "#10b981" },
+          { key: "rejected", label: "Từ chối", count: mineOf("rejected").length, color: "#f97316" },
+          { key: "incident", label: "Sự cố", count: mineOf("incident").length, color: "#f43f5e" },
+        ]}
+      />
 
       <MyTaskBoard
         columns={columns}
@@ -367,16 +385,17 @@ export default function MyTasksScreen() {
         summary={
           handingBack && (
             <span>
-              <strong>{handingBack.task.step.code} · {handingBack.task.step.name}</strong> — {handingBack.task.projectName}.
-              {handingBack.mode === "return"
-                ? "Kết quả đã nộp được rút lại, việc quay về Đang xử lý; ghi chú và hồ sơ đã có được giữ lại."
-                : "Việc sẽ được trả về Tổ trưởng để giao người khác."}
+              <strong>{handingBack.task.step.code} · {handingBack.task.step.name}</strong>
+              {handingBack.mode === "decline" && " — việc sẽ được trả về Tổ trưởng để giao người khác."}
             </span>
           )
         }
         label={handingBack?.mode === "decline" ? "Lý do từ chối" : "Lý do hoàn trả"}
+        placeholder={handingBack?.mode === "decline" ? undefined : "Nhập lý do hoàn trả..."}
         confirmText={handingBack?.mode === "decline" ? "Từ chối" : "Hoàn trả"}
-        presetReasons={HANDBACK_REASON_PRESETS[handingBack?.mode ?? "decline"]}
+        // Hoàn trả: chỉ nhập lý do, không chọn lý do mẫu
+        presetReasons={handingBack?.mode === "decline" ? HANDBACK_REASON_PRESETS.decline : undefined}
+        optional={handingBack?.mode === "return"}
         onClose={() => setHandingBack(null)}
         onConfirm={handleHandBack}
       />

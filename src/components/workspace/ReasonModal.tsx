@@ -21,6 +21,8 @@ interface ReasonModalProps {
   allowCustomReason?: boolean;
   /** Tùy chọn lý do chọn mặc định (mặc định là lựa chọn đầu tiên trong preset) */
   defaultPresetReason?: string;
+  /** Lý do không bắt buộc, không giới hạn số ký tự (để trống vẫn xác nhận được) */
+  optional?: boolean;
   onClose: () => void;
   onConfirm: (reason: string) => Promise<boolean>;
 }
@@ -36,6 +38,7 @@ export default function ReasonModal({
   presetReasons,
   allowCustomReason = true,
   defaultPresetReason,
+  optional = false,
   onClose,
   onConfirm,
 }: ReasonModalProps) {
@@ -69,7 +72,7 @@ export default function ReasonModal({
         finalReason = (values.reason || "").trim();
       }
 
-      if (!finalReason) return;
+      if (!finalReason && !optional) return;
       if (await onConfirm(finalReason)) {
         onClose();
       }
@@ -162,10 +165,14 @@ export default function ReasonModal({
           <Form.Item
             name="reason"
             label={<Text strong className="text-[13px]">{label}</Text>}
-            rules={[
-              { required: true, whitespace: true, message: "Vui lòng nhập lý do." },
-              { min: 10, message: "Lý do cần rõ ràng, tối thiểu 10 ký tự." },
-            ]}
+            rules={
+              optional
+                ? []
+                : [
+                    { required: true, whitespace: true, message: "Vui lòng nhập lý do." },
+                    { min: 10, message: "Lý do cần rõ ràng, tối thiểu 10 ký tự." },
+                  ]
+            }
           >
             <Input.TextArea rows={4} placeholder={placeholder} className="text-sm" />
           </Form.Item>

@@ -513,18 +513,19 @@ export function handBackTask(
           }
         : { status: "IN_PROGRESS" as const, submissionStatus: undefined, submittedBy: undefined, submittedAt: undefined }),
       handbackType: mode === "decline" ? "DECLINED" : "RETURNED",
-      handbackReason: reason,
+      handbackReason: reason || undefined,
       handbackBy: actor.name,
       handbackAt: now.toISOString().slice(0, 10),
     }),
     (step) => ({
       action: "START_STEP",
       actionLabel: label,
-      reason,
+      reason: reason || undefined,
+      // Hoàn trả có thể không ghi lý do
       details:
         mode === "decline"
-          ? `${actor.name} từ chối nhận bước [${step.code}] ${step.name}, trả về Tổ trưởng: ${reason}`
-          : `${actor.name} rút kết quả đã nộp của bước [${step.code}] ${step.name}, quay lại đang xử lý: ${reason}`,
+          ? `${actor.name} từ chối nhận bước [${step.code}] ${step.name}, trả về Tổ trưởng${reason ? `: ${reason}` : "."}`
+          : `${actor.name} rút kết quả đã nộp của bước [${step.code}] ${step.name}, quay lại đang xử lý${reason ? `: ${reason}` : "."}`,
     }),
     actor,
     now,

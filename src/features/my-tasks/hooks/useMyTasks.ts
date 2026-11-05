@@ -42,6 +42,7 @@ export const ALL_PROJECTS = "ALL";
 export function useMyTasks() {
   const { user } = useAuth();
   const updateProject = useProjectStore((s) => s.updateProject);
+  const storeProjects = useProjectStore((s) => s.projects);
   const me = useMemo(
     () => ({ id: user?.id, name: user?.displayName || user?.name || "" }),
     [user?.id, user?.displayName, user?.name],
@@ -89,17 +90,36 @@ export function useMyTasks() {
     ) as Record<MyTaskTab, MyTask[]>;
   }, [allGroups, projectId, keyword]);
 
-  /** Việc của người khác (không thuộc nhóm nào của mình) — hiện mờ trên bảng để biết tiến độ chung */
+  /**
+   * Dự án mình là chủ dự án (người phụ trách chính) — xét theo dự án, không theo vai trò:
+   * chủ dự án thấy toàn bộ quy trình của dự án; thành viên chỉ thấy việc của mình.
+   */
+  const ownedProjectIds = useMemo(() => {
+    const norm = (v?: string) => (v ?? "").trim().toLowerCase();
+    const myName = norm(me.name);
+    if (!myName) return new Set<string>();
+    return new Set(
+      projects
+        .filter((p) => {
+          const manager = storeProjects.find((sp) => sp.id === p.projectId)?.managerName ?? p.managerName;
+          return norm(manager) === myName;
+        })
+        .map((p) => p.projectId),
+    );
+  }, [projects, storeProjects, me.name]);
+
+  /** Việc của người khác (không thuộc nhóm nào của mình) — chỉ chủ dự án thấy, hiện mờ để biết tiến độ chung */
   const others = useMemo(() => {
     const mine = new Set(Object.values(allGroups).flat().map((t) => `${t.projectId}:${t.step.id}`));
     return allTasks.flatMap((task) => {
+      if (!ownedProjectIds.has(task.projectId)) return [];
       if (mine.has(`${task.projectId}:${task.step.id}`)) return [];
       if (projectId !== ALL_PROJECTS && task.projectId !== projectId) return [];
       if (!matchesSearch(task, keyword)) return [];
       const kind = classifyOtherTask(task);
       return kind ? [{ kind, task }] : [];
     });
-  }, [allGroups, allTasks, projectId, keyword]);
+  }, [allGroups, allTasks, projectId, keyword, ownedProjectIds]);
 
   /** Tìm việc theo dự án + mã bước (lấy bản mới nhất để mở chi tiết) */
   const findTask = (projectIdOfLog: string, stepId: string) =>

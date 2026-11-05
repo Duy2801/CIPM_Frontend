@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import {
   ApartmentOutlined,
+  LeftOutlined,
+  LockOutlined,
+  RightOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   ExclamationCircleOutlined,
@@ -52,42 +56,42 @@ const COLUMN_STYLE: Record<
 > = {
   accept: {
     icon: <InboxOutlined />,
-    bar: "border-t-violet-500",
+    bar: "border-t-violet-500 border-b-violet-500",
     iconBox: "bg-violet-500 text-white shadow-sm shadow-violet-200",
     header: "bg-gradient-to-b from-violet-50 to-white",
     title: "text-violet-900",
   },
   processing: {
     icon: <SyncOutlined />,
-    bar: "border-t-blue-500",
+    bar: "border-t-blue-500 border-b-blue-500",
     iconBox: "bg-blue-500 text-white shadow-sm shadow-blue-200",
     header: "bg-gradient-to-b from-blue-50 to-white",
     title: "text-blue-900",
   },
   pending: {
     icon: <ClockCircleOutlined />,
-    bar: "border-t-amber-500",
+    bar: "border-t-amber-500 border-b-amber-500",
     iconBox: "bg-amber-500 text-white shadow-sm shadow-amber-200",
     header: "bg-gradient-to-b from-amber-50 to-white",
     title: "text-amber-900",
   },
   done: {
     icon: <CheckCircleOutlined />,
-    bar: "border-t-emerald-500",
+    bar: "border-t-emerald-500 border-b-emerald-500",
     iconBox: "bg-emerald-500 text-white shadow-sm shadow-emerald-200",
     header: "bg-gradient-to-b from-emerald-50 to-white",
     title: "text-emerald-900",
   },
   incident: {
     icon: <WarningOutlined />,
-    bar: "border-t-orange-500",
+    bar: "border-t-orange-500 border-b-orange-500",
     iconBox: "bg-orange-500 text-white shadow-sm shadow-orange-200",
     header: "bg-gradient-to-b from-orange-50 to-white",
     title: "text-orange-900",
   },
   rejected: {
     icon: <StopOutlined />,
-    bar: "border-t-rose-500",
+    bar: "border-t-rose-500 border-b-rose-500",
     iconBox: "bg-rose-500 text-white shadow-sm shadow-rose-200",
     header: "bg-gradient-to-b from-rose-50 to-white",
     title: "text-rose-900",
@@ -112,8 +116,18 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
     setOver(null);
   };
 
+  const { ref: boardRef, canLeft, canRight, columnWidth, scrollByColumn, panHandlers } = useHorizontalBoard();
+
   return (
-    <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">
+    <div className="relative">
+      {/* Nút cuộn ngang cho máy không có chuột cuộn ngang (laptop) */}
+      {canLeft && <ScrollButton side="left" onClick={() => scrollByColumn(-1)} />}
+      {canRight && <ScrollButton side="right" onClick={() => scrollByColumn(1)} />}
+    <div
+      ref={boardRef}
+      {...panHandlers}
+      className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {MY_TASK_COLUMN_ORDER.map((col) => {
         const meta = MY_TASK_COLUMNS[col];
         const action = dragging ? dropActionOf(dragging.kind, col) : null;
@@ -122,6 +136,8 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
           <section
             key={col}
             aria-label={meta.label}
+            // Cột co giãn theo màn hình: vừa khít số cột nguyên, không bị cắt nửa cột
+            style={columnWidth ? { width: columnWidth } : undefined}
             onDragOver={(e) => {
               if (!action) return;
               e.preventDefault();
@@ -138,7 +154,7 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
             }}
             className={cn(
               // Cột cao vừa màn hình, thẻ cuộn bên trong cột (kiểu Trello) — không tràn ra ngoài
-              "flex h-[calc(100vh-210px)] min-h-[360px] w-[340px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-t-[3px] bg-slate-100/70 shadow-xs transition-colors sm:w-[360px]",
+              "flex h-[calc(100vh-240px)] min-h-[360px] w-[340px] shrink-0 flex-col overflow-hidden rounded-2xl border border-t-[3px] border-b-[3px] bg-slate-100/70 shadow-xs transition-colors",
               action ? "border-dashed border-slate-300" : "border-slate-200/80",
               COLUMN_STYLE[col].bar,
               action && over === col && "border-[#DC2626] bg-red-50/60",
@@ -150,7 +166,7 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
               hint={meta.hint}
               label={meta.label}
             />
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2.5 py-2.5 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
+            <div data-board-scroll className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2.5 py-2.5 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
               {action && (
                 <div
                   className={cn(
@@ -181,8 +197,114 @@ export default function MyTaskBoard({ columns, onOpen, onDrop }: MyTaskBoardProp
           </section>
         );
       })}
-
     </div>
+    </div>
+  );
+}
+
+/** Cột hẹp nhất cho phép và khoảng cách giữa các cột (gap-3) */
+const MIN_COLUMN_WIDTH = 320;
+const COLUMN_GAP = 12;
+
+/** Màn hình rộng bao nhiêu thì hiện vừa khít bấy nhiêu cột, chia đều bề ngang */
+const fitColumnWidth = (boardWidth: number) => {
+  const perView = Math.max(1, Math.floor((boardWidth + COLUMN_GAP) / (MIN_COLUMN_WIDTH + COLUMN_GAP)));
+  return Math.floor((boardWidth - COLUMN_GAP * (perView - 1)) / perView);
+};
+
+/**
+ * Cuộn ngang bảng việc:
+ * - Nhấn giữ chuột trái vào chỗ trống của bảng rồi kéo để kéo ngang.
+ * - Nút ‹ › hai bên khi còn cột bị khuất.
+ */
+function useHorizontalBoard() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ canLeft: false, canRight: false });
+  const [columnWidth, setColumnWidth] = useState<number>();
+  const pan = useRef<{ x: number; left: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const sync = () =>
+      setEdges({
+        canLeft: el.scrollLeft > 4,
+        canRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+      });
+    const resize = () => {
+      setColumnWidth(fitColumnWidth(el.clientWidth));
+      sync();
+    };
+    resize();
+    el.addEventListener("scroll", sync, { passive: true });
+    const ro = new ResizeObserver(resize);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", sync);
+      ro.disconnect();
+    };
+  }, []);
+
+  /** Bước của một cột (bề rộng cột + khoảng cách) */
+  const step = () => (columnWidth ?? MIN_COLUMN_WIDTH) + COLUMN_GAP;
+  /** Bấm ‹ ›: qua đúng một cột, luôn dừng thẳng mép cột (kể cả khi đang lệch giữa chừng) */
+  const scrollByColumn = (dir: 1 | -1) => {
+    const el = ref.current;
+    if (!el) return;
+    const index = Math.round(el.scrollLeft / step()) + dir;
+    el.scrollTo({ left: Math.max(0, index * step()), behavior: "smooth" });
+  };
+  /** Thả tay sau khi kéo: trượt về mép cột gần nhất */
+  const snapToColumn = (el: HTMLElement) =>
+    el.scrollTo({ left: Math.round(el.scrollLeft / step()) * step(), behavior: "smooth" });
+
+  const panHandlers = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      // Chỉ chuột trái, bấm vào chỗ trống (không phải thẻ, nút, ô nhập)
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      if ((e.target as HTMLElement).closest("article,button,a,input,textarea,[role='button']")) return;
+      pan.current = { x: e.clientX, left: e.currentTarget.scrollLeft, moved: false };
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const p = pan.current;
+      if (!p) return;
+      const dx = e.clientX - p.x;
+      if (!p.moved && Math.abs(dx) < 4) return;
+      if (!p.moved) {
+        p.moved = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        e.currentTarget.style.cursor = "grabbing";
+        e.currentTarget.style.userSelect = "none";
+      }
+      e.currentTarget.scrollLeft = p.left - dx;
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (pan.current?.moved) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        e.currentTarget.style.cursor = "";
+        e.currentTarget.style.userSelect = "";
+        snapToColumn(e.currentTarget);
+      }
+      pan.current = null;
+    },
+  };
+  return { ref, ...edges, columnWidth, scrollByColumn, panHandlers: { ...panHandlers, onPointerCancel: panHandlers.onPointerUp } };
+}
+
+function ScrollButton({ side, onClick }: { side: "left" | "right"; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={side === "left" ? "Xem cột bên trái" : "Xem cột bên phải"}
+      title={side === "left" ? "Cột trước" : "Cột tiếp theo"}
+      className={cn(
+        "absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-600 shadow-md transition hover:border-[#DC2626] hover:text-[#DC2626]",
+        side === "left" ? "-left-2" : "-right-2",
+      )}
+    >
+      {side === "left" ? <LeftOutlined /> : <RightOutlined />}
+    </button>
   );
 }
 
@@ -292,7 +414,8 @@ function TurnBadge({ reached }: { reached: boolean }) {
       Đang tới lượt
     </span>
   ) : (
-    <span className="inline-block rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-medium text-slate-500">
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-medium text-slate-500">
+      <LockOutlined className="text-[9px]" />
       Chưa tới lượt
     </span>
   );
@@ -321,6 +444,14 @@ function CardBody({
           </dl>
           {draggable && (
             <HolderOutlined className="mt-0.5 shrink-0 text-slate-300 group-hover:text-slate-500" aria-hidden />
+          )}
+          {/* Bước chưa tới lượt: khóa, chờ bước trước hoàn thành */}
+          {!task.reached && (
+            <Tooltip title="Chưa tới lượt — chờ bước trước hoàn thành">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+                <LockOutlined className="text-xs" />
+              </span>
+            </Tooltip>
           )}
         </div>
 

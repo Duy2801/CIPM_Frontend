@@ -1,77 +1,57 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { ApartmentOutlined, HistoryOutlined, ProfileOutlined } from "@ant-design/icons";
-import { Card } from "@/components/ui";
-import { cn } from "@/utils/cn";
-import { formatDateVi } from "@/utils/date";
+import { useMemo, useState } from "react";
+import { Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
+import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
+import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
 import type { ProcedureHistoryLog } from "@/features/construction-procedures/types/procedure.types";
 import type { ProjectItem } from "../../types/project.types";
 
-type HistorySource = "info" | "procedure";
-type HistoryFilter = "all" | HistorySource;
-type HistoryTone = "success" | "danger" | "neutral";
+const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
-interface HistoryEntry {
-  id: string;
-  /** "YYYY-MM-DD" hoặc "YYYY-MM-DD HH:mm" — dùng để sắp xếp */
-  at: string;
-  source: HistorySource;
-  title: string;
-  actor: string;
-  role?: string;
-  detail?: string;
-  reason?: string;
-  tone: HistoryTone;
-}
-
-const SOURCE_META: Record<HistorySource, { label: string; icon: React.ReactNode }> = {
-  info: { label: "Thông tin dự án", icon: <ProfileOutlined /> },
-  procedure: { label: "Quy trình", icon: <ApartmentOutlined /> },
+/** "YYYY-MM-DD", "YYYY-MM-DD HH:mm" hoặc ISO → ISO (giờ Việt Nam khi không có múi giờ) */
+const toIso = (value: string) => {
+  if (!value) return new Date(0).toISOString();
+  const hasZone = /T.*(Z|[+-]\d{2}:?\d{2})$/.test(value);
+  const local = value.includes("T") ? value : value.length > 10 ? value.replace(" ", "T") : `${value}T00:00`;
+  const d = new Date(hasZone ? value : `${local.slice(0, 16)}:00+07:00`);
+  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
 };
 
-const TONE_DOT: Record<HistoryTone, string> = {
-  success: "bg-emerald-500",
-  danger: "bg-rose-500",
-  neutral: "bg-blue-500",
-};
-
-/** Màu theo hành động: duyệt / nghiệm thu = xanh lá, từ chối / rà soát = đỏ, còn lại = xanh dương */
-function toneOf(label: string): HistoryTone {
-  const text = label.toLowerCase();
-  if (text.includes("từ chối") || text.includes("rà soát")) return "danger";
-  if (text.includes("duyệt") || text.includes("nghiệm thu")) return "success";
-  return "neutral";
-}
-
-const normalizeTime = (value: string) => value.replace("T", " ").slice(0, 16);
-
-function buildEntries(project: ProjectItem, procedureLogs: ProcedureHistoryLog[]): HistoryEntry[] {
-  const infoEntries: HistoryEntry[] = (project.progressHistory ?? []).map((h) => ({
+/** Nhật ký của dự án (thông tin chung + quy trình) theo dạng dùng chung của các màn hình lịch sử */
+function buildEntries(project: ProjectItem, procedureLogs: ProcedureHistoryLog[]): ActivityEntry[] {
+  const info: ActivityEntry[] = (project.progressHistory ?? []).map((h) => ({
     id: `info-${h.id}`,
-    at: normalizeTime(h.updatedAt),
-    source: "info",
-    title: "Cập nhật thông tin dự án",
-    actor: h.updatedBy,
-    detail: h.note,
-    tone: "neutral",
+    at: toIso(h.updatedAt),
+    actorName: h.updatedBy,
+    module: "Thông tin dự án",
+    action: "Cập nhật thông tin dự án",
+    targetName: project.name,
+    changes:
+      h.oldProgress !== h.newProgress
+        ? [{ label: "Tiến độ", from: `${h.oldProgress}%`, to: `${h.newProgress}%` }]
+        : undefined,
+    note: h.note || undefined,
   }));
-  const procedureEntries: HistoryEntry[] = procedureLogs.map((log) => ({
+  const procedure: ActivityEntry[] = procedureLogs.map((log) => ({
     id: `proc-${log.id}`,
-    at: normalizeTime(log.timestamp),
-    source: "procedure",
-    title: log.actionLabel,
-    actor: log.performedBy,
-    role: log.role,
-    detail: log.details,
-    // Lý do thường đã nằm trong mô tả — chỉ hiện riêng khi mô tả chưa có
-    reason: log.reason && !log.details?.includes(log.reason) ? log.reason : undefined,
-    tone: toneOf(log.actionLabel),
+    at: toIso(log.timestamp),
+    actorName: log.performedBy,
+    actorRole: log.role,
+    module: "Quy trình",
+    action: log.actionLabel,
+    targetType: "procedure",
+    // Lý do thường đã nằm trong mô tả — chỉ thêm khi mô tả chưa có
+    note:
+      [log.details, log.reason && !log.details?.includes(log.reason) ? `Lý do: ${log.reason}` : undefined]
+        .filter(Boolean)
+        .join(" · ") || undefined,
   }));
-  return [...infoEntries, ...procedureEntries].sort((a, b) => b.at.localeCompare(a.at));
+  return [...info, ...procedure].sort((a, b) => b.at.localeCompare(a.at));
 }
 
-/** Tab lịch sử: mọi thay đổi của dự án (thông tin chung + quy trình) theo dòng thời gian, mới nhất trước */
+/** Tab "Lịch sử": ai đã thay đổi gì trên dự án, vào lúc nào (lọc theo ngày, phân trang) — cùng kiểu các màn hình khác */
 export default function ProjectHistoryTab({
   project,
   procedureLogs,
@@ -79,98 +59,58 @@ export default function ProjectHistoryTab({
   project: ProjectItem;
   procedureLogs: ProcedureHistoryLog[];
 }) {
-  const [filter, setFilter] = useState<HistoryFilter>("all");
-  const entries = useMemo(() => buildEntries(project, procedureLogs), [project, procedureLogs]);
-  const visible = filter === "all" ? entries : entries.filter((e) => e.source === filter);
+  // Lọc theo một ngày (yyyy-mm-dd), rỗng = tất cả
+  const [historyDate, setHistoryDate] = useState("");
+  const [page, setPage] = useState(1);
 
-  // Gom theo ngày để dễ đọc
-  const groups = useMemo(() => {
-    const map = new Map<string, HistoryEntry[]>();
-    visible.forEach((e) => {
-      const day = e.at.slice(0, 10);
-      map.set(day, [...(map.get(day) ?? []), e]);
-    });
-    return [...map.entries()];
-  }, [visible]);
+  const history = useMemo(() => {
+    const all = buildEntries(project, procedureLogs);
+    return historyDate ? all.filter((e) => toLocalDate(e.at) === historyDate) : all;
+  }, [project, procedureLogs, historyDate]);
 
-  const filters: { key: HistoryFilter; label: string; count: number }[] = [
-    { key: "all", label: "Tất cả", count: entries.length },
-    { key: "info", label: SOURCE_META.info.label, count: entries.filter((e) => e.source === "info").length },
-    { key: "procedure", label: SOURCE_META.procedure.label, count: entries.filter((e) => e.source === "procedure").length },
-  ];
+  const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pagedHistory = history.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
-    <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <HistoryOutlined className="text-slate-500" />
-          Lịch sử thay đổi
+    <Card surface="flat" padding="none" rounded="lg" className="overflow-hidden border border-slate-200 bg-white shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3.5">
+        <div className="min-w-0">
+          <h2 className="m-0 text-base font-bold text-slate-900">Lịch sử thay đổi</h2>
         </div>
-        <div className="flex gap-1">
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              className={cn(
-                "cursor-pointer rounded-md border-0 px-2.5 py-1 text-xs transition-colors",
-                filter === f.key
-                  ? "bg-red-50 font-semibold text-[#DC2626]"
-                  : "bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700",
-              )}
-            >
-              {f.label} <span className="tabular-nums">({f.count})</span>
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <ActivityDateFilter
+            value={historyDate}
+            onChange={(val) => {
+              setHistoryDate(val);
+              setPage(1);
+            }}
+          />
+          {history.length > 0 && (
+            <div className="flex items-center text-xs text-slate-500">
+              <Pagination
+                current={currentPage}
+                pageSize={PAGE_SIZE}
+                total={history.length}
+                onChange={setPage}
+                showSizeChanger={false}
+                size="small"
+              />
+            </div>
+          )}
         </div>
       </div>
-
-      <div className="px-5 py-4">
-        {groups.length === 0 ? (
-          <div className="py-10 text-center text-xs text-slate-400">Chưa có lịch sử thay đổi</div>
-        ) : (
-          <div className="space-y-5">
-            {groups.map(([day, items]) => (
-              <section key={day}>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  {formatDateVi(day)}
-                </div>
-                <ol className="m-0 list-none space-y-0 border-l border-slate-200 pl-0">
-                  {items.map((e) => (
-                    <li key={e.id} className="relative pb-3 pl-5 last:pb-0">
-                      <span
-                        className={cn(
-                          "absolute -left-1.25 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white",
-                          TONE_DOT[e.tone],
-                        )}
-                      />
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        <span className="text-xs font-semibold text-slate-900">{e.title}</span>
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
-                          {SOURCE_META[e.source].icon}
-                          {SOURCE_META[e.source].label}
-                        </span>
-                        <span className="ml-auto font-mono text-[11px] text-slate-400">
-                          {e.at.length > 10 ? e.at.slice(11) : ""}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">
-                        {e.actor}
-                        {e.role ? ` · ${e.role}` : ""}
-                      </div>
-                      {e.detail && <p className="m-0 mt-1 text-xs leading-relaxed text-slate-600">{e.detail}</p>}
-                      {e.reason && (
-                        <p className="m-0 mt-1 rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-700">
-                          Lý do: {e.reason}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ))}
-          </div>
-        )}
+      <div className="p-4">
+        <ActivityTimeline
+          key={`${historyDate}-${currentPage}`}
+          entries={pagedHistory}
+          showModule
+          hideLoadMore
+          emptyText={
+            historyDate ? "Không có thao tác nào trong ngày đã chọn." : "Chưa có thao tác nào trên dự án được ghi nhận."
+          }
+        />
       </div>
     </Card>
   );

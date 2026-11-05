@@ -31,7 +31,6 @@ export default function ProcedureDetailPage({
             Chi tiết quy trình <span className="text-[#DC2626]">{procedure.name}</span>
           </>
         }
-        subtitle={procedure.department}
         onBack={onBack}
         actions={
           <>

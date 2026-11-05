@@ -170,8 +170,15 @@ function readStore(): Store {
   }
 }
 
+/** Đợt mẫu do bản demo cũ tự tạo (không phải người dùng nhập) */
+const isDemoEntry = (e: DisbursementEntry) => e.id.startsWith("GN-DEMO-");
+
 export function loadProjectDisbursements(projectId: string): DisbursementEntry[] {
-  return readStore()[projectId] ?? [];
+  const entries = readStore()[projectId] ?? [];
+  const real = entries.filter((e) => !isDemoEntry(e));
+  // Dọn đợt mẫu đã lưu trước đây để số "Đã giải ngân" chỉ tính đợt thật
+  if (real.length !== entries.length) saveProjectDisbursements(projectId, real);
+  return real;
 }
 
 export function saveProjectDisbursements(projectId: string, entries: DisbursementEntry[]) {
@@ -181,78 +188,4 @@ export function saveProjectDisbursements(projectId: string, entries: Disbursemen
   } catch (e) {
     console.error("Failed to save project disbursements", e);
   }
-}
-
-const DEMO_SEEDED_KEY = "cipm_project_disbursements_demo_v1";
-
-/** Dự án có cần tạo dữ liệu demo không: chưa có đợt nào và chưa từng tạo demo */
-export function shouldSeedDemoDisbursements(projectId: string): boolean {
-  if (typeof window === "undefined" || (readStore()[projectId]?.length ?? 0) > 0) return false;
-  try {
-    const seeded = JSON.parse(localStorage.getItem(DEMO_SEEDED_KEY) ?? "[]");
-    return !(Array.isArray(seeded) && seeded.includes(projectId));
-  } catch {
-    return true;
-  }
-}
-
-/** Ghi nhận đã tạo demo cho dự án (xóa hết đợt demo sau đó thì không tạo lại) */
-export function markDemoDisbursementsSeeded(projectId: string) {
-  try {
-    const seeded = JSON.parse(localStorage.getItem(DEMO_SEEDED_KEY) ?? "[]");
-    const list = Array.isArray(seeded) ? seeded : [];
-    localStorage.setItem(DEMO_SEEDED_KEY, JSON.stringify([...list, projectId]));
-  } catch (e) {
-    console.error("Failed to mark demo disbursements", e);
-  }
-}
-
-/** Nội dung mẫu cho các đợt giải ngân demo */
-const DEMO_CONTENTS = [
-  "Tạm ứng hợp đồng đợt 1",
-  "Thanh toán khối lượng hoàn thành đợt 1",
-  "Thanh toán khối lượng hoàn thành đợt 2",
-];
-
-/**
- * Dữ liệu demo (chỉ tạo một lần cho dự án chưa có dữ liệu): mỗi đầu mục 1–3 đợt,
- * tổng khoảng 45% TMĐT, đầu mục cuối để trống để thấy cả dòng chưa giải ngân.
- */
-export function buildDemoDisbursements(
-  headings: readonly string[],
-  totalInvestment: number,
-  operatorName: string,
-): DisbursementEntry[] {
-  const base = totalInvestment > 0 ? totalInvestment : 10_000_000_000;
-  const unit = base >= 1_000_000_000 ? 1_000_000 : 100_000;
-  const round = (v: number) => Math.max(unit, Math.round(v / unit) * unit);
-  const filled = headings.length > 1 ? headings.slice(0, -1) : headings;
-  const perHeading = (base * 0.45) / Math.max(1, filled.length);
-  const now = Date.now();
-  const day = 86_400_000;
-  const entries: DisbursementEntry[] = [];
-
-  filled.forEach((category, i) => {
-    const rounds = (i % 3) + 1;
-    for (let r = 0; r < rounds; r++) {
-      const date = new Date(now - ((filled.length - i) * 20 + (rounds - r) * 9) * day);
-      const iso = date.toISOString();
-      entries.push({
-        id: `GN-DEMO-${i}-${r}`,
-        kind: "disburse",
-        category,
-        amount: round((perHeading * (r + 1)) / ((rounds * (rounds + 1)) / 2)),
-        date: iso.slice(0, 10),
-        content: DEMO_CONTENTS[r % DEMO_CONTENTS.length],
-        attachments: [
-          { id: `DEMO-${i}-${r}`, name: `Uy-nhiem-chi-dot-${r + 1}.pdf`, size: "240 KB", type: "application/pdf" },
-        ],
-        createdBy: operatorName,
-        createdAt: iso,
-      });
-    }
-  });
-
-  // Mới nhất lên đầu
-  return entries.sort((a, b) => b.date.localeCompare(a.date));
 }

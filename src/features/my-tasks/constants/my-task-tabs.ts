@@ -64,31 +64,31 @@ export const MY_TASK_COLUMNS: Record<
     label: "Đang xử lý",
     hint: "Việc bạn đang làm",
     kinds: ["todo"],
-    empty: "Kéo việc chờ tiếp nhận vào đây để nhận việc.",
+    empty: "Chưa có việc nào.",
   },
   pending: {
     label: "Chờ duyệt",
     hint: "Đã nộp kết quả, chờ Tổ trưởng duyệt",
     kinds: ["review", "submitted"],
-    empty: "Kéo việc đã làm xong vào đây để nộp kết quả.",
+    empty: "Chưa có việc nào.",
   },
   done: {
     label: "Hoàn thành",
     hint: "Đã được duyệt hoàn thành",
     kinds: ["done", "approved"],
-    empty: "Kéo việc chờ duyệt vào đây để duyệt.",
+    empty: "Chưa có việc nào.",
   },
   rejected: {
     label: "Từ chối",
     hint: "Bị trả về làm lại",
     kinds: ["returned", "rejected"],
-    empty: "Kéo việc chờ duyệt vào đây để từ chối.",
+    empty: "Chưa có việc nào.",
   },
   incident: {
     label: "Sự cố",
     hint: "Đang vướng sự cố, chờ Tổ trưởng xử lý",
     kinds: ["incident"],
-    empty: "Kéo việc đang làm vào đây để báo sự cố.",
+    empty: "Chưa có việc nào.",
   },
 };
 

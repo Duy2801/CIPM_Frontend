@@ -4,9 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useCatalog } from "@/features/catalogs";
 import {
   DEFAULT_DISBURSEMENT_CATEGORIES,
-  buildDemoDisbursements,
-  markDemoDisbursementsSeeded,
-  shouldSeedDemoDisbursements,
   loadCustomCategories,
   loadProjectDisbursements,
   saveCustomCategories,
@@ -22,19 +19,9 @@ export function useProjectDisbursements(
   projectId: string,
   operatorName: string,
   headings?: readonly string[],
-  totalInvestment = 0,
 ) {
   // Tab chỉ hiện sau khi người dùng bấm vào (chạy trên trình duyệt) nên đọc thẳng lúc khởi tạo
-  const [entries, setEntries] = useState<DisbursementEntry[]>(() => {
-    // Dự án chưa từng có dữ liệu: tạo sẵn vài đợt demo theo đầu mục để xem thử
-    if (shouldSeedDemoDisbursements(projectId) && headings && headings.length > 0) {
-      const demo = buildDemoDisbursements(headings, totalInvestment, operatorName);
-      saveProjectDisbursements(projectId, demo);
-      markDemoDisbursementsSeeded(projectId);
-      return demo;
-    }
-    return loadProjectDisbursements(projectId);
-  });
+  const [entries, setEntries] = useState<DisbursementEntry[]>(() => loadProjectDisbursements(projectId));
   const [customCategories, setCustomCategories] = useState<string[]>(loadCustomCategories);
 
   // Danh mục chi phí: danh mục backend (EXPENSE_TYPE) nếu có, không thì danh sách mặc định; cộng các danh mục tự thêm

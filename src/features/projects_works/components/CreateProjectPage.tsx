@@ -283,7 +283,7 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               </Field>
             </FieldGroup>
 
-            <FieldGroup title="Vốn đầu tư">
+            <FieldGroup title="Vốn đầu tư" cols={2}>
               <Field label="Nguồn vốn">
                 <Select
                   showSearch
@@ -315,14 +315,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
                   placeholder="VD: 1.000.000.000"
                   value={form.totalInvestment}
                   onChange={(e) => update({ totalInvestment: e.target.value === "" ? "" : parseMoney(e.target.value) })}
-                  className="w-full font-mono text-xs"
-                />
-              </Field>
-              <Field label={`Kế hoạch vốn ${new Date().getFullYear()} (VNĐ)`}>
-                <MoneyInput
-                  placeholder="Chưa giao kế hoạch"
-                  value={form.plan2026}
-                  onChange={(e) => update({ plan2026: e.target.value === "" ? "" : parseMoney(e.target.value) })}
                   className="w-full font-mono text-xs"
                 />
               </Field>
@@ -367,6 +359,13 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               library={library}
               procedures={form.procedures}
               onToggle={toggleProcedure}
+              onUncheckMany={(items) => {
+                const ids = new Set(items.map((p) => p.id));
+                update({
+                  procedures: Object.fromEntries(Object.entries(form.procedures).filter(([, id]) => !ids.has(id))),
+                  tabLabels: Object.fromEntries(Object.entries(form.tabLabels).filter(([id]) => !ids.has(id))),
+                });
+              }}
               // Loại dự án đặt ngay trên Loại quy trình, giống trang chi tiết dự án
               leading={{
                 label: "Loại dự án",

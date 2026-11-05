@@ -437,7 +437,7 @@ export default function ProjectDetailPage({
                 />
               </FieldGroup>
 
-              <FieldGroup title="Vốn đầu tư" cols="even3">
+              <FieldGroup title="Vốn đầu tư" cols="even2">
                 <InlineEditField
                   label={FIELD_LABELS.fundingSource}
                   changed={isChanged("fundingSource")}
@@ -454,15 +454,6 @@ export default function ProjectDetailPage({
                   editor={{ kind: "text", placeholder: "Số tiền (VNĐ)" }}
                   validate={validateMoney}
                   onSave={infoSaver("totalInvestment", parseMoney)}
-                />
-                <InlineEditField
-                  label={FIELD_LABELS.plan2026}
-                  changed={isChanged("plan2026")}
-                  value={String(view.plan2026 || 0)}
-                  display={view.plan2026 > 0 ? `${formatMoneyString(view.plan2026)} VNĐ` : "Chưa giao kế hoạch"}
-                  editor={{ kind: "text", placeholder: "Số tiền (VNĐ)" }}
-                  validate={validateMoney}
-                  onSave={infoSaver("plan2026", parseMoney)}
                 />
               </FieldGroup>
 
@@ -529,6 +520,11 @@ export default function ProjectDetailPage({
                   }),
                 )}
                 onToggle={toggleProcedure}
+                onUncheckMany={(items) => {
+                  const ids = new Set(items.map((p) => p.id));
+                  setProcDraft(Object.fromEntries(Object.entries(shownProcedures).filter(([, id]) => !ids.has(id))));
+                  setLabelDraft((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => !ids.has(id))));
+                }}
                 disabled={!canEditProcedures}
                 leading={{
                   label: FIELD_LABELS.type,
@@ -547,11 +543,6 @@ export default function ProjectDetailPage({
                     />
                   ),
                 }}
-                hint={
-                  canEditProcedures
-                    ? "Mỗi quy trình là một tab của dự án. Tích / bỏ tích xong bấm \"Lưu thay đổi\" để cập nhật; gỡ quy trình sẽ xóa các bước và tiến độ của quy trình đó."
-                    : "Mỗi quy trình là một tab của dự án. Cần quyền cấu hình quy trình để thêm hoặc gỡ."
-                }
               />
             </div>
           </Card>
@@ -631,6 +622,8 @@ const FIELD_GROUP_COLS = {
   3: "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
   /** Nhóm đúng 3 trường: chia 3 ô bằng nhau, kín hết hàng */
   even3: "sm:grid-cols-3",
+  /** Nhóm đúng 2 trường: chia đôi hàng */
+  even2: "sm:grid-cols-2",
 } as const;
 
 /** Nhóm trường thông tin có tiêu đề */

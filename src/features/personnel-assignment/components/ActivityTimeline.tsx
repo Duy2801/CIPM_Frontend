@@ -38,10 +38,10 @@ export default function ActivityTimeline({
   }
 
   const toggle = (id: string) =>
+    // Mỗi lúc chỉ mở một dòng: mở dòng này thì các dòng khác thu gọn lại
     setOpenIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const next = new Set<string>();
+      if (!prev.has(id)) next.add(id);
       return next;
     });
 

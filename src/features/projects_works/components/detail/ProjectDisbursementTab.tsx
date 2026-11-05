@@ -52,7 +52,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** Cột bảng: Danh mục | Số đợt | Đã giải ngân | Tỷ lệ / TMĐT | Gần nhất | Thao tác */
 const GRID =
-  "grid grid-cols-[minmax(240px,1fr)_72px_170px_180px_110px_196px] items-center gap-x-4";
+  "grid grid-cols-[minmax(220px,1fr)_80px_160px_minmax(180px,240px)_110px_190px] items-center gap-x-6";
 
 /** Drawer đang mở: giải ngân (danh mục có thể chọn) hoặc thu hồi (khóa danh mục) */
 type FormState = { kind: DisbursementKind; category: string };
@@ -83,7 +83,6 @@ export default function ProjectDisbursementTab({
       project.id,
       operatorName,
       byHeading ? [...new Set(headings)] : undefined,
-      project.totalInvestment || 0,
     );
   const unit = byHeading ? "đầu mục" : "danh mục";
 
@@ -126,11 +125,8 @@ export default function ProjectDisbursementTab({
       <div className="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3">
         <div className="mr-auto min-w-0">
           <h3 className="m-0 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-            Giải ngân theo {unit}
+            Tình hình giải ngân
           </h3>
-          <p className="m-0 mt-0.5 text-[11px] text-slate-400">
-            Bấm vào từng {unit} để xem lịch sử giải ngân.
-          </p>
         </div>
       </div>
 
@@ -172,7 +168,7 @@ export default function ProjectDisbursementTab({
 
       {/* Bảng danh mục: mỗi dòng mở ra để xem các đợt */}
       <div className="mt-4 overflow-x-auto">
-        <div className="min-w-[940px]">
+        <div className="min-w-[1100px]">
           <div
             className={cn(
               GRID,
@@ -181,10 +177,10 @@ export default function ProjectDisbursementTab({
           >
             <span className="pl-5">{byHeading ? "Đầu mục" : "Danh mục"}</span>
             <span className="text-center">Số đợt</span>
-            <span className="text-right">Đã giải ngân</span>
-            <span>Tỷ lệ / TMĐT</span>
-            <span>Gần nhất</span>
-            <span className="text-right">Thao tác</span>
+            <span className="text-center">Đã giải ngân</span>
+            <span className="text-center">Tỷ lệ / TMĐT</span>
+            <span className="text-center">Gần nhất</span>
+            <span className="text-center">Thao tác</span>
           </div>
 
           {summary.byCategory.map((row) => (
@@ -341,7 +337,7 @@ function CategoryRow({
         }}
         className={cn(
           GRID,
-          "group cursor-pointer px-4 py-2.5 text-xs transition-colors hover:bg-slate-50",
+          "group cursor-pointer px-4 py-3 text-xs transition-colors hover:bg-slate-50",
           open && "bg-red-50/40 hover:bg-red-50/60",
         )}
       >
@@ -365,29 +361,29 @@ function CategoryRow({
         <span className={cn("text-center text-slate-700", muted)}>
           {hasData ? row.count : "—"}
         </span>
-        <span className={cn("text-right font-semibold text-slate-900", muted)}>
+        <span className={cn("text-center font-semibold text-slate-900", muted)}>
           {hasData ? money(row.total) : "—"}
         </span>
-        <span className="flex items-center gap-2">
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+        <span className="flex items-center justify-center gap-2">
+          <span className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100">
             <span
-              className="block h-full rounded-full bg-[#DC2626]/80"
+              className="block h-full rounded-full bg-[#DC2626]"
               style={{ width: `${share}%` }}
             />
           </span>
           <span
             className={cn(
-              "w-11 shrink-0 text-right text-[11px] text-slate-600",
+              "w-11 shrink-0 text-left text-xs font-medium text-slate-700",
               muted,
             )}
           >
             {share.toFixed(1)}%
           </span>
         </span>
-        <span className={cn("text-slate-600", muted)}>
+        <span className={cn("text-center text-slate-600", muted)}>
           {row.lastDate ? formatDateVi(row.lastDate) : "—"}
         </span>
-        <span className="flex justify-end gap-1.5">
+        <span className="flex justify-center gap-1.5">
           {canDisburse &&
             (hasData ? (
               <>
@@ -395,7 +391,7 @@ function CategoryRow({
                   intent="outline"
                   scale="xs"
                   onClick={act(onDisburse)}
-                  className="px-2"
+                  className="!h-7 px-2.5 !text-xs"
                 >
                   Giải ngân thêm
                 </Button>
@@ -404,7 +400,7 @@ function CategoryRow({
                   scale="xs"
                   onClick={act(onWithdraw)}
                   disabled={row.total <= 0}
-                  className="px-2 hover:!border-rose-400 hover:!text-rose-600"
+                  className="!h-7 px-2.5 !text-xs hover:!border-rose-400 hover:!text-rose-600"
                 >
                   Thu hồi
                 </Button>
@@ -414,7 +410,7 @@ function CategoryRow({
                 intent="outline"
                 scale="xs"
                 onClick={act(onDisburse)}
-                className="px-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="!h-7 px-2.5 !text-xs opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
               >
                 Giải ngân
               </Button>
@@ -462,13 +458,13 @@ function CategoryRow({
                   </span>
                 </span>
                 <span />
-                <span className={cn("text-right font-semibold", withdraw ? "text-rose-600" : "text-slate-800")}>
+                <span className={cn("text-center font-semibold", withdraw ? "text-rose-600" : "text-slate-800")}>
                   {withdraw ? "−" : ""}
                   {money(e.amount)}
                 </span>
                 <span />
-                <span className="text-slate-600">{formatDateVi(e.date)}</span>
-                <span className="flex justify-end">
+                <span className="text-center text-slate-600">{formatDateVi(e.date)}</span>
+                <span className="flex justify-center">
                   <Tooltip title="Xem chi tiết">
                     <button
                       type="button"
@@ -859,74 +855,87 @@ function DisbursementDetailDrawer({
         </div>
       }
     >
-      <div className="flex flex-col gap-3">
-        {/* Số tiền nổi bật */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-            Số tiền {verb}
-            {withdraw && (
-              <span className="rounded bg-rose-50 px-1.5 py-px text-[10px] font-semibold text-rose-600 ring-1 ring-rose-200">
-                Thu hồi
-              </span>
-            )}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+        {/* Số tiền + đầu mục */}
+        <div className={cn("px-5 py-5", withdraw ? "bg-rose-50/50" : "bg-red-50/40")}>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "rounded px-2 py-0.5 text-[11px] font-semibold",
+                withdraw ? "bg-rose-100 text-rose-700" : "bg-red-100 text-[#DC2626]",
+              )}
+            >
+              {withdraw ? "Thu hồi" : "Giải ngân"}
+            </span>
+            <span className="truncate text-xs font-medium text-slate-600" title={entry.category}>
+              {entry.category}
+            </span>
           </div>
-          <div className={cn("mt-1 text-xl font-bold", withdraw ? "text-rose-600" : "text-[#DC2626]")}>
+          <div className={cn("mt-2 text-[28px] font-bold leading-none tracking-tight", withdraw ? "text-rose-600" : "text-slate-900")}>
             {withdraw ? "−" : ""}
-            {money(entry.amount)}
+            {formatMoneyString(entry.amount)}
+            <span className="ml-1.5 text-sm font-semibold text-slate-400">VNĐ</span>
           </div>
         </div>
 
-        <FormSection icon={<WalletOutlined />} title={`Thông tin ${verb}`}>
-          <div className="flex flex-col gap-3.5">
-            <ReadonlyField
-              icon={<WalletOutlined />}
-              label={unit === "đầu mục" ? "Đầu mục" : "Danh mục chi phí"}
-              value={entry.category}
-            />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <ReadonlyField icon={<CalendarOutlined />} label={`Ngày ${verb}`} value={formatDateVi(entry.date)} />
-              <ReadonlyField icon={<UserOutlined />} label="Người thực hiện" value={entry.createdBy} />
-            </div>
-            <div>
-              <FieldLabel text={withdraw ? "Lý do thu hồi" : "Nội dung thanh toán"} />
-              <div className="min-h-9 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                {entry.content || <span className="italic text-slate-400">Không có nội dung</span>}
-              </div>
-            </div>
-          </div>
-        </FormSection>
+        {/* Thông tin: nhãn trái · giá trị phải */}
+        <dl className="m-0 divide-y divide-slate-100 px-5">
+          <DetailRow label={unit === "đầu mục" ? "Đầu mục" : "Danh mục"} value={entry.category} />
+          <DetailRow label={`Ngày ${verb}`} value={formatDateVi(entry.date)} />
+          <DetailRow label="Người thực hiện" value={entry.createdBy} />
+          <DetailRow
+            label={withdraw ? "Lý do thu hồi" : "Nội dung"}
+            value={entry.content || <span className="font-normal italic text-slate-400">Không có nội dung</span>}
+            multiline
+          />
+        </dl>
 
-        <FormSection
-          icon={<PaperClipOutlined />}
-          title={`Chứng từ ${verb}`}
-          extra={<span className="text-[11px] text-slate-400">{files.length} tệp</span>}
-        >
+        {/* Chứng từ */}
+        <div className="border-t border-slate-100 px-5 py-4">
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700">Chứng từ</span>
+            <span className="text-[11px] text-slate-400">{files.length} tệp</span>
+          </div>
           {files.length === 0 ? (
-            <div className="text-xs italic text-slate-400">Không có tệp đính kèm</div>
+            <div className="rounded-lg border border-dashed border-slate-200 py-4 text-center text-xs text-slate-400">
+              Không có tệp đính kèm
+            </div>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {files.map((f) => (
-                <li key={f.id}>
-                  <button
-                    type="button"
-                    onClick={() => setPreview(f)}
-                    title="Bấm để xem tệp"
-                    className="group/file flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs transition-colors hover:border-red-200 hover:bg-red-50/50"
-                  >
-                    <PaperClipOutlined className="text-slate-400" />
-                    <span className="min-w-0 flex-1 truncate font-medium text-slate-700 group-hover/file:text-[#DC2626]">
-                      {f.name}
-                    </span>
-                    {f.size && <span className="shrink-0 text-[11px] text-slate-400">{f.size}</span>}
-                    <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-400 group-hover/file:text-[#DC2626]">
-                      <EyeOutlined /> Xem
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {files.map((f) => {
+                const ext = (f.name.split(".").pop() ?? "").toUpperCase().slice(0, 4);
+                return (
+                  <li key={f.id}>
+                    <button
+                      type="button"
+                      onClick={() => setPreview(f)}
+                      title="Bấm để xem tệp"
+                      className="group/file flex w-full cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white p-2.5 text-left transition hover:border-red-200 hover:shadow-sm"
+                    >
+                      <span
+                        className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[10px] font-bold",
+                          ext === "PDF" ? "bg-red-50 text-[#DC2626]" : "bg-slate-100 text-slate-500",
+                        )}
+                      >
+                        {ext || "FILE"}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-slate-800 group-hover/file:text-[#DC2626]">
+                          {f.name}
+                        </span>
+                        {f.size && <span className="mt-0.5 block text-[11px] text-slate-400">{f.size}</span>}
+                      </span>
+                      <span className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 transition group-hover/file:bg-red-50 group-hover/file:text-[#DC2626]">
+                        Xem
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
-        </FormSection>
+        </div>
       </div>
 
       {preview && (
@@ -938,5 +947,17 @@ function DisbursementDetailDrawer({
         />
       )}
     </Drawer>
+  );
+}
+
+/** Một dòng thông tin chỉ xem: nhãn bên trái, giá trị bên phải */
+function DetailRow({ label, value, multiline }: { label: string; value: React.ReactNode; multiline?: boolean }) {
+  return (
+    <div className={cn("flex gap-4 py-3 text-xs", multiline ? "items-start" : "items-center")}>
+      <dt className="w-32 shrink-0 text-slate-500">{label}</dt>
+      <dd className={cn("m-0 min-w-0 flex-1 font-semibold text-slate-800", multiline ? "whitespace-pre-wrap leading-relaxed" : "truncate")}>
+        {value}
+      </dd>
+    </div>
   );
 }

@@ -19,9 +19,56 @@ import { formatDateVi } from "@/utils/date";
 import { loadProjectProcedure } from "@/features/construction-procedures/utils/project-procedure-storage";
 import type { ProcedureDocument } from "@/features/construction-procedures/types/procedure.types";
 import { FlowBadge } from "@/features/projects_works/components/detail/ProcedureStepFlowDrawer";
+import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
+import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
+import type { ProcedureHistoryLog } from "@/features/construction-procedures/types/procedure.types";
 import type { MyTask } from "../utils/my-tasks";
 
 const NOT_APPLICABLE = "Chưa áp dụng ở trạng thái này";
+
+/** "YYYY-MM-DD HH:mm" (giờ Việt Nam) hoặc ISO → ISO */
+const toIso = (value: string) => {
+  if (/T.*(Z|[+-]\d{2}:?\d{2})$/.test(value)) return value;
+  const local = value.includes("T") ? value : value.length > 10 ? value.replace(" ", "T") : `${value}T00:00`;
+  const d = new Date(`${local.slice(0, 16)}:00+07:00`);
+  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+};
+
+/** Thao tác do người thực hiện tự trả việc (khác với Tổ trưởng từ chối kết quả) */
+const HANDBACK_LABELS: Record<string, { from: string; to: string; reason: string }> = {
+  "Hoàn trả việc": { from: "Chờ duyệt", to: "Đang xử lý", reason: "Lý do hoàn trả" },
+  "Từ chối nhận việc": { from: "Chờ tiếp nhận", to: "Trả về Tổ trưởng", reason: "Lý do từ chối" },
+};
+
+/** Nhật ký bước → dạng dùng chung của các màn hình lịch sử */
+function toActivityEntry(log: ProcedureHistoryLog): ActivityEntry {
+  const handback = HANDBACK_LABELS[log.actionLabel];
+  if (handback) {
+    return {
+      id: log.id,
+      at: toIso(log.timestamp),
+      actorName: log.performedBy,
+      actorRole: "Người thực hiện",
+      module: "Quy trình",
+      action: `Người thực hiện ${log.actionLabel.toLowerCase()}`,
+      changes: [
+        { label: "Trạng thái", from: handback.from, to: handback.to },
+        { label: handback.reason, to: log.reason || "Không ghi lý do" },
+      ],
+    };
+  }
+  return {
+    id: log.id,
+    at: toIso(log.timestamp),
+    actorName: log.performedBy,
+    actorRole: log.role,
+    module: "Quy trình",
+    action: log.actionLabel,
+    note: [log.details, log.reason && !log.details?.includes(log.reason) ? `Lý do: ${log.reason}` : undefined]
+      .filter(Boolean)
+      .join(" · ") || undefined,
+  };
+}
 
 /** Thao tác của người thực hiện khi đang làm bước (trả về false nếu lưu không được) */
 export interface TaskWorkActions {
@@ -80,7 +127,7 @@ export default function MyTaskDrawer({
   const hasActions = canSubmit || canReview || canAccept || canResolveIncident || canGiveBack;
   const step = task?.step;
   const history = task
-    ? (loadProjectProcedure(task.projectId)?.history ?? []).filter((log) => log.stepId === task.step.id).slice(0, 8)
+    ? (loadProjectProcedure(task.projectId)?.history ?? []).filter((log) => log.stepId === task.step.id)
     : [];
 
   return (
@@ -260,21 +307,11 @@ export default function MyTaskDrawer({
 
           <section>
             <Heading>Nhật ký bước</Heading>
-            {history.length > 0 ? (
-              <ol className="m-0 space-y-2 border-l-2 border-slate-100 pl-3">
-                {history.map((log) => (
-                  <li key={log.id} className="list-none text-xs">
-                    <div className="flex flex-wrap items-center gap-x-2">
-                      <span className="font-semibold text-slate-800">{log.actionLabel}</span>
-                      <span className="font-mono text-[11px] text-slate-400">{log.timestamp}</span>
-                    </div>
-                    <div className="text-slate-600">{log.details}</div>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <Empty>Chưa có thao tác nào</Empty>
-            )}
+            <ActivityTimeline
+              entries={history.map(toActivityEntry)}
+              pageSize={8}
+              emptyText="Chưa có thao tác nào"
+            />
           </section>
         </div>
       )}
