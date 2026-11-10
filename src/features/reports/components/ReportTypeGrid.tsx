@@ -55,10 +55,10 @@ export default function ReportTypeGrid({
               <h3 className="m-0 truncate text-[15px] font-bold text-slate-900" title={type.name}>
                 {type.name}
               </h3>
-              <div className="mt-2 flex items-center gap-2 text-xs">
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-semibold text-slate-700">{count} báo cáo</span>
-                {lastAt && <span className="text-slate-400">Cập nhật {formatDate(lastAt)}</span>}
-              </div>
+              {/* Mỗi loại một báo cáo: chỉ cần biết lần cập nhật gần nhất */}
+              <p className="m-0 mt-1 text-xs text-slate-400">
+                {lastAt ? `Cập nhật ${formatDate(lastAt)}` : "Chưa có dữ liệu"}
+              </p>
             </div>
             <RightOutlined className="mt-1 text-xs text-slate-300 transition-colors group-hover:text-[#DC2626]" />
             {/* Loại tự thêm, chưa có báo cáo: xóa được */}

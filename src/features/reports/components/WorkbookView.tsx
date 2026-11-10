@@ -5,11 +5,11 @@ import { LoadingOutlined } from "@ant-design/icons";
 import { cn } from "@/utils/cn";
 import { emptyLayout, readCsv, readXlsx, type SheetData, type XlsxWorkbook } from "@/utils/xlsx-reader";
 import type { ReportFile } from "../types/report.types";
-import SheetGrid from "./SheetGrid";
+import SheetTable from "./SheetTable";
 
 const isCsv = (name: string) => /\.csv$/i.test(name);
 
-/** Bảng dữ liệu của tệp báo cáo: tab sheet phía trên, lưới thao tác như Excel phía dưới */
+/** Dữ liệu của tệp báo cáo: tab sheet phía trên, bảng dữ liệu bên dưới */
 export default function WorkbookView({ report }: { report: ReportFile }) {
   const [workbook, setWorkbook] = useState<XlsxWorkbook | null>(null);
   const [sheet, setSheet] = useState("");
@@ -57,7 +57,7 @@ export default function WorkbookView({ report }: { report: ReportFile }) {
 
   if (error) {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-2 p-6 text-center text-sm text-slate-500">
+      <div className="flex min-h-80 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-slate-500">
         <span>{error}</span>
         <span className="text-xs text-slate-400">Chỉ xem trực tiếp được tệp .xlsx, .xlsm, .csv — dùng “Xuất Excel” để tải tệp về.</span>
       </div>
@@ -65,12 +65,11 @@ export default function WorkbookView({ report }: { report: ReportFile }) {
   }
 
   return (
-    // Không giới hạn chiều cao: bảng dài theo dữ liệu, cuộn cả trang để xem tiếp
     <div className="flex flex-col">
       {/* Tab sheet */}
-      {workbook && workbook.sheetNames.length > 1 && (
-        <div role="tablist" className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200 px-3">
-          {workbook.sheetNames.map((name) => {
+      <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-3">
+        <div role="tablist" className="flex min-w-0 flex-1 gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {(workbook?.sheetNames ?? []).map((name) => {
             const active = name === sheet;
             return (
               <button
@@ -84,7 +83,7 @@ export default function WorkbookView({ report }: { report: ReportFile }) {
                   setSheet(name);
                 }}
                 className={cn(
-                  "-mb-px shrink-0 cursor-pointer whitespace-nowrap border-0 border-b-2 bg-transparent px-3 py-2.5 text-[13px] transition-colors",
+                  "-mb-px shrink-0 cursor-pointer whitespace-nowrap border-0 border-b-2 bg-transparent px-3 py-3 text-[13px] transition-colors",
                   active
                     ? "border-[#DC2626] font-semibold text-[#DC2626]"
                     : "border-transparent font-medium text-slate-500 hover:text-slate-900",
@@ -95,11 +94,10 @@ export default function WorkbookView({ report }: { report: ReportFile }) {
             );
           })}
         </div>
-      )}
+      </div>
 
       {data ? (
-        // Mỗi sheet một lưới riêng: đổi sheet là về ô A1, độ rộng cột theo sheet đó
-        <SheetGrid key={`${report.uploadedAt}-${sheet}`} data={data} fallbackFit={isCsv(report.name)} />
+        <SheetTable key={`${report.id}-${report.uploadedAt}-${sheet}`} data={data} />
       ) : (
         <div className="flex min-h-80 flex-1 items-center justify-center gap-2 text-sm text-slate-500">
           <LoadingOutlined /> Đang đọc tệp…
