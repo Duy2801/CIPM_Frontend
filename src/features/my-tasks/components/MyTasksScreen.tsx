@@ -50,8 +50,8 @@ export default function MyTasksScreen() {
       }
       return true;
     },
-    onAddFiles: (task, files) => {
-      if (!ctl.addDocuments(task, toProcedureDocuments(files, ctl.me.name))) return notFound();
+    onAddFiles: async (task, files) => {
+      if (!ctl.addDocuments(task, await toProcedureDocuments(files, ctl.me.name))) return notFound();
       message.success(`Đã thêm ${files.length} hồ sơ.`);
     },
     onRemoveFile: (task, doc) =>
@@ -327,7 +327,7 @@ export default function MyTasksScreen() {
               >
                 <Input
                   prefix={<SearchOutlined className="text-slate-400" />}
-                  placeholder="Tìm việc, mã bước hoặc tên dự án..."
+                  placeholder="Tìm theo tên dự án"
                   className="!border-slate-200 !shadow-none hover:!border-slate-300 [&.ant-input-affix-wrapper-focused]:!border-slate-400"
                 />
               </AutoComplete>

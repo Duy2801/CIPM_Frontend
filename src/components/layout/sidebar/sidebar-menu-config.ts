@@ -1,14 +1,11 @@
 import React from "react";
 import {
   AppstoreOutlined,
-  AuditOutlined,
+  BarChartOutlined,
   BookOutlined,
   CheckSquareOutlined,
-  DollarOutlined,
-  EnvironmentOutlined,
   FileProtectOutlined,
   ProjectOutlined,
-  SafetyCertificateOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
@@ -40,29 +37,15 @@ export const sidebarMenuItems: MenuItem[] = [
     icon: React.createElement(FileProtectOutlined),
   },
   {
-    key: "/finance-settlement",
-    label: "Tài chính & Quyết toán",
-    icon: React.createElement(DollarOutlined),
-  },
-  {
     key: "/personnel-assignment",
     label: "Nhân sự & Phân công",
     icon: React.createElement(TeamOutlined),
   },
   {
-    key: "/site-clearance-resettlement",
-    label: "GPMB - Bồi thường TĐC",
-    icon: React.createElement(EnvironmentOutlined),
-  },
-  {
-    key: "/bidding-management",
-    label: "Quản lý Đấu thầu",
-    icon: React.createElement(AuditOutlined),
-  },
-  {
-    key: "/warranty-maintenance",
-    label: "Bảo hành & Bảo trì",
-    icon: React.createElement(SafetyCertificateOutlined),
+    // Nhập / xuất tệp Excel báo cáo, xem trực tiếp trên trình duyệt
+    key: "/reports",
+    label: "Báo cáo",
+    icon: React.createElement(BarChartOutlined),
   },
   {
     key: "/legal-ai-library",

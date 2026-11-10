@@ -47,9 +47,6 @@ export default function LegalHistoryTab() {
           />
           {history.length > 0 && (
             <div className="flex items-center gap-2.5 text-xs text-slate-500">
-              <span className="hidden whitespace-nowrap sm:inline">
-                Hiển thị {pageStart + 1}–{pageStart + pagedHistory.length} / {history.length} thao tác
-              </span>
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}

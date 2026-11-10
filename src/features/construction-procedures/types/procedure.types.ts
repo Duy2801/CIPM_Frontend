@@ -21,6 +21,8 @@ export interface ProcedureDocument {
   uploadedBy: string;
   fileType?: "pdf" | "doc" | "docx" | "xlsx" | "zip";
   note?: string;
+  /** Nội dung tệp nhỏ (data URL) để xem lại — bản mock chưa có máy chủ lưu tệp */
+  dataUrl?: string;
 }
 
 export interface ProcedureHistoryLog {

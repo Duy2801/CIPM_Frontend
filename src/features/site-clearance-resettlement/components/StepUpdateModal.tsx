@@ -13,7 +13,7 @@ import {
 import { Button, Drawer, Form, Input, StandardFileUpload, Text } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi, todayIso } from "@/utils/date";
-import { GPMB_STEPS, LAND_TYPE_LABELS } from "../constants/gpmb-steps";
+import { GPMB_STEPS, landTypeLabel } from "../constants/gpmb-steps";
 import type { Household, StepCompletionInput } from "../types/gpmb.types";
 import { getCurrentStep, getStepDefinition } from "../utils/gpmb-rules";
 import { downloadGpmbDocument } from "../utils/gpmb-download";
@@ -72,7 +72,7 @@ export default function StepUpdateModal({
     { label: "CCCD", value: household.idNumber },
     { label: "Địa chỉ", value: household.address },
     { label: "Diện tích thu hồi", value: `${new Intl.NumberFormat("vi-VN").format(household.areaM2)} m²` },
-    { label: "Loại đất", value: LAND_TYPE_LABELS[household.landType] },
+    { label: "Loại đất", value: landTypeLabel(household.landType) },
     {
       label: "Tiền bồi thường",
       value: `${formatMoneyString(household.compensation)} VNĐ`,
@@ -91,7 +91,7 @@ export default function StepUpdateModal({
             <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
               {household.code}
             </span>
-            <SpecialStatusTag status={household.specialStatus} />
+            <SpecialStatusTag status={household.specialStatus} label={household.specialStatusLabel} />
           </div>
           <span className="block text-xs font-normal text-slate-500 mt-1">
             {household.address} · CCCD {household.idNumber}
@@ -219,7 +219,6 @@ export default function StepUpdateModal({
             <div className="mb-3">
               <StandardFileUpload
                 title={`File biểu mẫu ${definition?.forms ? `(${definition.forms})` : "(tùy chọn)"}`}
-                subTitle="Chấp nhận .pdf, .docx, .doc, .png, .jpg (Tối đa 50MB)"
                 required={Boolean(definition?.forms)}
                 singleFileName={selectedFileName}
                 onSingleFileNameChange={(name) => {

@@ -191,11 +191,6 @@ export default function HouseholdMatrixTab({
         {rows.length > PAGE_SIZE && (
           <div className="flex justify-end">
             <div className="flex items-center gap-2.5">
-              <Text className="text-xs text-slate-500 font-medium">
-                Hiển thị {(currentPage - 1) * PAGE_SIZE + 1} -{" "}
-                {Math.min(currentPage * PAGE_SIZE, rows.length)} trong tổng số{" "}
-                {rows.length} hộ dân
-              </Text>
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}

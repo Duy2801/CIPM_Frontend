@@ -11,6 +11,7 @@ import {
 } from "../constants/procedure-templates";
 import type { ProcedureStep } from "../types/procedure.types";
 import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+import { seedGpmbAssignee } from "./seed-gpmb-assignee";
 
 export type ProcedureStatus = "APPLIED" | "PROCESSING" | "PENDING_APPROVAL" | "STOPPED";
 
@@ -83,6 +84,14 @@ const TEMPLATE_MOCK_META: Record<string, ProcedureMeta> = {
     enabled: false,
     approvedBy: "Huỳnh Thái Hải",
     createdAt: "2025-03-20",
+    createdBy: "Huỳnh Thái Hải",
+    updatedAt: null,
+    updatedBy: null,
+  },
+  "template-gpmb": {
+    status: "PROCESSING",
+    approvedBy: "Trần Minh Ơn",
+    createdAt: "2025-04-08",
     createdBy: "Huỳnh Thái Hải",
     updatedAt: null,
     updatedBy: null,
@@ -269,6 +278,8 @@ export function loadProcedureLibrary(): ProcedureLibraryItem[] {
 }
 
 function loadMockProcedureLibrary(): ProcedureLibraryItem[] {
+  // Dữ liệu test: giao quy trình GPMB cho ông Huỳnh Thái Hải (chạy một lần)
+  seedGpmbAssignee();
   const hidden = loadHiddenTemplateIds();
   const updates = loadUpdateMeta();
   const enabledOverrides = loadEnabledOverrides();

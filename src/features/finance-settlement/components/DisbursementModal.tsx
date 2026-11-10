@@ -390,7 +390,6 @@ export default function DisbursementModal({
             >
               <StandardFileUpload
                 title="Đính kèm tệp chứng từ thanh toán"
-                subTitle="Tờ trình, ủy nhiệm chi, biên bản nghiệm thu (Bắt buộc ≥ 1 file)"
                 singleFileName={isEditing ? editingDisbursement?.evidence[0]?.name : undefined}
                 onSingleFileNameChange={(name) => form.setFieldsValue({ evidenceName: name })}
               />

@@ -56,9 +56,21 @@ export const SPECIAL_STATUS_META: Record<
     intent: "danger",
     hint: "Không bàn giao đất – áp dụng bước 14 và 15 (cưỡng chế)",
   },
+  OTHER: { label: "Khác", intent: "info", hint: "Trạng thái tự nhập" },
 };
 
+/** Tên loại đất: theo danh mục, loại tự nhập thì hiện đúng chữ đã nhập */
+export const landTypeLabel = (landType: LandType) => LAND_TYPE_LABELS[landType] ?? landType;
+
+/** Tên trạng thái đặc biệt của hộ (trạng thái tự nhập lấy chữ đã nhập) */
+export const specialStatusLabel = (household: { specialStatus: SpecialStatus; specialStatusLabel?: string }) =>
+  household.specialStatus === "OTHER"
+    ? household.specialStatusLabel || SPECIAL_STATUS_META.OTHER.label
+    : SPECIAL_STATUS_META[household.specialStatus].label;
+
 export const LAND_TYPE_LABELS: Record<LandType, string> = {
+  ODT: "Đất ở tại đô thị",
+  SON: "Đất sông, ngòi, kênh, rạch, suối",
   ONT: "Đất ở nông thôn",
   CLN: "Đất trồng cây lâu năm",
   RSX: "Đất rừng sản xuất",

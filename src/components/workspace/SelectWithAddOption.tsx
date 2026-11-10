@@ -18,9 +18,13 @@ interface SelectWithAddOptionProps {
   notFoundContent?: ReactNode;
   /** Ô nhỏ (dùng trong dòng bảng) */
   size?: "small" | "middle" | "large";
+  /** Số dòng hiện tối đa trong danh sách; nhiều hơn thì cuộn (mỗi dòng cố định 36px) */
+  maxVisibleItems?: number;
   "aria-label"?: string;
   className?: string;
 }
+
+const ITEM_HEIGHT = 36;
 
 /** Ô chọn có thêm ô nhập ở cuối danh sách: gõ tên mới rồi bấm "Thêm" (hoặc Enter) */
 export default function SelectWithAddOption({
@@ -33,6 +37,7 @@ export default function SelectWithAddOption({
   placeholder,
   notFoundContent,
   size,
+  maxVisibleItems,
   "aria-label": ariaLabel,
   className,
 }: SelectWithAddOptionProps) {
@@ -57,6 +62,14 @@ export default function SelectWithAddOption({
     <Select
       aria-label={ariaLabel}
       size={size}
+      {...(maxVisibleItems
+        ? {
+            listItemHeight: ITEM_HEIGHT,
+            listHeight: maxVisibleItems * ITEM_HEIGHT,
+            // Cố định chiều cao mỗi dòng để danh sách hiện đúng số dòng đã đặt
+            styles: { popup: { listItem: { height: ITEM_HEIGHT, minHeight: ITEM_HEIGHT, alignItems: "center" } } },
+          }
+        : {})}
       placeholder={placeholder}
       value={value}
       options={visibleOptions}

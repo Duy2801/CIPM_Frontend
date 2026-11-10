@@ -200,12 +200,11 @@ export function groupTasks(
   return groups;
 }
 
-/** Tìm theo mã / tên bước, tên dự án, phòng ban, người thực hiện */
+/** Tìm theo dự án (tên hoặc mã dự án) */
 export function matchesSearch(task: MyTask, keyword: string): boolean {
   const q = normalize(keyword);
   if (!q) return true;
-  return [task.step.code, task.step.name, task.projectName, task.projectCode, task.procedureName, task.step.assignedTo]
-    .some((v) => normalize(v).includes(q));
+  return [task.projectName, task.projectCode].some((v) => normalize(v).includes(q));
 }
 
 // ── Thao tác trên bước (cùng quy tắc với trang chi tiết dự án) ──

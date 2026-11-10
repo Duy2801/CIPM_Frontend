@@ -55,7 +55,6 @@ export default function FixAcceptanceModal({ incident, errorText, onClose, onSub
         <Form.Item name="attachment" className="mb-3">
           <StandardFileUpload
             title="Biên bản nghiệm thu lại / ảnh sau sửa chữa"
-            subTitle="Chấp nhận .pdf, .docx, .png, .jpg (Không bắt buộc)"
             onSingleFileNameChange={(name) => form.setFieldsValue({ attachment: name })}
           />
         </Form.Item>

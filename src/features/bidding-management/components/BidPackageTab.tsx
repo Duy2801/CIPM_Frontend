@@ -277,11 +277,6 @@ export default function BidPackageTab({
             {/* Phân trang đặt cùng 1 hàng bên phải */}
             {rows.length > PAGE_SIZE && (
               <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-                <Text className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                  Hiển thị {(currentPage - 1) * PAGE_SIZE + 1} -{" "}
-                  {Math.min(currentPage * PAGE_SIZE, rows.length)} trong tổng số{" "}
-                  {rows.length} gói thầu
-                </Text>
                 <Pagination
                   current={currentPage}
                   pageSize={PAGE_SIZE}

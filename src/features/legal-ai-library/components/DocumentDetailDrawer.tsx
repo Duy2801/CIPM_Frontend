@@ -1,7 +1,7 @@
 "use client";
 
 import { App } from "antd";
-import { ClockCircleOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { Button, Drawer } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
 import { useCanManageLegalDocuments } from "../hooks/useLegalAccess";
@@ -90,37 +90,38 @@ export default function DocumentDetailDrawer({ documentId, onClose }: { document
       onClose={handleClose}
       width="min(760px, 100vw)"
       title={
-        <div className="py-1">
-          <div className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <SafetyCertificateOutlined className="text-[#DC2626]" />
-            <span>Cập nhật văn bản pháp luật</span>
-          </div>
+        <div className="flex items-center gap-2 py-1 text-base font-bold text-slate-800">
+          {/* Nút quay lại thay cho nút Đóng (còn thay đổi chưa lưu thì hỏi trước) */}
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Quay lại"
+            title="Quay lại"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-slate-500 hover:bg-slate-100 hover:text-[#DC2626]"
+          >
+            <ArrowLeftOutlined />
+          </button>
+          <span>Cập nhật văn bản pháp luật</span>
         </div>
       }
       footer={
-        // Có thay đổi chưa lưu: "Lưu thay đổi" · "Hủy thay đổi" thay chỗ nút Đóng; lưu/hủy xong thì Đóng hiện lại
-        <div className="flex flex-wrap items-center gap-2.5 py-1">
-          {isDirty ? (
-            <>
-              <Button
-                intent="primary"
-                scale="sm"
-                loading={updateDocument.isPending}
-                onClick={confirmSave}
-                className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] px-5 text-xs font-semibold"
-              >
-                Lưu thay đổi
-              </Button>
-              <Button intent="outline" scale="sm" onClick={draft.discard} className="px-5 text-xs font-medium">
-                Hủy thay đổi
-              </Button>
-            </>
-          ) : (
-            <Button intent="outline" scale="sm" onClick={handleClose} className="px-5 text-xs font-medium">
-              Đóng
+        // Chỉ hiện khi có thay đổi chưa lưu: "Lưu thay đổi" · "Hủy thay đổi"
+        isDirty ? (
+          <div className="flex flex-wrap items-center gap-2.5 py-1">
+            <Button
+              intent="primary"
+              scale="sm"
+              loading={updateDocument.isPending}
+              onClick={confirmSave}
+              className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] px-5 text-xs font-semibold"
+            >
+              Lưu thay đổi
             </Button>
-          )}
-        </div>
+            <Button intent="outline" scale="sm" onClick={draft.discard} className="px-5 text-xs font-medium">
+              Hủy thay đổi
+            </Button>
+          </div>
+        ) : null
       }
     >
       {original && document && (

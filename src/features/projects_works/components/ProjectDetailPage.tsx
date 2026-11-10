@@ -8,9 +8,12 @@ import {
   DollarOutlined,
   HistoryOutlined,
   ProfileOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { Button, Card } from "@/components/ui";
-import { InlineEditField, type SegmentedTabItem } from "@/components/workspace";
+import { InlineEditField, ProjectScopeProvider, type SegmentedTabItem } from "@/components/workspace";
+import { WarrantyMaintenanceScreen } from "@/features/warranty-maintenance";
+import { getWarrantyRolePermissions } from "@/features/warranty-maintenance/utils/warranty-permissions";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
@@ -29,15 +32,26 @@ import type {
 import { useProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
 import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
 import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
+import { PROCEDURE_CATEGORY } from "@/features/construction-procedures/constants/procedure-categories";
+import { inferProcedureCategory } from "@/features/construction-procedures/services/procedure.mapper";
+import { GpmbPriceTableTab, SiteClearanceResettlementScreen } from "@/features/site-clearance-resettlement";
 import { ProjectDocumentsSection } from "./detail/ProjectViewTab";
 import ProjectProcedureTab from "./detail/ProjectProcedureTab";
 import ProjectProcedurePicker, { procedureTarget, shortProcedureLabel } from "./ProjectProcedurePicker";
 import ProjectHistoryTab from "./detail/ProjectHistoryTab";
 import ProjectDisbursementTab from "./detail/ProjectDisbursementTab";
 import WorkTypeSelect from "./WorkTypeSelect";
+import StaffFormAddOption from "@/features/personnel-assignment/components/StaffFormAddOption";
+import {
+  DROPDOWN_LIST_HEIGHT,
+  FUNDING_STORAGE_KEY,
+  loadCustomOptions,
+  sameText,
+  saveCustomOptions,
+} from "../utils/custom-options";
 
 /** "proc:<phòng ban>" = tab quy trình của phòng ban đó */
-type DetailTab = "info" | `proc:${string}` | "disbursement" | "history";
+type DetailTab = "info" | `proc:${string}` | "warranty" | "disbursement" | "history";
 
 /** Các trường sửa được bằng bút chì trên trang chi tiết */
 type EditablePatch = Partial<
@@ -125,6 +139,9 @@ export default function ProjectDetailPage({
 }: ProjectDetailPageProps) {
   const { modal, message } = App.useApp();
   const { user } = useAuth();
+  // Nguồn vốn tự thêm: dùng chung danh sách với trang thêm dự án
+  const [customFunding, setCustomFunding] = useState(() => loadCustomOptions(FUNDING_STORAGE_KEY));
+  const fundingOptions = [...FUNDING_SOURCE_OPTIONS, ...customFunding].map((f) => ({ value: f, label: f }));
 
   const isClosed = project.status === "closed";
   // Sửa thông tin chung: quyền nhập liệu M2
@@ -281,6 +298,16 @@ export default function ProjectDetailPage({
     }),
   );
 
+  // Quy trình loại GPMB: tab quy trình có thêm tab con quản lý hộ dân được bồi thường của dự án
+  const isGpmbProcedure = (dept: string) => {
+    const st = departmentStatus(dept);
+    const category =
+      library.find((p) => p.id === st?.procedureId)?.category ?? inferProcedureCategory(st?.procedureName ?? "");
+    return category === PROCEDURE_CATEGORY.GPMB;
+  };
+
+  const canViewWarranty = getWarrantyRolePermissions(user).canAccessModule;
+
   const detailTabs: SegmentedTabItem<DetailTab>[] = [
     { key: "info", icon: <ProfileOutlined />, label: "Thông tin chung" },
     // Mỗi quy trình áp dụng cho dự án là một tab
@@ -291,6 +318,10 @@ export default function ProjectDetailPage({
           // Tên đầu mục đã đặt, không có thì tên quy trình rút gọn
           label: departmentStatus(dept)?.tabLabel || shortProcedureLabel(departmentStatus(dept)?.procedureName ?? dept),
         }))
+      : []),
+    // Tab cố định ở mọi dự án (phân hệ Bảo hành & Bảo trì đã bỏ khỏi menu, quản lý theo từng dự án tại đây)
+    ...(canViewWarranty
+      ? [{ key: "warranty" as const, icon: <SafetyCertificateOutlined />, label: "Bảo hành & Bảo trì" }]
       : []),
     { key: "disbursement", icon: <DollarOutlined />, label: "Giải ngân" },
     { key: "history", icon: <HistoryOutlined />, label: "Lịch sử" },
@@ -381,7 +412,21 @@ export default function ProjectDetailPage({
       )}
 
       {activeTab.startsWith("proc:") && (
-        <ProjectProcedureTab key={activeTab} department={activeTab.slice(5)} controller={procedure} />
+        <ProjectProcedureTab
+          key={activeTab}
+          department={activeTab.slice(5)}
+          controller={procedure}
+          households={
+            isGpmbProcedure(activeTab.slice(5)) ? <SiteClearanceResettlementScreen projectId={project.id} listOnly /> : undefined
+          }
+          prices={isGpmbProcedure(activeTab.slice(5)) ? <GpmbPriceTableTab projectId={project.id} /> : undefined}
+        />
+      )}
+      {activeTab === "warranty" && (
+        // Phạm vi dự án: chỉ hiện công trình bảo hành của dự án này, ẩn cột dự án, khóa dự án khi thêm mới
+        <ProjectScopeProvider projectId={project.id}>
+          <WarrantyMaintenanceScreen projectId={project.id} />
+        </ProjectScopeProvider>
       )}
       {activeTab === "disbursement" && (
         <ProjectDisbursementTab
@@ -442,7 +487,24 @@ export default function ProjectDetailPage({
                   changed={isChanged("fundingSource")}
                   value={view.fundingSource}
                   display={view.fundingSource}
-                  editor={{ kind: "select", options: FUNDING_SOURCE_OPTIONS.map((f) => ({ value: f, label: f })) }}
+                  editor={{
+                    kind: "select",
+                    options: fundingOptions,
+                    // Hiện 5 dòng, còn lại lăn chuột; ô cuối danh sách để thêm nguồn vốn mới
+                    listHeight: DROPDOWN_LIST_HEIGHT,
+                    renderAddOption: (pick) => (
+                      <StaffFormAddOption
+                        placeholder="Nhập nguồn vốn mới..."
+                        isDuplicate={(name) => fundingOptions.some((o) => sameText(o.label, name))}
+                        onAdd={async (name) => {
+                          const label = name.trim();
+                          setCustomFunding((prev) => saveCustomOptions(FUNDING_STORAGE_KEY, [...prev, label]));
+                          pick(label);
+                          return true;
+                        }}
+                      />
+                    ),
+                  }}
                   onSave={infoSaver("fundingSource", (v) => v as FundingSourceType)}
                 />
                 <InlineEditField

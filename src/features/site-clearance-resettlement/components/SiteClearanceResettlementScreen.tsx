@@ -1,18 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Spin } from "@/components/ui";
+import { AppstoreOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Segmented, Spin } from "@/components/ui";
 import {
   ReasonModal,
 } from "@/components/workspace";
 import { useSiteClearance } from "../hooks/useSiteClearance";
 import type { Household } from "../types/gpmb.types";
+import CompensationTab from "./CompensationTab";
 import HouseholdDetailDrawer from "./HouseholdDetailDrawer";
 import HouseholdMatrixTab from "./HouseholdMatrixTab";
 import StepUpdateModal from "./StepUpdateModal";
 
-export default function SiteClearanceResettlementScreen({ projectId }: { projectId?: string } = {}) {
+/** `listOnly`: mở trong tab quy trình của dự án — chỉ hiện danh sách bồi thường, không có nút chuyển sang ma trận */
+export default function SiteClearanceResettlementScreen({
+  projectId,
+  listOnly = false,
+}: { projectId?: string; listOnly?: boolean } = {}) {
   const controller = useSiteClearance(projectId);
+  const [view, setView] = useState<"compensation" | "matrix">("compensation");
 
   const [detailId, setDetailId] = useState<string>();
   const [detailStep, setDetailStep] = useState<number>();
@@ -55,15 +62,30 @@ export default function SiteClearanceResettlementScreen({ projectId }: { project
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
 
-      {/* Trang sử dụng trực tiếp ma trận 16 bước tích hợp toàn bộ thanh lọc, tìm kiếm, phân trang và thao tác */}
-      <section id="gpmb-matrix" className="scroll-mt-4">
-        <HouseholdMatrixTab
-          controller={controller}
-          onOpenDetail={openDetailWithStep}
-          onUpdateStep={openStepModal}
-          onReject={openRejectModal}
+      {/* Danh sách bồi thường (bảng tổng hợp chi trả) hoặc ma trận tiến độ 16 bước của từng hộ */}
+      {!listOnly && (
+        <Segmented<"compensation" | "matrix">
+          value={view}
+          onChange={setView}
+          className="self-start"
+          options={[
+            { value: "compensation", label: "Danh sách bồi thường", icon: <UnorderedListOutlined /> },
+            { value: "matrix", label: "Ma trận 16 bước", icon: <AppstoreOutlined /> },
+          ]}
         />
-      </section>
+      )}
+      {listOnly || view === "compensation" ? (
+        <CompensationTab controller={controller} onOpenDetail={(h) => openDetailWithStep(h)} />
+      ) : (
+        <section id="gpmb-matrix" className="scroll-mt-4">
+          <HouseholdMatrixTab
+            controller={controller}
+            onOpenDetail={openDetailWithStep}
+            onUpdateStep={openStepModal}
+            onReject={openRejectModal}
+          />
+        </section>
+      )}
 
       {detailHousehold && (
         <HouseholdDetailDrawer

@@ -3,6 +3,8 @@
  * Hàm thuần (tổng hợp, kiểm tra) tách riêng để test được bằng `node --test`.
  */
 
+import { readFileForStorage, storedFileUrl } from "@/utils/stored-file";
+
 /** Danh mục chi phí theo cơ cấu tổng mức đầu tư (NĐ 10/2021/NĐ-CP) — dùng khi chưa có danh mục backend */
 export const DEFAULT_DISBURSEMENT_CATEGORIES = [
   "Chi phí bồi thường, hỗ trợ, tái định cư",
@@ -23,15 +25,8 @@ export interface DisbursementAttachment {
   dataUrl?: string;
 }
 
-/** Tệp lớn chỉ xem được trong phiên làm việc hiện tại (đường dẫn tạm của trình duyệt) */
-const sessionFileUrls = new Map<string, string>();
-/** Tệp ≤ 1,5MB được lưu kèm nội dung; lớn hơn thì chỉ giữ đường dẫn tạm */
-const MAX_STORED_FILE_BYTES = 1.5 * 1024 * 1024;
-
 /** Đường dẫn xem tệp (undefined = tệp demo / không còn nội dung) */
-export function attachmentUrl(file: DisbursementAttachment): string | undefined {
-  return file.dataUrl ?? sessionFileUrls.get(file.id);
-}
+export const attachmentUrl = (file: DisbursementAttachment): string | undefined => storedFileUrl(file);
 
 /** Chuyển tệp vừa tải lên thành chứng từ lưu được (đọc nội dung tệp nhỏ) */
 export async function toDisbursementAttachment(file: {
@@ -42,18 +37,7 @@ export async function toDisbursementAttachment(file: {
   rawFile?: File;
 }): Promise<DisbursementAttachment> {
   const base = { id: file.id, name: file.name, size: file.size, type: file.type };
-  const raw = file.rawFile;
-  if (!raw) return base;
-  if (raw.size > MAX_STORED_FILE_BYTES) {
-    sessionFileUrls.set(file.id, URL.createObjectURL(raw));
-    return base;
-  }
-  const dataUrl = await new Promise<string | undefined>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : undefined);
-    reader.onerror = () => resolve(undefined);
-    reader.readAsDataURL(raw);
-  });
+  const dataUrl = await readFileForStorage(file.id, file.rawFile);
   return dataUrl ? { ...base, dataUrl } : base;
 }
 

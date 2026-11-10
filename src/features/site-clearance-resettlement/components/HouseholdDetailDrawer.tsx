@@ -5,25 +5,28 @@ import {
   CheckCircleFilled,
   ClockCircleOutlined,
   DownloadOutlined,
-  EditOutlined,
-  EnvironmentOutlined,
   ExclamationCircleFilled,
   FileDoneOutlined,
   FileTextOutlined,
   MinusCircleOutlined,
   PaperClipOutlined,
-  PlusOutlined,
-  UploadOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Flex, Form, Input, Modal, StandardFileUpload, Text } from "@/components/ui";
+import { Button, Drawer, FilePreviewModal, Form, STANDARD_DRAWER_WIDTH, Input, Modal, StandardFileUpload } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
-import { formatDateVi, todayIso } from "@/utils/date";
+import { formatDateVi } from "@/utils/date";
+import { storedFileUrl } from "@/utils/stored-file";
 import { cn } from "@/utils/cn";
-import { GPMB_STEPS, LAND_TYPE_LABELS } from "../constants/gpmb-steps";
+import { GPMB_STEPS, landTypeLabel } from "../constants/gpmb-steps";
 import type { SiteClearanceController } from "../hooks/useSiteClearance";
 import type { Household, StepRecord } from "../types/gpmb.types";
 import { getCurrentStep, getLegalStatus, isStepApplicable } from "../utils/gpmb-rules";
+import {
+  COMPENSATION_GROUPS,
+  COMPENSATION_GROUP_LABELS,
+  itemAmount,
+  itemSupportAmount,
+  summarizeCompensation,
+} from "../utils/gpmb-compensation";
 import { downloadGpmbDocument } from "../utils/gpmb-download";
 import HouseholdActions from "./HouseholdActions";
 import { LegalDeadlineTag, SpecialStatusTag } from "./HouseholdBadges";
@@ -95,16 +98,26 @@ export default function HouseholdDetailDrawer({
   };
 
   const facts = [
-    { label: "Mã hộ", value: household.code },
-    { label: "CCCD", value: household.idNumber },
-    { label: "Địa chỉ", value: household.address },
-    { label: "Diện tích thu hồi", value: `${new Intl.NumberFormat("vi-VN").format(household.areaM2)} m²` },
-    { label: "Loại đất", value: LAND_TYPE_LABELS[household.landType] },
     {
-      label: "Tiền bồi thường",
-      value: `${formatMoneyString(household.compensation)} VNĐ`,
+      label: "CCCD",
+      value: household.idIssuedDate ? `${household.idNumber} · cấp ${viDate(household.idIssuedDate)}` : household.idNumber,
     },
-  ];
+    ...(household.birthDate ? [{ label: "Ngày sinh", value: viDate(household.birthDate) }] : []),
+    ...(household.persons ? [{ label: "Số khẩu", value: `${household.persons} khẩu` }] : []),
+    ...(household.phone ? [{ label: "Số điện thoại", value: household.phone }] : []),
+    { label: "Địa chỉ", value: household.address },
+    {
+      label: "Diện tích thu hồi",
+      value: `${new Intl.NumberFormat("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(household.areaM2)} m²`,
+    },
+    { label: "Loại đất", value: landTypeLabel(household.landType) },
+    // Có bảng kê thì tổng tiền nằm ở bảng kê bên dưới
+    ...(household.compensationItems?.length
+      ? []
+      : [{ label: "Tổng bồi thường, hỗ trợ", value: `${formatMoneyString(household.compensation)} VNĐ` }]),
+    ...(household.landOrigin ? [{ label: "Nguồn gốc sử dụng đất", value: household.landOrigin, wide: true }] : []),
+    ...(household.note ? [{ label: "Ghi chú", value: household.note, wide: true }] : []),
+  ] as { label: string; value: string; wide?: boolean }[];
 
   // Chi tiết bước đang chọn xem
   const activeStepDef = useMemo(
@@ -126,7 +139,7 @@ export default function HouseholdDetailDrawer({
     <>
       <Drawer
         open
-        width="min(680px, 100vw)"
+        width={STANDARD_DRAWER_WIDTH}
         onClose={onClose}
         footer={
           <div className="flex items-center justify-start gap-2.5 px-1 py-1">
@@ -142,7 +155,7 @@ export default function HouseholdDetailDrawer({
               <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
                 {household.code}
               </span>
-              <SpecialStatusTag status={household.specialStatus} />
+              <SpecialStatusTag status={household.specialStatus} label={household.specialStatusLabel} />
               {current === null && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                   Đã hoàn tất 16 bước
@@ -150,7 +163,7 @@ export default function HouseholdDetailDrawer({
               )}
             </span>
             <span className="block text-xs font-normal text-slate-500 mt-0.5">
-              {project?.name} · {household.address}
+              {project?.name}
             </span>
           </span>
         }
@@ -158,17 +171,16 @@ export default function HouseholdDetailDrawer({
         {/* KHỐI 1: THÔNG TIN HỘ DÂN */}
         <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
           {facts.map((fact) => (
-            <div key={fact.label}>
+            <div key={fact.label} className={fact.wide ? "col-span-2" : undefined}>
               <dt className="text-xs text-slate-500">{fact.label}</dt>
               <dd className="m-0 text-sm font-semibold text-slate-800">{fact.value}</dd>
             </div>
           ))}
         </dl>
 
-        <Flex align="center" gap={8} className="mt-3 px-0.5">
-          <Text className="text-xs font-semibold text-slate-600">Tình trạng:</Text>
-          <SpecialStatusTag status={household.specialStatus} />
-        </Flex>
+        <LandOriginFiles household={household} />
+
+        <CompensationBreakdownSection household={household} />
 
         {/* KHỐI 2: THANH CHUYỂN BƯỚC NHANH (16 BƯỚC MA TRẬN) */}
         <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
@@ -647,7 +659,6 @@ export default function HouseholdDetailDrawer({
             <div className="mb-3">
               <StandardFileUpload
                 title={`Tệp đính kèm ${editingStepDef.forms ? `(${editingStepDef.forms})` : "(tùy chọn)"}`}
-                subTitle="Biên bản scan, quyết định, phiếu khảo sát (PDF, DOCX, ảnh)"
                 singleFileName={selectedFileName}
                 onSingleFileNameChange={(name) => {
                   supplementForm.setFieldsValue({ fileName: name });
@@ -675,3 +686,104 @@ export default function HouseholdDetailDrawer({
 }
 
 
+
+/** Bảng kê bồi thường, hỗ trợ theo phương án: từng khoản = khối lượng × đơn giá × tỷ lệ */
+function CompensationBreakdownSection({ household }: { household: Household }) {
+  const items = household.compensationItems ?? [];
+  const summary = summarizeCompensation(household);
+  if (items.length === 0) return null;
+  const num = (v: number) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(v);
+  return (
+    <section className="mt-4 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+      <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-1.5">
+        <span className="text-xs font-bold uppercase tracking-wide text-slate-800">Bảng kê bồi thường, hỗ trợ</span>
+        <span className="text-xs font-bold text-[#DC2626]">{formatMoneyString(summary.total)} VNĐ</span>
+      </div>
+      <div className="space-y-3">
+        {COMPENSATION_GROUPS.filter((g) => items.some((i) => i.group === g)).map((group) => (
+          <div key={group}>
+            <div className="mb-1 flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700">{COMPENSATION_GROUP_LABELS[group]}</span>
+              <span className="font-semibold tabular-nums text-slate-800">{formatMoneyString(summary[group])}</span>
+            </div>
+            {group === "LAND" && !items.some((i) => i.group === "SUPPORT") && summary.SUPPORT > 0 && (
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-700">{COMPENSATION_GROUP_LABELS.SUPPORT} (CĐN & TKVL)</span>
+                <span className="font-semibold tabular-nums text-slate-800">{formatMoneyString(summary.SUPPORT)}</span>
+              </div>
+            )}
+            <table className="w-full border-collapse text-[11.5px]">
+              <tbody>
+                {items
+                  .filter((i) => i.group === group)
+                  .map((item, idx) => (
+                    <tr key={idx} className="border-t border-slate-100 align-top">
+                      <td className="py-1 pr-2 text-slate-600">
+                        {item.name}
+                        {item.group === "SUPPORT" && item.landCode && ` – đất ${item.landCode}`}
+                        {(item.mapSheet || item.parcel) && (
+                          <span className="block text-[10.5px] text-slate-400">
+                            {[item.mapSheet && `TBĐ ${item.mapSheet}`, item.parcel && `thửa ${item.parcel}`].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                        {itemSupportAmount(item) > 0 && (
+                          <span className="block text-[10.5px] text-slate-500">
+                            Hỗ trợ CĐN & TKVL: {num(item.quantity)} m² × {formatMoneyString(item.supportPrice ?? 0)} ={" "}
+                            {formatMoneyString(itemSupportAmount(item))}
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums text-slate-500">
+                        {num(item.quantity)} {item.unit} × {formatMoneyString(item.unitPrice)}
+                        {item.factor !== undefined && item.factor !== 1 ? ` × ${num(item.factor)} lần` : ""}
+                        {item.ratePercent !== undefined && item.ratePercent !== 100 ? ` × ${item.ratePercent}%` : ""}
+                      </td>
+                      <td className="whitespace-nowrap py-1 text-right font-medium tabular-nums text-slate-800">
+                        {formatMoneyString(itemAmount(item))}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Ngày dạng YYYY-MM-DD → dd/mm/yyyy; chuỗi khác (năm sinh, bản cũ nhập tay) giữ nguyên */
+function viDate(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDateVi(value) : value;
+}
+
+/** Hồ sơ nguồn gốc sử dụng đất: danh sách tệp, bấm để xem */
+function LandOriginFiles({ household }: { household: Household }) {
+  const files = household.landOriginFiles ?? [];
+  const [previewing, setPreviewing] = useState<(typeof files)[number] | null>(null);
+  if (files.length === 0) return null;
+  return (
+    <section className="mt-4 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+      <div className="mb-2 border-b border-slate-100 pb-1.5 text-xs font-bold uppercase tracking-wide text-slate-800">
+        Hồ sơ nguồn gốc sử dụng đất ({files.length})
+      </div>
+      <div className="space-y-1.5">
+        {files.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setPreviewing(f)}
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2 text-left hover:border-slate-200 hover:bg-slate-100/70"
+          >
+            <FileTextOutlined className="text-[#DC2626]" />
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800 hover:text-[#DC2626]">{f.name}</span>
+            <span className="shrink-0 text-[10.5px] text-slate-400">{f.size}</span>
+          </button>
+        ))}
+      </div>
+      {previewing && (
+        <FilePreviewModal fileName={previewing.name} url={storedFileUrl(previewing)} onClose={() => setPreviewing(null)} />
+      )}
+    </section>
+  );
+}

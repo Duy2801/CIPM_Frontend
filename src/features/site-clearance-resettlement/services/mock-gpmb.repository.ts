@@ -1,24 +1,92 @@
 import { todayIso } from "../../../utils/date.ts";
-import { GPMB_MOCK_DATA } from "../constants/gpmb-mock-data.ts";
+import { buildMissingSampleHouseholds, buildSampleHouseholds, GPMB_MOCK_DATA, SAMPLE_ID_NUMBERS } from "../constants/gpmb-mock-data.ts";
 import type { GpmbDataset, Household, HouseholdInput, StepRecord } from "../types/gpmb.types";
-import { getCurrentStep, validateStepCompletion } from "../utils/gpmb-rules.ts";
+import { getCurrentStep, isStepApplicable, validateStepCompletion } from "../utils/gpmb-rules.ts";
+import { itemAmount } from "../utils/gpmb-compensation.ts";
 import type { GpmbRepository } from "./gpmb.repository.ts";
 import { getSharedProjects } from "../../../stores/project.store.ts";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
+/** Bản mock lưu hộ dân trong trình duyệt để thêm / cập nhật không mất khi tải lại trang */
+const STORAGE_KEY = "cipm_gpmb_dataset_v2";
+/** Bản lưu cũ (dữ liệu mẫu theo bảng giá minh họa): chỉ giữ lại hộ người dùng tự thêm */
+const LEGACY_STORAGE_KEY = "cipm_gpmb_dataset_v1";
+/** Hộ người dùng thêm có id dạng HH-<thời điểm tạo>; hộ mẫu có id theo mã hộ */
+const isUserHousehold = (h: Household) => /^HH-\d+$/.test(h.id);
+
+function loadDataset(): GpmbDataset {
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? (JSON.parse(raw) as GpmbDataset) : null;
+      if (parsed && Array.isArray(parsed.households) && Array.isArray(parsed.projects)) {
+        // Bản lưu cũ: CCCD hộ mẫu còn che số (091****4521) → thay bằng số đầy đủ
+        for (const h of parsed.households) {
+          if (h.idNumber?.includes("*") && SAMPLE_ID_NUMBERS[h.ownerName]) h.idNumber = SAMPLE_ID_NUMBERS[h.ownerName];
+        }
+        // Danh sách hộ mẫu có thêm hộ mới: nối vào dự án đã có hộ mẫu, giữ nguyên tiến độ các hộ cũ
+        let added = false;
+        for (const project of parsed.projects) {
+          const inProject = parsed.households.filter((h) => h.projectId === project.id);
+          const sampleCount = inProject.filter((h) => !isUserHousehold(h)).length;
+          if (sampleCount === 0) continue;
+          const maxNo = Math.max(0, ...inProject.map((h) => Number(/HD-(\d+)$/.exec(h.code)?.[1] ?? 0)));
+          const missing = buildMissingSampleHouseholds(project, sampleCount, maxNo + 1);
+          if (missing.length) {
+            parsed.households.push(...missing);
+            added = true;
+          }
+        }
+        if (added) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        return parsed;
+      }
+    } catch {
+      // Dữ liệu lưu hỏng: dùng lại dữ liệu mẫu
+    }
+  }
+  const fresh = clone(GPMB_MOCK_DATA);
+  if (typeof window !== "undefined") {
+    try {
+      const legacy = JSON.parse(window.localStorage.getItem(LEGACY_STORAGE_KEY) ?? "null") as GpmbDataset | null;
+      if (legacy && Array.isArray(legacy.households)) {
+        const kept = legacy.households.filter(isUserHousehold);
+        const projectIds = new Set(kept.map((h) => h.projectId));
+        for (const p of legacy.projects ?? []) {
+          if (projectIds.has(p.id) && !fresh.projects.some((x) => x.id === p.id)) fresh.projects.push(p);
+        }
+        fresh.households = [...kept, ...fresh.households];
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    } catch {
+      // Bản cũ hỏng: bỏ qua
+    }
+  }
+  return fresh;
+}
+
 export function createMockGpmbRepository(): GpmbRepository {
-  const dataset: GpmbDataset = clone(GPMB_MOCK_DATA);
+  let state: GpmbDataset | null = null;
+  // Đọc lần đầu khi dùng (tránh đọc localStorage lúc dựng trang phía máy chủ)
+  const ds = (): GpmbDataset => (state ??= loadDataset());
+  const save = () => {
+    if (typeof window === "undefined" || !state) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error("Failed to save GPMB dataset", e);
+    }
+  };
 
   const find = (id: string): Household => {
-    const household = dataset.households.find((item) => item.id === id);
+    const household = ds().households.find((item) => item.id === id);
     if (!household) throw new Error("Không tìm thấy hồ sơ hộ dân.");
     return household;
   };
 
   return {
     async getDataset() {
-      const copy = clone(dataset);
+      const copy = clone(ds());
       const shared = getSharedProjects();
       const existingIds = new Set(copy.projects.map((p) => p.id));
       for (const sp of shared) {
@@ -34,14 +102,21 @@ export function createMockGpmbRepository(): GpmbRepository {
       return copy;
     },
 
+    async ensureSampleHouseholds(project) {
+      if (ds().households.some((h) => h.projectId === project.id)) return;
+      if (!ds().projects.some((p) => p.id === project.id)) ds().projects.push({ ...project });
+      ds().households.push(...buildSampleHouseholds(project));
+      save();
+    },
+
     async createHousehold(input, actor) {
       if (!input.ownerName?.trim()) throw new Error("Vui lòng nhập họ tên chủ hộ theo CCCD.");
       if (!input.idNumber?.trim()) throw new Error("Vui lòng nhập số CCCD của chủ hộ.");
       if (!input.projectId) throw new Error("Vui lòng chọn dự án.");
 
-      const project = dataset.projects.find((p) => p.id === input.projectId);
+      const project = ds().projects.find((p) => p.id === input.projectId);
       const projectCode = project?.code || "DA-001";
-      const projectHouseholds = dataset.households.filter((h) => h.projectId === input.projectId);
+      const projectHouseholds = ds().households.filter((h) => h.projectId === input.projectId);
       const nextNum = projectHouseholds.length + 1;
       const code = input.code || `${projectCode}-HD-${String(nextNum).padStart(3, "0")}`;
       const id = `HH-${Date.now()}`;
@@ -59,7 +134,10 @@ export function createMockGpmbRepository(): GpmbRepository {
             by: actor,
           }));
       } else if (input.currentStep && input.currentStep > 1) {
+        const status = input.specialStatus || "NORMAL";
         for (let s = 1; s < input.currentStep; s++) {
+          // Bước 14, 15 chỉ ghi nhận với hộ không hợp tác / cưỡng chế
+          if (!isStepApplicable(s, { specialStatus: status })) continue;
           records.push({
             step: s,
             completedAt: todayIso(),
@@ -78,14 +156,27 @@ export function createMockGpmbRepository(): GpmbRepository {
         address: input.address?.trim() || "Chưa cập nhật",
         areaM2: Number(Number(input.areaM2 || 0).toFixed(2)),
         landType: input.landType || "ONT",
-        compensation: Number(input.compensation) || 0,
+        // Có bảng kê thì tổng tiền = tổng các khoản
+        compensation: input.compensationItems?.length
+          ? input.compensationItems.reduce((sum, item) => sum + itemAmount(item), 0)
+          : Number(input.compensation) || 0,
+        compensationItems: input.compensationItems?.length ? input.compensationItems : undefined,
         specialStatus: input.specialStatus || "NORMAL",
+        specialStatusLabel: input.specialStatus === "OTHER" ? input.specialStatusLabel : undefined,
+        note: input.note?.trim() || undefined,
+        persons: input.persons,
+        birthDate: input.birthDate,
+        idIssuedDate: input.idIssuedDate,
+        phone: input.phone,
+        landOrigin: input.landOrigin,
+        landOriginFiles: input.landOriginFiles?.length ? input.landOriginFiles : undefined,
         records,
         currentStepStartedAt: todayIso(),
         createdAt: Date.now(),
       };
 
-      dataset.households = [newHousehold, ...dataset.households];
+      ds().households = [newHousehold, ...ds().households];
+      save();
       return clone(newHousehold);
     },
 
@@ -98,6 +189,7 @@ export function createMockGpmbRepository(): GpmbRepository {
       household.records.push({ step, ...input, by: actor });
       household.currentStepStartedAt = input.completedAt;
       household.rejection = undefined;
+      save();
       return clone(household);
     },
 
@@ -115,6 +207,7 @@ export function createMockGpmbRepository(): GpmbRepository {
         note: input.note,
       };
       household.rejection = undefined;
+      save();
       return clone(household);
     },
 
@@ -135,6 +228,7 @@ export function createMockGpmbRepository(): GpmbRepository {
       });
       household.currentStepStartedAt = completedAt;
       household.proposal = undefined;
+      save();
       return clone(household);
     },
 
@@ -145,6 +239,7 @@ export function createMockGpmbRepository(): GpmbRepository {
 
       household.rejection = { step: household.proposal.step, reason, by: actor, at: todayIso() };
       household.proposal = undefined;
+      save();
       return clone(household);
     },
 
@@ -154,6 +249,7 @@ export function createMockGpmbRepository(): GpmbRepository {
       household.specialStatus = status;
       // Bước hiện tại thay đổi (ví dụ kích hoạt bước 14) thì bắt đầu đếm lại thời hạn
       if (getCurrentStep(household) !== before) household.currentStepStartedAt = todayIso();
+      save();
       return clone(household);
     },
 
@@ -172,6 +268,7 @@ export function createMockGpmbRepository(): GpmbRepository {
       if (data.note !== undefined) {
         record.note = data.note.trim() || undefined;
       }
+      save();
       return clone(household);
     },
   };

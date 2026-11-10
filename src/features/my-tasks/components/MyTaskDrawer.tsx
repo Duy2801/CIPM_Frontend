@@ -9,6 +9,7 @@ import {
 import {
   Button,
   Drawer,
+  FilePreviewModal,
   Input,
   STANDARD_DRAWER_WIDTH,
   StandardFileUpload,
@@ -16,6 +17,7 @@ import {
   type UploadedAttachment,
 } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
+import { storedFileUrl } from "@/utils/stored-file";
 import { loadProjectProcedure } from "@/features/construction-procedures/utils/project-procedure-storage";
 import type { ProcedureDocument } from "@/features/construction-procedures/types/procedure.types";
 import { FlowBadge } from "@/features/projects_works/components/detail/ProcedureStepFlowDrawer";
@@ -395,19 +397,27 @@ function AttachmentList({
   canRemove?: (doc: ProcedureDocument) => boolean;
   onRemove?: (doc: ProcedureDocument) => void;
 }) {
+  const [previewing, setPreviewing] = useState<ProcedureDocument | null>(null);
   return (
     <div className="space-y-1.5">
       {task.step.attachments.map((doc) => (
-        <div key={doc.id} className="flex items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-red-200 bg-red-50 text-[#DC2626]">
-            <FileTextOutlined className="text-xs" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-semibold text-slate-800" title={doc.fileName}>{doc.fileName}</div>
-            <div className="text-[10px] text-slate-400">
-              {doc.fileSize} · {doc.uploadedBy} · {date(doc.uploadedAt)}
-            </div>
-          </div>
+        <div key={doc.id} className="flex items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2 hover:border-slate-200 hover:bg-slate-100/70">
+          <button
+            type="button"
+            onClick={() => setPreviewing(doc)}
+            title={`Xem ${doc.fileName}`}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-red-200 bg-red-50 text-[#DC2626]">
+              <FileTextOutlined className="text-xs" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-semibold text-slate-800 hover:text-[#DC2626]">{doc.fileName}</span>
+              <span className="block text-[10px] text-slate-400">
+                {doc.fileSize} · {doc.uploadedBy} · {date(doc.uploadedAt)}
+              </span>
+            </span>
+          </button>
           {onRemove && canRemove?.(doc) && (
             <Tooltip title="Gỡ hồ sơ">
               <button
@@ -422,6 +432,18 @@ function AttachmentList({
           )}
         </div>
       ))}
+      {previewing && (
+        <FilePreviewModal
+          fileName={previewing.fileName}
+          url={storedFileUrl(previewing)}
+          fallback={
+            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-slate-500">
+              Tệp mẫu (dữ liệu demo) hoặc tệp tải lên trước khi có chức năng xem — chưa có nội dung gốc để hiển thị.
+            </div>
+          }
+          onClose={() => setPreviewing(null)}
+        />
+      )}
     </div>
   );
 }

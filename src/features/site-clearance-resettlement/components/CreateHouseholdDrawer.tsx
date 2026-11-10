@@ -1,48 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  AppstoreOutlined,
-  CalendarOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  EditOutlined,
-  FileDoneOutlined,
-  FileTextOutlined,
-  InfoCircleOutlined,
-  MinusCircleOutlined,
-  NumberOutlined,
-  PaperClipOutlined,
-  UploadOutlined,
-  UserAddOutlined,
-} from "@ant-design/icons";
+import { useMemo, useState, type ReactNode } from "react";
+import { ArrowLeftOutlined, FileDoneOutlined, InfoCircleOutlined, UserAddOutlined } from "@ant-design/icons";
 import {
   Button,
   Col,
   Drawer,
   Form,
   Input,
-  MoneyInput,
-  Modal,
   Row,
   Select,
+  STANDARD_DRAWER_WIDTH,
   StandardFileUpload,
-  Tag,
   Text,
+  Tooltip,
+  type UploadedAttachment,
 } from "@/components/ui";
-import { parseMoney } from "@/utils/format-money";
 import { todayIso } from "@/utils/date";
-import { cn } from "@/utils/cn";
-import { GPMB_STEPS } from "../constants/gpmb-steps";
-import type {
-  GpmbDataset,
-  HouseholdInput,
-  LandType,
-  MatrixStepCell,
-  SpecialStatus,
-  StepStatus,
-} from "../types/gpmb.types";
+import { readFileForStorage } from "@/utils/stored-file";
 import { useProjectScope } from "@/components/workspace";
+import type { CompensationItem, GpmbDataset, HouseholdFile, HouseholdInput, SpecialStatus } from "../types/gpmb.types";
+import { landCodeFromName, summarizeCompensation } from "../utils/gpmb-compensation";
+import CompensationItemsEditor from "./CompensationItemsEditor";
+import { rememberCatalogItems } from "../utils/compensation-catalog-store";
 
 interface CreateHouseholdDrawerProps {
   open: boolean;
@@ -52,234 +32,144 @@ interface CreateHouseholdDrawerProps {
   onCreate: (input: HouseholdInput) => Promise<boolean>;
 }
 
-const LAND_TYPE_OPTIONS: { value: LandType; label: string }[] = [
-  { value: "ONT", label: "ONT – Đất ở nông thôn" },
-  { value: "CLN", label: "CLN – Đất trồng cây lâu năm" },
-  { value: "RSX", label: "RSX – Đất rừng sản xuất" },
-  { value: "HNK", label: "HNK – Đất trồng cây hàng năm khác" },
-  { value: "Hỗn hợp", label: "Hỗn hợp – Nhiều loại đất" },
-];
+/** Giá trị chọn "Khác (tự nhập)" trong các ô chọn */
+const OTHER = "__other__";
 
-const SPECIAL_STATUS_OPTIONS: { value: SpecialStatus; label: string }[] = [
+/** Loại đất suy ra từ các khoản bồi thường về đất trong bảng kê (nhiều loại → "Hỗn hợp") */
+function landTypeFromItems(items: CompensationItem[]): string {
+  const codes = new Set(
+    items
+      .filter((i) => i.group === "LAND" && i.name.trim())
+      .map((i) => landCodeFromName(i.name)),
+  );
+  if (codes.size > 1) return "Hỗn hợp";
+  return [...codes][0] ?? "Chưa xác định";
+}
+
+const SPECIAL_STATUS_OPTIONS = [
   { value: "NORMAL", label: "Bình thường (Đồng thuận)" },
   { value: "UNCOOPERATIVE", label: "Không hợp tác (Cần vận động)" },
   { value: "COMPLAINT", label: "Khiếu kiện (Đang giải quyết)" },
   { value: "ENFORCEMENT", label: "Cưỡng chế (Thu hồi bắt buộc)" },
+  { value: OTHER, label: "Khác (tự nhập)" },
 ];
 
-const STEP_OPTIONS = GPMB_STEPS.map((s) => ({
-  value: s.number,
-  label: `Bước ${s.number}: ${s.title} (${s.label})`,
-}));
 
-function buildDefaultMatrix(currentStepNumber: number): MatrixStepCell[] {
-  const today = todayIso();
-  return GPMB_STEPS.map((s) => {
-    let status: StepStatus = "PENDING";
-    let completedAt: string | undefined = undefined;
-    let documentNo: string | undefined = undefined;
-
-    if (s.number < currentStepNumber) {
-      status = "COMPLETED";
-      completedAt = today;
-      documentNo = `${String(s.number).padStart(2, "0")}/HD-BT`;
-    } else if (s.number === currentStepNumber) {
-      status = "IN_PROGRESS";
-    }
-
-    return {
-      step: s.number,
-      status,
-      completedAt,
-      documentNo,
-    };
-  });
+interface FormValues {
+  projectId: string;
+  ownerName: string;
+  idNumber: string;
+  address?: string;
+  birthDate?: string;
+  phone?: string;
+  statusChoice: string;
+  statusOther?: string;
+  note?: string;
 }
 
-export default function CreateHouseholdDrawer({
-  open,
-  data,
-  errorText,
-  onClose,
-  onCreate,
-}: CreateHouseholdDrawerProps) {
+/** Thêm hồ sơ hộ dân: thông tin chủ hộ, đất thu hồi, tình trạng và bảng kê bồi thường, hỗ trợ */
+export default function CreateHouseholdDrawer({ open, data, errorText, onClose, onCreate }: CreateHouseholdDrawerProps) {
   const scopedProjectId = useProjectScope();
-  const [form] = Form.useForm<HouseholdInput>();
+  const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [matrixSteps, setMatrixSteps] = useState<MatrixStepCell[]>([]);
-  const [editingCell, setEditingCell] = useState<MatrixStepCell | null>(null);
-  const [selectedCellFileName, setSelectedCellFileName] = useState<string>("");
-  const [editForm] = Form.useForm<{
-    status: StepStatus;
-    completedAt?: string;
-    documentNo?: string;
-    fileName?: string;
-    note?: string;
-  }>();
+  const [compensationItems, setCompensationItems] = useState<CompensationItem[]>([]);
+  const [itemsError, setItemsError] = useState(false);
+  const [originFiles, setOriginFiles] = useState<UploadedAttachment[]>([]);
 
-  // Khởi tạo dự án mặc định khi mở
-  useEffect(() => {
-    if (open) {
-      const defaultProjId = data.projects[0]?.id || "";
-      setSelectedProjectId(defaultProjId);
-      setCurrentStep(1);
-      setMatrixSteps(buildDefaultMatrix(1));
-      form.setFieldsValue({
-        projectId: defaultProjId,
-        landType: "ONT",
-        areaM2: 120.5,
-        compensation: 0.85,
-        currentStep: 1,
-        specialStatus: "NORMAL",
-      });
-    }
-  }, [open, data.projects, form]);
+  const projectId = Form.useWatch("projectId", form) ?? data.projects[0]?.id ?? "";
+  const statusChoice = Form.useWatch("statusChoice", form);
 
-  // Tự sinh mã hộ: DA-001-HD-001
+  // Mã hộ tự sinh theo dự án: DA-001-HD-001
   const generatedCode = useMemo(() => {
-    const project = data.projects.find((p) => p.id === selectedProjectId);
-    const projectCode = project?.code || "DA-001";
-    const countInProj = data.households.filter((h) => h.projectId === selectedProjectId).length;
-    return `${projectCode}-HD-${String(countInProj + 1).padStart(3, "0")}`;
-  }, [data.projects, data.households, selectedProjectId]);
+    const project = data.projects.find((p) => p.id === projectId);
+    const count = data.households.filter((h) => h.projectId === projectId).length;
+    return `${project?.code || "DA-001"}-HD-${String(count + 1).padStart(3, "0")}`;
+  }, [data.projects, data.households, projectId]);
 
-  // Cập nhật ma trận khi người dùng đổi Bước hiện tại
-  const handleCurrentStepChange = (newStep: number) => {
-    setCurrentStep(newStep);
-    setMatrixSteps((prev) =>
-      GPMB_STEPS.map((s) => {
-        const existing = prev.find((item) => item.step === s.number);
-        let status: StepStatus = "PENDING";
-        if (s.number < newStep) {
-          status = "COMPLETED";
-        } else if (s.number === newStep) {
-          status = "IN_PROGRESS";
-        }
-        return {
-          step: s.number,
-          status,
-          completedAt:
-            existing?.completedAt || (status === "COMPLETED" ? todayIso() : undefined),
-          documentNo:
-            existing?.documentNo ||
-            (status === "COMPLETED"
-              ? `${String(s.number).padStart(2, "0")}/HD-BT`
-              : undefined),
-          fileName: existing?.fileName,
-          note: existing?.note,
-        };
-      })
-    );
+  const close = () => {
+    form.resetFields();
+    setCompensationItems([]);
+    setItemsError(false);
+    setOriginFiles([]);
+    onClose();
   };
 
-  // Mở popup cập nhật từng ô trong 16 ô
-  const handleOpenCellEditor = (cell: MatrixStepCell) => {
-    setEditingCell(cell);
-    setSelectedCellFileName(cell.fileName || "");
-    editForm.setFieldsValue({
-      status: cell.status,
-      completedAt: cell.completedAt || (cell.status === "COMPLETED" ? todayIso() : ""),
-      documentNo: cell.documentNo || "",
-      fileName: cell.fileName || "",
-      note: cell.note || "",
-    });
-  };
-
-  // Lưu ô đang sửa
-  const handleSaveCell = (values: {
-    status: StepStatus;
-    completedAt?: string;
-    documentNo?: string;
-    fileName?: string;
-    note?: string;
-  }) => {
-    if (!editingCell) return;
-    setMatrixSteps((prev) =>
-      prev.map((item) =>
-        item.step === editingCell.step
-          ? {
-              ...item,
-              status: values.status,
-              completedAt: values.completedAt,
-              documentNo: values.documentNo,
-              fileName: values.fileName,
-              note: values.note,
-            }
-          : item
-      )
-    );
-    setEditingCell(null);
-  };
-
-  const handleFinish = async (values: HouseholdInput) => {
+  const handleFinish = async (values: FormValues) => {
+    if (compensationItems.length === 0) {
+      setItemsError(true);
+      return;
+    }
+    const isOtherStatus = values.statusChoice === OTHER;
     setSubmitting(true);
     try {
-      const payload: HouseholdInput = {
-        ...values,
+      // Hồ sơ nguồn gốc đất: đọc nội dung tệp để xem lại sau
+      const landOriginFiles: HouseholdFile[] = await Promise.all(
+        originFiles.map(async (f) => {
+          const dataUrl = await readFileForStorage(f.id, f.rawFile);
+          return { id: f.id, name: f.name, size: f.size, ...(dataUrl ? { dataUrl } : {}) };
+        }),
+      );
+      const success = await onCreate({
         code: generatedCode,
-        areaM2: Number(Number(values.areaM2).toFixed(2)) || 0,
-        compensation: parseMoney(values.compensation) || 0,
-        currentStep: Number(values.currentStep) || 1,
-        specialStatus: values.specialStatus || "NORMAL",
-        matrixSteps,
-      };
-      const success = await onCreate(payload);
+        projectId: values.projectId,
+        ownerName: values.ownerName,
+        idNumber: values.idNumber,
+        address: values.address,
+        // Diện tích thu hồi = tổng diện tích các thửa đất trong bảng kê
+        areaM2: Number(
+          compensationItems.filter((i) => i.group === "LAND").reduce((sum, i) => sum + i.quantity, 0).toFixed(2),
+        ),
+        birthDate: values.birthDate || undefined,
+        phone: values.phone?.trim() || undefined,
+        landOriginFiles,
+        landType: landTypeFromItems(compensationItems),
+        specialStatus: (isOtherStatus ? "OTHER" : values.statusChoice) as SpecialStatus,
+        specialStatusLabel: isOtherStatus ? values.statusOther?.trim() : undefined,
+        currentStep: 1,
+        // Tổng tiền = tổng bảng kê
+        compensation: summarizeCompensation({ compensation: 0, compensationItems }).total,
+        compensationItems,
+        note: values.note,
+      });
       if (success) {
-        form.resetFields();
-        onClose();
+        // Khoản con vừa nhập được giữ lại để lần sau chọn lại
+        rememberCatalogItems(compensationItems, values.projectId);
+        close();
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const projectOptions = data.projects.map((p) => ({
-    value: p.id,
-    label: `${p.code} · ${p.name}`,
-  }));
-
-  const editingStepDef = editingCell
-    ? GPMB_STEPS.find((s) => s.number === editingCell.step)
-    : null;
-
   return (
     <Drawer
       open={open}
-      width="min(680px, 100vw)"
-      onClose={onClose}
+      width={STANDARD_DRAWER_WIDTH}
+      onClose={close}
       destroyOnClose
+      closable={false}
       title={
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B2546] text-white">
-            <UserAddOutlined className="text-base" />
-          </span>
+        <div className="flex items-center gap-3">
+          <Tooltip title="Quay lại">
+            <button
+              type="button"
+              aria-label="Quay lại"
+              onClick={close}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+            >
+              <ArrowLeftOutlined className="text-sm" />
+            </button>
+          </Tooltip>
           <div>
-            <Text className="text-base font-bold text-[#102A43]">
-              Thêm hồ sơ hộ dân thu hồi đất
-            </Text>
-            <Text className="block text-xs font-normal text-slate-500">
-              Khởi tạo hồ sơ bồi thường, đo đạc và ma trận tiến độ 16 bước
-            </Text>
+            <Text className="text-base font-bold text-[#102A43]">Thêm hồ sơ hộ dân thu hồi đất</Text>
+            <Text className="block text-xs font-normal text-slate-500">Thông tin chủ hộ, đất thu hồi và bảng kê bồi thường</Text>
           </div>
         </div>
       }
       footer={
         <div className="flex items-center justify-start gap-3 px-1 py-1">
-          <Button
-            intent="primary"
-            onClick={() => form.submit()}
-            loading={submitting}
-          >
+          <Button intent="primary" onClick={() => form.submit()} loading={submitting}>
             Thêm hộ dân
-          </Button>
-          <Button
-            intent="outline"
-            onClick={onClose}
-            disabled={submitting}
-          >
-            Đóng
           </Button>
         </div>
       }
@@ -296,398 +186,148 @@ export default function CreateHouseholdDrawer({
         </div>
       )}
 
-      <Form<HouseholdInput>
+      <Form<FormValues>
         form={form}
         layout="vertical"
         onFinish={handleFinish}
         className="space-y-4"
+        initialValues={{
+          projectId: data.projects[0]?.id,
+          statusChoice: "NORMAL",
+        }}
       >
-        {/* Nhóm 1: Định danh & Mã hộ */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="flex items-center gap-2 text-[13px] font-bold text-[#102A43]">
-              <NumberOutlined className="text-[#0F4C81]" />
-              Dự án & Mã hồ sơ hộ dân
-            </span>
-            <Tag intent="subtle" scale="sm" className="font-semibold text-xs">
-              Mã tự sinh
-            </Tag>
-          </div>
-
+        {/* Thông tin hộ dân: dự án, mã hộ, chủ hộ theo CCCD */}
+        <Section icon={<UserAddOutlined />} title="Thông tin hộ dân">
           <Row gutter={[16, 0]}>
-            <Col xs={24} sm={14}>
-              <Form.Item
-                name="projectId"
-                label="Dự án thực hiện GPMB"
-                rules={[{ required: true, message: "Vui lòng chọn dự án." }]}
-              >
+            <Col xs={24}>
+              <Form.Item name="projectId" label="Dự án" rules={[{ required: true, message: "Vui lòng chọn dự án." }]}>
                 <Select
-                  options={projectOptions}
                   disabled={Boolean(scopedProjectId)}
-                  onChange={(val) => {
-                    setSelectedProjectId(val);
-                    form.setFieldValue("projectId", val);
-                  }}
+                  options={data.projects.map((p) => ({ value: p.id, label: p.name }))}
                 />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={10}>
-              <Form.Item label="Mã hộ dân (Tự sinh)">
-                <Input
-                  value={generatedCode}
-                  disabled
-                  className="!bg-slate-100 !text-[#102A43] font-bold font-mono tracking-wide"
-                  prefix={<span className="text-slate-400 font-normal text-xs">MÃ:</span>}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        </div>
-
-        {/* Nhóm 2: Tên chủ hộ + CCCD */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-            <UserAddOutlined className="text-[#0F4C81]" />
-            <Text className="text-[13px] font-bold text-[#102A43]">
-              Thông tin chủ hộ (Theo CCCD)
-            </Text>
-          </div>
-
-          <Row gutter={[16, 0]}>
-            <Col xs={24} sm={14}>
+            {/* Chủ hộ */}
+            <Col xs={24} sm={16}>
               <Form.Item
                 name="ownerName"
-                label="Tên chủ hộ (Theo căn cước công dân)"
-                rules={[
-                  { required: true, message: "Vui lòng nhập tên chủ hộ theo CCCD." },
-                ]}
+                label="Họ và tên"
+                rules={[{ required: true, whitespace: true, message: "Vui lòng nhập tên chủ hộ theo CCCD." }]}
               >
-                <Input placeholder="vd: Nguyễn Văn An (theo CCCD)" />
+                <Input placeholder="Theo căn cước công dân" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="birthDate" label="Ngày sinh">
+                <Input type="date" max={todayIso()} />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={10}>
+            {/* Giấy tờ & liên hệ: 2 ô đều nhau */}
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="idNumber"
-                label="Số CCCD"
+                label="CCCD"
                 rules={[
                   { required: true, message: "Vui lòng nhập số CCCD." },
-                  { pattern: /^\d{12}$/, message: "CCCD phải gồm đúng 12 chữ số." },
+                  { pattern: /^\d{12}$/, message: "CCCD gồm đúng 12 chữ số." },
                 ]}
               >
-                <Input
-                  maxLength={12}
-                  placeholder="091090001234 (12 số)"
-                  className="font-mono"
-                />
+                <Input maxLength={12} inputMode="numeric" placeholder="12 chữ số" />
               </Form.Item>
             </Col>
-
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="phone"
+                label="SĐT"
+                rules={[{ pattern: /^0\d{9,10}$/, message: "Số điện thoại không hợp lệ." }]}
+              >
+                <Input inputMode="tel" maxLength={11} placeholder="vd: 0912345678" />
+              </Form.Item>
+            </Col>
             <Col xs={24}>
-              <Form.Item name="address" label="Địa chỉ / Thửa đất thu hồi">
-                <Input placeholder="Tổ, ấp/khu phố, xã/phường nơi có đất bị thu hồi..." />
+              <Form.Item name="address" label="Địa chỉ">
+                <Input placeholder="Tổ, khu phố, xã/phường, tỉnh" />
               </Form.Item>
             </Col>
-          </Row>
-        </div>
 
-        {/* Nhóm 3: Đất & Bồi thường & Trạng thái */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-            <FileTextOutlined className="text-[#0F4C81]" />
-            <Text className="text-[13px] font-bold text-[#102A43]">
-              Phương án bồi thường & Phân loại đất
-            </Text>
-          </div>
-
-          <Row gutter={[16, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="areaM2"
-                label="Diện tích thu hồi (m² - Biên bản đo đạc)"
-                rules={[
-                  { required: true, message: "Vui lòng nhập diện tích thu hồi." },
-                ]}
-                extra="Biên bản đo đạc, hỗ trợ 2 chữ số thập phân (> 0)"
-              >
-                <Input
-                  type="number"
-                  min={0.01}
-                  step={0.01}
-                  suffix="m²"
-                  placeholder="vd: 185.50"
+            {/* Hồ sơ nguồn gốc đất: tải tệp */}
+            <Col xs={24}>
+              <Form.Item label="Nguồn gốc sử dụng đất" className="mb-0">
+                <StandardFileUpload
+                  hideHeader
+                  // Nằm trong khối thông tin: bỏ khung ngoài để không thành khung lồng khung
+                  className="!rounded-none !border-0 !bg-transparent !p-0"
+                  promptText="Nhấn hoặc kéo thả tệp hồ sơ vào đây"
+                  value={originFiles}
+                  onChange={setOriginFiles}
                 />
               </Form.Item>
             </Col>
-
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="landType"
-                label="Loại đất"
-                rules={[{ required: true, message: "Vui lòng chọn loại đất." }]}
-              >
-                <Select options={LAND_TYPE_OPTIONS} />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="compensation"
-                label="Tiền BT theo phương án"
-                rules={[
-                  { required: true, message: "Vui lòng nhập số tiền bồi thường." },
-                  () => ({
-                    validator: (_, val) => {
-                      const num = parseMoney(val);
-                      if (isNaN(num) || num < 0) return Promise.reject(new Error("Vui lòng nhập số tiền hợp lệ."));
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
-                extra="Theo QĐ phê duyệt phương án (đồng bộ với M4)"
-              >
-                <MoneyInput
-                  placeholder="VD: 100.000.000"
-                />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="specialStatus"
-                label="Trạng thái đặc biệt"
-                rules={[{ required: true, message: "Vui lòng chọn trạng thái." }]}
-              >
-                <Select options={SPECIAL_STATUS_OPTIONS} />
-              </Form.Item>
-            </Col>
           </Row>
-        </div>
+        </Section>
 
-        {/* Nhóm 4: Bước hiện tại (1–16) & Ma trận ô trạng thái */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
-            <span className="flex items-center gap-2 text-[13px] font-bold text-[#102A43]">
-              <AppstoreOutlined className="text-[#0F4C81]" />
-              Tiến độ & Ma trận 16 ô trạng thái
-            </span>
-            <span className="text-xs text-slate-500">
-              Nhấp vào ô để cập nhật
-            </span>
-          </div>
+        {/* Bảng kê bồi thường, hỗ trợ theo phương án */}
+        <Section icon={<FileDoneOutlined />} title="Bảng kê bồi thường, hỗ trợ">
+          <CompensationItemsEditor
+            // Đổi dự án thì nạp lại bảng giá của dự án đó
+            key={projectId}
+            projectId={projectId}
+            value={compensationItems}
+            onChange={(items) => {
+              setCompensationItems(items);
+              if (items.length > 0) setItemsError(false);
+            }}
+          />
+          {itemsError && <p className="m-0 mt-2 text-xs text-rose-600">Vui lòng thêm ít nhất một khoản bồi thường, hỗ trợ.</p>}
+        </Section>
 
-          <div className="mb-3">
-            <Form.Item
-              name="currentStep"
-              label="Bước hiện tại (1–16)"
-              rules={[
-                { required: true, message: "Vui lòng chọn bước hiện tại." },
-              ]}
-              extra="Tự cập nhật hoặc chọn thủ công. Các bước trước sẽ tự động đánh dấu đã hoàn thành."
-            >
-              <Select
-                options={STEP_OPTIONS}
-                value={currentStep}
-                onChange={(val) => {
-                  handleCurrentStepChange(Number(val));
-                  form.setFieldValue("currentStep", Number(val));
-                }}
-              />
+        <div>
+          <Form.Item
+            name="statusChoice"
+            label="Trạng thái"
+            className={statusChoice === OTHER ? "mb-2" : undefined}
+            rules={[{ required: true, message: "Vui lòng chọn trạng thái." }]}
+          >
+            <Select options={SPECIAL_STATUS_OPTIONS} />
+          </Form.Item>
+          {statusChoice === OTHER && (
+            <Form.Item name="statusOther" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập trạng thái." }]}>
+              <Input placeholder="Nhập trạng thái, vd: Chờ xác minh nguồn gốc đất" autoFocus />
             </Form.Item>
-          </div>
-
-          {/* Lưới 16 ô trạng thái */}
-          <div className="mt-3">
-            <div className="mb-2 flex items-center justify-between text-xs text-slate-500 font-medium">
-              <span>Bảng 16 ô quy trình GPMB:</span>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1 text-amber-700">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" /> Hoàn thành
-                </span>
-                <span className="inline-flex items-center gap-1 text-blue-700">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" /> Đang làm
-                </span>
-                <span className="inline-flex items-center gap-1 text-slate-400">
-                  <span className="h-2 w-2 rounded-full bg-slate-300" /> Chưa làm
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {matrixSteps.map((cell) => {
-                const stepDef = GPMB_STEPS.find((s) => s.number === cell.step);
-                const isCompleted = cell.status === "COMPLETED";
-                const isInProgress = cell.status === "IN_PROGRESS";
-
-                return (
-                  <button
-                    key={cell.step}
-                    type="button"
-                    onClick={() => handleOpenCellEditor(cell)}
-                    className={cn(
-                      "group relative flex flex-col justify-between rounded-lg border p-2 text-left transition-all cursor-pointer",
-                      isCompleted &&
-                        "border-amber-200 bg-amber-50/60 hover:border-amber-400 hover:bg-amber-50",
-                      isInProgress &&
-                        "border-blue-300 bg-blue-50/70 ring-1 ring-blue-300 hover:border-blue-400 hover:bg-blue-50",
-                      !isCompleted &&
-                        !isInProgress &&
-                        "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-1">
-                      <span
-                        className={cn(
-                          "rounded px-1.5 py-0.2 text-[11px] font-bold",
-                          isCompleted && "bg-amber-500 text-white",
-                          isInProgress && "bg-blue-600 text-white",
-                          !isCompleted && !isInProgress && "bg-slate-200 text-slate-600"
-                        )}
-                      >
-                        B{String(cell.step).padStart(2, "0")}
-                      </span>
-                      <span className="text-[10px] text-slate-400 group-hover:text-slate-700 flex items-center gap-0.5">
-                        <EditOutlined className="text-[9px]" />
-                        Sửa
-                      </span>
-                    </div>
-
-                    <div className="my-1">
-                      <span className="block text-xs font-semibold text-slate-800 line-clamp-1" title={stepDef?.title}>
-                        {stepDef?.label || `Bước ${cell.step}`}
-                      </span>
-                      {cell.documentNo ? (
-                        <span className="block text-[10.5px] text-slate-500 font-mono truncate" title={cell.documentNo}>
-                          {cell.documentNo}
-                        </span>
-                      ) : (
-                        <span className="block text-[10.5px] text-slate-400">
-                          {isCompleted ? "Đã xong" : isInProgress ? "Đang tiến hành" : "Chưa thực hiện"}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400 mt-auto">
-                      {cell.completedAt ? (
-                        <span className="flex items-center gap-1">
-                          <CalendarOutlined className="text-[9px]" />
-                          {cell.completedAt}
-                        </span>
-                      ) : (
-                        <span />
-                      )}
-                      {cell.fileName && (
-                        <span className="flex items-center gap-0.5 text-[#DC2626] font-semibold" title={cell.fileName}>
-                          <PaperClipOutlined className="text-[9px]" />
-                          Tệp
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          )}
         </div>
 
         <Form.Item name="note" label="Ghi chú hồ sơ" className="mb-2">
-          <Input.TextArea
-            rows={2}
-            placeholder="Ghi chú thêm về hoàn cảnh hộ dân, nguồn gốc đất, nhân khẩu..."
-          />
+          <Input.TextArea rows={2} placeholder="Ý kiến của hộ dân, nội dung cần bổ sung…" />
         </Form.Item>
       </Form>
-
-      {/* Modal cập nhật từng ô trạng thái */}
-      {editingCell && editingStepDef && (
-        <Modal
-          open={Boolean(editingCell)}
-          title={
-            <div className="flex items-center gap-2">
-              <span className="rounded bg-[#0B2546] px-2 py-0.5 text-xs font-bold text-white">
-                Bước {editingCell.step}
-              </span>
-              <span className="font-bold text-[#102A43]">
-                {editingStepDef.title}
-              </span>
-            </div>
-          }
-          onCancel={() => setEditingCell(null)}
-          footer={[
-            <Button
-              key="submit"
-              intent="primary"
-              onClick={() => editForm.submit()}
-            >
-              Lưu ô trạng thái
-            </Button>,
-            <Button
-              key="cancel"
-              intent="outline"
-              onClick={() => setEditingCell(null)}
-            >
-              Đóng
-            </Button>,
-          ]}
-        >
-          <Form
-            form={editForm}
-            layout="vertical"
-            onFinish={handleSaveCell}
-            className="pt-2"
-          >
-            <Form.Item
-              name="status"
-              label="Trạng thái bước"
-              rules={[{ required: true, message: "Chọn trạng thái." }]}
-            >
-              <Select
-                options={[
-                  { value: "COMPLETED", label: "Hoàn thành (Đã ban hành văn bản)" },
-                  { value: "IN_PROGRESS", label: "Đang thực hiện" },
-                  { value: "PENDING", label: "Chưa thực hiện" },
-                ]}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="completedAt"
-              label="Ngày thực hiện / hoàn thành"
-              extra="Định dạng: YYYY-MM-DD"
-            >
-              <Input placeholder="2026-03-15" />
-            </Form.Item>
-
-            <Form.Item
-              name="documentNo"
-              label="Số văn bản / Biên bản"
-              extra="Số quyết định, biên bản họp dân, phương án..."
-            >
-              <Input placeholder="vd: 12/TB-UBND hoặc 05/PA-BT" />
-            </Form.Item>
-
-            <div className="mb-3">
-              <StandardFileUpload
-                title={`Tệp đính kèm ${editingStepDef?.forms ? `(${editingStepDef.forms})` : "(tùy chọn)"}`}
-                subTitle="Biên bản scan, quyết định, phiếu khảo sát (PDF, DOCX, ảnh)"
-                singleFileName={selectedCellFileName}
-                onSingleFileNameChange={(name) => {
-                  editForm.setFieldsValue({ fileName: name });
-                  setSelectedCellFileName(name);
-                }}
-              />
-            </div>
-
-            <Form.Item name="note" label="Ghi chú bước">
-              <Input.TextArea
-                rows={2}
-                placeholder="Ghi chú chi tiết cho bước này..."
-              />
-            </Form.Item>
-          </Form>
-        </Modal>
-      )}
     </Drawer>
+  );
+}
+
+function Section({
+  icon,
+  title,
+  hint,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+        <span className="flex items-center gap-2 text-[13px] font-bold text-[#102A43]">
+          <span className="text-[#0F4C81]">{icon}</span>
+          {title}
+        </span>
+        {hint && <span className="text-xs text-slate-500">{hint}</span>}
+      </div>
+      {children}
+    </div>
   );
 }

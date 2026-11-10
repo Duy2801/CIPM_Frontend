@@ -1,16 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  BankOutlined,
-  CalendarOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  FileTextOutlined,
-  SafetyCertificateOutlined,
-  ToolOutlined,
-} from "@ant-design/icons";
-import { Button, Drawer, Input, MoneyInput, Select, Text } from "@/components/ui";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Button, Drawer, Input, MoneyInput, Select } from "@/components/ui";
 import { FINANCE_MOCK_DATA } from "@/features/finance-settlement/constants/finance-mock-data";
 import { todayIso } from "@/utils/date";
 import { parseMoney } from "@/utils/format-money";
@@ -127,7 +119,7 @@ export default function CreateWarrantyDrawer({
   const [acceptanceDate, setAcceptanceDate] = useState<string>(today);
   const [months, setMonths] = useState<number>(24);
   const [bondValue, setBondValue] = useState<number>(3.625);
-  const [bank, setBank] = useState<string>("Vietcombank – CN Kiên Giang");
+  const [bank, setBank] = useState<string>("");
   const [bondStatus, setBondStatus] = useState<BondStatus>("HOLDING");
 
   useEffect(() => {
@@ -152,7 +144,7 @@ export default function CreateWarrantyDrawer({
       setAcceptanceDate(today);
       setMonths(24);
       setBondValue(3.625);
-      setBank("Vietcombank – CN Kiên Giang");
+      setBank("");
       setBondStatus("HOLDING");
       if (scopedProjectId) {
         // Hợp đồng đầu tiên của dự án; dự án chưa có hợp đồng thì nhập thủ công
@@ -214,158 +206,134 @@ export default function CreateWarrantyDrawer({
     });
   };
 
+  const fieldLabel = "mb-1 block text-xs font-semibold text-slate-700";
+  const required = <span className="text-rose-500"> *</span>;
+  const sectionTitle = "m-0 text-[13px] font-bold text-slate-900";
+
   return (
     <Drawer
       open={open}
       onClose={onClose}
-      width="min(680px, 100vw)"
+      width="min(640px, 100vw)"
       title={
-        <div className="py-1">
-          <div className="text-base font-bold text-slate-800 flex items-center gap-2">
-            <SafetyCertificateOutlined className="text-[#DC2626]" />
-            {editingWarranty ? "Cập nhật hồ sơ bảo hành công trình" : "Thêm hồ sơ bảo hành công trình"}
-          </div>
-          <div className="text-xs text-slate-500 font-normal mt-0.5">
-            {editingWarranty
-              ? "Chỉnh sửa thời hạn bảo hành, hợp đồng liên kết và thông tin chứng thư bảo lãnh"
-              : "Khởi tạo theo dõi thời hạn bảo hành và thông tin chứng thư bảo lãnh liên kết từ Hợp đồng M4"}
-          </div>
+        <div className="flex items-center gap-2 text-base font-bold text-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Quay lại"
+            title="Quay lại"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-slate-500 hover:bg-slate-100 hover:text-[#DC2626]"
+          >
+            <ArrowLeftOutlined />
+          </button>
+          {editingWarranty ? "Cập nhật bảo hành" : "Thêm bảo hành"}
         </div>
       }
       footer={
-        <div className="flex items-center justify-end gap-2.5 py-2">
+        <div className="flex w-full items-center justify-start py-2">
           <Button
             intent="primary"
             scale="sm"
             onClick={handleSubmit}
             className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white px-5 text-xs font-semibold rounded-lg shadow-sm"
           >
-            {editingWarranty ? "Cập nhật hồ sơ" : "Lưu hồ sơ bảo hành"}
-          </Button>
-          <Button intent="outline" scale="sm" onClick={onClose} className="px-4 text-xs font-medium">
-            Đóng
+            {editingWarranty ? "Cập nhật" : "Lưu"}
           </Button>
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-slate-800">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-slate-800">
         {errorText && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">
             {errorText}
           </div>
         )}
 
-        {/* 1. Hợp đồng liên kết từ M4 */}
-        <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <FileTextOutlined className="text-[#DC2626]" />
-              Hợp đồng liên kết (M4 - Tài chính & Hợp đồng)
-            </label>
-            <span className="text-[11px] text-blue-700 font-medium bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-              Liên kết từ M4
-            </span>
-          </div>
-
-          <Select
-            aria-label="Chọn hợp đồng M4"
-            value={selectedContractId}
-            onChange={handleSelectContract}
-            className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-            options={[
-              ...contractChoices.map((c) => ({
-                value: c.id,
-                label: `${c.code} · ${c.contractor} (Giá trị HĐ: ${c.value} tỷ · Đề xuất BL: ${c.suggestedBond} tỷ)`,
-              })),
-              { value: "CUSTOM", label: "✏️ Nhập thủ công hợp đồng khác..." },
-            ]}
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        {/* Công trình */}
+        <section className="flex flex-col gap-3">
+          {/* Mở trong trang chi tiết dự án: dự án cố định, không cần chọn */}
+          {!scopedProjectId && (
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Số / Mã hợp đồng</label>
-              <Input
-                intent="clean"
-                value={contractCode}
-                onChange={(e) => setContractCode(e.target.value)}
-                placeholder="Ví dụ: 12/2026/HĐ-XL"
-                className="w-full text-xs h-8"
+              <label className={fieldLabel}>Dự án{required}</label>
+              <Select
+                aria-label="Chọn dự án"
+                value={projectId}
+                onChange={setProjectId}
+                className="!h-10 w-full text-sm [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:!rounded-lg"
+                options={projects.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))}
               />
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nhà thầu thực hiện</label>
-              <Input
-                intent="clean"
-                value={contractor}
-                onChange={(e) => setContractor(e.target.value)}
-                placeholder="Tên nhà thầu xây lắp"
-                className="w-full text-xs h-8"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Dự án & Tên công trình */}
-        <div className="flex flex-col gap-3">
+          )}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Dự án trực thuộc <span className="text-rose-500">*</span>
-            </label>
-            <Select
-              aria-label="Chọn dự án"
-              disabled={Boolean(scopedProjectId)}
-              value={projectId}
-              onChange={setProjectId}
-              className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
-              options={projects.map((p) => ({
-                value: p.id,
-                label: `${p.code} · ${p.name}`,
-              }))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Tên hạng mục / công trình bảo hành <span className="text-rose-500">*</span>
-            </label>
+            <label className={fieldLabel}>Tên công trình / hạng mục{required}</label>
             <Input
               intent="clean"
               value={workName}
               onChange={(e) => setWorkName(e.target.value)}
-              placeholder="Ví dụ: Mặt đường, vỉa hè và hệ thống thoát nước dọc đoạn K0+000 - K1+200"
-              className="w-full text-xs h-8"
+              placeholder="VD: Mặt đường, vỉa hè đoạn K0+000 - K1+200"
+              scale="comfortable" className="w-full"
               required
             />
           </div>
-        </div>
+        </section>
 
-        {/* 2 & 3 & 4 & 5: Thời hạn bảo hành, Nghiệm thu & Tính toán tự động */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 flex flex-col gap-3">
-          <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <ClockCircleOutlined className="text-[#DC2626]" />
-            Thời hạn & Tiến độ bảo hành (Tự động tính toán)
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Hợp đồng */}
+        <section className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+          <h4 className={sectionTitle}>Hợp đồng</h4>
+          {/* Dự án chưa có hợp đồng nào: nhập thẳng số hợp đồng / nhà thầu, không cần ô chọn */}
+          {contractChoices.length > 0 && (
+            <Select
+              aria-label="Chọn hợp đồng"
+              value={selectedContractId}
+              onChange={handleSelectContract}
+              className="!h-10 w-full text-sm [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:!rounded-lg"
+              options={[
+                ...contractChoices.map((c) => ({ value: c.id, label: `${c.code} · ${c.contractor}` })),
+                { value: "CUSTOM", label: "Nhập hợp đồng khác" },
+              ]}
+            />
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Ngày nghiệm thu hoàn thành <span className="text-rose-500">* (Bắt buộc)</span>
-              </label>
+              <label className={fieldLabel}>Số hợp đồng</label>
+              <Input
+                intent="clean"
+                value={contractCode}
+                onChange={(e) => setContractCode(e.target.value)}
+                placeholder="VD: 12/2026/HĐ-XL"
+                scale="comfortable" className="w-full"
+              />
+            </div>
+            <div>
+              <label className={fieldLabel}>Nhà thầu</label>
+              <Input
+                intent="clean"
+                value={contractor}
+                onChange={(e) => setContractor(e.target.value)}
+                placeholder="Tên nhà thầu"
+                scale="comfortable" className="w-full"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Thời hạn bảo hành: ngày hết hạn tự tính */}
+        <section className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+          <h4 className={sectionTitle}>Thời hạn bảo hành</h4>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={fieldLabel}>Ngày nghiệm thu{required}</label>
               <Input
                 type="date"
                 intent="clean"
                 value={acceptanceDate}
                 onChange={(e) => setAcceptanceDate(e.target.value)}
-                className="w-full text-xs h-8"
+                scale="comfortable" className="w-full"
                 required
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block">Ngày bắt đầu tính thời hạn BH</span>
             </div>
-
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Thời hạn bảo hành (tháng) <span className="text-rose-500">* (Bắt buộc)</span>
-              </label>
+              <label className={fieldLabel}>Thời hạn (tháng){required}</label>
               <Input
                 type="number"
                 intent="clean"
@@ -373,103 +341,67 @@ export default function CreateWarrantyDrawer({
                 max={120}
                 value={months}
                 onChange={(e) => setMonths(Number(e.target.value) || 0)}
-                placeholder="Ví dụ: 12, 24"
-                className="w-full text-xs h-8"
+                scale="comfortable" className="w-full"
                 required
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block">Theo điều khoản HĐ (thường 12–24 tháng)</span>
             </div>
           </div>
+          {/* Ngày hết hạn tự tính: một dòng chữ dưới hai ô, không phải ô nhập */}
+          {expiryDate && countdown && (
+            <p className="m-0 text-xs text-slate-500">
+              Hết hạn <strong className="text-slate-800">{expiryDate.split("-").reverse().join("/")}</strong>
+              {" · "}
+              <span
+                className={
+                  countdown.tone === "watch"
+                    ? "font-medium text-amber-600"
+                    : countdown.tone === "safe"
+                      ? ""
+                      : "font-medium text-rose-600"
+                }
+              >
+                {countdown.daysLeft >= 0 ? `còn ${countdown.daysLeft} ngày` : "đã hết hạn"}
+              </span>
+            </p>
+          )}
+        </section>
 
-          {/* Khối hiển thị tự động: Ngày hết hạn + Đếm ngược ngày còn lại */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-            <div className="rounded-lg bg-white border border-slate-200 p-2.5">
-              <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
-                <CalendarOutlined className="text-slate-400" />
-                Ngày hết hạn bảo hành
-                <span className="ml-auto text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-semibold">Tự động</span>
-              </div>
-              <div className="text-sm font-bold text-slate-800 mt-1">
-                {expiryDate ? expiryDate.split("-").reverse().join("/") : "—"}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">= Ngày NT + {months} tháng</div>
-            </div>
-
-            <div className={`rounded-lg p-2.5 border ${
-              countdown?.tone === "safe"
-                ? "bg-white border-slate-200 text-slate-800"
-                : countdown?.tone === "watch"
-                ? "bg-amber-50/90 border-amber-300 text-amber-900"
-                : countdown?.tone === "urgent"
-                ? "bg-rose-50/90 border-rose-300 text-rose-900"
-                : "bg-slate-100 border-slate-300 text-slate-700"
-            }`}>
-              <div className="text-[11px] font-medium flex items-center gap-1 text-slate-500">
-                <ClockCircleOutlined className="text-slate-400" />
-                Đếm ngược (ngày còn lại)
-                <span className="ml-auto text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-semibold">Tự động</span>
-              </div>
-              <div className="text-sm font-bold text-slate-800 mt-1">
-                {countdown ? (countdown.daysLeft >= 0 ? `Còn ${countdown.daysLeft} ngày` : "Đã hết hạn") : "—"}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-0.5">
-                {countdown?.label || "Thời hạn: > 90 ngày / Vàng ≤ 90 / Đỏ ≤ 30"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 6 & 7 & 8: Bảo lãnh bảo hành */}
-        <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 flex flex-col gap-3">
-          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <BankOutlined className="text-[#DC2626]" />
-            Thông tin bảo lãnh bảo hành
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Bảo lãnh bảo hành */}
+        <section className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+          <h4 className={sectionTitle}>Bảo lãnh bảo hành</h4>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                Giá trị bảo lãnh
-              </label>
+              <label className={fieldLabel}>Giá trị bảo lãnh (VNĐ)</label>
               <MoneyInput
                 intent="clean"
                 value={bondValue}
                 onChange={(e) => setBondValue(parseMoney(e.target.value))}
-                placeholder="Ví dụ: 100.000.000"
-                className="w-full text-xs h-8"
+                placeholder="0"
+                scale="comfortable" className="w-full"
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block">Thường 5% giá trị HĐ xây lắp</span>
             </div>
-
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                Trạng thái bảo lãnh
-              </label>
+              <label className={fieldLabel}>Trạng thái</label>
               <Select
                 aria-label="Trạng thái bảo lãnh"
                 value={bondStatus}
                 onChange={(val) => setBondStatus(val as BondStatus)}
-                className="w-full text-xs [&_.ant-select-selector]:!rounded-lg"
+                className="!h-10 w-full text-sm [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:!rounded-lg"
                 options={BOND_STATUS_OPTIONS}
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block">Đang giữ / Đã hoàn trả / Đã thu hồi</span>
             </div>
           </div>
-
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Ngân hàng phát hành bảo lãnh
-            </label>
+            <label className={fieldLabel}>Ngân hàng phát hành</label>
             <Input
               intent="clean"
               value={bank}
               onChange={(e) => setBank(e.target.value)}
-              placeholder="Ví dụ: Vietcombank – CN Kiên Giang, BIDV – CN Hà Tiên"
-              className="w-full text-xs h-8"
+              placeholder="VD: Vietcombank – CN Kiên Giang"
+              scale="comfortable" className="w-full"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Tên ngân hàng và chi nhánh phát hành bảo lãnh</span>
           </div>
-        </div>
+        </section>
       </form>
     </Drawer>
   );

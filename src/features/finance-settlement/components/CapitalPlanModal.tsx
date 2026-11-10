@@ -287,7 +287,6 @@ export default function CapitalPlanModal({
                 >
                   <StandardFileUpload
                     title="Đính kèm file Quyết định phê duyệt giao vốn"
-                    subTitle="Chấp nhận .pdf, .docx, .doc (Bắt buộc ≥ 1 file)"
                     onSingleFileNameChange={(name) => form.setFieldsValue({ approvalFileName: name })}
                   />
                 </Form.Item>
@@ -314,7 +313,6 @@ export default function CapitalPlanModal({
                 >
                   <StandardFileUpload
                     title="Đính kèm file văn bản phê duyệt điều chỉnh"
-                    subTitle="Chấp nhận .pdf, .docx, .doc (Bắt buộc ≥ 1 file)"
                     singleFileName={adjustingPlan?.approvalFileName}
                     onSingleFileNameChange={(name) => form.setFieldsValue({ approvalFileName: name })}
                   />

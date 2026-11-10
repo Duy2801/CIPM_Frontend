@@ -84,10 +84,7 @@ export default function LegalDocumentsTab() {
           categoryKeys={categoryKeys}
           pagination={
             filtered.length > 0 && (
-              <div className="flex shrink-0 items-center justify-between gap-3 text-xs text-slate-500 xl:justify-end">
-                <span className="whitespace-nowrap">
-                  Hiển thị {pageStart + 1}–{pageStart + paged.length} / {filtered.length} văn bản
-                </span>
+              <div className="flex shrink-0 items-center justify-end gap-3 text-xs text-slate-500">
                 <Pagination
                   current={currentPage}
                   pageSize={PAGE_SIZE}

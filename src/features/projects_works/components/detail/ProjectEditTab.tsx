@@ -499,7 +499,6 @@ export default function ProjectEditTab({
           {/* TÀI LIỆU DỰ ÁN (ĐÍNH KÈM) - KHÔNG BẮT BUỘC */}
           <StandardFileUpload
             title="Đính kèm hồ sơ / tài liệu dự án (PDF, DOCX, XLSX, Ảnh)"
-            subTitle="Chấp nhận .pdf, .docx, .doc, .xlsx, .png, .jpg (Không bắt buộc)"
             value={(formData.documents || []).map((doc) => ({
               id: doc.id,
               name: doc.fileName || doc.name,

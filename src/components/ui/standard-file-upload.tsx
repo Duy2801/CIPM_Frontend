@@ -50,7 +50,6 @@ export function formatAttachmentSize(bytes: number): string {
 
 export interface StandardFileUploadProps {
   title?: string;
-  subTitle?: string;
   promptText?: string;
   accept?: string;
   multiple?: boolean;
@@ -68,7 +67,6 @@ export interface StandardFileUploadProps {
 
 export function StandardFileUpload({
   title = "Đính kèm tệp văn bản số hóa (PDF, DOCX)",
-  subTitle = "Tự động nhận diện cả .pdf, .docx, .doc · Hỗ trợ chọn nhiều tệp cùng lúc (Tối đa 50MB/tệp)",
   promptText = "Nhấn hoặc kéo thả để tải lên tệp tài liệu số hóa",
   accept = ".pdf,.docx,.doc,.xls,.xlsx,.png,.jpg,.jpeg",
   multiple = true,
@@ -222,7 +220,6 @@ export function StandardFileUpload({
         <span className="text-xs font-semibold text-slate-800 group-hover:text-red-600 transition-colors">
           {promptText}
         </span>
-        <span className="text-[11px] text-slate-500 mt-1">{subTitle}</span>
         <input
           id={inputId}
           ref={fileInputRef}
@@ -231,6 +228,8 @@ export function StandardFileUpload({
           accept={accept}
           disabled={disabled}
           className="hidden"
+          // antd Form ép input[type=file] hiện ra (display: block) — ẩn bằng style để không lộ nút chọn tệp của trình duyệt
+          style={{ display: "none" }}
           onChange={(e) => {
             handleFilesAdded(e.target.files);
             e.target.value = "";

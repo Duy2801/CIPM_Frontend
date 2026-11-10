@@ -7,7 +7,14 @@ import { Input, Select, Tooltip } from "@/components/ui";
 type EditorConfig =
   | { kind: "text"; placeholder?: string }
   | { kind: "date" }
-  | { kind: "select"; options: { value: string; label: string }[] };
+  | {
+      kind: "select";
+      options: { value: string; label: string }[];
+      /** Chiều cao danh sách (px) – quá thì lăn chuột */
+      listHeight?: number;
+      /** Khối thêm lựa chọn mới ở cuối danh sách; gọi `pick(giá trị)` để chọn luôn giá trị vừa thêm */
+      renderAddOption?: (pick: (value: string) => void) => ReactNode;
+    };
 
 interface InlineEditFieldProps {
   label: string;
@@ -47,6 +54,9 @@ export default function InlineEditField({
   const [error, setError] = useState<string>();
   // Đã nhận / hủy rồi thì bỏ qua sự kiện blur đến sau (ô nhập vừa bị gỡ)
   const closedRef = useRef(false);
+  // Danh sách chọn (nằm ngoài cây DOM) và khung ô chọn: để biết focus còn ở trong ô sửa hay đã rời đi
+  const popupRef = useRef<HTMLDivElement>(null);
+  const selectWrapRef = useRef<HTMLDivElement>(null);
 
   const startEdit = () => {
     closedRef.current = false;
@@ -100,7 +110,7 @@ export default function InlineEditField({
       </div>
 
       {editing ? (
-        <div className="mt-1">
+        <div className="mt-1" ref={selectWrapRef}>
           {editor.kind === "select" ? (
             <Select
               autoFocus
@@ -108,12 +118,36 @@ export default function InlineEditField({
               size="small"
               value={draft}
               options={editor.options}
+              listHeight={editor.listHeight}
               // Chọn xong là nhận luôn; đóng danh sách mà không chọn thì thôi
               onChange={(val) => commit(String(val))}
-              onBlur={cancel}
+              // Bấm vào ô thêm mới trong danh sách (cũng là con của Select) thì chưa hủy
+              onBlur={(e) => {
+                if (popupRef.current?.contains(e.relatedTarget as Node | null)) return;
+                cancel();
+              }}
               onKeyDown={(e) => e.key === "Escape" && cancel()}
               className="w-full text-xs"
-              popupMatchSelectWidth={false}
+              // Danh sách rộng bằng ô chọn
+              popupMatchSelectWidth
+              popupRender={
+                editor.renderAddOption
+                  ? (menu) => (
+                      <div
+                        ref={popupRef}
+                        // Rời ô thêm mới ra ngoài danh sách thì hủy như khi rời ô chọn
+                        onBlur={(e) => {
+                          const next = e.relatedTarget as Node | null;
+                          if (popupRef.current?.contains(next) || selectWrapRef.current?.contains(next)) return;
+                          cancel();
+                        }}
+                      >
+                        {menu}
+                        {editor.renderAddOption?.(commit)}
+                      </div>
+                    )
+                  : undefined
+              }
             />
           ) : (
             <Input

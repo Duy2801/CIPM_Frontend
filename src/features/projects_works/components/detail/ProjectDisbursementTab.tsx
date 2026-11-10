@@ -752,11 +752,6 @@ function DisbursementFormDrawer({
           <StandardFileUpload
             hideHeader
             value={files}
-            subTitle={
-              withdraw
-                ? "Quyết định / văn bản thu hồi, giấy nộp trả… · tối đa 50MB/tệp"
-                : "Tờ trình, ủy nhiệm chi, biên bản nghiệm thu… · tối đa 50MB/tệp"
-            }
             promptText="Nhấn hoặc kéo thả tệp chứng từ vào đây"
             onChange={(next) => {
               setFiles(next);

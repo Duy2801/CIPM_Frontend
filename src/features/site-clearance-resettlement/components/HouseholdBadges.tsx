@@ -10,6 +10,7 @@ const SPECIAL_STATUS_CLASS_MAP: Record<SpecialStatus, string> = {
   UNCOOPERATIVE: "!border-amber-200 !bg-amber-50 !text-amber-800",
   COMPLAINT: "!border-indigo-200 !bg-indigo-50 !text-indigo-700",
   ENFORCEMENT: "!border-rose-200 !bg-rose-50 !text-rose-700",
+  OTHER: "!border-slate-200 !bg-slate-50 !text-slate-700",
 };
 
 export function LegalDeadlineTag({ status }: { status: LegalStatus }) {
@@ -38,7 +39,7 @@ export function LegalDeadlineTag({ status }: { status: LegalStatus }) {
   );
 }
 
-export function SpecialStatusTag({ status }: { status: SpecialStatus }) {
+export function SpecialStatusTag({ status, label }: { status: SpecialStatus; label?: string }) {
   const meta = SPECIAL_STATUS_META[status];
   const colorClass = SPECIAL_STATUS_CLASS_MAP[status] || "!border-blue-200 !bg-blue-50 !text-blue-700";
   return (
@@ -47,7 +48,7 @@ export function SpecialStatusTag({ status }: { status: SpecialStatus }) {
         scale="sm"
         className={`m-0 font-medium text-xs ${colorClass}`}
       >
-        {meta.label}
+        {(status === "OTHER" && label) || meta.label}
       </Tag>
     </Tooltip>
   );

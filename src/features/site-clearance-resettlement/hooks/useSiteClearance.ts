@@ -33,14 +33,21 @@ export function useSiteClearance(fixedProjectId?: string) {
 
   useEffect(() => {
     let active = true;
-    mockGpmbRepository.getDataset().then((result) => {
+    (async () => {
+      let result = await mockGpmbRepository.getDataset();
+      // Mở từ dự án áp dụng quy trình GPMB mà chưa có hộ dân: nạp hộ dân mẫu (bản mock)
+      const project = fixedProjectId ? result.projects.find((p) => p.id === fixedProjectId) : undefined;
+      if (project && !result.households.some((h) => h.projectId === project.id)) {
+        await mockGpmbRepository.ensureSampleHouseholds(project);
+        result = await mockGpmbRepository.getDataset();
+      }
       if (active) {
         setData(result);
         setLoading(false);
       }
-    });
+    })();
     return () => { active = false; };
-  }, []);
+  }, [fixedProjectId]);
 
   const households = useMemo(
     () => data.households.filter((item) => projectId === "ALL" || item.projectId === projectId),

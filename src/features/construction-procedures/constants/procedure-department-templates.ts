@@ -18,6 +18,8 @@ interface TemplateStepDef {
   unit: string;
   conditional?: boolean;
   notes?: string;
+  /** Thời hạn (ngày) theo quy định; không có = để trống */
+  days?: number;
   children?: (Omit<TemplateStepDef, "unit"> & { unit?: string })[];
 }
 
@@ -40,7 +42,8 @@ function buildTemplateSteps(prefix: string, department: string, groups: Template
     unit: string,
     conditional: boolean,
     notes?: string,
-    enabled = true
+    enabled = true,
+    days?: number
   ): ProcedureStep => {
     order += 1;
     return {
@@ -53,9 +56,10 @@ function buildTemplateSteps(prefix: string, department: string, groups: Template
       type: conditional ? "CONDITIONAL" : "MANDATORY",
       responsibleUnit: unit,
       department,
-      durationMargin: "Theo quy định",
-      durationDaysMin: null,
-      durationDaysMax: null,
+      durationMargin: days ? `${days} ngày` : "Theo quy định",
+      durationDaysMin: days ?? null,
+      durationDaysMax: days ?? null,
+      ...(days ? { plannedDays: days } : {}),
       isEnabled: enabled,
       status: enabled ? "NOT_STARTED" : "DISABLED",
       submissionStatus: "PENDING_SUBMISSION",
@@ -77,7 +81,7 @@ function buildTemplateSteps(prefix: string, department: string, groups: Template
       const code = `${parentCode}.${index + 1}`;
       const unit = node.unit ?? inheritedUnit;
       const conditional = inheritedConditional || Boolean(node.conditional);
-      const self = makeStep(code, group, node.name, unit, conditional, node.notes, enabled);
+      const self = makeStep(code, group, node.name, unit, conditional, node.notes, enabled, node.days);
       return [self, ...buildChildren(code, group, node.children ?? [], unit, conditional, enabled)];
     });
 
@@ -92,6 +96,135 @@ function buildTemplateSteps(prefix: string, department: string, groups: Template
 const DEPT_KHKT = "Tổ Kế hoạch – Kỹ thuật";
 const DEPT_DT = "Tổ Quản lý Đấu thầu";
 const DEPT_GSKT = "Tổ Giám sát – Kỹ thuật";
+const DEPT_BT = "Tổ Bồi thường, giải tỏa, GPMB – TĐC";
+
+/**
+ * Quy trình 16 bước GPMB – Phụ lục I kèm CV Sở NN&MT Kiên Giang (BRD 4.6.2).
+ * Thời hạn ghi theo BRD; bước 14, 15 chỉ phát sinh khi có hộ không đồng ý / không bàn giao đất.
+ */
+const GPMB_GROUPS: TemplateGroupDef[] = [
+  {
+    code: "I",
+    title: "Chuẩn bị thu hồi đất",
+    steps: [
+      { name: "Xây dựng kế hoạch thu hồi đất", unit: "Tổ BT – GPMB", notes: "Sản phẩm: Kế hoạch thu hồi đất." },
+      {
+        name: "Họp phổ biến với người có đất thu hồi",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        notes: "Biểu mẫu: Mẫu 01. Sản phẩm: Biên bản họp dân.",
+      },
+      {
+        name: "Thông báo thu hồi đất",
+        unit: "UBND cấp có thẩm quyền",
+        notes: "Biểu mẫu: Mẫu 02, 02.1, 02.2. Sản phẩm: Thông báo thu hồi đất.",
+      },
+    ],
+  },
+  {
+    code: "II",
+    title: "Điều tra, kiểm đếm và lập phương án bồi thường",
+    steps: [
+      {
+        name: "Điều tra, đo đạc, kiểm đếm",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        days: 30,
+        notes: "Thời hạn ≤ 30 ngày. Biểu mẫu: Mẫu 03, 03.1–03.3. Sản phẩm: Biên bản kiểm kê.",
+      },
+      {
+        name: "Lập phương án bồi thường, hỗ trợ, tái định cư",
+        unit: "Tổ BT – GPMB",
+        notes: "Sản phẩm: Dự thảo phương án BT-HT-TĐC.",
+      },
+    ],
+  },
+  {
+    code: "III",
+    title: "Công khai, thẩm định và phê duyệt phương án",
+    steps: [
+      {
+        name: "Niêm yết công khai phương án",
+        unit: "UBND xã/phường",
+        days: 10,
+        notes: "Thời hạn BẮT BUỘC 10 ngày. Biểu mẫu: Mẫu 04, 04.1. Sản phẩm: Biên bản niêm yết.",
+      },
+      {
+        name: "Lấy ý kiến về phương án",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        days: 30,
+        notes: "Thời hạn 30 ngày. Sản phẩm: Biên bản lấy ý kiến, biên bản đối thoại.",
+      },
+      {
+        name: "Thẩm định phương án",
+        unit: "Hội đồng thẩm định",
+        days: 30,
+        notes: "Thời hạn BẮT BUỘC 30 ngày. Sản phẩm: Biên bản thẩm định.",
+      },
+      {
+        name: "Phê duyệt phương án bồi thường, hỗ trợ, tái định cư",
+        unit: "UBND cấp có thẩm quyền",
+        notes: "Bước quan trọng: Tổ BT – GPMB đề xuất, Giám đốc / Phó Giám đốc duyệt. Biểu mẫu: Mẫu 05. Sản phẩm: Quyết định phê duyệt.",
+      },
+    ],
+  },
+  {
+    code: "IV",
+    title: "Công bố quyết định và chi trả bồi thường",
+    steps: [
+      {
+        name: "Phổ biến, niêm yết quyết định phê duyệt phương án",
+        unit: "UBND xã/phường",
+        notes: "Biểu mẫu: Mẫu 06. Sản phẩm: Biên bản niêm yết.",
+      },
+      {
+        name: "Gửi quyết định phê duyệt phương án đến từng hộ dân",
+        unit: "Tổ BT – GPMB",
+        notes: "Biểu mẫu: Mẫu 07. Sản phẩm: Biên bản giao quyết định.",
+      },
+      {
+        name: "Thực hiện chi trả tiền bồi thường, hỗ trợ, tái định cư",
+        unit: "Tổ BT – GPMB",
+        notes: "Chỉ thực hiện khi phương án đã được phê duyệt. Sản phẩm: Hồ sơ, biên bản chi trả.",
+      },
+    ],
+  },
+  {
+    code: "V",
+    title: "Thu hồi đất và xử lý vướng mắc",
+    steps: [
+      {
+        name: "Ban hành quyết định thu hồi đất",
+        unit: "UBND cấp có thẩm quyền",
+        days: 10,
+        notes: "Thời hạn BẮT BUỘC 10 ngày kể từ khi đủ điều kiện. Bước quan trọng: GĐ/PGĐ duyệt. Biểu mẫu: Mẫu 08.",
+      },
+      {
+        name: "Xử lý hộ không đồng ý phương án (vận động, thuyết phục)",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        days: 20,
+        conditional: true,
+        notes: "Phát sinh khi có hộ không đồng ý. Thời hạn BẮT BUỘC ≤ 20 ngày. Biểu mẫu: Mẫu 08. Sản phẩm: Biên bản vận động.",
+      },
+      {
+        name: "Xử lý hộ không bàn giao đất (cưỡng chế thu hồi đất)",
+        unit: "UBND cấp có thẩm quyền",
+        days: 20,
+        conditional: true,
+        notes: "Phát sinh khi có hộ không bàn giao đất. Thời hạn BẮT BUỘC ≤ 20 ngày. GĐ/PGĐ duyệt. Biểu mẫu: Mẫu 09. Sản phẩm: Quyết định cưỡng chế.",
+      },
+    ],
+  },
+  {
+    code: "VI",
+    title: "Quản lý đất đã thu hồi",
+    steps: [
+      {
+        name: "Bàn giao, quản lý quỹ đất đã thu hồi",
+        unit: "Tổ BT – GPMB",
+        notes: "Sản phẩm: Biên bản bàn giao mặt bằng cho đơn vị quản lý.",
+      },
+    ],
+  },
+];
 
 const CHUAN_BI_DAU_TU_GROUPS: TemplateGroupDef[] = [
   {
@@ -577,6 +710,16 @@ export const DEPARTMENT_PROCEDURE_TEMPLATES: Record<string, DepartmentTemplate> 
       "Phê duyệt chủ trương quy hoạch; lập và phê duyệt nhiệm vụ quy hoạch; lập và phê duyệt đồ án quy hoạch (lấy ý kiến cộng đồng dân cư).",
     tagColor: "amber",
     groups: QUY_HOACH_GROUPS,
+  }),
+  "template-gpmb": defineTemplate({
+    id: "template-gpmb",
+    department: DEPT_BT,
+    name: "Quy trình giải phóng mặt bằng",
+    shortLabel: "Quy trình GPMB",
+    description:
+      "16 bước GPMB theo Phụ lục I (CV Sở NN&MT Kiên Giang): kế hoạch, thông báo thu hồi đất; kiểm đếm; lập, niêm yết, thẩm định, phê duyệt phương án BT-HT-TĐC; chi trả; quyết định thu hồi, vận động / cưỡng chế; bàn giao đất.",
+    tagColor: "red",
+    groups: GPMB_GROUPS,
   }),
 };
 

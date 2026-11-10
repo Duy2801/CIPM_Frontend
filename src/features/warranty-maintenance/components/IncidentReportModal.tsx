@@ -178,7 +178,6 @@ export default function IncidentReportModal({
         <Form.Item name="attachment" className="mb-0">
           <StandardFileUpload
             title="Đính kèm hồ sơ ảnh hiện trường / Biên bản sự cố"
-            subTitle="Chấp nhận .pdf, .docx, .png, .jpg (Không bắt buộc)"
             onSingleFileNameChange={(name) => form.setFieldsValue({ attachment: name })}
           />
         </Form.Item>

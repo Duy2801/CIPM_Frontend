@@ -1,8 +1,10 @@
-import type { GpmbDataset, Household, HouseholdInput, SpecialStatus, StepCompletionInput } from "../types/gpmb.types";
+import type { GpmbDataset, GpmbProject, Household, HouseholdInput, SpecialStatus, StepCompletionInput } from "../types/gpmb.types";
 
 /** Ranh giới dữ liệu M6 – backend chỉ cần cung cấp implementation cùng interface */
 export interface GpmbRepository {
   getDataset(): Promise<GpmbDataset>;
+  /** Bản mock: dự án áp dụng quy trình GPMB mà chưa có hộ dân thì nạp bộ hộ dân mẫu */
+  ensureSampleHouseholds(project: GpmbProject): Promise<void>;
   createHousehold(input: HouseholdInput, actor: string): Promise<Household>;
   /** Hoàn thành bước thường (Tổ Bồi thường) */
   completeStep(householdId: string, input: StepCompletionInput, actor: string): Promise<Household>;

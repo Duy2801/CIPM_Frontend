@@ -109,6 +109,8 @@ export { LARGE_MODAL_BODY_STYLE, LARGE_MODAL_CONTAINER_STYLE, LARGE_MODAL_PROPS,
 export { Drawer, STANDARD_DRAWER_WIDTH } from "./drawer";
 export type { DrawerProps } from "./drawer";
 export type { ModalProps } from "./modal";
+export { FilePreviewModal } from "./file-preview-modal";
+export type { FilePreviewModalProps } from "./file-preview-modal";
 export { Pagination, paginationVariants } from "./pagination";
 export type { PaginationProps } from "./pagination";
 export { toast, ToastContainer, toastManager } from "./toast";

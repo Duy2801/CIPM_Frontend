@@ -13,6 +13,7 @@ export const TEMPLATE_CATEGORY: Record<string, string> = {
   "template-dauthau": PROCEDURE_CATEGORY.BIDDING,
   "template-gskt": PROCEDURE_CATEGORY.XDCB,
   "template-quy-hoach": PROCEDURE_CATEGORY.XDCB,
+  "template-gpmb": PROCEDURE_CATEGORY.GPMB,
 };
 
 const CATEGORY_STORAGE_KEY = "cipm_procedure_categories";

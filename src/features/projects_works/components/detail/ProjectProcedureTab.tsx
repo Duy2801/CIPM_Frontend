@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { LockOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, LockOutlined, TableOutlined, TeamOutlined } from "@ant-design/icons";
 import type React from "react";
-import { Card } from "@/components/ui";
+import { Card, Segmented } from "@/components/ui";
 import ProcedureRoadmap from "@/features/construction-procedures/components/ProcedureRoadmap";
 import type { ProcedureStep } from "@/features/construction-procedures/types/procedure.types";
 import { isHeadingStep } from "@/features/construction-procedures/utils/procedure-rules";
@@ -25,11 +25,16 @@ const CARD_HEIGHT = 128;
 interface ProjectProcedureTabProps {
   department: string;
   controller: ProjectProcedureController;
+  /** Quy trình loại GPMB: nội dung tab con "Hộ dân được bồi thường" */
+  households?: React.ReactNode;
+  /** Quy trình loại GPMB: nội dung tab con "Bảng giá bồi thường" */
+  prices?: React.ReactNode;
 }
 
 /** Tab của một quy trình trong dự án: sơ đồ các bước, bấm thẻ để xem chi tiết bước */
-export default function ProjectProcedureTab({ department, controller }: ProjectProcedureTabProps) {
+export default function ProjectProcedureTab({ department, controller, households, prices }: ProjectProcedureTabProps) {
   const [openStepId, setOpenStepId] = useState<string | null>(null);
+  const [view, setView] = useState<"procedure" | "households" | "prices">("procedure");
   const { data, departmentStatus } = controller;
 
   const steps = data.steps.filter((s) => s.department && sameDepartmentKey(s.department, department));
@@ -67,70 +72,93 @@ export default function ProjectProcedureTab({ department, controller }: ProjectP
       title: head ? `${head.code} ${head.name}` : undefined,
       value: head ? (
         <>
-          <span className="mr-1.5 font-mono text-[11px] text-[#DC2626]">{head.code}</span>
-          {head.name}
-          {current.length > 1 && <span className="ml-1.5 font-normal text-slate-400">+{current.length - 1} bước</span>}
-        </>
-      ) : doneCount === workSteps.length && workSteps.length > 0 ? (
-        <span className="text-emerald-600">Đã hoàn thành tất cả</span>
-      ) : (
-        "—"
-      ),
-    },
-    { label: "Người thực hiện", value: head?.assignedTo || "—" },
-    { label: "Hạn bước hiện tại", value: head?.endDatePlanned ? formatDateVi(head.endDatePlanned) : "—" },
-    { label: "Kế hoạch quy trình", value: planRange },
-  ];
+              <span className="mr-1.5 font-mono text-[11px] text-[#DC2626]">{head.code}</span>
+              {head.name}
+              {current.length > 1 && <span className="ml-1.5 font-normal text-slate-400">+{current.length - 1} bước</span>}
+            </>
+          ) : doneCount === workSteps.length && workSteps.length > 0 ? (
+            <span className="text-emerald-600">Đã hoàn thành tất cả</span>
+          ) : (
+            "—"
+          ),
+        },
+        { label: "Người thực hiện", value: head?.assignedTo || "—" },
+        { label: "Hạn bước hiện tại", value: head?.endDatePlanned ? formatDateVi(head.endDatePlanned) : "—" },
+        { label: "Kế hoạch quy trình", value: planRange },
+      ];
 
-  /** Bước có bước con (mục lớn): số bước con đã xong */
-  const headingBadge = (step: ProcedureStep) => {
-    const children = steps.filter((s) => s.code.startsWith(`${step.code}.`) && !isHeadingStep(s, steps));
-    const done = children.filter((s) => ["COMPLETED", "SKIPPED"].includes(getStepFlow(s))).length;
-    return (
-      <span className="text-slate-500">
-        {done}/{children.length} bước xong
-      </span>
-    );
-  };
+      /** Bước có bước con (mục lớn): số bước con đã xong */
+      const headingBadge = (step: ProcedureStep) => {
+        const children = steps.filter((s) => s.code.startsWith(`${step.code}.`) && !isHeadingStep(s, steps));
+        const done = children.filter((s) => ["COMPLETED", "SKIPPED"].includes(getStepFlow(s))).length;
+        return (
+          <span className="text-slate-500">
+            {done}/{children.length} bước xong
+          </span>
+        );
+      };
 
-  return (
-    <div className="flex flex-col gap-3">
-      <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
-        {/* Tên quy trình · tiến độ · % hoàn thành */}
-        <div className="flex items-center gap-6 px-5 pt-4 pb-3">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-bold text-slate-900">
-              {departmentStatus(department)?.procedureName ?? "Quy trình"}
-            </div>
-            <div className="mt-2.5 flex items-center gap-3">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-[#DC2626] transition-all" style={{ width: `${percent}%` }} />
+      return (
+        <div className="flex flex-col gap-3">
+          {/* Quy trình GPMB: chuyển giữa sơ đồ quy trình và danh sách hộ dân được bồi thường của dự án */}
+          {households && (
+            <Segmented<"procedure" | "households" | "prices">
+              value={view}
+              onChange={setView}
+              className="self-start"
+              options={[
+                { value: "procedure", label: "Quy trình", icon: <ApartmentOutlined /> },
+                { value: "households", label: "Hộ dân được bồi thường", icon: <TeamOutlined /> },
+                ...(prices ? [{ value: "prices" as const, label: "Bảng giá bồi thường", icon: <TableOutlined /> }] : []),
+              ]}
+            />
+          )}
+
+          {view === "procedure" && (
+            <>
+          <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
+            {/* Tên quy trình · tiến độ · % hoàn thành */}
+            <div className="flex items-center gap-6 px-5 pt-4 pb-3">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-base font-bold text-slate-900">
+                  {departmentStatus(department)?.procedureName ?? "Quy trình"}
+                </div>
+                <div className="mt-2.5 flex items-center gap-3">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-[#DC2626] transition-all" style={{ width: `${percent}%` }} />
+                  </div>
+                  <span className="shrink-0 text-[11px] text-slate-500">
+                    <strong className="text-slate-800">{doneCount}</strong>/{workSteps.length} bước hoàn thành
+                  </span>
+                </div>
               </div>
-              <span className="shrink-0 text-[11px] text-slate-500">
-                <strong className="text-slate-800">{doneCount}</strong>/{workSteps.length} bước hoàn thành
-              </span>
+              <div className="shrink-0 text-3xl font-bold leading-none text-[#DC2626]">{percent}%</div>
             </div>
-          </div>
-          <div className="shrink-0 text-3xl font-bold leading-none text-[#DC2626]">{percent}%</div>
-        </div>
 
-        {/* Bước đang làm + kế hoạch: một dải, ngăn bằng vạch dọc */}
-        <dl className="m-0 grid grid-cols-2 border-t border-slate-100 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          {facts.map((f, i) => (
-            <div
-              key={f.label}
-              className={cn("min-w-0 px-5 py-3", i > 0 && "border-l border-slate-100", i === 2 && "max-lg:border-l-0 max-lg:border-t", i === 3 && "max-lg:border-t")}
-            >
-              <dt className="text-[11px] text-slate-400">{f.label}</dt>
-              <dd className="m-0 mt-0.5 truncate text-xs font-semibold text-slate-800" title={f.title ?? (typeof f.value === "string" ? f.value : undefined)}>
-                {f.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
+            {/* Bước đang làm + kế hoạch: một dải, ngăn bằng vạch dọc */}
+            <dl className="m-0 grid grid-cols-2 border-t border-slate-100 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              {facts.map((f, i) => (
+                <div
+                  key={f.label}
+                  className={cn("min-w-0 px-5 py-3", i > 0 && "border-l border-slate-100", i === 2 && "max-lg:border-l-0 max-lg:border-t", i === 3 && "max-lg:border-t")}
+                >
+                  <dt className="text-[11px] text-slate-400">{f.label}</dt>
+                  <dd className="m-0 mt-0.5 truncate text-xs font-semibold text-slate-800" title={f.title ?? (typeof f.value === "string" ? f.value : undefined)}>
+                    {f.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
 
-      {steps.length === 0 ? (
+        </>
+      )}
+
+      {view === "households" && households ? (
+        households
+      ) : view === "prices" && prices ? (
+        prices
+      ) : steps.length === 0 ? (
         <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
           <div className="p-8 text-center text-sm text-slate-500">Quy trình chưa có bước nào.</div>
         </Card>

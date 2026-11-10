@@ -377,10 +377,8 @@ export default function WarrantyTab({
     <Card surface="flat" padding="none" rounded="lg" className="border-slate-200 shadow-sm shadow-slate-100 overflow-hidden">
       <SectionIntro
         title="Thời hạn bảo hành công trình"
-        description="Thời hạn tính từ ngày nghiệm thu hoàn thành. Còn > 90 ngày (bình thường); Vàng: còn ≤ 90 ngày; Đỏ: còn ≤ 30 ngày."
         countLabel={`${rows.length} công trình`}
         readOnly={permissions.isReadOnly}
-        guide="Chỉ hoàn trả bảo lãnh khi đã hết hạn bảo hành và mọi sự cố đã được khắc phục hoàn tất."
         actions={
           <div className="flex items-center gap-2">
             {permissions.canExport && (
@@ -398,7 +396,6 @@ export default function WarrantyTab({
               <Button
                 intent="primary"
                 scale="sm"
-                icon={<PlusOutlined />}
                 onClick={onOpenCreate}
                 className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-8 text-xs font-semibold rounded-lg shadow-sm"
               >
@@ -440,11 +437,6 @@ export default function WarrantyTab({
 
             {/* Phân trang đặt cùng hàng bên phải */}
             <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-              <Text className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                Hiển thị {rows.length === 0 ? 0 : (safeCurrentPage - 1) * PAGE_SIZE + 1} -{" "}
-                {Math.min(safeCurrentPage * PAGE_SIZE, rows.length)} trong tổng số{" "}
-                {rows.length} công trình
-              </Text>
               <Pagination
                 size="small"
                 current={safeCurrentPage}
@@ -452,7 +444,7 @@ export default function WarrantyTab({
                 total={rows.length}
                 onChange={(page) => setCurrentPage(page)}
                 showSizeChanger={false}
-                hideOnSinglePage={false}
+                hideOnSinglePage
                 className="!m-0"
               />
             </div>

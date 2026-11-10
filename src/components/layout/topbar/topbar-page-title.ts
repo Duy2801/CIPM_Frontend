@@ -8,6 +8,7 @@ const PAGE_TITLES: ReadonlyArray<readonly [string, string]> = [
   ["/site-clearance-resettlement", "GPMB - Bồi thường TĐC"],
   ["/bidding-management", "Quản lý Đấu thầu"],
   ["/warranty-maintenance", "Bảo hành & Bảo trì"],
+  ["/reports", "Báo cáo"],
   ["/profile", "Thông tin cá nhân & Tài khoản"],
   ["/legal-ai-library", "Thư viện Pháp lý"],
 ];
