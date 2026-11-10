@@ -21,6 +21,7 @@ export { default as InlineEditField } from "./InlineEditField";
 export { ProjectScopeProvider, useProjectScope } from "./ProjectScope";
 export { useActionFeedback } from "./useActionFeedback";
 export type { ActionFeedback } from "./useActionFeedback";
+export { default as StepHeading } from "./StepHeading";
 export { sortWorkspaceTasks } from "./workspace.types";
 export type {
   KpiItem,

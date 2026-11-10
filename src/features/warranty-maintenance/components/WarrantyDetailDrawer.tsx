@@ -8,7 +8,6 @@ import {
   ClockCircleOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
-  SafetyCertificateOutlined,
   StopOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
@@ -68,6 +67,7 @@ export default function WarrantyDetailDrawer({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -129,9 +129,6 @@ export default function WarrantyDetailDrawer({
               Cập nhật hồ sơ
             </Button>
           )}
-          <Button intent="outline" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
         </div>
       }
       title={

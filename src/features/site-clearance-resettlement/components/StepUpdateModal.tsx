@@ -81,6 +81,7 @@ export default function StepUpdateModal({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -248,15 +249,6 @@ export default function StepUpdateModal({
                 className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold h-8 px-5 rounded-lg shadow-xs"
               >
                 {needsApproval ? "Gửi đề xuất duyệt" : `Hoàn thành bước ${current}`}
-              </Button>
-              <Button
-                scale="sm"
-                intent="secondary"
-                onClick={onClose}
-                disabled={submitting}
-                className="h-8 px-4 text-xs font-medium rounded-lg"
-              >
-                Đóng
               </Button>
             </div>
           </Form>

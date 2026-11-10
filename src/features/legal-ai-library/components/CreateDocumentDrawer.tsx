@@ -5,7 +5,6 @@ import {
   BookOutlined,
   CalendarOutlined,
   FileTextOutlined,
-  SafetyCertificateOutlined,
   TagOutlined,
 } from "@ant-design/icons";
 import { Button, Drawer, Input, Select, StandardFileUpload, STANDARD_DRAWER_WIDTH } from "@/components/ui";
@@ -153,13 +152,13 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
 
   return (
     <Drawer
+      showBack
       open
       onClose={onClose}
       width={STANDARD_DRAWER_WIDTH}
       title={
         <div className="py-1">
           <div className="flex items-center gap-2 text-base font-bold text-slate-800">
-            <SafetyCertificateOutlined className="text-[#DC2626]" />
             Thêm văn bản pháp luật
           </div>
         </div>
@@ -174,9 +173,6 @@ export default function CreateDocumentDrawer({ onClose, onCreated }: CreateDocum
             className="!border-[#DC2626] !bg-[#DC2626] px-5 text-xs font-semibold !text-white shadow-sm hover:!bg-[#B91C1C]"
           >
             Lưu vào thư viện
-          </Button>
-          <Button intent="outline" scale="sm" onClick={onClose} className="px-4 text-xs font-medium">
-            Đóng
           </Button>
         </div>
       }

@@ -4,9 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, ReactNode } from "react";
 import {
   ExclamationCircleFilled,
-  FormOutlined,
   InfoCircleOutlined,
-  PlusCircleOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
 import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, StandardFileUpload, Text, useWatch } from "@/components/ui";
@@ -157,19 +155,13 @@ export default function DisbursementModal({
 
   return (
     <Drawer
+      showBack
       open={open}
       onClose={onClose}
       width="min(680px, 100vw)"
       destroyOnClose
       title={
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-[#DC2626]">
-            {isEditing ? (
-              <FormOutlined className="text-base" />
-            ) : (
-              <PlusCircleOutlined className="text-base" />
-            )}
-          </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base font-bold text-[#102A43]">
@@ -193,9 +185,6 @@ export default function DisbursementModal({
             onClick={() => form.submit()}
           >
             {isEditing ? "Cập nhật & trình lại" : "Lưu & trình Kế toán trưởng"}
-          </Button>
-          <Button key="cancel" scale="compact" onClick={onClose} disabled={submitting}>
-            Đóng
           </Button>
         </div>
       }

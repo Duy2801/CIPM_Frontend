@@ -237,10 +237,11 @@ export default function ProjectsTable({
       className="w-full border border-slate-200/80 shadow-xs overflow-hidden select-none flex-1 flex flex-col justify-between [&>.ant-card-body]:flex-1 [&>.ant-card-body]:flex [&>.ant-card-body]:flex-col [&>.ant-card-body]:justify-between [&>.ant-card-body]:h-full"
     >
       <div className="w-full overflow-x-auto flex-1 flex flex-col">
-        <table className="w-full min-w-[960px] table-fixed text-left border-collapse">
+        <table className="w-full min-w-[1080px] table-fixed text-left border-collapse">
           <thead>
             <tr className="h-[44px] border-b-2 border-slate-200 bg-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-700">
-              <PlainColumnHeader label="DỰ ÁN" widthClass="w-[30%]" paddingClass="px-3.5 py-2" />
+              <PlainColumnHeader label="DỰ ÁN" widthClass="w-[22%]" paddingClass="px-3.5 py-2" />
+              <PlainColumnHeader label="LOẠI DỰ ÁN" widthClass="w-[12%]" paddingClass="px-3 py-2" />
               <SortColumnHeader
                 label="VỐN ĐẦU TƯ (VNĐ)"
                 widthClass="w-[12%]"
@@ -252,7 +253,7 @@ export default function ProjectsTable({
               />
               <SortColumnHeader
                 label="TIẾN ĐỘ"
-                widthClass="w-[15%]"
+                widthClass="w-[13%]"
                 align="center"
                 paddingClass="px-3 py-2"
                 currentSort={sortBy}
@@ -260,11 +261,11 @@ export default function ProjectsTable({
                 sortKeys={{ asc: "progress_asc", desc: "progress_desc" }}
                 defaultSort="desc"
               />
-              <PlainColumnHeader label="CHỦ NHIỆM" widthClass="w-[15%]" paddingClass="px-3 py-2" />
-              <PlainColumnHeader label="BẮT ĐẦU" widthClass="w-[10%]" align="center" paddingClass="px-2.5 py-2" />
+              <PlainColumnHeader label="CHỦ NHIỆM" widthClass="w-[13%]" paddingClass="px-3 py-2" />
+              <PlainColumnHeader label="BẮT ĐẦU" widthClass="w-[9%]" align="center" paddingClass="px-2.5 py-2" />
               <SortColumnHeader
                 label="HOÀN THÀNH"
-                widthClass="w-[10%]"
+                widthClass="w-[9%]"
                 align="center"
                 paddingClass="px-2.5 py-2"
                 currentSort={sortBy}
@@ -272,13 +273,13 @@ export default function ProjectsTable({
                 sortKeys={{ asc: "endDate_asc", desc: "endDate_desc" }}
                 defaultSort="asc"
               />
-              <PlainColumnHeader label="THAO TÁC" widthClass="w-[11%]" align="center" paddingClass="px-2 py-2" />
+              <PlainColumnHeader label="THAO TÁC" widthClass="w-[10%]" align="center" paddingClass="px-2 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs">
             {projects.length === 0 ? (
               <tr>
-                <td colSpan={7} className="h-full text-center text-slate-400 py-16">
+                <td colSpan={8} className="h-full text-center text-slate-400 py-16">
                   <div className="flex flex-col items-center justify-center gap-1.5 py-6">
                     <p className="text-sm font-semibold text-slate-600 m-0">
                       {total === 0
@@ -322,6 +323,13 @@ export default function ProjectsTable({
                             )}
                           </Flex>
                         </Flex>
+                      </td>
+
+                      {/* Loại dự án */}
+                      <td className="px-3 py-1.5 align-middle">
+                        <span className="block truncate text-xs text-slate-700" title={prj.type}>
+                          {prj.type || "—"}
+                        </span>
                       </td>
 
                       <td className="px-3 py-1.5 align-middle whitespace-nowrap">

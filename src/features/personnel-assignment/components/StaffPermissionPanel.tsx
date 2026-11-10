@@ -152,17 +152,19 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
             <Select
               mode="multiple"
               showSearch
-              allowClear
-              maxTagCount="responsive"
-              maxTagPlaceholder={(omittedValues) => (
-                <span className="text-[11px] font-medium text-slate-500">
-                  +{omittedValues.length} quyền khác
-                </span>
-              )}
-              placeholder="-- Tìm kiếm & tích chọn quyền hạn cho cán bộ --"
+              placeholder="Tìm kiếm & tích chọn quyền hạn cho cán bộ"
               className="w-full text-xs"
-              value={Array.from(draft)}
-              onChange={(codes: string[]) => setDraft(new Set(codes))}
+              // Ô chọn luôn trống (quyền đã chọn liệt kê ở "Danh sách quyền khả dụng" bên dưới), nên con trỏ nằm đầu ô;
+              // bấm một dòng là đảo trạng thái tích của quyền đó
+              value={[]}
+              onSelect={(code: string) =>
+                setDraft((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(code)) next.delete(code);
+                  else next.add(code);
+                  return next;
+                })
+              }
               filterOption={(input, option) => {
                 const label = String(option?.label ?? "").toLowerCase();
                 const title = String(option?.title ?? "").toLowerCase();
@@ -210,9 +212,6 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
               <span className="text-xs font-semibold text-slate-700">
                 Danh sách quyền khả dụng ({currentPermissions.length}):
               </span>
-              <span className="text-[11px] text-slate-400 italic">
-                Bấm nút [✕] trên từng quyền để bỏ nhanh
-              </span>
             </div>
 
             {currentPermissions.length === 0 ? (
@@ -224,17 +223,14 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
                 {currentPermissions.map((perm) => {
                   const isBase = baseCodes.has(perm.code);
                   return (
+                    // Tên quyền hiện đầy đủ (xuống dòng nếu dài), nút bỏ luôn hiện — không cần rê chuột
                     <div
                       key={perm.code}
-                      title={perm.description}
-                      className="group flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-xs shadow-2xs hover:border-slate-300 transition-all"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-xs shadow-2xs"
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <CheckCircleFilled className="text-amber-500 text-sm shrink-0" />
-                        <span
-                          className="min-w-0 flex-1 font-medium text-xs text-slate-800 leading-snug truncate"
-                          title={perm.name}
-                        >
+                        <span className="min-w-0 flex-1 font-medium text-xs text-slate-800 leading-snug">
                           {perm.name}
                         </span>
                         {isBase ? (
@@ -250,11 +246,10 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
                       <button
                         type="button"
                         onClick={() => handleRemovePermission(perm.code)}
-                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
-                        title="Bỏ quyền này"
+                        aria-label={`Bỏ quyền ${perm.name}`}
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer flex items-center text-[11px]"
                       >
                         <CloseOutlined className="text-[10px]" />
-                        <span className="hidden group-hover:inline font-medium">Bỏ</span>
                       </button>
                     </div>
                   );

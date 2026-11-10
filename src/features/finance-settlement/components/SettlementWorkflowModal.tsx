@@ -81,6 +81,7 @@ export default function SettlementWorkflowModal({
 
   return (
     <Drawer
+      showBack
       open={open}
       title={
         <span className="text-base font-bold text-[#102A43]">Hồ sơ tất toán tài khoản KBNN</span>
@@ -89,9 +90,6 @@ export default function SettlementWorkflowModal({
       onClose={onClose}
       footer={
         <div className="flex justify-end">
-          <Button intent="outline" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
         </div>
       }
     >

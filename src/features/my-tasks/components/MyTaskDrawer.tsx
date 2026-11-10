@@ -16,11 +16,11 @@ import {
   Tooltip,
   type UploadedAttachment,
 } from "@/components/ui";
+import { StepHeading } from "@/components/workspace";
 import { formatDateVi } from "@/utils/date";
 import { storedFileUrl } from "@/utils/stored-file";
 import { loadProjectProcedure } from "@/features/construction-procedures/utils/project-procedure-storage";
 import type { ProcedureDocument } from "@/features/construction-procedures/types/procedure.types";
-import { FlowBadge } from "@/features/projects_works/components/detail/ProcedureStepFlowDrawer";
 import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
 import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
 import type { ProcedureHistoryLog } from "@/features/construction-procedures/types/procedure.types";
@@ -143,29 +143,19 @@ export default function MyTaskDrawer({
       title={
         task &&
         step && (
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Tooltip title="Quay lại">
               <button
                 type="button"
                 aria-label="Quay lại"
                 onClick={onClose}
-                className="mt-0.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
               >
                 <ArrowLeftOutlined className="text-sm" />
               </button>
             </Tooltip>
-            <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-bold text-slate-500">{step.code}</span>
-              <FlowBadge step={step} />
-              {!task.reached && (
-                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                  Chưa tới lượt
-                </span>
-              )}
-            </div>
-            <div className="mt-0.5 text-sm font-semibold leading-snug text-slate-900">{step.name}</div>
-            </div>
+            {/* Mã bước · tên bước cùng một hàng (không hiện nhãn trạng thái) */}
+            <StepHeading code={step.code} name={step.name} />
             {/* Luôn hiện ở mọi cột; trạng thái chưa áp dụng thì mờ, không bấm được */}
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <Tooltip title={canReportIncident ? undefined : NOT_APPLICABLE}>

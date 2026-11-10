@@ -192,6 +192,7 @@ export default function BidPackageDetailDrawer({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -240,9 +241,6 @@ export default function BidPackageDetailDrawer({
                   : `Cập nhật bước ${current}`}
             </Button>
           )}
-          <Button intent="default" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
         </div>
       }
       title={

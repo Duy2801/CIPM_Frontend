@@ -69,6 +69,7 @@ export default function CreatePackageModal({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -81,9 +82,6 @@ export default function CreatePackageModal({
             className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white font-semibold"
           >
             Lưu gói thầu
-          </Button>
-          <Button intent="outline" onClick={onClose} disabled={submitting}>
-            Đóng
           </Button>
         </div>
       }

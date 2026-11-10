@@ -160,14 +160,31 @@ export default function ActivityTimeline({
           </div>
         );
       })}
-      {!hideLoadMore && entries.length > visible && (
-        <button
-          type="button"
-          onClick={() => setVisible((v) => v + pageSize)}
-          className="w-full cursor-pointer rounded-lg border border-dashed border-slate-200 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-        >
-          Xem thêm ({entries.length - visible})
-        </button>
+      {/* Xem thêm · thu gọn (thu gọn chỉ hiện khi đã mở thêm dòng) */}
+      {!hideLoadMore && (entries.length > visible || visible > pageSize) && (
+        <div className="flex gap-2">
+          {entries.length > visible && (
+            <button
+              type="button"
+              onClick={() => setVisible((v) => v + pageSize)}
+              className="flex-1 cursor-pointer rounded-lg border border-dashed border-slate-200 bg-transparent py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            >
+              Xem thêm {Math.min(pageSize, entries.length - visible)} dòng (còn {entries.length - visible})
+            </button>
+          )}
+          {visible > pageSize && (
+            <button
+              type="button"
+              onClick={() => {
+                setVisible(pageSize);
+                setOpenIds(new Set());
+              }}
+              className="flex-1 cursor-pointer rounded-lg border border-dashed border-slate-200 bg-transparent py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+            >
+              Thu gọn
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

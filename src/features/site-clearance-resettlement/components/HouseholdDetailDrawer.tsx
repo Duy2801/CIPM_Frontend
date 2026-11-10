@@ -138,16 +138,10 @@ export default function HouseholdDetailDrawer({
   return (
     <>
       <Drawer
+      showBack
         open
         width={STANDARD_DRAWER_WIDTH}
         onClose={onClose}
-        footer={
-          <div className="flex items-center justify-start gap-2.5 px-1 py-1">
-            <Button intent="outline" scale="sm" onClick={onClose}>
-              Đóng
-            </Button>
-          </div>
-        }
         title={
           <span>
             <span className="flex items-center gap-2 flex-wrap">

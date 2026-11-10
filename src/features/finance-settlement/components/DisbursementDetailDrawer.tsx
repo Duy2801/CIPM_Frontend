@@ -1,7 +1,7 @@
 "use client";
 
 import { ExclamationCircleFilled, WarningOutlined } from "@ant-design/icons";
-import { Button, Drawer, Flex, Progress, Tag, Text } from "@/components/ui";
+import { Drawer, Flex, Progress, Tag, Text } from "@/components/ui";
 import { APPROVAL_STATUS_META } from "../constants/finance-labels";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
 import type { Disbursement } from "../types/finance.types";
@@ -47,6 +47,7 @@ export default function DisbursementDetailDrawer({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -68,9 +69,6 @@ export default function DisbursementDetailDrawer({
               onEdit(item);
             }}
           />
-          <Button intent="outline" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
         </div>
       }
       title={

@@ -60,6 +60,7 @@ export default function IncidentReportModal({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -86,9 +87,6 @@ export default function IncidentReportModal({
             className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white"
           >
             Ghi nhận và gửi nhà thầu
-          </Button>
-          <Button intent="outline" onClick={onClose} disabled={submitting}>
-            Đóng
           </Button>
         </div>
       }

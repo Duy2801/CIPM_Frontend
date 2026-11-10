@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent, ReactNode } from "react";
-import { EditOutlined, InfoCircleOutlined, PaperClipOutlined, PlusCircleOutlined, UploadOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, PaperClipOutlined, UploadOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { Button, Card, Drawer, Flex, Form, Input, MoneyInput, Select, StandardFileUpload, Text } from "@/components/ui";
 import { CAPITAL_SOURCES } from "../constants/finance-labels";
@@ -118,19 +118,13 @@ export default function CapitalPlanModal({
 
   return (
     <Drawer
+      showBack
       open={open}
       onClose={onClose}
       width="min(680px, 100vw)"
       destroyOnClose
       title={
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[#DC2626]">
-            {isAdjustment ? (
-              <EditOutlined className="text-base" />
-            ) : (
-              <PlusCircleOutlined className="text-base" />
-            )}
-          </div>
           <div>
             <h3 className="text-base font-bold text-[#102A43] leading-snug">
               {isAdjustment ? "Điều chỉnh Kế hoạch vốn giữa năm" : `Nhập Kế hoạch vốn năm ${year}`}
@@ -154,9 +148,6 @@ export default function CapitalPlanModal({
             onClick={() => form.submit()}
           >
             {isAdjustment ? "Lưu điều chỉnh" : "Lưu kế hoạch vốn"}
-          </Button>
-          <Button key="cancel" scale="compact" onClick={onClose} disabled={submitting}>
-            Đóng
           </Button>
         </div>
       }

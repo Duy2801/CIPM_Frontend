@@ -164,6 +164,7 @@ export default function CapitalPlanDetailDrawer({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -195,9 +196,6 @@ export default function CapitalPlanDetailDrawer({
               </Button>
             )}
           </div>
-          <Button intent="outline" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
         </Flex>
       }
     >

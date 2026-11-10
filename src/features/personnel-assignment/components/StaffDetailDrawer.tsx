@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SafetyCertificateOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Drawer } from "@/components/ui";
+import { Drawer } from "@/components/ui";
 import { SegmentedTabs } from "@/components/workspace";
 import type { SegmentedTabItem } from "@/components/workspace";
 import { useStaffDetail } from "../hooks/usePersonnelAccess";
@@ -28,16 +28,10 @@ export default function StaffDetailDrawer({ staffId, onClose }: { staffId: strin
 
   return (
     <Drawer
+      showBack
       open
       onClose={onClose}
       width="min(680px, 100vw)"
-      footer={
-        <div className="flex items-center justify-end px-2 py-1">
-          <Button intent="outline" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
-        </div>
-      }
       title={
         <div className="flex items-center justify-between gap-3">
           <div>

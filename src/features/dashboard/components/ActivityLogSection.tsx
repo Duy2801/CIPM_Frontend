@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import {
-  FileTextOutlined,
   HistoryOutlined,
   InfoCircleOutlined,
   ProjectOutlined,
@@ -319,10 +318,10 @@ export default function ActivityLogSection({
 
       {/* Detail Drawer — Chuẩn thông tin đầy đủ về Dự án, Người thực hiện & Nội dung điều hành */}
       <Drawer
+        showBack
         title={
           <div className="flex flex-col gap-0.5">
             <span className="flex items-center gap-2">
-              <FileTextOutlined className="text-base text-[#DC2626]" />
               <span className="text-base font-bold text-[#102A43]">
                 Chi tiết nhật ký điều hành
               </span>
@@ -342,13 +341,6 @@ export default function ActivityLogSection({
         open={Boolean(selectedActivity)}
         width={ACTIVITY_DETAIL_DRAWER_WIDTH}
         onClose={() => setSelectedActivity(null)}
-        footer={
-          <div className="flex items-center justify-start gap-2.5 py-1">
-            <Button scale="sm" onClick={() => setSelectedActivity(null)}>
-              Đóng
-            </Button>
-          </div>
-        }
       >
         {selectedActivity && (
           <article className="space-y-4">

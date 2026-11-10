@@ -2,7 +2,8 @@
 
 import React from "react";
 import { FileTextOutlined } from "@ant-design/icons";
-import { Button, Drawer, STANDARD_DRAWER_WIDTH } from "@/components/ui";
+import { Drawer, STANDARD_DRAWER_WIDTH } from "@/components/ui";
+import { StepHeading } from "@/components/workspace";
 import { getDepartmentStaff } from "@/features/construction-procedures/constants/procedure-department-templates";
 import type { ProcedureStep } from "@/features/construction-procedures/types/procedure.types";
 import { cn } from "@/utils/cn";
@@ -21,6 +22,7 @@ interface ProcedureStepFlowDrawerProps {
 export default function ProcedureStepFlowDrawer({ step, controller, onClose }: ProcedureStepFlowDrawerProps) {
   return (
     <Drawer
+      showBack
       open={Boolean(step)}
       width={STANDARD_DRAWER_WIDTH}
       closable={false}
@@ -29,17 +31,12 @@ export default function ProcedureStepFlowDrawer({ step, controller, onClose }: P
       className="[&_.ant-drawer-body]:!p-0"
       title={
         step && (
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-bold text-slate-500">{step.code}</span>
-              <FlowBadge step={step} />
-            </div>
-            <div className="mt-0.5 text-sm font-semibold leading-snug text-slate-900">{step.name}</div>
-          </div>
+          // Mã bước · tên bước cùng một hàng (tình trạng xem trong nội dung bên dưới)
+          <StepHeading code={step.code} name={step.name} />
         )
       }
     >
-      {step && <StepDetail key={step.id} step={step} controller={controller} onClose={onClose} />}
+      {step && <StepDetail key={step.id} step={step} controller={controller} />}
     </Drawer>
   );
 }
@@ -70,11 +67,9 @@ const dateWithPlan = (actual?: string, planned?: string) =>
 function StepDetail({
   step,
   controller,
-  onClose,
 }: {
   step: ProcedureStep;
   controller: ProjectProcedureController;
-  onClose: () => void;
 }) {
   const flow = getStepFlow(step);
   const lead = step.department ? controller.departmentLead(step.department) : undefined;
@@ -178,11 +173,6 @@ function StepDetail({
         </section>
       </div>
 
-      <footer className="flex justify-end border-t border-slate-200 bg-white px-5 py-3">
-        <Button scale="sm" onClick={onClose}>
-          Đóng
-        </Button>
-      </footer>
     </div>
   );
 }

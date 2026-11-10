@@ -265,6 +265,7 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       closable={false}
@@ -286,13 +287,6 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
             loading={submitting}
           >
             Thêm nhân sự
-          </Button>
-          <Button
-            intent="outline"
-            onClick={onClose}
-            disabled={submitting}
-          >
-            Đóng
           </Button>
         </div>
       }

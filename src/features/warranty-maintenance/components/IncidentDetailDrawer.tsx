@@ -51,6 +51,7 @@ export default function IncidentDetailDrawer({
 
   return (
     <Drawer
+      showBack
       open
       width="min(680px, 100vw)"
       onClose={onClose}
@@ -82,9 +83,6 @@ export default function IncidentDetailDrawer({
               Nghiệm thu khắc phục
             </Button>
           )}
-          <Button intent="outline" scale="sm" onClick={onClose}>
-            Đóng
-          </Button>
         </div>
       }
       title={
