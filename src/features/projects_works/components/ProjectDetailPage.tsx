@@ -32,9 +32,6 @@ import type {
 import { useProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
 import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
 import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
-import { PROCEDURE_CATEGORY } from "@/features/construction-procedures/constants/procedure-categories";
-import { inferProcedureCategory } from "@/features/construction-procedures/services/procedure.mapper";
-import { GpmbPriceTableTab, SiteClearanceResettlementScreen } from "@/features/site-clearance-resettlement";
 import { ProjectDocumentsSection } from "./detail/ProjectViewTab";
 import ProjectProcedureTab from "./detail/ProjectProcedureTab";
 import ProjectProcedurePicker, { procedureTarget, shortProcedureLabel } from "./ProjectProcedurePicker";
@@ -298,14 +295,6 @@ export default function ProjectDetailPage({
     }),
   );
 
-  // Quy trình loại GPMB: tab quy trình có thêm tab con quản lý hộ dân được bồi thường của dự án
-  const isGpmbProcedure = (dept: string) => {
-    const st = departmentStatus(dept);
-    const category =
-      library.find((p) => p.id === st?.procedureId)?.category ?? inferProcedureCategory(st?.procedureName ?? "");
-    return category === PROCEDURE_CATEGORY.GPMB;
-  };
-
   const canViewWarranty = getWarrantyRolePermissions(user).canAccessModule;
 
   const detailTabs: SegmentedTabItem<DetailTab>[] = [
@@ -416,10 +405,6 @@ export default function ProjectDetailPage({
           key={activeTab}
           department={activeTab.slice(5)}
           controller={procedure}
-          households={
-            isGpmbProcedure(activeTab.slice(5)) ? <SiteClearanceResettlementScreen projectId={project.id} listOnly /> : undefined
-          }
-          prices={isGpmbProcedure(activeTab.slice(5)) ? <GpmbPriceTableTab projectId={project.id} /> : undefined}
         />
       )}
       {activeTab === "warranty" && (
