@@ -2,12 +2,13 @@
 
 import { useRef, useState, type DragEvent } from "react";
 import { App } from "antd";
-import { ArrowLeftOutlined, DownloadOutlined, InboxOutlined, UploadOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, DownloadOutlined, HistoryOutlined, InboxOutlined, UploadOutlined } from "@ant-design/icons";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { downloadBlob } from "@/utils/xlsx-writer";
 import type { ReportFile, ReportType } from "../types/report.types";
-import { REPORT_ACCEPT, formatDateTime, isReportFile, reportTitle } from "../utils/report-format";
+import { REPORT_ACCEPT, isReportFile } from "../utils/report-format";
+import ReportHistoryTab from "./ReportHistoryTab";
 import WorkbookView from "./WorkbookView";
 
 /**
@@ -21,6 +22,7 @@ export default function ReportDetail({
   importing,
   onBack,
   onImport,
+  onExport,
 }: {
   type: ReportType;
   /** Các bản nhập của loại này, mới nhất trước */
@@ -29,10 +31,14 @@ export default function ReportDetail({
   importing: boolean;
   onBack: () => void;
   onImport: (file: File) => void;
+  /** Ghi lịch sử khi xuất Excel */
+  onExport?: (report: ReportFile) => void;
 }) {
   const { message } = App.useApp();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  // Đang xem dữ liệu hay lịch sử thao tác của báo cáo này
+  const [showHistory, setShowHistory] = useState(false);
   const report = reports.find((r) => r.id === currentId) ?? reports[0];
 
   const pick = (file?: File) => {
@@ -47,7 +53,7 @@ export default function ReportDetail({
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    pick(e.dataTransfer.files[0]);
+    if (!showHistory) pick(e.dataTransfer.files[0]);
   };
 
   return (
@@ -55,7 +61,8 @@ export default function ReportDetail({
       className="relative flex flex-col gap-3"
       onDragOver={(e) => {
         e.preventDefault();
-        setDragging(true);
+        // Đang xem lịch sử thì không nhận kéo thả tệp
+        if (!showHistory) setDragging(true);
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
@@ -70,34 +77,50 @@ export default function ReportDetail({
           icon={<ArrowLeftOutlined />}
           aria-label="Quay lại loại báo cáo"
           title="Quay lại"
-          onClick={onBack}
+          // Đang xem lịch sử thì quay về dữ liệu báo cáo, không thì về danh sách loại báo cáo
+          onClick={() => (showHistory ? setShowHistory(false) : onBack())}
           className="h-9! w-9! shrink-0 p-0!"
         />
         <div className="min-w-0 flex-1">
           <h1 className="m-0 truncate text-base font-bold text-slate-900" title={report?.name}>
-            {report ? reportTitle(report) : type.name}
+            {showHistory ? "Lịch sử · " : ""}
+            {type.name}
           </h1>
-          <p className="m-0 mt-0.5 text-xs text-slate-500">
-            {report ? `${formatDateTime(report.uploadedAt)} · ${report.uploadedBy}` : type.name}
-          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            intent="outline"
-            scale="sm"
-            icon={<UploadOutlined />}
-            loading={importing}
-            onClick={() => fileRef.current?.click()}
-            className="h-9 px-4 text-xs font-semibold"
-          >
-            Nhập Excel
-          </Button>
-          {report && (
+          {/* Đang xem lịch sử: ẩn các nút thao tác, chỉ còn nút ← để quay lại dữ liệu */}
+          {!showHistory && (
+            <>
+              <Button
+                intent="outline"
+                scale="sm"
+                icon={<HistoryOutlined />}
+                onClick={() => setShowHistory(true)}
+                className="h-9 px-4 text-xs font-semibold"
+              >
+                Lịch sử
+              </Button>
+              <Button
+                intent="outline"
+                scale="sm"
+                icon={<UploadOutlined />}
+                loading={importing}
+                onClick={() => fileRef.current?.click()}
+                className="h-9 px-4 text-xs font-semibold"
+              >
+                Nhập Excel
+              </Button>
+            </>
+          )}
+          {report && !showHistory && (
             <Button
               intent="primary"
               scale="sm"
               icon={<DownloadOutlined />}
-              onClick={() => downloadBlob(report.blob, report.name)}
+              onClick={() => {
+                downloadBlob(report.blob, report.name);
+                onExport?.(report);
+              }}
               className="h-9 !border-[#DC2626] !bg-[#DC2626] px-4 text-xs font-semibold !text-white hover:!bg-[#B91C1C]"
             >
               Xuất Excel
@@ -116,7 +139,9 @@ export default function ReportDetail({
         </div>
       </div>
 
-      {report ? (
+      {showHistory ? (
+        <ReportHistoryTab typeId={type.id} title="" />
+      ) : report ? (
         <Card surface="flat" padding="none" rounded="lg" className="overflow-hidden border-slate-200 shadow-sm shadow-slate-100">
           <WorkbookView report={report} />
         </Card>
