@@ -1,6 +1,5 @@
 "use client";
 
-import { CheckCircleFilled } from "@ant-design/icons";
 import { Segmented } from "@/components/ui";
 
 export type ProcedureEditorView = "flow" | "table" | "history";
@@ -20,10 +19,11 @@ interface ProcedureEditorTabsProps {
   isCreate: boolean;
   value: ProcedureEditorView;
   onChange: (view: ProcedureEditorView) => void;
-  autoSave?: { savedAt: Date | null };
+  /** Loại quy trình hiện bên phải hàng tab */
+  category?: string;
 }
 
-export default function ProcedureEditorTabs({ isCreate, value, onChange, autoSave }: ProcedureEditorTabsProps) {
+export default function ProcedureEditorTabs({ isCreate, value, onChange, category }: ProcedureEditorTabsProps) {
   return (
     <div className="flex shrink-0 items-center gap-3">
       <Segmented<ProcedureEditorView>
@@ -31,13 +31,11 @@ export default function ProcedureEditorTabs({ isCreate, value, onChange, autoSav
         value={value}
         onChange={onChange}
       />
-      {autoSave && (
-        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-slate-400">
-          <CheckCircleFilled className={autoSave.savedAt ? "text-emerald-500" : "text-slate-300"} />
-          {autoSave.savedAt
-            ? `Đã tự lưu lúc ${autoSave.savedAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
-            : "Thay đổi được tự lưu"}
-        </span>
+      {category && (
+        <div className="ml-auto text-right leading-tight">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Loại quy trình</div>
+          <div className="text-[13px] font-semibold text-slate-700">{category}</div>
+        </div>
       )}
     </div>
   );

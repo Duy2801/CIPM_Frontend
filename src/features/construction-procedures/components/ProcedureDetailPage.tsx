@@ -34,12 +34,6 @@ export default function ProcedureDetailPage({
         onBack={onBack}
         actions={
           <>
-            {procedure.category && (
-              <div className="hidden text-right leading-tight sm:block">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Loại quy trình</div>
-                <div className="text-[13px] font-semibold text-slate-700">{procedure.category}</div>
-              </div>
-            )}
             <ProcedureReviewAction
               procedure={procedure}
               actorName={actorName}
@@ -55,6 +49,7 @@ export default function ProcedureDetailPage({
         steps={procedure.steps}
         procedureId={procedure.id}
         procedureName={procedure.name}
+        category={procedure.category}
         onAutoSave={onAutoSave}
       />
     </div>

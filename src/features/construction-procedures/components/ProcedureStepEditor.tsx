@@ -26,6 +26,8 @@ interface ProcedureStepEditorProps {
   steps: ProcedureStep[];
   procedureId?: string;
   procedureName?: string;
+  /** Loại quy trình (hiện bên phải hàng tab) */
+  category?: string;
   onAutoSave?: (steps: ProcedureStep[], changes: StepChange[]) => void;
   onCreate?: (steps: ProcedureStep[]) => void;
   addLockedReason?: string;
@@ -35,6 +37,7 @@ export default function ProcedureStepEditor({
   steps,
   procedureId,
   procedureName,
+  category,
   onAutoSave,
   onCreate,
   addLockedReason,
@@ -43,7 +46,7 @@ export default function ProcedureStepEditor({
   const isCreate = !!onCreate;
   const autoSave = !isCreate && !!procedureId;
   const [view, setView] = useState<ProcedureEditorView>(isCreate ? "table" : "flow");
-  const { localSteps, setLocalSteps, autoSavedAt, hasPendingChanges, acceptSaved } = useAutoSavedSteps(steps, {
+  const { localSteps, setLocalSteps, hasPendingChanges, acceptSaved } = useAutoSavedSteps(steps, {
     procedureId: autoSave ? procedureId : undefined,
     onAutoSave,
   });
@@ -148,7 +151,7 @@ export default function ProcedureStepEditor({
             isCreate={isCreate}
             value={view}
             onChange={(next) => (isCreate && next === "flow" ? goToFlowStep() : setView(next))}
-            autoSave={autoSave ? { savedAt: autoSavedAt } : undefined}
+            category={category}
           />
 
           {view === "flow" && (

@@ -21,7 +21,8 @@ export function useStepStaff() {
     [isBackend, backendStaff.data],
   );
   const staffOptions = useMemo(
-    () => staffList.map((st) => ({ value: st.name, label: st.title ? `${st.name} (${st.title})` : st.name })),
+    // Chỉ hiện tên cán bộ (không kèm chức danh) cho danh sách gọn
+    () => staffList.map((st) => ({ value: st.name, label: st.name })),
     [staffList],
   );
 
