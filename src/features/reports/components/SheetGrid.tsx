@@ -13,7 +13,7 @@ import {
 } from "react";
 import { CloseOutlined, MinusOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { cn } from "@/utils/cn";
-import type { CellValue, SheetData, SheetMerge } from "@/utils/xlsx-reader";
+import type { CellStyle, CellValue, SheetData, SheetMerge } from "@/utils/xlsx-reader";
 import { columnLetter } from "@/utils/xlsx-writer";
 
 /**
@@ -55,6 +55,8 @@ interface CellInfo {
   text: string;
   rowSpan?: number;
   colSpan?: number;
+  /** Kiểu ô theo file (căn lề, chữ, nền, viền) */
+  style?: CellStyle;
 }
 
 interface RowProps {
@@ -114,9 +116,12 @@ const SheetRow = memo(function SheetRow({
         const left = colLeft(c);
         const frozen = frozenRow || left !== undefined;
         const isNum = typeof cell.value === "number";
-        // Chữ tràn sang các ô trống liền kề bên phải như Excel, dừng ở ô có dữ liệu
+        const fmt = cell.style;
+        // Căn lề theo file; không đặt thì như Excel: số canh phải, chữ canh trái
+        const hAlign = fmt?.h ?? (isNum ? "right" : "left");
+        // Chữ tràn sang các ô trống liền kề bên phải như Excel (chỉ chữ canh trái, không xuống dòng), dừng ở ô có dữ liệu
         let spill = 0;
-        if (!isNum && !cell.colSpan && !cell.rowSpan && cell.text !== "") {
+        if (!isNum && hAlign === "left" && !fmt?.wrap && !cell.colSpan && !cell.rowSpan && cell.text !== "") {
           for (let j = i + 1; j < cells.length; j++) {
             const next = cells[j];
             if (!next || next.text !== "" || next.colSpan || next.rowSpan) break;
@@ -124,9 +129,31 @@ const SheetRow = memo(function SheetRow({
           }
         }
         const overflow = spill > 0;
-        const style: CSSProperties = {};
+        const style: CSSProperties = {
+          textAlign: hAlign,
+          verticalAlign: fmt?.v ?? "bottom",
+        };
         if (frozenRow) style.top = stickyTop;
         if (left !== undefined) style.left = left;
+        if (fmt) {
+          if (fmt.wrap) {
+            style.whiteSpace = "pre-wrap";
+            style.overflowWrap = "anywhere";
+          }
+          if (fmt.indent) style.paddingLeft = 6 + fmt.indent * 9;
+          if (fmt.bold) style.fontWeight = 700;
+          if (fmt.italic) style.fontStyle = "italic";
+          if (fmt.underline || fmt.strike)
+            style.textDecoration = [fmt.underline && "underline", fmt.strike && "line-through"].filter(Boolean).join(" ");
+          if (fmt.color) style.color = fmt.color;
+          if (fmt.scale) style.fontSize = Math.round(12 * fmt.scale * 10) / 10;
+          // Đang chọn thì để màu chọn của lưới, không phủ màu nền của file
+          if (fmt.bg && !inSel) style.backgroundColor = fmt.bg;
+          if (fmt.borderTop) style.borderTop = fmt.borderTop;
+          if (fmt.borderRight) style.borderRight = fmt.borderRight;
+          if (fmt.borderBottom) style.borderBottom = fmt.borderBottom;
+          if (fmt.borderLeft) style.borderLeft = fmt.borderLeft;
+        }
         return (
           <td
             key={c}
@@ -137,10 +164,9 @@ const SheetRow = memo(function SheetRow({
             onPointerEnter={(e) => onCellEnter(r, c, e)}
             style={style}
             className={cn(
-              "whitespace-nowrap border-b border-r border-slate-200/70 px-1.5 align-bottom leading-tight",
-              overflow ? "overflow-visible" : "overflow-hidden text-ellipsis",
-              isNum && "text-right tabular-nums",
-              (cell.rowSpan || cell.colSpan) && "align-middle",
+              "whitespace-nowrap border-b border-r border-slate-200/70 px-1.5 leading-tight",
+              overflow ? "overflow-visible" : fmt?.wrap ? "overflow-hidden" : "overflow-hidden text-ellipsis",
+              isNum && "tabular-nums",
               frozen && "sticky",
               frozenRow && left !== undefined ? "z-15" : frozen && "z-10",
               inSel ? "bg-red-50" : frozen && "bg-white",
@@ -162,14 +188,34 @@ const SheetRow = memo(function SheetRow({
 });
 
 export default function SheetGrid({ data, fallbackFit }: { data: SheetData; fallbackFit: boolean }) {
-  const { rows, layout } = data;
+  const { layout } = data;
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const dragging = useRef(false);
 
+  // Dừng ở dòng cuối có dữ liệu: bỏ các dòng trống phía dưới (file Excel hay còn định dạng sẵn tới hàng nghìn dòng)
+  const rows = useMemo(() => {
+    const filled = (v: CellValue | undefined) => v !== null && v !== undefined && v !== "";
+    let end = data.rows.length;
+    while (end > 0 && !data.rows[end - 1].some(filled)) end--;
+    return data.rows.slice(0, end);
+  }, [data.rows]);
+
+  // Tương tự với cột: tới cột cuối có dữ liệu (kể cả ô gộp có nội dung kéo dài sang phải)
   const colCount = useMemo(() => {
-    let n = Math.max(1, ...rows.map((r) => r.length));
-    for (const m of layout.merges) n = Math.max(n, m.c2 + 1);
+    let n = 1;
+    for (const row of rows) {
+      for (let c = row.length - 1; c >= n; c--) {
+        if (row[c] !== null && row[c] !== "") {
+          n = c + 1;
+          break;
+        }
+      }
+    }
+    for (const m of layout.merges) {
+      const v = rows[m.r1]?.[m.c1];
+      if (v !== null && v !== undefined && v !== "") n = Math.max(n, m.c2 + 1);
+    }
     return Math.min(MAX_COLS, n);
   }, [rows, layout.merges]);
 
@@ -251,19 +297,33 @@ export default function SheetGrid({ data, fallbackFit }: { data: SheetData; fall
             if (firstR !== r || firstC !== c) return null;
           }
           const value = rows[m ? m.r1 : r]?.[m ? m.c1 : c] ?? null;
-          const info: CellInfo = { value, text: textOf(m ? m.r1 : r, m ? m.c1 : c) };
+          const info: CellInfo = {
+            value,
+            text: textOf(m ? m.r1 : r, m ? m.c1 : c),
+            style: layout.styles.get(key(m ? m.r1 : r, m ? m.c1 : c)),
+          };
           if (m) {
             const rs = countIn(Math.max(m.r1, r), m.r2, visRowSet);
             const cs = countIn(Math.max(m.c1, c), m.c2, visColSet);
             if (rs > 1) info.rowSpan = rs;
             if (cs > 1) info.colSpan = cs;
+            // Ô gộp: viền phải lấy theo ô góc phải, viền dưới theo ô góc dưới của vùng gộp
+            const rightEdge = layout.styles.get(key(m.r1, m.c2))?.borderRight;
+            const bottomEdge = layout.styles.get(key(m.r2, m.c1))?.borderBottom;
+            if (rightEdge || bottomEdge) {
+              info.style = {
+                ...info.style,
+                ...(rightEdge ? { borderRight: rightEdge } : {}),
+                ...(bottomEdge ? { borderBottom: bottomEdge } : {}),
+              };
+            }
           }
           return info;
         }),
       );
     }
     return result;
-  }, [visRows, visCols, mergeOf, rows, textOf]);
+  }, [visRows, visCols, mergeOf, rows, textOf, layout.styles]);
 
   // Vị trí dính của dòng / cột cố định
   const stickyTops = useMemo(() => {
@@ -576,7 +636,7 @@ export default function SheetGrid({ data, fallbackFit }: { data: SheetData; fall
     setZoom((z) => ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, ZOOMS.indexOf(z) + dir))]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex flex-col">
       {/* Thanh công thức: tên ô · nội dung đầy đủ / công thức */}
       <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-2 py-1">
         <span className="w-28 shrink-0 truncate rounded border border-slate-200 px-2 py-0.5 text-center text-xs font-semibold text-slate-700">
@@ -652,7 +712,7 @@ export default function SheetGrid({ data, fallbackFit }: { data: SheetData; fall
         ref={scrollRef}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="relative min-h-0 flex-1 overflow-auto overscroll-contain bg-white outline-none"
+        className="relative overflow-x-auto bg-white outline-none"
       >
         {resizing && <div className="fixed inset-0 z-3000 cursor-col-resize select-none" />}
         <table

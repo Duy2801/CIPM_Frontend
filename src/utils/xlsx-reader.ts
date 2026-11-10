@@ -96,18 +96,31 @@ export async function readXlsx(file: Blob): Promise<XlsxWorkbook> {
   const sharedXml = await readZipText(buf, entries, "xl/sharedStrings.xml");
   const shared = sharedXml ? byTag(parseXml(sharedXml), "si").map(richText) : [];
 
-  // Định dạng số của từng kiểu ô (để hiện ngày / phần trăm như Excel)
+  // Kiểu ô: định dạng số (ngày / phần trăm) + căn lề, chữ, màu nền, viền
   const stylesXml = await readZipText(buf, entries, "xl/styles.xml");
+  const themeXml = await readZipText(buf, entries, "xl/theme/theme1.xml");
   const xfKinds: (NumberKind | undefined)[] = [];
+  const xfStyles: (CellStyle | undefined)[] = [];
   if (stylesXml) {
     const doc = parseXml(stylesXml);
     const custom = new Map(byTag(doc, "numFmt").map((f) => [Number(f.getAttribute("numFmtId")), f.getAttribute("formatCode") ?? ""]));
-    const cellXfs = byTag(doc, "cellXfs")[0];
-    if (cellXfs) {
-      for (const xf of Array.from(cellXfs.children).filter((e) => e.localName === "xf")) {
-        const id = Number(xf.getAttribute("numFmtId") ?? 0);
-        xfKinds.push(numberKind(id, custom.get(id)));
-      }
+    const palette = readThemeColors(themeXml);
+    const fonts = childrenOf(byTag(doc, "fonts")[0], "font").map((el) => readFont(el, palette));
+    const fills = childrenOf(byTag(doc, "fills")[0], "fill").map((el) => readFill(el, palette));
+    const borders = childrenOf(byTag(doc, "borders")[0], "border").map((el) => readBorder(el, palette));
+    const baseFont = fonts[0];
+    for (const xf of childrenOf(byTag(doc, "cellXfs")[0], "xf")) {
+      const id = Number(xf.getAttribute("numFmtId") ?? 0);
+      xfKinds.push(numberKind(id, custom.get(id)));
+      xfStyles.push(
+        buildCellStyle(
+          xf,
+          fonts[Number(xf.getAttribute("fontId") ?? 0)],
+          baseFont,
+          fills[Number(xf.getAttribute("fillId") ?? 0)],
+          borders[Number(xf.getAttribute("borderId") ?? 0)],
+        ),
+      );
     }
   }
   const date1904 = byTag(parseXml(workbookXml), "workbookPr")[0]?.getAttribute("date1904") === "1";
@@ -160,6 +173,9 @@ export async function readXlsx(file: Blob): Promise<XlsxWorkbook> {
       const cells: CellValue[] = [];
       for (const c of byTag(row, "c")) {
         const col = columnIndex(c.getAttribute("r") ?? "A");
+        // Kiểu ô (kể cả ô trống có màu nền / viền)
+        const cellStyle = xfStyles[Number(c.getAttribute("s") ?? 0)];
+        if (cellStyle) layout.styles.set(`${r}:${col}`, cellStyle);
         const type = c.getAttribute("t");
         const v = byTag(c, "v")[0]?.textContent ?? null;
         const f = byTag(c, "f")[0]?.textContent;
@@ -218,6 +234,32 @@ export interface SheetLayout {
   formulas: Map<string, string>;
   /** Chuỗi hiển thị đã định dạng (ngày, giờ, phần trăm) theo ô "dòng:cột" */
   texts: Map<string, string>;
+  /** Kiểu ô (căn lề, chữ, màu nền, viền) theo ô "dòng:cột"; các ô cùng kiểu dùng chung một đối tượng */
+  styles: Map<string, CellStyle>;
+}
+
+/** Kiểu hiển thị một ô, đã quy ra giá trị CSS */
+export interface CellStyle {
+  h?: "left" | "center" | "right" | "justify";
+  v?: "top" | "middle" | "bottom";
+  wrap?: boolean;
+  /** Thụt lề (số bậc, mỗi bậc ~ 9px) */
+  indent?: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  /** Màu chữ (#rrggbb) */
+  color?: string;
+  /** Cỡ chữ so với cỡ chữ mặc định của file (1 = bằng) */
+  scale?: number;
+  /** Màu nền (#rrggbb) */
+  bg?: string;
+  /** Viền: giá trị CSS border (vd "1px solid #000") */
+  borderTop?: string;
+  borderRight?: string;
+  borderBottom?: string;
+  borderLeft?: string;
 }
 
 export interface SheetData {
@@ -237,7 +279,172 @@ export const emptyLayout = (): SheetLayout => ({
   freezeCols: 0,
   formulas: new Map(),
   texts: new Map(),
+  styles: new Map(),
 });
+
+// ── Đọc kiểu ô từ styles.xml / theme1.xml ──
+
+const childrenOf = (parent: Element | undefined, tag: string) =>
+  parent ? Array.from(parent.children).filter((e) => e.localName === tag) : [];
+const child = (el: Element | undefined, tag: string) => childrenOf(el, tag)[0];
+
+/** Bảng màu đánh số (indexed) mặc định của Excel */
+const INDEXED_COLORS = (
+  "000000 FFFFFF FF0000 00FF00 0000FF FFFF00 FF00FF 00FFFF " +
+  "000000 FFFFFF FF0000 00FF00 0000FF FFFF00 FF00FF 00FFFF 800000 008000 000080 808000 800080 008080 C0C0C0 808080 " +
+  "9999FF 993366 FFFFCC CCFFFF 660066 FF8080 0066CC CCCCFF 000080 FF00FF FFFF00 00FFFF 800080 800000 008080 0000FF " +
+  "00CCFF CCFFFF CCFFCC FFFF99 99CCFF FF99CC CC99FF FFCC99 3366FF 33CCCC 99CC00 FFCC00 FF9900 FF6600 666699 969696 " +
+  "003366 339966 003300 333300 993300 993366 333399 333333"
+).split(" ");
+
+/** Màu theme theo thứ tự chỉ số Excel: lt1, dk1, lt2, dk2, accent1–6, hlink, folHlink */
+function readThemeColors(themeXml: string | null): string[] {
+  if (!themeXml) return [];
+  const scheme = byTag(parseXml(themeXml), "clrScheme")[0];
+  if (!scheme) return [];
+  const list = Array.from(scheme.children).map((el) => {
+    const c = el.firstElementChild;
+    return (c?.getAttribute("val") ?? c?.getAttribute("lastClr") ?? "000000").slice(-6);
+  });
+  // Trong file theo thứ tự dk1, lt1, dk2, lt2…; chỉ số theme của ô thì đổi chỗ cặp đầu
+  return [list[1], list[0], list[3], list[2], ...list.slice(4)];
+}
+
+/** Làm sáng (tint > 0) / tối (tint < 0) màu như Excel (gần đúng theo kênh RGB) */
+function applyTint(hex: string, tint: number): string {
+  const ch = (i: number) => {
+    const v = parseInt(hex.slice(i, i + 2), 16);
+    const t = tint < 0 ? v * (1 + tint) : v + (255 - v) * tint;
+    return Math.round(Math.min(255, Math.max(0, t))).toString(16).padStart(2, "0");
+  };
+  return `${ch(0)}${ch(2)}${ch(4)}`;
+}
+
+/** Thẻ màu (<color>, <fgColor>…) → "#rrggbb"; màu tự động / không xác định → undefined */
+function resolveColor(el: Element | undefined, palette: string[]): string | undefined {
+  if (!el || el.getAttribute("auto") === "1") return undefined;
+  let hex: string | undefined;
+  const rgb = el.getAttribute("rgb");
+  const theme = el.getAttribute("theme");
+  const indexed = el.getAttribute("indexed");
+  if (rgb) hex = rgb.slice(-6);
+  else if (theme !== null) hex = palette[Number(theme)];
+  else if (indexed !== null) hex = INDEXED_COLORS[Number(indexed)];
+  if (!hex || !/^[0-9a-f]{6}$/i.test(hex)) return undefined;
+  const tint = Number(el.getAttribute("tint") ?? 0);
+  return `#${tint ? applyTint(hex, tint) : hex}`.toUpperCase();
+}
+
+interface FontInfo {
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+  size: number;
+  color?: string;
+}
+
+const flag = (el: Element | undefined) => !!el && el.getAttribute("val") !== "0" && el.getAttribute("val") !== "false";
+
+function readFont(el: Element, palette: string[]): FontInfo {
+  const u = child(el, "u");
+  return {
+    bold: flag(child(el, "b")),
+    italic: flag(child(el, "i")),
+    underline: !!u && u.getAttribute("val") !== "none",
+    strike: flag(child(el, "strike")),
+    size: Number(child(el, "sz")?.getAttribute("val") ?? 11) || 11,
+    color: resolveColor(child(el, "color"), palette),
+  };
+}
+
+function readFill(el: Element, palette: string[]): string | undefined {
+  const pattern = child(el, "patternFill");
+  if (!pattern || pattern.getAttribute("patternType") !== "solid") return undefined;
+  return resolveColor(child(pattern, "fgColor"), palette) ?? resolveColor(child(pattern, "bgColor"), palette);
+}
+
+const BORDER_CSS: Record<string, string> = {
+  thin: "1px solid",
+  hair: "1px dotted",
+  dotted: "1px dotted",
+  dashed: "1px dashed",
+  dashDot: "1px dashed",
+  dashDotDot: "1px dashed",
+  slantDashDot: "1px dashed",
+  medium: "2px solid",
+  mediumDashed: "2px dashed",
+  mediumDashDot: "2px dashed",
+  mediumDashDotDot: "2px dashed",
+  thick: "3px solid",
+  double: "3px double",
+};
+
+type BorderInfo = Partial<Record<"top" | "right" | "bottom" | "left", string>>;
+
+function readBorder(el: Element, palette: string[]): BorderInfo {
+  const result: BorderInfo = {};
+  for (const side of ["top", "right", "bottom", "left"] as const) {
+    const s = child(el, side);
+    const css = BORDER_CSS[s?.getAttribute("style") ?? ""];
+    if (css) result[side] = `${css} ${resolveColor(child(s, "color"), palette) ?? "#000000"}`;
+  }
+  return result;
+}
+
+const H_ALIGN: Record<string, CellStyle["h"]> = {
+  left: "left",
+  center: "center",
+  centerContinuous: "center",
+  distributed: "center",
+  right: "right",
+  justify: "justify",
+  fill: "left",
+};
+const V_ALIGN: Record<string, CellStyle["v"]> = {
+  top: "top",
+  center: "middle",
+  justify: "middle",
+  distributed: "middle",
+  bottom: "bottom",
+};
+
+/** Gộp căn lề + chữ + nền + viền của một kiểu ô (cellXfs/xf); không có gì khác mặc định → undefined */
+function buildCellStyle(
+  xf: Element,
+  font: FontInfo | undefined,
+  baseFont: FontInfo | undefined,
+  fill: string | undefined,
+  border: BorderInfo | undefined,
+): CellStyle | undefined {
+  const style: CellStyle = {};
+  const align = child(xf, "alignment");
+  if (align) {
+    const h = H_ALIGN[align.getAttribute("horizontal") ?? ""];
+    const v = V_ALIGN[align.getAttribute("vertical") ?? ""];
+    if (h) style.h = h;
+    if (v) style.v = v;
+    const wrap = align.getAttribute("wrapText");
+    if (wrap === "1" || wrap === "true") style.wrap = true;
+    const indent = Number(align.getAttribute("indent") ?? 0);
+    if (indent) style.indent = indent;
+  }
+  if (font) {
+    if (font.bold) style.bold = true;
+    if (font.italic) style.italic = true;
+    if (font.underline) style.underline = true;
+    if (font.strike) style.strike = true;
+    // Chữ đen mặc định thì bỏ qua để dùng màu chữ của giao diện
+    if (font.color && font.color !== "#000000" && font.color !== baseFont?.color) style.color = font.color;
+    if (baseFont && font.size !== baseFont.size) style.scale = font.size / baseFont.size;
+  }
+  if (fill && fill !== "#FFFFFF") style.bg = fill;
+  if (border?.top) style.borderTop = border.top;
+  if (border?.right) style.borderRight = border.right;
+  if (border?.bottom) style.borderBottom = border.bottom;
+  if (border?.left) style.borderLeft = border.left;
+  return Object.keys(style).length ? style : undefined;
+}
 
 /** Độ rộng Excel (số ký tự) → px */
 const charsToPx = (chars: number) => Math.round(chars * 7 + 5);
