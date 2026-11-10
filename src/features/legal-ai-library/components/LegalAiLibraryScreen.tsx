@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileTextOutlined, HistoryOutlined, LockOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Text, Title } from "@/components/ui";
 import { useLegalPermissions } from "../hooks/useLegalAccess";
+import DocumentDetailPage from "./DocumentDetailPage";
 import LegalDocumentsTab from "./LegalDocumentsTab";
 import LegalHistoryTab from "./LegalHistoryTab";
 
@@ -19,6 +20,8 @@ export default function LegalAiLibraryScreen() {
   const router = useRouter();
   const { permissions, currentUser } = useLegalPermissions();
   const [activeTab, setActiveTab] = useState<ScreenTab>("documents");
+  // Văn bản đang mở trang chi tiết (null = đang ở danh sách)
+  const [openedId, setOpenedId] = useState<string | null>(null);
 
   // Chặn truy cập nếu không có quyền theo Ma trận phân quyền BRD Mục 5
   if (!permissions.canAccessModule) {
@@ -55,6 +58,10 @@ export default function LegalAiLibraryScreen() {
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-4">
+      {openedId && <DocumentDetailPage key={openedId} documentId={openedId} onBack={() => setOpenedId(null)} />}
+
+      {/* Danh sách vẫn giữ trong cây (ẩn khi mở chi tiết) để quay lại không mất bộ lọc, trang đang xem */}
+      <div className={openedId ? "hidden" : "flex flex-col gap-4"}>
       {/* 2 tab trên cùng: danh sách văn bản / lịch sử thao tác */}
       <div role="tablist" className="inline-flex gap-1 self-start rounded-lg border border-slate-200 bg-slate-100/70 p-0.5">
         {TAB_ITEMS.map((tab) => {
@@ -79,10 +86,11 @@ export default function LegalAiLibraryScreen() {
 
       {/* Giữ cả hai tab trong cây để chuyển qua lại không mất bộ lọc, trang đang xem */}
       <div className={activeTab === "documents" ? "flex flex-col gap-4" : "hidden"}>
-        <LegalDocumentsTab />
+        <LegalDocumentsTab onOpen={setOpenedId} />
       </div>
       <div className={activeTab === "history" ? undefined : "hidden"}>
         <LegalHistoryTab />
+      </div>
       </div>
     </div>
   );

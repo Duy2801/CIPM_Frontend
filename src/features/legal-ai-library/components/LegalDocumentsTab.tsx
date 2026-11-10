@@ -13,15 +13,14 @@ import {
   type LegalDocumentFilters,
 } from "../utils/legal-document-filters";
 import CreateDocumentDrawer from "./CreateDocumentDrawer";
-import DocumentDetailDrawer from "./DocumentDetailDrawer";
 import LegalDocumentList from "./LegalDocumentList";
 import LegalDocumentToolbar from "./LegalDocumentToolbar";
 import LegalStatsChart from "./LegalStatsChart";
 
 const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
-/** Tab "Danh sách văn bản": thống kê hiệu lực, lọc, phân trang, thêm và xem/sửa văn bản */
-export default function LegalDocumentsTab() {
+/** Tab "Danh sách văn bản": thống kê hiệu lực, lọc, phân trang, thêm văn bản; bấm văn bản để mở trang chi tiết */
+export default function LegalDocumentsTab({ onOpen }: { onOpen: (documentId: string) => void }) {
   const { data: documents = [] } = useLegalDocuments();
   const canManage = useCanManageLegalDocuments();
 
@@ -29,7 +28,6 @@ export default function LegalDocumentsTab() {
   const [page, setPage] = useState(1);
   // Văn bản thêm trong phiên làm việc — mới nhất đứng đầu, luôn hiển thị trên cùng danh sách
   const [recentlyAddedIds, setRecentlyAddedIds] = useState<string[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   const categoryKeys = useMemo(() => getCategoryKeys(documents), [documents]);
@@ -103,12 +101,10 @@ export default function LegalDocumentsTab() {
           canManage={canManage}
           isFiltering={isLegalFiltering(filters)}
           onResetFilters={resetFilters}
-          onOpen={setSelectedId}
+          onOpen={onOpen}
         />
       </Card>
 
-      {/* Drawer xem / sửa chi tiết văn bản */}
-      {selectedId && <DocumentDetailDrawer key={selectedId} documentId={selectedId} onClose={() => setSelectedId(null)} />}
 
       {/* Drawer thêm mới văn bản: mở lại là form trống */}
       {createOpen && (
