@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, PlusOutlined } from "@ant-design/icons";
+import { CalendarOutlined, CheckOutlined, CloseOutlined, LoadingOutlined } from "@ant-design/icons";
 import { App } from "antd";
 import { Button, Form, Input, Select, Text, Tooltip } from "@/components/ui";
 import type { Employment, Staff, TeamId } from "../types/personnel.types";
@@ -227,7 +227,6 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
           <Button
             intent="outline"
             scale="compact"
-            icon={<PlusOutlined />}
             onClick={addNewField}
             className="!border-slate-200 text-xs font-semibold !text-slate-700 hover:!border-[#DC2626] hover:!text-[#DC2626]"
           >

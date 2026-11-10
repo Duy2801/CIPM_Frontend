@@ -9,7 +9,6 @@ import {
   ArrowLeftOutlined,
   ExclamationCircleOutlined,
   PaperClipOutlined,
-  PlusOutlined,
   RightOutlined,
   UserOutlined,
   WalletOutlined,
@@ -209,9 +208,6 @@ export default function ProjectDisbursementTab({
               onClick={() => setForm({ kind: "disburse", category: "" })}
               className="flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-4 py-2.5 text-left text-xs font-semibold text-[#DC2626] transition-colors hover:bg-red-50/60"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded border border-dashed border-[#DC2626]/60 text-[10px]">
-                <PlusOutlined />
-              </span>
               Thêm dòng giải ngân
             </button>
           )}

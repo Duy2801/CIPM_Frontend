@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { App } from "antd";
 import {
   DownloadOutlined,
-  PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import {
@@ -322,7 +321,6 @@ export default function CompensationTab({
                 <Button
                   intent="primary"
                   scale="sm"
-                  icon={<PlusOutlined />}
                   onClick={() => setCreateOpen(true)}
                   className="h-8 !border-[#DC2626] !bg-[#DC2626] px-3 text-xs font-semibold !text-white hover:!bg-[#B91C1C]"
                 >

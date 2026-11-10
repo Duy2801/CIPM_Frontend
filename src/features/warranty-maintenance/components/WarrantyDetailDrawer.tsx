@@ -8,7 +8,6 @@ import {
   ClockCircleOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
-  PlusOutlined,
   SafetyCertificateOutlined,
   StopOutlined,
   ToolOutlined,
@@ -108,7 +107,6 @@ export default function WarrantyDetailDrawer({
             <Button
               intent="outline"
               scale="sm"
-              icon={<PlusOutlined />}
               onClick={() => {
                 onClose();
                 onReportIncident(warranty);

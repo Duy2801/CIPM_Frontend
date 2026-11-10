@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { PlusOutlined } from "@ant-design/icons";
+
 import { Button } from "@/components/ui";
 
 interface FinanceHeaderProps {
@@ -24,7 +24,6 @@ export default function FinanceHeader({ filters = { year: 2026 }, onOpenCreateMo
         {onOpenCreateModal && (
           <Button
             intent="primary"
-            icon={<PlusOutlined />}
             onClick={onOpenCreateModal}
           >
             Lập đề nghị thanh toán

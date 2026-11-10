@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { PlusOutlined } from "@ant-design/icons";
+
 import { Button, cn, Divider, Input, Select } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
 
@@ -103,7 +103,6 @@ export default function SelectWithAddOption({
               htmlType="button"
               intent="primary"
               scale="xs"
-              icon={<PlusOutlined />}
               disabled={!canAdd}
               onClick={add}
               className="text-xs"

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   DownloadOutlined,
-  PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import {
@@ -229,7 +228,6 @@ export default function BidPackageTab({
               <Button
                 intent="primary"
                 scale="sm"
-                icon={<PlusOutlined />}
                 onClick={onCreatePackage}
                 className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold rounded-lg shadow-sm h-8 px-3.5"
               >

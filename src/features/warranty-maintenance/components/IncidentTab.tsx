@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertOutlined, CheckOutlined, PaperClipOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { AlertOutlined, CheckOutlined, PaperClipOutlined, PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Input, Modal, Table, Tag, Text } from "@/components/ui";
 import type { ColumnsType } from "@/components/ui";
 import { FilterChip, SectionIntro } from "@/components/workspace";
@@ -183,7 +183,7 @@ export default function IncidentTab({
         guide="Sự cố quá hạn khắc phục luôn nằm trên cùng. Nghiệm thu khắc phục cần số biên bản để lưu hồ sơ."
         actions={
           permissions.canManageIncidents && (
-            <Button intent="primary" scale="sm" icon={<PlusOutlined />} onClick={onReportIncident}>
+            <Button intent="primary" scale="sm" onClick={onReportIncident}>
               Ghi nhận sự cố mới
             </Button>
           )

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   CheckCircleOutlined,
-  PlusOutlined,
   SearchOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
@@ -159,7 +158,6 @@ export default function ContractLimitTab({
           <Button
             intent="outline"
             scale="compact"
-            icon={<PlusOutlined />}
             disabled={row.remaining <= 0}
             onClick={() => onCreateDisbursementForContract({ projectId: row.projectId, contractId: row.id })}
           >

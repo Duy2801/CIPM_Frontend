@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { App } from "antd";
-import { ArrowLeftOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, DeleteOutlined, DownloadOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import { Button, Card, Drawer, Form, Input, Modal, MoneyInput, Pagination, Radio, Segmented, STANDARD_DRAWER_WIDTH, Table, Tooltip } from "@/components/ui";
 import { readCsv, readXlsx } from "@/utils/xlsx-reader";
 import type { ColumnsType } from "@/components/ui";
@@ -319,7 +319,7 @@ export default function PriceTableTab({ projectId }: { projectId: string }) {
                     if (file) void importFile(file);
                   }}
                 />
-                <Button intent="primary" scale="sm" icon={<PlusOutlined />} onClick={() => openEditor(null)} className="h-8 shrink-0 px-3 text-xs">
+                <Button intent="primary" scale="sm" onClick={() => openEditor(null)} className="h-8 shrink-0 px-3 text-xs">
                   Thêm vào bảng giá
                 </Button>
               </>

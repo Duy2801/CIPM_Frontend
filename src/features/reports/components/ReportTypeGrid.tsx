@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { App } from "antd";
-import { DeleteOutlined, FolderOpenOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
+import { DeleteOutlined, FolderOpenOutlined, RightOutlined } from "@ant-design/icons";
 import { Input, Modal } from "@/components/ui";
 import { formatDate } from "../utils/report-format";
 import type { ReportType } from "../types/report.types";
@@ -91,7 +91,6 @@ export default function ReportTypeGrid({
           onClick={() => setAdding(true)}
           className="flex min-h-[116px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-white/60 text-sm font-semibold text-slate-500 transition-colors hover:border-[#DC2626]/50 hover:text-[#DC2626]"
         >
-          <PlusOutlined />
           Thêm loại báo cáo
         </button>
       </div>

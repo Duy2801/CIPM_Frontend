@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
+import { CloseOutlined } from "@ant-design/icons";
 import { Input, MoneyInput, Select } from "@/components/ui";
 import { SelectWithAddOption } from "@/components/workspace";
 import { formatMoneyString, parseMoney } from "@/utils/format-money";
@@ -234,7 +234,6 @@ export default function CompensationItemsEditor({
         className="w-full !border-[#DC2626] [&_.ant-select-selector]:!border-[#DC2626]"
         placeholder={
           <span>
-            <PlusOutlined className="mr-1.5" />
             Chọn nhóm để thêm dòng: đất đai, cây trồng, vật kiến trúc, hỗ trợ…
           </span>
         }

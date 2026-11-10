@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HistoryOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { HistoryOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { Button, LARGE_MODAL_CONTAINER_STYLE, LARGE_MODAL_PROPS, Modal, Title } from "@/components/ui";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
 import RoleEditorView from "./RoleEditorView";
@@ -57,7 +57,6 @@ export default function RolePermissionMatrixModal({ onClose }: { onClose: () => 
             {canManage && listTab === "roles" && (
               <Button
                 intent="primary"
-                icon={<PlusOutlined />}
                 className="h-9 px-4 text-sm font-semibold rounded-lg"
                 onClick={() => setView({ mode: "create" })}
               >

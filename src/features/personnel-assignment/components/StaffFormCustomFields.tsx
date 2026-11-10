@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
+import { CloseOutlined } from "@ant-design/icons";
 import { Button, Col, Form, Input, Row, Text, toast } from "@/components/ui";
 
 /** Trường thông tin bổ sung riêng của cán bộ đang thêm (nhãn = khóa lưu trong customFields) */
@@ -52,7 +52,6 @@ export default function StaffFormCustomFields({ fields, onAdd, onRemove }: Staff
         <Button
           type="dashed"
           size="small"
-          icon={<PlusOutlined />}
           onClick={() => (isAddingField ? closeAdding() : setIsAddingField(true))}
           className="text-xs font-medium text-blue-600 hover:text-blue-700"
         >
@@ -77,7 +76,7 @@ export default function StaffFormCustomFields({ fields, onAdd, onRemove }: Staff
               }}
               className="min-w-[240px] flex-1"
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={submitNewField}>
+            <Button type="primary" onClick={submitNewField}>
               Thêm
             </Button>
             <Button onClick={closeAdding}>Hủy</Button>

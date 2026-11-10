@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
   DownloadOutlined,
   FileSearchOutlined,
-  PlusOutlined,
   RightOutlined,
   SearchOutlined,
   WarningOutlined,
@@ -237,7 +236,6 @@ export default function DisbursementTab({
                 <Button
                   intent="primary"
                   scale="sm"
-                  icon={<PlusOutlined />}
                   onClick={onCreateDisbursement}
                   className="bg-[#DC2626] hover:bg-[#006664] text-white font-semibold shadow-xs"
                 >

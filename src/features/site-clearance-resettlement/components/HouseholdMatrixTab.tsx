@@ -8,7 +8,6 @@ import {
   ExclamationOutlined,
   MinusOutlined,
   PaperClipOutlined,
-  PlusOutlined,
   SearchOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
@@ -178,7 +177,6 @@ export default function HouseholdMatrixTab({
             <Button
               intent="primary"
               scale="sm"
-              icon={<PlusOutlined />}
               onClick={() => setCreateDrawerOpen(true)}
               className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white text-xs font-semibold rounded-md shadow-2xs h-8 px-3"
             >

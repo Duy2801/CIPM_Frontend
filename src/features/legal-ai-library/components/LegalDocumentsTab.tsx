@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PlusOutlined } from "@ant-design/icons";
+
 import { Button, Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
 import { useCanManageLegalDocuments } from "../hooks/useLegalAccess";
 import { useLegalDocuments } from "../hooks/useLegalQueries";
@@ -68,7 +68,6 @@ export default function LegalDocumentsTab() {
           {canManage && (
             <Button
               intent="primary"
-              icon={<PlusOutlined />}
               onClick={() => setCreateOpen(true)}
               className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-9 shrink-0 text-sm font-semibold shadow-2xs"
             >

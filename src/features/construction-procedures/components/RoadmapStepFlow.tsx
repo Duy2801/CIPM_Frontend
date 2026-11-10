@@ -245,7 +245,6 @@ export default function RoadmapStepFlow({
               }`}
               style={{ left: gx - (gap - 12) / 2, top: centerY - h / 2, width: gap - 12, height: h }}
             >
-              <PlusOutlined className="text-[12px]" />
               <span className="px-1 leading-tight">Thêm vào đây</span>
             </div>
           ) : null;
@@ -331,7 +330,7 @@ export default function RoadmapStepFlow({
             title="Kéo một thẻ bước vào đây để tách thành bước riêng, làm sau các bước trước"
           >
             <span className="flex items-center gap-1 text-[11.5px] font-semibold">
-              <PlusOutlined className="text-[10px]" /> Tạo khung mới
+              Tạo khung mới
             </span>
             <span className="text-[10px] opacity-80">Kéo thẻ vào đây</span>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { SaveOutlined } from "@ant-design/icons";
 import { App } from "antd";
 import { Button, Input, Title, toast } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
@@ -194,7 +194,7 @@ export default function RoleEditorView({ roleCode, onBack }: RoleEditorViewProps
         {!readOnly && (
           <Button
             intent="primary"
-            icon={isCreating ? <PlusOutlined /> : <SaveOutlined />}
+            icon={isCreating ? undefined : <SaveOutlined />}
             disabled={!canSubmit || (!isCreating && !isDirty)}
             className="h-8.5 text-xs font-semibold bg-[#DC2626] hover:bg-red-700 text-white rounded-lg shadow-xs disabled:opacity-50"
             onClick={handleSubmit}

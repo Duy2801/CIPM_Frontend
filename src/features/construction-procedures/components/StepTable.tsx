@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FolderAddOutlined, PlusOutlined } from "@ant-design/icons";
+import { FolderAddOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui";
 import {
   ACTION_COL,
@@ -110,7 +110,6 @@ export default function StepTable({
                 <Button
                   intent="outline"
                   scale="compact"
-                  icon={<PlusOutlined />}
                   onClick={adding.toggleMain}
                   className="font-semibold h-8.5 px-4 text-slate-700 hover:text-[#DC2626] hover:border-[#DC2626]"
                 >
@@ -166,7 +165,6 @@ export default function StepTable({
           <Button
             type="dashed"
             block
-            icon={<PlusOutlined className="text-xs" />}
             disabled={!!addLockedReason}
             onClick={adding.toggleMain}
             className={
