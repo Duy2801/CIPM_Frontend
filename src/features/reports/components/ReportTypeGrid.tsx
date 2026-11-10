@@ -23,19 +23,17 @@ export default function ReportTypeGrid({
 }: {
   summaries: ReportTypeSummary[];
   onOpen: (typeId: string) => void;
-  onAddType: (name: string, description?: string) => void;
+  onAddType: (name: string) => void;
   onRemoveType: (type: ReportType) => void;
 }) {
   const { modal } = App.useApp();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const duplicate = summaries.some((s) => s.type.name.trim().toLowerCase() === name.trim().toLowerCase());
 
   const closeAdd = () => {
     setAdding(false);
     setName("");
-    setDescription("");
   };
 
   return (
@@ -57,8 +55,7 @@ export default function ReportTypeGrid({
               <h3 className="m-0 truncate text-[15px] font-bold text-slate-900" title={type.name}>
                 {type.name}
               </h3>
-              {type.description && <p className="m-0 mt-1 line-clamp-2 text-xs text-slate-500">{type.description}</p>}
-              <div className="mt-3 flex items-center gap-2 text-xs">
+              <div className="mt-2 flex items-center gap-2 text-xs">
                 <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-semibold text-slate-700">{count} báo cáo</span>
                 {lastAt && <span className="text-slate-400">Cập nhật {formatDate(lastAt)}</span>}
               </div>
@@ -109,7 +106,7 @@ export default function ReportTypeGrid({
         onCancel={closeAdd}
         okButtonProps={{ disabled: !name.trim() || duplicate }}
         onOk={() => {
-          onAddType(name, description);
+          onAddType(name);
           closeAdd();
         }}
       >
@@ -126,10 +123,6 @@ export default function ReportTypeGrid({
               status={duplicate ? "error" : undefined}
             />
             {duplicate && <p className="m-0 mt-1 text-[11px] text-rose-600">Loại báo cáo này đã có.</p>}
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">Mô tả</label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Không bắt buộc" />
           </div>
         </div>
       </Modal>

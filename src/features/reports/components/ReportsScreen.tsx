@@ -127,8 +127,8 @@ export default function ReportsScreen() {
         <ReportTypeGrid
           summaries={loading ? types.map((type) => ({ type, count: 0 })) : summaries}
           onOpen={(typeId) => setView({ level: "list", typeId })}
-          onAddType={(name, description) => {
-            const type = addReportType(name, description);
+          onAddType={(name) => {
+            const type = addReportType(name);
             setTypes(loadReportTypes());
             message.success(`Đã thêm loại "${type.name}".`);
           }}
