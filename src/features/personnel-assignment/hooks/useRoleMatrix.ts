@@ -94,7 +94,10 @@ export function useSortedMatrixRoles() {
 export function useRoleMatrixActions() {
   const queryClient = useQueryClient();
   const current = () => queryClient.getQueryData<RoleMatrixState>(roleMatrixKey) ?? loadLocalRoleMatrix();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: roleMatrixKey });
+  const refresh = () => {
+    window.dispatchEvent(new CustomEvent("cipm-permissions-updated"));
+    return queryClient.invalidateQueries({ queryKey: roleMatrixKey });
+  };
   /** Lỗi từ backend: báo lỗi, trả về giá trị thất bại */
   const failWith = <T,>(failed: T) => (error: unknown) => {
     toast.error(error instanceof Error ? error.message : "Không thể lưu chức danh, vui lòng thử lại.");

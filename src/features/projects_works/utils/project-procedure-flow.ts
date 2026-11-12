@@ -1,10 +1,3 @@
-/**
- * project-procedure-flow.ts — Luồng xử lý quy trình của dự án (cùng quy tắc với phân hệ Quy trình dự án)
- *
- * Cấp bước:      Tổ trưởng giao việc → Người thực hiện làm → Nộp kết quả (kèm hồ sơ, Quy tắc 10)
- *                → Tổ trưởng duyệt (Hoàn thành) hoặc Từ chối (kèm lý do) → nộp lại.
- * Cấp giai đoạn: Khi mọi bước của giai đoạn đã xong → Ban Giám đốc nghiệm thu hoặc yêu cầu rà soát.
- */
 
 import type {
   ProcedureStep,
@@ -21,7 +14,6 @@ export type StepFlowKey =
   | "AWAITING_APPROVAL"
   | "COMPLETED";
 
-/** Vị trí của một bước trong luồng xử lý — đã giao người thực hiện là đang xử lý, không có bước "bắt đầu" riêng */
 export function getStepFlow(step: ProcedureStep): StepFlowKey {
   if (!step.isEnabled || step.status === "DISABLED") return "DISABLED";
   if (step.status === "SKIPPED") return "SKIPPED";
@@ -31,7 +23,6 @@ export function getStepFlow(step: ProcedureStep): StepFlowKey {
   return step.assignedTo || step.status === "IN_PROGRESS" ? "IN_PROGRESS" : "UNASSIGNED";
 }
 
-/** Bước chưa bắt đầu đã đủ thông tin (người thực hiện, ngày bắt đầu và kết thúc kế hoạch) thì tự chuyển sang thực hiện */
 export function isReadyToStart(step: ProcedureStep): boolean {
   return (
     step.status === "NOT_STARTED" &&
@@ -45,9 +36,7 @@ export type StageState = "IN_PROGRESS" | "AWAITING_DIRECTOR" | "APPROVED" | "RET
 export interface StageSummary {
   code: string;
   title: string;
-  /** Khóa lưu quyết định của BGĐ: tách theo phòng ban vì mã giai đoạn (I, II...) trùng giữa các quy trình */
   approvalKey: string;
-  /** Các bước việc của giai đoạn (bỏ mục lớn đã có bước con), theo thứ tự quy trình */
   steps: ProcedureStep[];
   total: number;
   done: number;
@@ -59,10 +48,6 @@ export interface StageSummary {
 
 export const stageApprovalKey = (department: string, groupCode: string) => `${department}::${groupCode}`;
 
-/**
- * Gom các bước của một phòng ban theo giai đoạn.
- * Bước tắt (không áp dụng) vẫn liệt kê nhưng không tính vào tiến độ giai đoạn.
- */
 export function groupStepsByStage(
   department: string,
   deptSteps: ProcedureStep[],
@@ -103,7 +88,6 @@ export function groupStepsByStage(
   });
 }
 
-/** Các phòng ban của dự án đang áp dụng quy trình (có bước) */
 export function getAppliedDepartments(
   departmentStatuses: Record<string, { procedureId?: string }> = {},
   steps: ProcedureStep[],
@@ -111,7 +95,6 @@ export function getAppliedDepartments(
   return Object.keys(departmentStatuses).filter((dept) => steps.some((s) => s.department === dept));
 }
 
-/** Phần trăm hoàn thành của dự án theo quy trình: số bước việc đã xong / tổng số bước việc đang áp dụng */
 export function getProcedureProgress(
   departments: string[],
   steps: ProcedureStep[],

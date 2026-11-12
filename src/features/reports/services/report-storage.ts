@@ -1,4 +1,4 @@
-import type { ReportFile } from "../types/report.types";
+import type { StoredReportFile } from "../types/report.types";
 
 /**
  * Bản mock lưu tệp báo cáo trong IndexedDB của trình duyệt
@@ -32,12 +32,14 @@ async function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) 
 }
 
 export const reportStorage = {
-  /** Mới nhập nằm trên cùng */
-  async list(): Promise<ReportFile[]> {
-    const all = await run<ReportFile[]>("readonly", (s) => s.getAll());
+  async list(): Promise<StoredReportFile[]> {
+    const all = await run<StoredReportFile[]>("readonly", (s) => s.getAll());
     return all.sort((a, b) => b.uploadedAt - a.uploadedAt);
   },
-  async save(file: ReportFile): Promise<void> {
+  async get(id: string): Promise<StoredReportFile | undefined> {
+    return run<StoredReportFile | undefined>("readonly", (s) => s.get(id));
+  },
+  async save(file: StoredReportFile): Promise<void> {
     await run("readwrite", (s) => s.put(file));
   },
   async remove(id: string): Promise<void> {

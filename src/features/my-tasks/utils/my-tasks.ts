@@ -21,6 +21,7 @@ export interface MyTask {
   projectCode: string;
   projectName: string;
   department: string;
+  reviewDepartment: string;
   procedureName: string;
   step: ProcedureStep;
   flow: StepFlowKey;
@@ -30,9 +31,16 @@ export interface MyTask {
   reached: boolean;
 }
 
-export type WorkerTab = "accept" | "todo" | "returned" | "submitted" | "done" | "incident";
-export type ReviewerTab = "review" | "approved" | "rejected";
+type WorkerTab = "accept" | "todo" | "returned" | "submitted" | "done" | "incident";
+type ReviewerTab = "review" | "approved" | "rejected";
 export type MyTaskTab = WorkerTab | ReviewerTab;
+
+export interface MyTaskItem {
+  kind: MyTaskTab;
+  task: MyTask;
+  readonly?: boolean;
+  proxy?: boolean;
+}
 
 export interface TaskIdentity {
   id?: string;
@@ -43,7 +51,7 @@ const normalize = (value?: string) => (value ?? "").trim().toLowerCase();
 
 /** Bước được giao cho người này (theo mã cán bộ hoặc họ tên) */
 export function isMine(step: ProcedureStep, me: TaskIdentity): boolean {
-  if (me.id && step.assignedToId && step.assignedToId === me.id) return true;
+  if (me.id && step.assignedToId) return step.assignedToId === me.id;
   return Boolean(step.assignedTo && normalize(step.assignedTo) === normalize(me.name));
 }
 
@@ -77,7 +85,11 @@ export function reachedStepIds(steps: ProcedureStep[]): Set<string> {
 }
 
 /** Mọi bước việc (bỏ mục lớn có bước con, bỏ bước không áp dụng) của các dự án, kèm thông tin dự án */
-export function collectTasks(projects: ProjectProcedureData[], today: string): MyTask[] {
+export function collectTasks(
+  projects: ProjectProcedureData[],
+  today: string,
+  reachedOverride?: ReadonlySet<string>,
+): MyTask[] {
   return projects.flatMap((project) => {
     // Mỗi phòng ban một quy trình riêng: tính lượt trong từng phòng ban
     const reached = new Set<string>();
@@ -95,18 +107,19 @@ export function collectTasks(projects: ProjectProcedureData[], today: string): M
           projectCode: project.projectCode,
           projectName: project.projectName,
           department,
+          reviewDepartment: project.departmentStatuses?.[department]?.department ?? department,
           procedureName: project.departmentStatuses?.[department]?.procedureName ?? department,
           step,
           flow,
           overdue: !finished && Boolean(step.endDatePlanned && step.endDatePlanned < today),
-          reached: reached.has(step.id),
+          reached: (reachedOverride ?? reached).has(step.id),
         };
       });
   });
 }
 
 /** Đã bắt tay vào làm (ghi chú, hồ sơ, từng nộp / bị từ chối) thì coi như đã tiếp nhận — dữ liệu cũ chưa có `acceptedAt` */
-const hasStartedWork = (step: ProcedureStep) =>
+export const hasStartedWork = (step: ProcedureStep) =>
   Boolean(
     step.acceptedAt ||
       // Việc từng bị trả về rồi giao lại: người mới phải tiếp nhận, dù trên bước đã có ghi chú / hồ sơ của người trước
@@ -165,7 +178,7 @@ export function groupTasks(
     const working = task.flow === "IN_PROGRESS" || task.flow === "RETURNED";
     const mine = isMine(task.step, me);
     // Sự cố: người thực hiện và Tổ trưởng của phòng ban đều thấy, không nằm ở cột đang làm nữa
-    if (working && hasIncident(task.step) && (mine || canReview(task.department))) {
+    if (working && hasIncident(task.step) && (mine || canReview(task.reviewDepartment))) {
       groups.incident.push(task);
       continue;
     }
@@ -177,7 +190,7 @@ export function groupTasks(
       else if (task.flow === "AWAITING_APPROVAL") groups.submitted.push(task);
       else if (task.flow === "COMPLETED") groups.done.push(task);
     }
-    if (task.flow === "AWAITING_APPROVAL" && canReview(task.department)) groups.review.push(task);
+    if (task.flow === "AWAITING_APPROVAL" && canReview(task.reviewDepartment)) groups.review.push(task);
     if (task.step.submissionStatus === "APPROVED" && isMe(task.step.approvedBy, me)) groups.approved.push(task);
     if (task.flow === "RETURNED" && isMe(rejectedByName(task, historyOf.get(task.projectId) ?? []), me)) {
       groups.rejected.push(task);
@@ -215,6 +228,9 @@ export interface TaskActor {
 }
 
 type StepLog = Pick<ProcedureHistoryLog, "action" | "actionLabel" | "details"> & Partial<ProcedureHistoryLog>;
+
+const onBehalf = (step: ProcedureStep, actor: TaskActor) =>
+  step.assignedTo && normalize(step.assignedTo) !== normalize(actor.name) ? ` (làm hộ ${step.assignedTo})` : "";
 
 function patchStep(
   data: ProjectProcedureData,
@@ -337,7 +353,7 @@ export function submitTask(
       action: "START_STEP",
       actionLabel: step.submissionStatus === "REJECTED" ? "Nộp lại sau khi bị từ chối" : "Nộp kết quả chờ duyệt",
       documentReference: input.documents?.[0]?.fileName,
-      details: `${actor.name} nộp kết quả bước [${step.code}] ${step.name}, chờ Tổ trưởng duyệt.`,
+      details: `${actor.name}${onBehalf(step, actor)} nộp kết quả bước [${step.code}] ${step.name}, chờ Tổ trưởng duyệt.`,
     }),
     actor,
     now,
@@ -424,7 +440,7 @@ export function acceptTask(data: ProjectProcedureData, stepId: string, actor: Ta
     (step) => ({
       action: "START_STEP",
       actionLabel: "Tiếp nhận việc",
-      details: `${actor.name} tiếp nhận bước [${step.code}] ${step.name}.`,
+      details: `${actor.name}${onBehalf(step, actor)} tiếp nhận bước [${step.code}] ${step.name}.`,
     }),
     actor,
     now,
@@ -479,52 +495,53 @@ export function resolveTaskIncident(data: ProjectProcedureData, stepId: string, 
   );
 }
 
-export type HandbackMode = "decline" | "return";
+const handbackStamp = (actor: TaskActor, reason: string, now: Date) => ({
+  handbackReason: reason || undefined,
+  handbackBy: actor.name,
+  handbackAt: now.toISOString().slice(0, 10),
+});
 
-/**
- * Người thực hiện trả việc về Tổ trưởng để giao người khác:
- * - Từ chối: chưa tiếp nhận, không nhận việc này.
- * - Hoàn trả: đã tiếp nhận / đang làm nhưng không làm tiếp được; ghi chú, hồ sơ đã có giữ lại cho người sau.
- * Bước thành chưa có người thực hiện.
- */
-export function handBackTask(
-  data: ProjectProcedureData,
-  stepId: string,
-  mode: HandbackMode,
-  reason: string,
-  actor: TaskActor,
-  now = new Date(),
-) {
-  const label = mode === "decline" ? "Từ chối nhận việc" : "Hoàn trả việc";
+export function declineTask(data: ProjectProcedureData, stepId: string, reason: string, actor: TaskActor, now = new Date()) {
   return patchStep(
     data,
     stepId,
-    // Từ chối (chưa nhận): trả việc về Tổ trưởng để giao người khác.
-    // Hoàn trả (đã nộp, đang chờ duyệt): rút kết quả đã nộp, việc quay lại "Đang xử lý" để làm tiếp.
     () => ({
-      ...(mode === "decline"
-        ? {
-            status: "NOT_STARTED" as const,
-            assignedTo: undefined,
-            assignedToId: undefined,
-            acceptedBy: undefined,
-            acceptedAt: undefined,
-          }
-        : { status: "IN_PROGRESS" as const, submissionStatus: undefined, submittedBy: undefined, submittedAt: undefined }),
-      handbackType: mode === "decline" ? "DECLINED" : "RETURNED",
-      handbackReason: reason || undefined,
-      handbackBy: actor.name,
-      handbackAt: now.toISOString().slice(0, 10),
+      status: "NOT_STARTED" as const,
+      assignedTo: undefined,
+      assignedToId: undefined,
+      acceptedBy: undefined,
+      acceptedAt: undefined,
+      handbackType: "DECLINED" as const,
+      ...handbackStamp(actor, reason, now),
     }),
     (step) => ({
       action: "START_STEP",
-      actionLabel: label,
+      actionLabel: "Từ chối nhận việc",
       reason: reason || undefined,
-      // Hoàn trả có thể không ghi lý do
-      details:
-        mode === "decline"
-          ? `${actor.name} từ chối nhận bước [${step.code}] ${step.name}, trả về Tổ trưởng${reason ? `: ${reason}` : "."}`
-          : `${actor.name} rút kết quả đã nộp của bước [${step.code}] ${step.name}, quay lại đang xử lý${reason ? `: ${reason}` : "."}`,
+      details: `${actor.name} từ chối nhận bước [${step.code}] ${step.name}, trả về Tổ trưởng${reason ? `: ${reason}` : "."}`,
+    }),
+    actor,
+    now,
+  );
+}
+
+export function giveBackTask(data: ProjectProcedureData, stepId: string, reason: string, actor: TaskActor, now = new Date()) {
+  return patchStep(
+    data,
+    stepId,
+    () => ({
+      status: "IN_PROGRESS" as const,
+      submissionStatus: undefined,
+      submittedBy: undefined,
+      submittedAt: undefined,
+      handbackType: "RETURNED" as const,
+      ...handbackStamp(actor, reason, now),
+    }),
+    (step) => ({
+      action: "START_STEP",
+      actionLabel: "Hoàn trả việc",
+      reason: reason || undefined,
+      details: `${actor.name} rút kết quả đã nộp của bước [${step.code}] ${step.name}, quay lại đang xử lý${reason ? `: ${reason}` : "."}`,
     }),
     actor,
     now,

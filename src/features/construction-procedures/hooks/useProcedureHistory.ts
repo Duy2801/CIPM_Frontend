@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useProjectStore } from "@/stores/project.store";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import type { ProjectProcedureData, StepChange } from "../types/procedure.types";
 import { buildAutoSaveLog, loadLibraryHistory, saveLibraryHistory } from "../utils/procedure-library-history";
 import { loadProcedureProjects } from "../utils/project-procedure-storage";
@@ -9,7 +10,7 @@ import { loadProcedureProjects } from "../utils/project-procedure-storage";
 export function useProcedureHistory(actor: { name: string; role: string }) {
   const sharedProjects = useProjectStore((s) => s.projects);
   const [libraryHistory, setLibraryHistory] = useState(loadLibraryHistory);
-  const [projectProcedures] = useState(loadProcedureProjects);
+  const [projectProcedures] = useState(() => (hasBackendSession() ? [] : loadProcedureProjects()));
 
   const historyProjects = useMemo<ProjectProcedureData[]>(() => {
     const projects = projectProcedures.map((p) => {

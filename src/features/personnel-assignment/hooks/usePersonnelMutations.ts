@@ -43,6 +43,7 @@ function usePersonnelAction<TVars, TResult>(
     try {
       const result = await mutation.mutateAsync(vars);
       await queryClient.invalidateQueries({ queryKey: personnelKeys.all });
+      window.dispatchEvent(new CustomEvent("cipm-permissions-updated"));
       const text = options.successText(vars, result);
       if (text) toast.success(text);
       const entry = options.log?.(vars, result);

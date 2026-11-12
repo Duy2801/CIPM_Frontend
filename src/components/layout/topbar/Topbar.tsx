@@ -2,7 +2,6 @@
 
 import {
   BellOutlined,
-  CalendarOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import { usePathname } from "next/navigation";
@@ -12,14 +11,12 @@ import {
   ConfigProvider,
   Divider,
   Header,
-  Select,
   Text,
   Tooltip,
   toast,
 } from "@/components/ui";
 import { antdLightTheme, themeClassNames } from "@/components/theme";
 import { useAppRefreshStore } from "@/stores/app-refresh.store";
-import { useFiscalYearStore } from "@/stores/fiscal-year.store";
 import { getTopbarPageTitle } from "./topbar-page-title";
 
 interface TopbarProps {
@@ -30,7 +27,6 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
   const pathname = usePathname();
   const pageTitle = getTopbarPageTitle(pathname);
   const { isRefreshing, triggerRefresh, setRefreshing } = useAppRefreshStore();
-  const { selectedYear, setSelectedYear, availableYears } = useFiscalYearStore();
 
   const handleRefresh = () => {
     triggerRefresh();
@@ -64,24 +60,6 @@ export default function Topbar({ sidebarCollapsed }: TopbarProps) {
 
           {/* Right section: Fiscal Year, Reload button, Notifications, Divider */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 h-8 rounded-lg border border-slate-200/90 bg-slate-50 pl-2.5 pr-1 shadow-2xs hover:border-red-400 transition-colors">
-              <CalendarOutlined className="text-slate-500 text-xs" />
-              <Text className="!text-[12px] !text-slate-700 font-semibold whitespace-nowrap">Niên độ:</Text>
-              <Select
-                value={selectedYear}
-                onChange={setSelectedYear}
-                intent="subtle"
-                scale="compact"
-                className="!w-[76px] [&_.ant-select-selector]:!px-1 [&_.ant-select-selection-item]:!text-[12px] [&_.ant-select-selection-item]:!font-bold [&_.ant-select-selection-item]:!text-slate-900"
-                classNames={{
-                  popup: {
-                    root: "[&_.ant-select-item-option-selected]:!bg-red-50 [&_.ant-select-item-option-selected]:!text-red-700 [&_.ant-select-item-option-selected]:!font-bold [&_.ant-select-item]:!text-xs [&_.ant-select-item]:!rounded-md",
-                  },
-                }}
-                options={availableYears.map((yr) => ({ value: yr, label: yr }))}
-              />
-            </div>
-
             {/* Nút Load / Làm mới thay thế nút Xuất PDF (BRD 4.1.3: Tự làm mới mỗi 15 phút hoặc khi nhấn nút) */}
             <Tooltip title="Làm mới dữ liệu (Hệ thống tự động cập nhật mỗi 15 phút)">
               <Button

@@ -1,169 +1,74 @@
 "use client";
 
-import { useRef, useState, type DragEvent } from "react";
-import { App } from "antd";
-import { ArrowLeftOutlined, DownloadOutlined, HistoryOutlined, InboxOutlined, UploadOutlined } from "@ant-design/icons";
-import { Button, Card } from "@/components/ui";
-import { cn } from "@/utils/cn";
-import { downloadBlob } from "@/utils/xlsx-writer";
-import type { ReportFile, ReportType } from "../types/report.types";
-import { REPORT_ACCEPT, isReportFile } from "../utils/report-format";
+import { useRef, useState } from "react";
+import { InboxOutlined } from "@ant-design/icons";
+import { useReportActions } from "../hooks/useReportActions";
+import { useReportOf, useReportType } from "../hooks/useReportQueries";
+import { REPORT_ACCEPT } from "../utils/report-format";
+import ReportDetailHeader from "./ReportDetailHeader";
+import ReportEmptyImport from "./ReportEmptyImport";
 import ReportHistoryTab from "./ReportHistoryTab";
 import WorkbookView from "./WorkbookView";
 
-/**
- * Báo cáo của một loại: mở thẳng bản nhập mới nhất.
- * Nhập Excel = thêm bản mới (thành bản đang xem) · Xuất Excel = tải tệp gốc.
- */
-export default function ReportDetail({
-  type,
-  reports,
-  currentId,
-  importing,
-  onBack,
-  onImport,
-  onExport,
-}: {
-  type: ReportType;
-  /** Các bản nhập của loại này, mới nhất trước */
-  reports: ReportFile[];
-  currentId?: string;
-  importing: boolean;
+interface ReportDetailProps {
+  typeId: string;
   onBack: () => void;
-  onImport: (file: File) => void;
-  /** Ghi lịch sử khi xuất Excel */
-  onExport?: (report: ReportFile) => void;
-}) {
-  const { message } = App.useApp();
+}
+
+export default function ReportDetail({ typeId, onBack }: ReportDetailProps) {
+  const type = useReportType(typeId);
+  const report = useReportOf(typeId);
+  const { importReport } = useReportActions();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  // Đang xem dữ liệu hay lịch sử thao tác của báo cáo này
   const [showHistory, setShowHistory] = useState(false);
-  const report = reports.find((r) => r.id === currentId) ?? reports[0];
-
-  const pick = (file?: File) => {
-    if (!file) return;
-    if (!isReportFile(file.name)) {
-      message.warning("Chỉ nhận tệp Excel (.xlsx, .xlsm, .xls, .xlsb) hoặc .csv.");
-      return;
-    }
-    onImport(file);
-  };
-
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    if (!showHistory) pick(e.dataTransfer.files[0]);
-  };
+  const pickFile = () => fileRef.current?.click();
 
   return (
     <div
       className="relative flex flex-col gap-3"
       onDragOver={(e) => {
         e.preventDefault();
-        // Đang xem lịch sử thì không nhận kéo thả tệp
         if (!showHistory) setDragging(true);
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
       }}
-      onDrop={onDrop}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        if (!showHistory) void importReport(typeId, e.dataTransfer.files[0]);
+      }}
     >
-      {/* Đầu trang: quay lại · tên báo cáo · bản nhập · nhập / xuất */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          intent="outline"
-          scale="compact"
-          icon={<ArrowLeftOutlined />}
-          aria-label="Quay lại loại báo cáo"
-          title="Quay lại"
-          // Đang xem lịch sử thì quay về dữ liệu báo cáo, không thì về danh sách loại báo cáo
-          onClick={() => (showHistory ? setShowHistory(false) : onBack())}
-          className="h-9! w-9! shrink-0 p-0!"
-        />
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 truncate text-base font-bold text-slate-900" title={report?.name}>
-            {showHistory ? "Lịch sử · " : ""}
-            {type.name}
-          </h1>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {/* Đang xem lịch sử: ẩn các nút thao tác, chỉ còn nút ← để quay lại dữ liệu */}
-          {!showHistory && (
-            <>
-              <Button
-                intent="outline"
-                scale="sm"
-                icon={<HistoryOutlined />}
-                onClick={() => setShowHistory(true)}
-                className="h-9 px-4 text-xs font-semibold"
-              >
-                Lịch sử
-              </Button>
-              <Button
-                intent="outline"
-                scale="sm"
-                icon={<UploadOutlined />}
-                loading={importing}
-                onClick={() => fileRef.current?.click()}
-                className="h-9 px-4 text-xs font-semibold"
-              >
-                Nhập Excel
-              </Button>
-            </>
-          )}
-          {report && !showHistory && (
-            <Button
-              intent="primary"
-              scale="sm"
-              icon={<DownloadOutlined />}
-              onClick={() => {
-                downloadBlob(report.blob, report.name);
-                onExport?.(report);
-              }}
-              className="h-9 !border-[#DC2626] !bg-[#DC2626] px-4 text-xs font-semibold !text-white hover:!bg-[#B91C1C]"
-            >
-              Xuất Excel
-            </Button>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept={REPORT_ACCEPT}
-            className="hidden"
-            onChange={(e) => {
-              pick(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-        </div>
-      </div>
+      <ReportDetailHeader
+        typeId={typeId}
+        showHistory={showHistory}
+        onBack={() => (showHistory ? setShowHistory(false) : onBack())}
+        onShowHistory={() => setShowHistory(true)}
+        onPickFile={pickFile}
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept={REPORT_ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          void importReport(typeId, e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
 
       {showHistory ? (
-        <ReportHistoryTab typeId={type.id} title="" />
+        <ReportHistoryTab typeId={typeId} title="" />
       ) : report ? (
-        <Card surface="flat" padding="none" rounded="lg" className="overflow-hidden border-slate-200 shadow-sm shadow-slate-100">
-          <WorkbookView report={report} />
-        </Card>
+        <WorkbookView typeId={typeId} />
       ) : (
-        // Loại chưa có báo cáo: ô nhập lớn
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="flex min-h-[320px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white text-slate-500 hover:border-[#DC2626]/50 hover:text-[#DC2626]"
-        >
-          <InboxOutlined className="text-4xl text-slate-300" />
-          <span className="text-sm font-semibold">Chưa có báo cáo. Nhấn hoặc kéo thả tệp Excel vào đây.</span>
-        </button>
+        <ReportEmptyImport onPickFile={pickFile} />
       )}
 
       {dragging && (
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#DC2626]/50 bg-white/85 text-sm font-semibold text-[#DC2626]",
-          )}
-        >
-          <InboxOutlined className="mr-2 text-2xl" /> Thả tệp Excel vào đây để nhập vào “{type.name}”
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#DC2626]/50 bg-white/85 text-sm font-semibold text-[#DC2626]">
+          <InboxOutlined className="mr-2 text-2xl" /> Thả tệp Excel vào đây để nhập vào “{type?.name}”
         </div>
       )}
     </div>

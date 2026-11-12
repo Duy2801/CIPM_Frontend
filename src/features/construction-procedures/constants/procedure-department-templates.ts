@@ -815,25 +815,10 @@ interface ProcedureUser {
 
 export function isLeadOfDepartment(user: ProcedureUser | null | undefined, deptName?: string): boolean {
   if (!user) return false;
-  if (user.roleCode === "ADMIN" || user.roleCode === "DEPUTY_DIRECTOR") return false;
-
-  const uName = (user.displayName || user.name || "").trim().toLowerCase();
-  const uRole = (user.roleCode || "").toUpperCase();
-
-  const isLeadUser =
-    Boolean(user.isLead) ||
-    uRole.includes("LEAD") ||
-    uName.includes("minh") ||
-    uName.includes("phước") ||
-    uName.includes("hùng") ||
-    uName.includes("bảo") ||
-    uName.includes("phương") ||
-    uName.includes("ngân");
-
-  if (!isLeadUser) return false;
-
+  const roleCode = (user.roleCode || user.role || "").toUpperCase();
+  if (roleCode === "ADMIN" || roleCode === "DEPUTY_DIRECTOR") return false;
+  if (!user.isLead && !roleCode.endsWith("_LEAD")) return false;
   if (!deptName) return true;
-
   return isSameDepartment(user.department, deptName);
 }
 

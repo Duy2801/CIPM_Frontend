@@ -1,14 +1,12 @@
 import type { ReportType } from "../types/report.types";
 
-/** Loại báo cáo mặc định; loại tự thêm lưu trên máy (bản mock) */
-/** Mã loại cho báo cáo cũ chưa gắn loại (không còn hiện trong danh sách) */
 export const OTHER_REPORT_TYPE_ID = "khac";
 
 export const DEFAULT_REPORT_TYPES: ReportType[] = [
-  { id: "giam-sat", name: "Báo cáo giám sát – kỹ thuật", description: "Tình hình thi công, khối lượng, chất lượng công trình" },
-  { id: "giai-ngan", name: "Báo cáo giải ngân", description: "Kế hoạch vốn, giải ngân và dự kiến giải ngân" },
-  { id: "tien-do", name: "Báo cáo tiến độ dự án", description: "Tiến độ thực hiện các dự án, công trình" },
-  { id: "gpmb", name: "Báo cáo bồi thường, GPMB", description: "Phương án bồi thường, hỗ trợ, tái định cư" },
+  { id: "giam-sat", name: "Báo cáo giám sát – kỹ thuật" },
+  { id: "giai-ngan", name: "Báo cáo giải ngân" },
+  { id: "tien-do", name: "Báo cáo tiến độ dự án" },
+  { id: "gpmb", name: "Báo cáo bồi thường, GPMB" },
 ];
 
 const STORAGE_KEY = "cipm_report_types_v1";
@@ -36,8 +34,8 @@ export function loadReportTypes(): ReportType[] {
   return [...DEFAULT_REPORT_TYPES, ...loadCustomTypes()];
 }
 
-export function addReportType(name: string, description?: string): ReportType {
-  const type: ReportType = { id: `RT-${Date.now()}`, name: name.trim(), description: description?.trim() || undefined, custom: true };
+export function addReportType(name: string): ReportType {
+  const type: ReportType = { id: `RT-${Date.now()}`, name: name.trim(), custom: true };
   saveCustomTypes([...loadCustomTypes(), type]);
   return type;
 }

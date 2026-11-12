@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionFeedback } from "@/components/workspace";
 import { useAuth } from "@/features/auth";
 import { todayIso } from "@/utils/date";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import { mockWarrantyRepository } from "../services/mock-warranty.repository";
 import type { FixInput, IncidentInput, WarrantyCreateInput, WarrantyDataset } from "../types/warranty.types";
 import { getWarrantyRolePermissions } from "../utils/warranty-permissions";
@@ -11,6 +12,9 @@ import { getCountdown, isIncidentOverdue } from "../utils/warranty-rules";
 import { buildWarrantyTasks } from "../utils/warranty-workspace";
 
 const EMPTY_DATASET: WarrantyDataset = { projects: [], warranties: [], incidents: [] };
+
+const loadDataset = () =>
+  hasBackendSession() ? Promise.resolve(EMPTY_DATASET) : mockWarrantyRepository.getDataset();
 
 /**
  * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
@@ -27,13 +31,13 @@ export function useWarrantyMaintenance(fixedProjectId?: string) {
   const actor = permissions.userName;
 
   const refresh = useCallback(async () => {
-    setData(await mockWarrantyRepository.getDataset());
+    setData(await loadDataset());
   }, []);
   const { feedback, run, clearFeedback } = useActionFeedback(refresh);
 
   useEffect(() => {
     let active = true;
-    mockWarrantyRepository.getDataset().then((result) => {
+    loadDataset().then((result) => {
       if (active) {
         setData(result);
         setLoading(false);

@@ -1,22 +1,22 @@
 /**
- * Chuyển một sheet Excel thành cấu trúc bảng: tiêu đề báo cáo (các dòng tên ở trên),
- * dòng đầu mục cột (có thể nhiều tầng, ô gộp), và các dòng dữ liệu.
+ * Chuyển một sheet Excel thành cấu trúc bảng: dòng đầu mục cột (có thể nhiều tầng, ô gộp) và các dòng dữ liệu.
  * Hàm thuần — không phụ thuộc giao diện.
  */
-import type { CellValue, SheetData, SheetMerge } from "../../../utils/xlsx-reader.ts";
+import type { CSSProperties } from "react";
+import type { CellStyle, CellValue, SheetData, SheetLayout, SheetMerge } from "../../../utils/xlsx-reader.ts";
 
 export const cellKey = (r: number, c: number) => `${r}:${c}`;
 const filled = (v: CellValue | undefined) => v !== null && v !== undefined && v !== "";
 
 /** Bỏ các dòng trống ở cuối sheet */
-export function trimRows(rows: CellValue[][]): CellValue[][] {
+function trimRows(rows: CellValue[][]): CellValue[][] {
   let end = rows.length;
   while (end > 0 && !rows[end - 1].some(filled)) end--;
   return rows.slice(0, end);
 }
 
 /** Số cột tới cột cuối có dữ liệu (kể cả ô gộp có nội dung kéo dài sang phải) */
-export function usedColCount(rows: CellValue[][], merges: SheetMerge[], max = 200): number {
+function usedColCount(rows: CellValue[][], merges: SheetMerge[], max = 200): number {
   let n = 1;
   for (const row of rows) {
     for (let c = row.length - 1; c >= n; c--) {
@@ -45,8 +45,6 @@ export interface SheetTableShape {
   rows: CellValue[][];
   /** Cột hiển thị (bỏ cột ẩn) */
   cols: number[];
-  /** Dòng tên báo cáo phía trên bảng (đã ghép chữ) */
-  titles: string[];
   /** Các dòng đầu mục cột [từ, đến] (gồm cả dòng đánh số cột 1, 2, 3… nếu có) */
   headerRows: number[];
   /** Các dòng dữ liệu (bỏ dòng ẩn, dòng trống) */
@@ -58,7 +56,6 @@ export interface SheetTableShape {
  * - Dòng đầu mục = dòng đầu tiên có chữ ở ít nhất ~40% số cột (tính cả ô gộp), không phải một ô gộp dài duy nhất;
  *   kéo xuống theo các ô gộp dọc bắt đầu trong vùng đầu mục (đầu mục nhiều tầng).
  * - Dòng ngay sau toàn số nguyên (1, 2, 3…) = dòng đánh số cột → gộp vào đầu mục.
- * - Các dòng có chữ phía trên đầu mục = tên báo cáo.
  */
 export function shapeSheet(data: SheetData): SheetTableShape {
   const { layout } = data;
@@ -85,7 +82,7 @@ export function shapeSheet(data: SheetData): SheetTableShape {
   const need = Math.max(2, Math.ceil(widest * 0.6));
   let start = rows.findIndex((_, r) => !layout.hiddenRows.has(r) && !isBanner(r) && filledCount(r) >= need);
   if (start < 0) start = rows.findIndex((_, r) => !isEmptyRow(r));
-  if (start < 0) return { rows, cols, titles: [], headerRows: [], bodyRows: [] };
+  if (start < 0) return { rows, cols, headerRows: [], bodyRows: [] };
 
   let end = start;
   // Đầu mục nhóm (ô gộp ngang như "ĐẤT ĐAI" phủ nhiều cột) thì dòng kế tiếp là đầu mục con, nếu phần lớn là chữ
@@ -109,21 +106,56 @@ export function shapeSheet(data: SheetData): SheetTableShape {
   const nums = cols.map((c) => rows[next]?.[c]).filter(filled);
   if (nums.length >= 2 && nums.every((v) => typeof v === "number" && Number.isInteger(v))) end = next;
 
-  const titles: string[] = [];
-  for (let r = 0; r < start; r++) {
-    if (layout.hiddenRows.has(r) || isEmptyRow(r)) continue;
-    const text = cols
-      .map((c) => rows[r]?.[c])
-      .filter(filled)
-      .map(String)
-      .join("  ");
-    if (text.trim()) titles.push(text.trim());
-  }
-
   const headerRows: number[] = [];
   for (let r = start; r <= end; r++) if (!layout.hiddenRows.has(r)) headerRows.push(r);
   const bodyRows: number[] = [];
   for (let r = end + 1; r < rows.length; r++) if (!layout.hiddenRows.has(r) && !isEmptyRow(r)) bodyRows.push(r);
 
-  return { rows, cols, titles, headerRows, bodyRows };
+  return { rows, cols, headerRows, bodyRows };
+}
+
+const MIN_COL = 56;
+const MAX_COL = 360;
+
+export const formatCellNumber = (v: number) =>
+  Number(v.toPrecision(12)).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
+
+export const columnWidth = (layout: SheetLayout, c: number) =>
+  Math.min(MAX_COL, Math.max(MIN_COL, layout.colWidths[c] ?? layout.defaultColWidth));
+
+export function visibleColumns(shape: SheetTableShape, mergeOf: Map<string, SheetMerge>): number[] {
+  const isOrder = (c: number) =>
+    shape.headerRows.some((r) => {
+      const m = mergeOf.get(cellKey(r, c));
+      if (m && m.c1 !== m.c2) return false;
+      const v = m ? shape.rows[m.r1]?.[m.c1] : shape.rows[r]?.[c];
+      return typeof v === "string" && /^(stt|tt|số tt|số thứ tự)\.?$/i.test(v.trim());
+    });
+  return shape.cols.filter((c) => !isOrder(c));
+}
+
+export function displayHeaderRows(shape: SheetTableShape): number[] {
+  const last = shape.headerRows[shape.headerRows.length - 1];
+  const isNumbering =
+    shape.headerRows.length > 1 &&
+    shape.cols.every((c) => {
+      const v = shape.rows[last]?.[c];
+      return v === null || v === undefined || v === "" || typeof v === "number";
+    });
+  return isNumbering ? shape.headerRows.slice(0, -1) : shape.headerRows;
+}
+
+export function bodyCellStyle(fmt: CellStyle | undefined, isNum: boolean): CSSProperties {
+  const style: CSSProperties = {
+    textAlign: fmt?.h ?? (isNum ? "right" : "left"),
+    verticalAlign: fmt?.v ?? "middle",
+  };
+  if (!fmt) return style;
+  if (fmt.indent) style.paddingLeft = 12 + fmt.indent * 9;
+  if (fmt.bold) style.fontWeight = 600;
+  if (fmt.italic) style.fontStyle = "italic";
+  if (fmt.underline) style.textDecoration = "underline";
+  if (fmt.color) style.color = fmt.color;
+  if (fmt.bg) style.backgroundColor = fmt.bg;
+  return style;
 }

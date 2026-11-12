@@ -27,7 +27,7 @@ import { useProjectStore } from "@/stores/project.store";
 const DEMO_OWNER_KEY = "cipm_my_tasks_demo_owner_v5";
 const DEPT = "Tổ Kế hoạch – Kỹ thuật";
 const LEAD = "Phan Thanh Cường";
-export const DEMO_PROJECT_IDS = ["DEMO-VIEC-1", "DEMO-VIEC-2"];
+const DEMO_PROJECT_IDS = ["DEMO-VIEC-1", "DEMO-VIEC-2"];
 const DEMO_PROCEDURES = [
   { id: "demo-quy-trinh-tuan-tu", name: "Quy trình chuẩn bị đầu tư" },
   { id: "demo-quy-trinh-song-song", name: "Quy trình khảo sát – thiết kế" },
@@ -123,7 +123,7 @@ function buildDemoSteps(me: string): [ProcedureStep[], ProcedureStep[]] {
 }
 
 /** Dữ liệu quy trình của 2 dự án mẫu */
-export function buildMyTasksDemo(me: string): ProjectProcedureData[] {
+function buildMyTasksDemo(me: string): ProjectProcedureData[] {
   return buildDemoSteps(me).map((steps, i) => buildProject(i, steps));
 }
 
@@ -183,7 +183,7 @@ export function ensureMyTasksDemo(me: string): void {
 }
 
 /** Ghi lại dữ liệu demo từ đầu (bỏ mọi thao tác đã làm trên 2 dự án demo) */
-export function resetMyTasksDemo(me: string): void {
+function resetMyTasksDemo(me: string): void {
   // Quy trình mẫu: đã duyệt, đang áp dụng
   const procedureIds = DEMO_PROCEDURES.map((p) => p.id);
   saveCustomProfiles([

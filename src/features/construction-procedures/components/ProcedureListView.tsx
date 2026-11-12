@@ -209,7 +209,7 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
               : 'Chưa có quy trình nào. Bấm "Thêm quy trình mới" để bắt đầu.',
         }}
         onRow={(p) => ({ onClick: () => onOpen(p.id), className: "cursor-pointer" })}
-        className="text-xs [&_.ant-table-thead>tr>th]:!bg-slate-100 [&_.ant-table-thead>tr>th]:!text-[11px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-thead>tr>th]:tracking-wider [&_.ant-table-thead>tr>th]:!text-slate-600 [&_.ant-table-tbody>tr:hover>td]:!bg-red-50/40"
+        className="text-xs [&_.ant-table-thead>tr>th]:!bg-slate-100 [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-thead>tr>th]:tracking-wider [&_.ant-table-thead>tr>th]:!text-slate-600 [&_.ant-table-tbody>tr:hover>td]:!bg-red-50/40"
       />
     </div>
   );

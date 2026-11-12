@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import { Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
 import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
 import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import { useActivityLogVersion } from "@/features/personnel-assignment/hooks/useActivityLogVersion";
-import { getReportHistory } from "../services/report-history";
+import { useReportHistory } from "../hooks/useReportQueries";
 
 const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
@@ -14,15 +13,11 @@ const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
  * Truyền `typeId` để chỉ xem lịch sử của một báo cáo.
  */
 export default function ReportHistoryTab({ typeId, title = "Lịch sử thao tác" }: { typeId?: string; title?: string } = {}) {
-  const version = useActivityLogVersion();
+  const { data: all = [] } = useReportHistory(typeId);
   const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
 
-  const history = useMemo(() => {
-    void version; // đọc lại khi nhật ký có dòng mới
-    const all = getReportHistory(typeId);
-    return date ? all.filter((e) => toLocalDate(e.at) === date) : all;
-  }, [version, date, typeId]);
+  const history = useMemo(() => (date ? all.filter((e) => toLocalDate(e.at) === date) : all), [all, date]);
 
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

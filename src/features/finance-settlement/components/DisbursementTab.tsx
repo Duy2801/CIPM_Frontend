@@ -150,7 +150,7 @@ export default function DisbursementTab({
                 <WarningOutlined className="text-amber-600" />
               </Tooltip>
             )}
-            <Text className="text-[15px] font-black text-[#102A43]">{formatVndBillions(value)}</Text>
+            <Text className="text-[13px] text-slate-800">{formatVndBillions(value)}</Text>
           </span>
         );
       },

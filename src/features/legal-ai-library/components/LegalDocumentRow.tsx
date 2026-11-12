@@ -38,21 +38,21 @@ export default function LegalDocumentRow({ document: item, isNewest, canManage, 
       }`}
     >
       {/* Số hiệu · cơ quan ban hành */}
-      <div className="flex min-w-0 shrink-0 flex-col items-start gap-1 text-xs md:w-28">
+      <div className="flex min-w-0 shrink-0 flex-col items-start gap-1 text-[13px] md:w-28">
         <div className="flex max-w-full items-center gap-1.5 flex-wrap">
-          <span className="max-w-full break-words font-semibold text-slate-800">{item.code}</span>
+          <span className="max-w-full break-words font-medium text-slate-800">{item.code}</span>
           {isNewest && (
             <span className="inline-flex items-center rounded bg-[#DC2626] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-2xs">
               Mới thêm
             </span>
           )}
         </div>
-        <span className="max-w-full break-words text-slate-500">{item.issuer}</span>
+        <span className="max-w-full break-words font-medium text-slate-800">{item.issuer}</span>
       </div>
 
       {/* Loại văn bản: nhãn dài thì xuống dòng trong cột, không tràn sang cột tên */}
       <div className="min-w-0 shrink-0 md:w-24">
-        <span className="inline-block max-w-full break-words rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium leading-snug text-slate-700">
+        <span className="inline-block max-w-full break-words rounded-md bg-slate-100 px-2 py-0.5 text-[13px] font-medium leading-snug text-slate-800">
           {getCategoryLabel(item.category)}
         </span>
       </div>
@@ -60,25 +60,28 @@ export default function LegalDocumentRow({ document: item, isNewest, canManage, 
       {/* Tên văn bản */}
       <p
         title={item.title || item.code}
-        className="m-0 line-clamp-2 min-w-0 flex-1 text-sm font-normal leading-snug text-slate-800 transition-colors group-hover:text-[#DC2626]"
+        className="m-0 line-clamp-2 min-w-0 flex-1 text-[13px] font-medium leading-snug text-slate-800 transition-colors group-hover:text-[#DC2626]"
       >
         {item.title || item.code}
       </p>
 
-      {/* Ngày ban hành (trên) · Ngày hiệu lực (dưới) */}
-      <div className="flex shrink-0 flex-col items-start gap-0.5 text-xs md:w-28 md:items-center md:text-center">
-        <span className="font-medium tabular-nums text-slate-800" title={`Ngày ban hành: ${formatDateVi(item.issueDate)}`}>
-          <span className="text-slate-400 md:hidden">Ban hành: </span>
-          {formatDateVi(item.issueDate)}
-        </span>
-        <span className="text-[11px] tabular-nums text-slate-500" title={`Ngày hiệu lực: ${formatDateVi(item.effectiveDate)}`}>
-          <span className="text-slate-400 md:hidden">Hiệu lực: </span>
-          {formatDateVi(item.effectiveDate)}
-        </span>
-      </div>
+      <span
+        className="shrink-0 text-[13px] font-medium tabular-nums text-slate-800 md:w-28 md:text-center"
+        title={`Ngày ban hành: ${formatDateVi(item.issueDate)}`}
+      >
+        <span className="text-slate-400 md:hidden">Ban hành: </span>
+        {formatDateVi(item.issueDate)}
+      </span>
+      <span
+        className="shrink-0 text-[13px] font-medium tabular-nums text-slate-800 md:w-28 md:text-center"
+        title={`Ngày hiệu lực: ${formatDateVi(item.effectiveDate)}`}
+      >
+        <span className="text-slate-400 md:hidden">Hiệu lực: </span>
+        {formatDateVi(item.effectiveDate)}
+      </span>
 
       {/* Tình trạng văn bản */}
-      <div className="flex shrink-0 items-center justify-start md:w-20 md:justify-center">
+      <div className="flex shrink-0 items-center justify-start md:w-24 md:justify-center">
         <Tooltip title={`Tình trạng: ${status.label}`}>
           <div className="inline-flex cursor-help items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 md:border-0 md:bg-transparent md:p-0">
             <span
@@ -93,7 +96,7 @@ export default function LegalDocumentRow({ document: item, isNewest, canManage, 
       {/* Thao tác: sửa (mở drawer chi tiết, sửa từng trường bằng bút chì) */}
       {canManage && (
         <div
-          className="flex shrink-0 items-center justify-center md:ml-auto md:w-12"
+          className="flex shrink-0 items-center justify-center md:ml-auto md:w-20"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionFeedback } from "@/components/workspace";
 import { useAuth } from "@/features/auth";
 import { todayIso } from "@/utils/date";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import { mockBiddingRepository } from "../services/mock-bidding.repository";
 import type { BidStepInput, BiddingDataset, CreatePackageInput } from "../types/bidding.types";
 import { getBiddingRolePermissions } from "../utils/bidding-permissions";
@@ -11,6 +12,9 @@ import { getBidDeadlineStatus, getCurrentBidStep, getSavings } from "../utils/bi
 import { buildBiddingTasks } from "../utils/bidding-workspace";
 
 const EMPTY_DATASET: BiddingDataset = { projects: [], packages: [] };
+
+const loadDataset = () =>
+  hasBackendSession() ? Promise.resolve(EMPTY_DATASET) : mockBiddingRepository.getDataset();
 
 /**
  * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
@@ -27,13 +31,13 @@ export function useBiddingManagement(fixedProjectId?: string) {
   const actor = permissions.userName;
 
   const refresh = useCallback(async () => {
-    setData(await mockBiddingRepository.getDataset());
+    setData(await loadDataset());
   }, []);
   const { feedback, run, clearFeedback } = useActionFeedback(refresh);
 
   useEffect(() => {
     let active = true;
-    mockBiddingRepository.getDataset().then((result) => {
+    loadDataset().then((result) => {
       if (active) {
         setData(result);
         setLoading(false);

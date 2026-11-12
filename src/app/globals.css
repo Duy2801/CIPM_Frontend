@@ -381,3 +381,50 @@ header.ant-layout-header {
 .ant-message-success .anticon-check-circle {
   color: #DC2626 !important;
 }
+.ant-table-tbody > tr > td,
+table > tbody > tr > td {
+  font-weight: 500;
+}
+
+:is(.ant-table-tbody > tr > td, table > tbody > tr > td) :is(.font-medium, .font-semibold, .font-bold, .font-extrabold, .font-black, strong, b) {
+  font-weight: 500;
+}
+
+:is(.ant-table-tbody > tr > td, table > tbody > tr > td) .font-mono {
+  font-family: inherit;
+}
+
+.ant-table-thead > tr > th,
+table > thead > tr > th {
+  font-size: 12px !important;
+}
+
+.ant-table-tbody > tr > td,
+table > tbody > tr > td {
+  font-size: 13px;
+}
+
+:is(.ant-table-tbody > tr > td, table > tbody > tr > td)
+  :is(
+    .text-xs,
+    .text-sm,
+    .text-base,
+    .text-lg,
+    .text-xl,
+    .text-\[10px\],
+    .text-\[10\.5px\],
+    .text-\[11px\],
+    .text-\[12px\],
+    .text-\[12\.5px\],
+    .text-\[13px\],
+    .text-\[14px\],
+    .text-\[15px\],
+    .text-\[16px\],
+    .ant-typography
+  ):not(.ant-tag, .ant-tag *) {
+  font-size: 13px;
+}
+
+:is(.ant-table-tbody > tr > td, table > tbody > tr > td) .ant-tag {
+  font-size: 12px;
+}

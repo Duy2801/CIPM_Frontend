@@ -12,6 +12,12 @@ export async function loginApi(email: string, password: string): Promise<Backend
   return response.data;
 }
 
+/** GET /auth/me — tài khoản và quyền hiện tại (backend tính lại từ cơ sở dữ liệu) */
+export async function getMeApi(): Promise<Omit<BackendLoginResponse, "accessToken" | "refreshToken">> {
+  const response = await apiClient.get<Omit<BackendLoginResponse, "accessToken" | "refreshToken">>("auth/me");
+  return response.data;
+}
+
 /** POST /auth/logout — backend xóa refresh token */
 export async function logoutApi(): Promise<void> {
   await apiClient.post("auth/logout", {});

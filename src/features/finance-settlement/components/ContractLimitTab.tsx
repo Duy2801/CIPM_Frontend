@@ -112,7 +112,7 @@ export default function ContractLimitTab({
       width: 140,
       align: "right",
       render: (value: number) => (
-        <Text className={`text-sm font-black ${value > 0 ? "text-[#102A43]" : "text-slate-400"}`}>
+        <Text className={`text-xs ${value > 0 ? "text-slate-800" : "text-slate-400"}`}>
           {formatVndBillions(value)}
         </Text>
       ),

@@ -19,6 +19,7 @@ export interface AuthUser {
   displayName?: string;
   roleName?: string;
   department?: string;
+  isLead?: boolean;
   initials?: string;
   email?: string;
   /** "backend": đăng nhập bằng tài khoản thật, quyền lấy theo backend thay vì ma trận phân quyền lưu trình duyệt */

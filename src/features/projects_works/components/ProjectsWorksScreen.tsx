@@ -1,467 +1,60 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { App } from "antd";
-import { DEFAULT_LIST_PAGE_SIZE, Modal } from "@/components/ui";
-import { useProjectStore } from "@/stores/project.store";
-import type {
-  ProjectFormData,
-  ProjectItem,
-  ProjectWorkType,
-} from "../types/project.types";
-import { useAuth } from "@/features/auth";
-import ProjectsFilterToolbar from "./ProjectsFilterToolbar";
-import ProjectsTable from "./ProjectsTable";
-import ProjectDetailPage from "./ProjectDetailPage";
-import CreateProjectPage from "./CreateProjectPage";
-import ProjectActionConfirmModal, { type ProjectActionType } from "./ProjectActionConfirmModal";
-import { canUserDo } from "@/access-control";
-import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
-import { initProjectProcedure, type ProjectProcedureSync } from "../hooks/useProjectProcedure";
+import { useProjectsWorks } from "../hooks/useProjectsWorks";
+import CreateProjectPage from "./create/CreateProjectPage";
+import ProjectDetailPage from "./detail/ProjectDetailPage";
+import ProjectsFilterToolbar from "./list/ProjectsFilterToolbar";
+import ProjectsTable from "./list/ProjectsTable";
+import ProjectActionConfirmModal from "./shared/ProjectActionConfirmModal";
 
 export default function ProjectsWorksScreen() {
-  const { message } = App.useApp();
-  const { user } = useAuth();
-  const projects = useProjectStore((s) => s.projects);
-  const setProjects = useProjectStore((s) => s.setProjects);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedType, setSelectedType] = useState<ProjectWorkType | "ALL">("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "active" | "closed">("ALL");
-  const [sortBy, setSortBy] = useState<string>("latest");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  // Hiện 15 dự án mỗi trang rồi mới phân trang
-  const pageSize = 15;
-
-  // Trang con xem chi tiết và cập nhật inline (tiến độ tuần / thông tin dự án)
-  const [detailProjectId, setDetailProjectId] = useState<string | null>(null);
-
-  const openDetail = (projectId: string) => {
-    setDetailProjectId(projectId);
-  };
-
-  const closeDetail = () => {
-    setDetailProjectId(null);
-  };
-  const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
-
-  // Quản lý Modal xác nhận hành động căn giữa khung trắng (Quy tắc 5, Đóng, Xóa, Mở lại)
-  const [confirmAction, setConfirmAction] = useState<{
-    open: boolean;
-    type: ProjectActionType;
-    project: ProjectItem | null;
-  }>({
-    open: false,
-    type: "rule5_warning",
-    project: null,
-  });
-
-  // Lấy dữ liệu dự án hiện tại trực tiếp từ mảng state để luôn đồng bộ ngay sau khi cập nhật
-  const detailProject = useMemo(() => {
-    return projects.find((p) => p.id === detailProjectId) ?? null;
-  }, [projects, detailProjectId]);
-
-  // Sinh mã tự động tiếp theo: BQL-DA-2026-###
-  const nextAutoCode = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const count = projects.length + 1;
-    const padded = String(count).padStart(3, "0");
-    return `BQL-DA-${currentYear}-${padded}`;
-  }, [projects.length]);
-
-  // Lọc danh sách dự án
-  const filteredProjects = useMemo(() => {
-    let result = [...projects];
-
-    // 1. Lọc trạng thái vận hành (Quy tắc 5: Đang hoạt động / Đã đóng)
-    if (statusFilter !== "ALL") {
-      result = result.filter((p) => p.status === statusFilter);
-    }
-
-    // 2. Lọc loại công trình
-    if (selectedType !== "ALL") {
-      result = result.filter((p) => p.type === selectedType);
-    }
-
-    // 3. Tìm kiếm full-text
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase().trim();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.code.toLowerCase().includes(q) ||
-          p.managerName.toLowerCase().includes(q) ||
-          p.supervisorName.toLowerCase().includes(q) ||
-          p.type.toLowerCase().includes(q) ||
-          p.fundingSource.toLowerCase().includes(q)
-      );
-    }
-
-const STAGE_ORDER: Record<string, number> = {
-  PREPARATION: 1,
-  DESIGN: 2,
-  BIDDING: 3,
-  CONSTRUCTION: 4,
-  COMPENSATION: 5,
-  INSPECTION: 6,
-  SETTLEMENT: 7,
-  COMPLETED: 8,
-};
-
-    // 4. Sắp xếp đa chiều
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case "latest":
-          return 0; // Giữ nguyên thứ tự ưu tiên (phần tử mới thêm luôn nằm trên cùng do unshift/prepend)
-        case "investment_desc":
-          return b.totalInvestment - a.totalInvestment;
-        case "investment_asc":
-          return a.totalInvestment - b.totalInvestment;
-        case "progress_asc":
-          return a.actualProgress - b.actualProgress;
-        case "progress_desc":
-          return b.actualProgress - a.actualProgress;
-        case "code_desc":
-          return b.code.localeCompare(a.code, "vi");
-        case "name_asc":
-          return a.name.localeCompare(b.name, "vi");
-        case "name_desc":
-          return b.name.localeCompare(a.name, "vi");
-        case "stage_asc":
-          return (STAGE_ORDER[a.currentStage] || 0) - (STAGE_ORDER[b.currentStage] || 0);
-        case "stage_desc":
-          return (STAGE_ORDER[b.currentStage] || 0) - (STAGE_ORDER[a.currentStage] || 0);
-        case "manager_asc":
-          return (a.managerName || "").localeCompare(b.managerName || "", "vi");
-        case "manager_desc":
-          return (b.managerName || "").localeCompare(a.managerName || "", "vi");
-        case "startDate_asc":
-          return (a.startDate || "").localeCompare(b.startDate || "");
-        case "startDate_desc":
-          return (b.startDate || "").localeCompare(a.startDate || "");
-        case "endDate_asc":
-          return (a.endDatePlanned || "").localeCompare(b.endDatePlanned || "");
-        case "endDate_desc":
-          return (b.endDatePlanned || "").localeCompare(a.endDatePlanned || "");
-        case "code_asc":
-          return a.code.localeCompare(b.code, "vi");
-        default:
-          return 0;
-      }
-    });
-
-    return result;
-  }, [projects, statusFilter, selectedType, searchTerm, sortBy]);
-
-  // Phân trang
-  const total = filteredProjects.length;
-  const paginatedProjects = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredProjects.slice(start, start + pageSize);
-  }, [filteredProjects, currentPage, pageSize]);
-
-  // Reset trang về 1 khi đổi bộ lọc
-  const handleSearchChange = (term: string) => {
-    setSearchTerm(term);
-    setCurrentPage(1);
-  };
-
-  const handleTypeChange = (type: ProjectWorkType | "ALL") => {
-    setSelectedType(type);
-    setCurrentPage(1);
-  };
-
-  const handleStatusFilterChange = (status: "ALL" | "active" | "closed") => {
-    setStatusFilter(status);
-    setCurrentPage(1);
-  };
-
-  const handleSortChange = (newSort: string) => {
-    setSortBy(newSort);
-    setCurrentPage(1);
-  };
-
-  // Tạo mới dự án
-  const handleCreateProject = (data: ProjectFormData, autoCode: string) => {
-    const creatorName = user?.name || user?.displayName || "Người tạo dự án";
-    const initialProgress = data.actualProgress ?? 0;
-    const initialPlanProgress = data.plannedProgress ?? 0;
-    const newProject: ProjectItem = {
-      id: `PRJ-${Date.now()}`,
-      code: autoCode,
-      name: data.name,
-      type: data.type,
-      location: data.location || "TP. Hà Tiên",
-      scale: data.scale?.trim() || "",
-      fundingSource: data.fundingSource ?? "Ngân sách thành phố",
-      totalInvestment: data.totalInvestment ?? 0,
-      plan2026: data.plan2026 ?? 0,
-      disbursedAmount: 0.0,
-      managerName: data.managerName || "Chưa phân công",
-      supervisorName: data.supervisorName || "Nguyễn Văn An",
-      departments: data.departments || ["Tổ Giám sát – Kỹ thuật"],
-      documents: data.documents || [],
-      startDate: data.startDate,
-      endDatePlanned: data.endDatePlanned,
-      currentStage: data.currentStage || "PREPARATION",
-      nature: data.nature || (initialProgress > 0 ? "transitional" : "new"),
-      actualProgress: initialProgress,
-      plannedProgress: initialPlanProgress,
-      note: data.note?.trim() || "",
-      status: "active",
-      progressHistory: [
-        {
-          id: `HIS-INIT-${Date.now()}`,
-          updatedAt: new Date().toISOString().slice(0, 10),
-          updatedBy: creatorName,
-          oldProgress: 0,
-          newProgress: initialProgress,
-          note: data.note || "Khởi tạo hồ sơ dự án mới trên hệ thống.",
-        },
-      ],
-    };
-
-    // Quy trình đã chọn cho từng phòng ban lúc tạo
-    const library = loadProcedureLibrary();
-    initProjectProcedure(
-      newProject,
-      Object.entries(data.procedures ?? {}).flatMap(([department, procedureId]) => {
-        const procedure = library.find((p) => p.id === procedureId);
-        return procedure && newProject.departments?.includes(department)
-          ? [{ department, procedure, tabLabel: data.procedureTabLabels?.[procedureId] }]
-          : [];
-      }),
-      { name: creatorName, role: user?.roleName || "Cán bộ Ban QLDA" },
-    );
-
-    setProjects((prev) => [newProject, ...prev]);
-    setIsCreateOpen(false);
-    setSortBy("latest");
-    setCurrentPage(1);
-    if (statusFilter === "closed") {
-      setStatusFilter("ALL");
-    }
-    setSearchTerm("");
-    message.success(`Đã khởi tạo thành công dự án mới với mã: ${autoCode}`);
-  };
-
-  const handleUpdateProject = (projectId: string, data: ProjectFormData) => {
-    const updaterName = user?.name || user?.displayName || "Cán bộ quản lý";
-    setProjects((prev) =>
-      prev.map((project) => {
-        if (project.id !== projectId) return project;
-
-        const newActualProgress =
-          data.actualProgress !== undefined ? data.actualProgress : project.actualProgress;
-        const newPlannedProgress =
-          data.plannedProgress !== undefined ? data.plannedProgress : project.plannedProgress;
-        const newStage = data.currentStage ?? project.currentStage;
-        const hasProgressChanged = newActualProgress !== project.actualProgress;
-        const historyNote = data.progressNote?.trim() || data.note?.trim();
-        const hasNote = Boolean(historyNote);
-
-        const newHistory = [...(project.progressHistory ?? [])];
-        if (hasProgressChanged || hasNote) {
-          newHistory.unshift({
-            id: `HIS-${Date.now()}`,
-            updatedAt: new Date().toISOString().slice(0, 10),
-            updatedBy: updaterName,
-            oldProgress: project.actualProgress,
-            newProgress: newActualProgress,
-            note: historyNote || "Cập nhật thông tin và tiến độ dự án.",
-            actualEndDateRecorded:
-              newActualProgress === 100
-                ? (data.endDatePlanned || project.actualEndDate)
-                : undefined,
-            stageRecorded: newStage,
-          });
-        }
-
-        return {
-          ...project,
-          name: data.name,
-          type: data.type,
-          location: data.location ?? project.location,
-          scale: data.scale ?? project.scale,
-          fundingSource: data.fundingSource ?? project.fundingSource,
-          totalInvestment: data.totalInvestment !== undefined ? data.totalInvestment : project.totalInvestment,
-          plan2026: data.plan2026 !== undefined ? data.plan2026 : project.plan2026,
-          managerName: data.managerName ?? project.managerName,
-          supervisorName: data.supervisorName ?? project.supervisorName,
-          departments: data.departments ?? project.departments,
-          documents: data.documents !== undefined ? data.documents : project.documents,
-          startDate: data.startDate,
-          endDatePlanned: data.endDatePlanned,
-          currentStage: newStage,
-          nature: data.nature ?? project.nature,
-          actualProgress: newActualProgress,
-          plannedProgress: newPlannedProgress,
-          actualEndDate:
-            newActualProgress === 100
-              ? (project.actualEndDate || data.endDatePlanned)
-              : project.actualEndDate,
-          note: data.note !== undefined ? data.note : project.note,
-          progressHistory: newHistory,
-        };
-      })
-    );
-    message.success("Đã cập nhật thông tin dự án thành công!");
-  };
-
-  // Quy trình của dự án thay đổi: phòng ban phụ trách + phần trăm hoàn thành tự cập nhật theo quy trình
-  // Tab Giải ngân: cập nhật tổng đã giải ngân của dự án (dùng cho quy tắc không xóa dự án đã phát sinh tài chính)
-  const handleDisbursedChange = (projectId: string, total: number) =>
-    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, disbursedAmount: total } : p)));
-
-  const handleProcedureSync = (projectId: string, sync: ProjectProcedureSync) => {
-    const updaterName = user?.name || user?.displayName || "Cán bộ quản lý";
-    setProjects((prev) =>
-      prev.map((project) => {
-        if (project.id !== projectId) return project;
-        const progressChanged = sync.actualProgress !== project.actualProgress;
-        if (!progressChanged && JSON.stringify(sync.departments) === JSON.stringify(project.departments ?? [])) {
-          return project;
-        }
-        const today = new Date().toISOString().slice(0, 10);
-        return {
-          ...project,
-          departments: sync.departments,
-          actualProgress: sync.actualProgress,
-          actualEndDate: sync.actualProgress === 100 ? project.actualEndDate || today : project.actualEndDate,
-          progressHistory: progressChanged
-            ? [
-                {
-                  id: `HIS-${Date.now()}`,
-                  updatedAt: today,
-                  updatedBy: updaterName,
-                  oldProgress: project.actualProgress,
-                  newProgress: sync.actualProgress,
-                  note: "Tự cập nhật theo tiến độ các quy trình của dự án.",
-                  actualEndDateRecorded: sync.actualProgress === 100 ? today : undefined,
-                  stageRecorded: project.currentStage,
-                },
-                ...(project.progressHistory ?? []),
-              ]
-            : project.progressHistory,
-        };
-      }),
-    );
-  };
-
-  // Đóng dự án (Chuyển trạng thái sang "closed")
-  const handleCloseProject = (prj: ProjectItem) => {
-    if (prj.status === "closed") {
-      message.info(`Dự án ${prj.code} hiện đã ở trạng thái Đóng.`);
-      return;
-    }
-
-    // Nếu đã phát sinh tài chính -> Hiển thị cảnh báo Quy tắc 5 (BRD 4.2.4)
-    setConfirmAction({
-      open: true,
-      type: prj.disbursedAmount > 0 ? "rule5_warning" : "close_confirm",
-      project: prj,
-    });
-  };
-
-  // Mở lại dự án đã đóng
-  const handleReopenProject = (prj: ProjectItem) => {
-    setConfirmAction({
-      open: true,
-      type: "reopen_confirm",
-      project: prj,
-    });
-  };
-
-  // Thao tác từ bảng danh sách: đóng dự án đang hoạt động / mở lại dự án đã đóng
-  const handleTableProjectAction = (prj: ProjectItem) => {
-    if (prj.status === "closed") {
-      handleReopenProject(prj);
-    } else {
-      handleCloseProject(prj);
-    }
-  };
-
-  // Xác nhận thực thi hành động trong modal căn giữa
-  const handleConfirmAction = () => {
-    if (!confirmAction.project) return;
-    const prj = confirmAction.project;
-
-    if (confirmAction.type === "rule5_warning" || confirmAction.type === "close_confirm") {
-      setProjects((prev) =>
-        prev.map((p) => (p.id === prj.id ? { ...p, status: "closed" } : p))
-      );
-      message.success(`Dự án ${prj.code} đã được chuyển sang trạng thái "Đóng".`);
-    } else if (confirmAction.type === "delete_confirm") {
-      setProjects((prev) => prev.filter((p) => p.id !== prj.id));
-      if (detailProjectId === prj.id) {
-        closeDetail();
-      }
-      message.success(`Đã xóa thành công dự án ${prj.code} khỏi hệ thống.`);
-    } else if (confirmAction.type === "reopen_confirm") {
-      setProjects((prev) =>
-        prev.map((p) => (p.id === prj.id ? { ...p, status: "active" } : p))
-      );
-      message.success(`Dự án ${prj.code} đã được mở lại và chuyển sang trạng thái "Đang hoạt động".`);
-    }
-
-    setConfirmAction({ open: false, type: "rule5_warning", project: null });
-  };
+  const ctl = useProjectsWorks();
 
   return (
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-2.5 select-none">
-      {/* Trang con thêm dự án / chi tiết dự án (BRD 4.2.2, 4.2.3, 4.2.4) — thay cho bộ lọc + bảng */}
-      {isCreateOpen ? (
-        <CreateProjectPage
-          nextAutoCode={nextAutoCode}
-          onBack={() => setIsCreateOpen(false)}
-          onCreateProject={handleCreateProject}
-        />
-      ) : detailProject ? (
+      {ctl.isCreateOpen ? (
+        <CreateProjectPage nextAutoCode={ctl.nextAutoCode} onBack={ctl.closeCreate} onCreateProject={ctl.createProject} />
+      ) : ctl.detailProject ? (
         <ProjectDetailPage
-          key={detailProject.id}
-          project={detailProject}
-          onBack={closeDetail}
-          onUpdateProject={handleUpdateProject}
-          onProcedureSync={handleProcedureSync}
-          onDisbursedChange={handleDisbursedChange}
+          key={ctl.detailProject.id}
+          project={ctl.detailProject}
+          onBack={ctl.closeDetail}
+          onUpdateProject={ctl.updateProject}
+          onProcedureSync={ctl.syncProcedure}
+          onDisbursedChange={ctl.setDisbursedAmount}
         />
       ) : (
         <>
-          {/* Bộ lọc trạng thái & Thanh công cụ */}
           <ProjectsFilterToolbar
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            selectedType={selectedType}
-            onTypeChange={handleTypeChange}
-            statusFilter={statusFilter}
-            onStatusFilterChange={handleStatusFilterChange}
-            totalFilteredCount={total}
-            filteredProjects={filteredProjects}
-            canCreateProject={canUserDo(user, "m2_projects", "input")}
-            onOpenCreateModal={() => setIsCreateOpen(true)}
+            searchTerm={ctl.searchTerm}
+            onSearchChange={ctl.setSearchTerm}
+            selectedType={ctl.selectedType}
+            onTypeChange={ctl.setSelectedType}
+            statusFilter={ctl.statusFilter}
+            onStatusFilterChange={ctl.setStatusFilter}
+            canCreateProject={ctl.canCreateProject}
+            onOpenCreateModal={ctl.openCreate}
           />
-
-          {/* Bảng danh mục dự án & Phân trang căn giữa */}
           <ProjectsTable
-            projects={paginatedProjects}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            total={total}
-            sortBy={sortBy}
-            onSortChange={handleSortChange}
-            onPageChange={(page) => setCurrentPage(page)}
-            onViewDetail={(prj) => openDetail(prj.id)}
-            onCloseProject={handleTableProjectAction}
+            projects={ctl.paginatedProjects}
+            currentPage={ctl.currentPage}
+            pageSize={ctl.pageSize}
+            total={ctl.filteredProjects.length}
+            sortBy={ctl.sortBy}
+            onSortChange={ctl.setSortBy}
+            onPageChange={ctl.setCurrentPage}
+            onViewDetail={ctl.openDetail}
+            onCloseProject={ctl.requestToggleProject}
           />
         </>
       )}
 
-      {/* 5. Modal xác nhận hành động căn giữa khung trắng (Quy tắc 5, Đóng, Xóa, Mở lại) */}
       <ProjectActionConfirmModal
-        open={confirmAction.open}
-        type={confirmAction.type}
-        project={confirmAction.project}
-        onClose={() => setConfirmAction((prev) => ({ ...prev, open: false, project: null }))}
-        onConfirm={handleConfirmAction}
+        open={ctl.confirmAction.open}
+        type={ctl.confirmAction.type}
+        project={ctl.confirmAction.project}
+        onClose={ctl.cancelProjectAction}
+        onConfirm={ctl.confirmProjectAction}
       />
     </div>
   );

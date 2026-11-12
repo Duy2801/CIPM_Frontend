@@ -14,6 +14,7 @@ import {
   getStoredUser,
   normalizeAuthResponse,
   persistAuthSession,
+  refreshSessionUser,
   toAuthUser,
 } from "@/features/auth";
 import { useAppRefreshStore } from "@/stores/app-refresh.store";
@@ -24,6 +25,8 @@ import { ensureMyTasksDemo } from "@/features/my-tasks/utils/my-tasks-demo";
 interface DashboardShellProps {
   children: React.ReactNode;
 }
+
+const PERMISSION_SYNC_INTERVAL_MS = 60_000;
 
 export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
@@ -96,18 +99,45 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     if (userName) ensureMyTasksDemo(userName);
   }, [userName]);
 
-  // Lắng nghe sự kiện cập nhật Ma trận phân quyền để cập nhật tức thì toàn bộ màn hình
+  // Quyền được cấp / thu hồi sau lúc đăng nhập: tài khoản thật lấy lại quyền từ backend
+  // (mở app, quay lại tab, mỗi phút, sau khi lưu phân quyền); tài khoản thử nghiệm tính lại theo ma trận trên máy
   React.useEffect(() => {
-    const handlePermissionsUpdated = () => {
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser) {
-        const freshPerms = getUserEffectivePermissions(currentUser);
-        useAuthStore.getState().updateUser({ permissions: freshPerms });
+    let running = false;
+    const syncFromServer = async () => {
+      if (running || !useAuthStore.getState().user) return;
+      running = true;
+      try {
+        const fresh = await refreshSessionUser();
+        if (fresh) useAuthStore.getState().updateUser(fresh);
+      } catch (error) {
+        console.warn("Không làm mới được quyền của tài khoản:", error);
+      } finally {
+        running = false;
       }
     };
+    const handlePermissionsUpdated = () => {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser) return;
+      if (currentUser.authSource === "backend") {
+        void syncFromServer();
+        return;
+      }
+      useAuthStore.getState().updateUser({ permissions: getUserEffectivePermissions(currentUser) });
+    };
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") void syncFromServer();
+    };
+
+    void syncFromServer();
+    const timer = window.setInterval(() => void syncFromServer(), PERMISSION_SYNC_INTERVAL_MS);
     window.addEventListener("cipm-permissions-updated", handlePermissionsUpdated);
+    window.addEventListener("focus", handleVisible);
+    document.addEventListener("visibilitychange", handleVisible);
     return () => {
+      window.clearInterval(timer);
       window.removeEventListener("cipm-permissions-updated", handlePermissionsUpdated);
+      window.removeEventListener("focus", handleVisible);
+      document.removeEventListener("visibilitychange", handleVisible);
     };
   }, []);
 

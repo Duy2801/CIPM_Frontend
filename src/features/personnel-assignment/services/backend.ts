@@ -2,8 +2,8 @@ import { isAxiosError } from "axios";
 import { getStoredAccessToken, isBackendToken } from "@/features/auth/api/auth.api";
 
 /**
- * Chọn nguồn dữ liệu cho phân hệ Nhân sự: backend khi đăng nhập bằng tài khoản thật và server phản hồi,
- * ngược lại chạy trên dữ liệu mock (tài khoản thử nghiệm dùng token "mock_...", server tắt / mất mạng).
+ * Chọn nguồn dữ liệu: đăng nhập bằng tài khoản thật thì chỉ dùng backend (server lỗi / mất mạng thì báo lỗi),
+ * chỉ tài khoản thử nghiệm (token "mock_...") mới chạy trên dữ liệu mock.
  */
 
 /** Đang đăng nhập bằng token do backend cấp */
@@ -33,8 +33,7 @@ export async function withBackend<T>(remote: () => Promise<T>, fallback: () => T
     return await remote();
   } catch (error) {
     if (isAxiosError(error) && !error.response) {
-      console.warn("Không kết nối được backend, dùng dữ liệu mock:", error.message);
-      return fallback();
+      throw new Error("Không kết nối được máy chủ, vui lòng kiểm tra mạng và thử lại.");
     }
     throw new Error(apiErrorMessage(error));
   }

@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/components/ui";
 import { useAuth } from "@/features/auth";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import { canUserDo, hasMatrixPermission } from "@/access-control";
 import {
   getDepartmentLead,
   isDirectorUser,
   isLeadOfDepartment,
-  isSameDepartment,
 } from "@/features/construction-procedures/constants/procedure-department-templates";
 import {
   loadProjectProcedure,
   saveProjectProcedure,
 } from "@/features/construction-procedures/utils/project-procedure-storage";
-import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
 import type {
   DepartmentProcedureStatus,
   ProcedureDocument,
@@ -22,25 +23,17 @@ import type {
   ProjectProcedureData,
 } from "@/features/construction-procedures/types/procedure.types";
 import type { ProjectItem } from "../types/project.types";
-
-/** Thay đổi quy trình của dự án chờ lưu: gỡ (theo khóa phòng ban), thêm mới, đổi tên tab (khóa phòng ban → tên) */
-export interface ProcedureChanges {
-  remove: string[];
-  add: { department: string; procedure: ProcedureSource }[];
-  labels: Record<string, string>;
-}
-
-/**
- * So khóa phòng ban của quy trình trong dự án. Một phòng ban có thể áp dụng nhiều quy trình
- * ("Tổ Kế hoạch – Kỹ thuật", "Tổ Kế hoạch – Kỹ thuật (2)"...) nên khóa có số thứ tự phải trùng khớp tuyệt đối;
- * khóa thường thì vẫn nhận các cách viết khác nhau của cùng phòng ban (dữ liệu cũ).
- */
-const SLOT_SUFFIX = /\s\(\d+\)$/;
-export function sameDepartmentKey(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (SLOT_SUFFIX.test(a) || SLOT_SUFFIX.test(b)) return false;
-  return isSameDepartment(a, b);
-}
+import type {
+  ProcedureChanges,
+  ProjectProcedureSync,
+  StepDraft,
+} from "../types/project-procedure.types";
+import {
+  createEmptyProcedure,
+  sameDepartmentKey,
+  toDepartmentSteps,
+  withProcedureAssignees,
+} from "../utils/project-procedure-data";
 import {
   getAppliedDepartments,
   getProcedureProgress,
@@ -48,149 +41,43 @@ import {
   type StageSummary,
 } from "../utils/project-procedure-flow";
 import { withPlannedDates } from "../utils/step-schedule";
+import { getProjectProcedure, saveProjectProcedures } from "../services/project.api";
+import { projectKeys } from "./useProjectList";
 
-/** Báo ra ngoài sau mỗi thay đổi: phòng ban đang áp dụng quy trình + phần trăm hoàn thành dự án */
-export interface ProjectProcedureSync {
-  departments: string[];
-  actualProgress: number;
-}
-
-/** Phần phân công đang sửa trên bảng nhưng chưa bấm "Lưu" */
-export type StepDraft = Partial<
-  Pick<ProcedureStep, "assignedTo" | "assignedToId" | "assignedBy" | "assignedAt" | "startDatePlanned" | "endDatePlanned">
->;
-
-export type ProcedureSource = { id: string; name: string; steps: ProcedureStep[] };
-
-/** Dự án chưa có dữ liệu quy trình: dựng khung rỗng từ thông tin dự án */
-function createEmptyProcedure(project: ProjectItem): ProjectProcedureData {
-  return {
-    projectId: project.id,
-    projectCode: project.code,
-    projectName: project.name,
-    projectType: project.type,
-    totalInvestment: project.totalInvestment,
-    managerName: project.managerName,
-    supervisorName: project.supervisorName,
-    startDate: project.startDate,
-    expectedFinishDate: project.endDatePlanned || project.startDate,
-    departments: project.departments ?? [],
-    departmentStatuses: {},
-    directorApproval: { status: "PENDING" },
-    stageApprovals: {},
-    steps: [],
-    history: [],
-  };
-}
-
-/** Các bước của quy trình khi áp dụng cho một phòng ban của dự án: chưa giao người, trạng thái về ban đầu */
-function toDepartmentSteps(projectId: string, department: string, procedure: ProcedureSource): ProcedureStep[] {
-  const prefix = `${projectId}-${department}`.replace(/\s+/g, "_");
-  return procedure.steps.map<ProcedureStep>((s) => ({
-    ...s,
-    id: `${prefix}-${s.id}`,
-    department,
-    responsibleUnit: s.responsibleUnit && s.responsibleUnit !== "Chủ đầu tư" ? s.responsibleUnit : department,
-    status: s.isEnabled ? "NOT_STARTED" : "DISABLED",
-    submissionStatus: undefined,
-    attachments: [],
-  }));
-}
-
-/** Dữ liệu cũ chưa có người thực hiện: lấy theo người đã phân công trong quy trình gốc (cùng mã bước) */
-function withProcedureAssignees(data: ProjectProcedureData): ProjectProcedureData {
-  const library = loadProcedureLibrary();
-  let changed = false;
-  const steps = data.steps.map((step) => {
-    if (step.assignedTo || !step.department) return step;
-    const procedureId = data.departmentStatuses?.[step.department]?.procedureId;
-    const source = library.find((p) => p.id === procedureId)?.steps.find((s) => s.code === step.code);
-    if (!source?.assignedTo) return step;
-    changed = true;
-    return { ...step, assignedTo: source.assignedTo, assignedToId: source.assignedToId };
-  });
-  return changed ? { ...data, steps } : data;
-}
-
-/** Nhật ký "áp dụng quy trình cho phòng ban" */
-const applyLog = (department: string, procedure: ProcedureSource, stepCount: number) => ({
-  stepId: "DEPT-CONFIG",
-  stepCode: "THIET-LAP",
-  stepName: `Quy trình ${department}`,
-  action: "TOGGLE_STEP" as const,
-  actionLabel: "Cấu hình quy trình phòng ban",
-  details: `Áp dụng "${procedure.name}" (${stepCount} bước) cho ${department}.`,
-});
-
-/** Dự án vừa tạo: ghi quy trình đã chọn cho từng phòng ban (không chọn phòng ban nào thì không ghi) */
-export function initProjectProcedure(
-  project: ProjectItem,
-  selections: { department: string; procedure: ProcedureSource; tabLabel?: string }[],
-  actor: { name: string; role: string },
-) {
-  if (selections.length === 0) return;
-  const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-  const steps = selections.map(({ department, procedure }) => toDepartmentSteps(project.id, department, procedure));
-  saveProjectProcedure({
-    ...createEmptyProcedure(project),
-    steps: withPlannedDates(steps.flat(), project.startDate),
-    departmentStatuses: Object.fromEntries(
-      selections.map(({ department, procedure, tabLabel }) => [
-        department,
-        {
-          department,
-          isCompletedByLead: false,
-          procedureId: procedure.id,
-          procedureName: procedure.name,
-          tabLabel: tabLabel?.trim() || undefined,
-        },
-      ]),
-    ),
-    history: selections.map(({ department, procedure }, i) => ({
-      ...applyLog(department, procedure, steps[i].length),
-      id: `LOG-${Date.now()}-${i}`,
-      timestamp,
-      performedBy: actor.name,
-      role: actor.role,
-    })),
-  });
-}
-
-/**
- * Quy trình đang áp dụng cho một dự án (dùng chung dữ liệu với phân hệ "Quy trình dự án").
- * Mỗi phòng ban của dự án áp dụng một quy trình riêng; các bước gắn `department` của phòng ban đó.
- */
 export function useProjectProcedure(project: ProjectItem, onSync?: (sync: ProjectProcedureSync) => void) {
   const { user } = useAuth();
   const actorName = user?.displayName || user?.name || "Cán bộ quản lý";
   const actorRole = user?.roleName || "Cán bộ Ban QLDA";
 
-  const [data, setData] = useState<ProjectProcedureData>(
+  const isBackend = hasBackendSession();
+  const queryClient = useQueryClient();
+  const remote = useQuery({
+    queryKey: projectKeys.procedure(project.id),
+    queryFn: () => getProjectProcedure(project),
+    enabled: isBackend,
+  });
+  const [localData, setData] = useState<ProjectProcedureData>(
     () => {
+      if (isBackend) return createEmptyProcedure(project);
       const saved = loadProjectProcedure(project.id, project.code);
       if (!saved) return createEmptyProcedure(project);
       const withAssignees = withProcedureAssignees(saved);
-      // Bước chưa có ngày kế hoạch: tự tính theo ngày bắt đầu dự án + số ngày từng bước
       return { ...withAssignees, steps: withPlannedDates(withAssignees.steps, project.startDate) };
     },
   );
+  const data = isBackend ? (remote.data ?? localData) : localData;
 
-  // Cấu hình quy trình (chọn / đổi quy trình áp dụng) — quyền cấu hình M3
   const canConfigure =
     canUserDo(user, "m3_construction_procedures", "configure") || hasMatrixPermission(user, "m3.config_template");
-  // Giao việc, đặt hạn, bật / tắt bước điều kiện — người cấu hình hoặc Lead của chính phòng ban
   const canManageDepartment = (department: string) => canConfigure || isLeadOfDepartment(user, department);
-  // Duyệt / từ chối kết quả bước — Tổ trưởng của phòng ban hoặc người có quyền duyệt M3
   const canApproveSteps = (department?: string) =>
     Boolean(department && isLeadOfDepartment(user, department)) ||
     canUserDo(user, "m3_construction_procedures", "approve") ||
     hasMatrixPermission(user, "m3.approve_step");
   const userKey = actorName.trim().toLowerCase();
   const isAssignee = (step: ProcedureStep) => Boolean(step.assignedTo && step.assignedTo.trim().toLowerCase() === userKey);
-  // Bắt đầu / nộp kết quả — người được giao, Tổ trưởng, hoặc người có quyền nhập liệu M3
   const canWorkOnStep = (step: ProcedureStep) =>
     isAssignee(step) || canApproveSteps(step.department) || canUserDo(user, "m3_construction_procedures", "input");
-  // Nghiệm thu / yêu cầu rà soát giai đoạn — Ban Giám đốc
   const canDecideStage = isDirectorUser(user);
   const departmentLead = (department: string) => getDepartmentLead(department)?.name;
 
@@ -198,6 +85,10 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     next: Pick<ProjectProcedureData, "steps"> & Partial<ProjectProcedureData>,
     log: Omit<ProcedureHistoryLog, "id" | "timestamp" | "performedBy" | "role">,
   ) => {
+    if (isBackend) {
+      toast.error("Không thực hiện được ở đây", "Nộp, duyệt và phân công bước thực hiện ở màn Việc cần xử lý.");
+      return;
+    }
     const merged = { ...data, ...next, steps: withPlannedDates(next.steps, project.startDate) };
     const departments = getAppliedDepartments(merged.departmentStatuses, merged.steps);
     const updated: ProjectProcedureData = {
@@ -225,18 +116,24 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     });
   };
 
-  /** Phòng ban đang áp dụng quy trình, kèm quy trình của phòng ban đó */
   const appliedDepartments = getAppliedDepartments(data.departmentStatuses, data.steps);
   const progress = getProcedureProgress(appliedDepartments, data.steps, data.stageApprovals);
 
   const departmentStatus = (department: string): DepartmentProcedureStatus | undefined =>
     Object.entries(data.departmentStatuses ?? {}).find(([key]) => sameDepartmentKey(key, department))?.[1];
 
-  /**
-   * Lưu một lần mọi thay đổi quy trình của dự án (sau khi bấm "Lưu thay đổi"):
-   * gỡ quy trình (xóa bước + tiến độ), áp dụng quy trình mới, đổi tên đầu mục (tên tab).
-   */
   const saveProcedureChanges = (changes: ProcedureChanges) => {
+    if (isBackend) {
+      saveProjectProcedures(project.id, changes, data)
+        .then(() =>
+          Promise.all([
+            queryClient.invalidateQueries({ queryKey: projectKeys.procedure(project.id) }),
+            queryClient.invalidateQueries({ queryKey: projectKeys.list() }),
+          ]),
+        )
+        .catch((e: Error) => toast.error("Không lưu được quy trình", e.message));
+      return;
+    }
     const removed = new Set(changes.remove);
     const keep = (dept?: string) => !dept || ![...removed].some((r) => sameDepartmentKey(dept, r));
     let steps = data.steps.filter((s) => keep(s.department));
@@ -288,12 +185,10 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
       },
     );
 
-  // Người thực hiện / ngày kế hoạch đang sửa trên bảng, theo mã bước — chỉ ghi xuống khi bấm "Lưu"
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
   const draftCount = Object.keys(drafts).length;
   const withDraft = (step: ProcedureStep): ProcedureStep => ({ ...step, ...drafts[step.id] });
 
-  /** Ghi nhận phần sửa của một bước; sửa về đúng giá trị đã lưu thì bỏ khỏi danh sách chờ lưu */
   const setStepDraft = (step: ProcedureStep, patch: StepDraft) =>
     setDrafts((prev) => {
       const next: StepDraft = { ...prev[step.id], ...patch };
@@ -312,19 +207,18 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
       return rest;
     });
 
-  /** Bỏ phần đang sửa (của các bước chỉ định, hoặc tất cả) */
   const discardDrafts = (stepIds?: string[]) =>
     setDrafts((prev) =>
       stepIds ? Object.fromEntries(Object.entries(prev).filter(([id]) => !stepIds.includes(id))) : {},
     );
 
-  /**
-   * Lưu phần đang sửa của một giai đoạn (truyền mã các bước) hoặc toàn bộ quy trình.
-   * Bước vừa đủ người thực hiện + ngày bắt đầu + ngày kết thúc kế hoạch thì bắt đầu luôn.
-   */
   const saveDrafts = (stepIds?: string[]) => {
     const ids = Object.keys(drafts).filter((id) => !stepIds || stepIds.includes(id));
     if (ids.length === 0) return { saved: 0, started: 0 };
+    if (isBackend) {
+      toast.error("Không thực hiện được ở đây", "Phân công bước thực hiện ở màn Việc cần xử lý.");
+      return { saved: 0, started: 0 };
+    }
     const date = today();
     const codes: string[] = [];
     let started = 0;
@@ -353,7 +247,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     return { saved: codes.length, started };
   };
 
-  /** Nộp kết quả bước (kèm hồ sơ): luôn chờ Tổ trưởng duyệt hoặc từ chối */
   const submitStep = (step: ProcedureStep, input: { note?: string; documents?: ProcedureDocument[] }) => {
     const isResubmission = step.submissionStatus === "REJECTED";
     const date = today();
@@ -368,7 +261,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
         submittedBy: actorName,
         submittedAt: date,
         submissionNote: input.note || step.submissionNote,
-        // Lần nộp mới chưa ai duyệt
         approvedBy: undefined,
         approvedAt: undefined,
       },
@@ -381,7 +273,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     );
   };
 
-  /** Bỏ quyết định nghiệm thu của giai đoạn chứa bước (giai đoạn phải được nghiệm thu lại) */
   const withoutStageDecision = (step: ProcedureStep) => {
     const key = `${step.department}::${step.groupCode}`;
     return Object.fromEntries(
@@ -389,7 +280,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     );
   };
 
-  /** Tổ trưởng duyệt kết quả bước */
   const approveStep = (step: ProcedureStep) =>
     patchStep(
       step,
@@ -408,7 +298,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
       },
     );
 
-  /** Tổ trưởng từ chối kết quả bước, yêu cầu làm lại */
   const returnStep = (step: ProcedureStep, reason: string) =>
     patchStep(
       step,
@@ -430,7 +319,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
       { stageApprovals: withoutStageDecision(step) },
     );
 
-  /** Ban Giám đốc nghiệm thu (hoặc yêu cầu rà soát) một giai đoạn của phòng ban */
   const decideStage = (department: string, stage: StageSummary, approved: boolean, reason?: string) => {
     const decision = approved
       ? { status: "APPROVED" as const, decidedBy: actorName, decidedAt: today(), note: `Đã nghiệm thu giai đoạn: ${stage.title}` }
@@ -444,7 +332,6 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
     commit(
       {
         steps: data.steps,
-        // Ghi thêm theo tên giai đoạn để phân hệ Quy trình dự án cũng đọc được
         stageApprovals: { ...(data.stageApprovals ?? {}), [stage.approvalKey]: decision, [stage.title]: decision },
       },
       {

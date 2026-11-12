@@ -15,7 +15,11 @@ import {
   Tag,
   Text,
 } from "@/components/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useProjectStore } from "@/stores/project.store";
+import { toast } from "@/components/ui";
+import { projectKeys, useProjectList } from "@/features/projects_works/hooks/useProjectList";
+import * as projectApi from "@/features/projects_works/services/project.api";
 import { formatMoneyString } from "@/utils/format-money";
 import {
   STAGE_BADGE_CLASSES,
@@ -26,15 +30,17 @@ import type {
   ProjectItem,
   ProjectStage,
 } from "@/features/projects_works/types/project.types";
-import ProjectDetailModal from "@/features/projects_works/components/ProjectDetailModal";
+import ProjectDetailModal from "@/features/projects_works/components/detail/quick-view/ProjectDetailModal";
 import { useAuth } from "@/features/auth";
 
 const PAGE_SIZE = 5;
 
 export default function DashboardProjectsSection() {
   const { user } = useAuth();
-  const projects = useProjectStore((s) => s.projects);
+  const { isBackend, projects } = useProjectList();
   const setProjects = useProjectStore((s) => s.setProjects);
+  const queryClient = useQueryClient();
+  const refreshProjects = () => queryClient.invalidateQueries({ queryKey: projectKeys.all });
 
   // Chỉ dùng bộ lọc tìm kiếm
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -82,6 +88,18 @@ export default function DashboardProjectsSection() {
     newStage?: ProjectStage,
   ) => {
     const updaterName = user?.name || user?.displayName || "Cán bộ quản lý";
+    if (isBackend) {
+      const current = projects.find((p) => p.id === projectId);
+      projectApi
+        .updateProjectProgress(
+          projectId,
+          { actualProgress: newProgress, currentStage: newStage ?? current?.currentStage ?? "PREPARATION", note, actualEndDate },
+          updaterName,
+        )
+        .then(() => refreshProjects())
+        .catch((e: Error) => toast.error("Không cập nhật được tiến độ", e.message));
+      return;
+    }
     setProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;
@@ -113,6 +131,15 @@ export default function DashboardProjectsSection() {
   // Cập nhật thông tin dự án
   const handleUpdateProject = (projectId: string, data: ProjectFormData) => {
     const updaterName = user?.name || user?.displayName || "Cán bộ quản lý";
+    if (isBackend) {
+      const current = projects.find((p) => p.id === projectId);
+      if (!current) return;
+      projectApi
+        .updateProject(current, data, updaterName)
+        .then(() => refreshProjects())
+        .catch((e: Error) => toast.error("Không cập nhật được dự án", e.message));
+      return;
+    }
     setProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;

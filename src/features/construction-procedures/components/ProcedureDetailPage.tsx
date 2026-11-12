@@ -28,7 +28,7 @@ export default function ProcedureDetailPage({
       <ProcedurePageHeader
         title={
           <>
-            Chi tiết quy trình <span className="text-[#DC2626]">{procedure.name}</span>
+            Chi tiết <span className="text-[#DC2626]">{procedure.name}</span>
           </>
         }
         onBack={onBack}

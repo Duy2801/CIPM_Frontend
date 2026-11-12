@@ -3,6 +3,7 @@
 import React, { useRef, useState, useId } from "react";
 import {
   DeleteOutlined,
+  EyeOutlined,
   FileExcelOutlined,
   FileImageOutlined,
   FilePdfOutlined,
@@ -12,6 +13,7 @@ import {
   PaperClipOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
+import { FilePreviewModal } from "./file-preview-modal";
 
 export type AttachmentFileType = "PDF" | "DOCX" | "EXCEL" | "IMAGE" | "OTHER";
 
@@ -99,6 +101,22 @@ export function StandardFileUpload({
   });
 
   const [isDragOver, setIsDragOver] = useState(false);
+  const addedFiles = useRef(new Map<string, File>());
+  const [preview, setPreview] = useState<{ name: string; url?: string; revoke: boolean } | null>(null);
+
+  const openPreview = (file: UploadedAttachment) => {
+    const raw = file.rawFile ?? addedFiles.current.get(file.id);
+    if (raw) {
+      setPreview({ name: file.name, url: URL.createObjectURL(raw), revoke: true });
+      return;
+    }
+    setPreview({ name: file.name, url: file.url, revoke: false });
+  };
+
+  const closePreview = () => {
+    if (preview?.revoke && preview.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
 
   const activeFiles: UploadedAttachment[] = value !== undefined ? value : internalFiles;
 
@@ -116,6 +134,7 @@ export function StandardFileUpload({
       };
     });
 
+    newItems.forEach((item) => item.rawFile && addedFiles.current.set(item.id, item.rawFile));
     const updated = multiple ? [...activeFiles, ...newItems] : newItems.slice(0, 1);
 
     if (value === undefined) {
@@ -247,12 +266,22 @@ export function StandardFileUpload({
             {activeFiles.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors shadow-xs"
+                role="button"
+                tabIndex={0}
+                title="Bấm để xem tệp"
+                onClick={() => openPreview(file)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openPreview(file);
+                  }
+                }}
+                className="group/file flex cursor-pointer items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50/30 transition-colors shadow-xs"
               >
                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   {renderFileIcon(file.type)}
                   <div className="min-w-0">
-                    <div className="text-xs font-medium text-slate-800 truncate" title={file.name}>
+                    <div className="text-xs font-medium text-slate-800 truncate group-hover/file:text-[#DC2626]" title={file.name}>
                       {file.name}
                     </div>
                     <div className="text-[10.5px] text-slate-500 flex items-center gap-2">
@@ -268,6 +297,9 @@ export function StandardFileUpload({
                   </div>
                 </div>
 
+                <span className="ml-auto mr-1 flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-400 group-hover/file:text-[#DC2626]">
+                  <EyeOutlined /> Xem
+                </span>
                 {!disabled && (
                   <button
                     type="button"
@@ -285,6 +317,19 @@ export function StandardFileUpload({
             ))}
           </div>
         </div>
+      )}
+
+      {preview && (
+        <FilePreviewModal
+          fileName={preview.name}
+          url={preview.url}
+          fallback={
+            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-slate-500">
+              Không xem trước được tệp này.
+            </div>
+          }
+          onClose={closePreview}
+        />
       )}
     </div>
   );

@@ -28,6 +28,7 @@ export async function mockLogin(credentials: LoginCredentials): Promise<ApiRespo
     user: {
       ...mockAccount.user,
       roleId: mockAccount.id,
+      isLead: Boolean(mockAccount.isLead),
       authSource: "mock",
       permissions: Array.isArray(resolvedPerms) ? resolvedPerms : undefined,
     } as AuthResponse["user"],

@@ -2,10 +2,51 @@
 
 import { SearchOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui";
+import { SortIcon } from "@/features/projects_works/components/list/ProjectsTableHeaders";
 import type { LegalDocument } from "../types/legal-ai.types";
 import LegalDocumentRow from "./LegalDocumentRow";
 
+export type LegalDateSortKey = "issueDate" | "effectiveDate";
+export type LegalDateSort = { key: LegalDateSortKey; dir: "asc" | "desc" } | null;
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSortChange,
+}: {
+  label: string;
+  sortKey: LegalDateSortKey;
+  sort: LegalDateSort;
+  onSortChange: (sort: LegalDateSort) => void;
+}) {
+  const direction = sort?.key === sortKey ? sort.dir : null;
+  const next: LegalDateSort =
+    direction === null ? { key: sortKey, dir: "desc" } : direction === "desc" ? { key: sortKey, dir: "asc" } : null;
+  return (
+    <button
+      type="button"
+      onClick={() => onSortChange(next)}
+      title={
+        direction === "desc"
+          ? `${label}: mới nhất trước. Bấm để xếp cũ nhất trước`
+          : direction === "asc"
+            ? `${label}: cũ nhất trước. Bấm để bỏ sắp xếp`
+            : `Sắp xếp theo ${label.toLowerCase()}`
+      }
+      className={`group/col inline-flex w-28 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded border-0 bg-transparent p-0 font-semibold uppercase tracking-wide ${
+        direction ? "text-[#DC2626]" : "text-slate-500 hover:text-slate-800"
+      }`}
+    >
+      {label}
+      <SortIcon direction={direction} />
+    </button>
+  );
+}
+
 interface LegalDocumentListProps {
+  sort: LegalDateSort;
+  onSortChange: (sort: LegalDateSort) => void;
   documents: LegalDocument[];
   /** Mã văn bản vừa thêm gần nhất (tô nổi) */
   newestId?: string;
@@ -17,6 +58,8 @@ interface LegalDocumentListProps {
 
 /** Danh sách văn bản (không gom nhóm) kèm tiêu đề cột; trống thì gợi ý bỏ bớt bộ lọc */
 export default function LegalDocumentList({
+  sort,
+  onSortChange,
   documents,
   newestId,
   canManage,
@@ -43,18 +86,15 @@ export default function LegalDocumentList({
     <>
       {/* Tiêu đề cột — khớp độ rộng với từng dòng bên dưới */}
       <div
-        aria-hidden
-        className="hidden items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:flex"
+        className="hidden items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-slate-500 md:flex"
       >
         <span className="w-28 shrink-0">Số hiệu</span>
         <span className="w-24 shrink-0">Loại văn bản</span>
         <span className="min-w-0 flex-1">Tên văn bản</span>
-        <div className="w-28 shrink-0 text-center leading-tight">
-          <div className="whitespace-nowrap">Ngày ban hành</div>
-          <div className="whitespace-nowrap text-[10px] font-medium text-slate-400">Ngày hiệu lực</div>
-        </div>
-        <span className="w-20 shrink-0 text-center">Tình trạng</span>
-        {canManage && <span className="ml-auto w-12 shrink-0 text-center">Thao tác</span>}
+        <SortHeader label="Ngày ban hành" sortKey="issueDate" sort={sort} onSortChange={onSortChange} />
+        <SortHeader label="Ngày hiệu lực" sortKey="effectiveDate" sort={sort} onSortChange={onSortChange} />
+        <span className="w-24 shrink-0 whitespace-nowrap text-center">Tình trạng</span>
+        {canManage && <span className="ml-auto w-20 shrink-0 whitespace-nowrap text-center">Thao tác</span>}
       </div>
       <ol className="m-0 list-none divide-y divide-slate-100 p-0">
         {documents.map((doc) => (

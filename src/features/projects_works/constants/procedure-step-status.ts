@@ -1,6 +1,5 @@
 import type { StepFlowKey } from "../utils/project-procedure-flow.ts";
 
-/** Nhãn + màu vị trí của bước trong luồng xử lý (trang chi tiết dự án) */
 export const STEP_FLOW_META: Record<StepFlowKey, { label: string; className: string }> = {
   UNASSIGNED: { label: "Chưa giao", className: "bg-white text-slate-500 border-dashed border-slate-300" },
   IN_PROGRESS: { label: "Đang xử lý", className: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -11,7 +10,6 @@ export const STEP_FLOW_META: Record<StepFlowKey, { label: string; className: str
   DISABLED: { label: "Không áp dụng", className: "bg-slate-50 text-slate-400 border-slate-200" },
 };
 
-/** Viền + chấm màu của thẻ bước trên sơ đồ quy trình dự án */
 export const STEP_FLOW_TONE: Record<StepFlowKey, { card: string; dot: string; text: string }> = {
   UNASSIGNED: { card: "border-dashed border-slate-300", dot: "bg-slate-300", text: "text-slate-400" },
   IN_PROGRESS: { card: "border-blue-300 bg-blue-50/40", dot: "bg-blue-500", text: "text-blue-700" },

@@ -1,6 +1,5 @@
 import type { ProjectDocument, ProjectItem } from "../types/project.types.ts";
 
-/** Bộ hồ sơ pháp lý & kỹ thuật mẫu (chưa có backend): dùng cho dự án chưa có tài liệu đính kèm */
 const SAMPLE_DOCUMENTS: (Omit<ProjectDocument, "id" | "uploadedAt"> & { daysAfterStart: number })[] = [
   {
     name: "Quyết định phê duyệt chủ trương đầu tư",
@@ -53,7 +52,6 @@ function shiftDate(isoDate: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Tài liệu đính kèm của dự án; dự án chưa có tài liệu thì dùng bộ hồ sơ mẫu (ngày tải theo ngày bắt đầu dự án) */
 export function getProjectDocuments(project: ProjectItem): ProjectDocument[] {
   if (project.documents && project.documents.length > 0) return project.documents;
   const baseDate = project.startDate || new Date().toISOString().slice(0, 10);

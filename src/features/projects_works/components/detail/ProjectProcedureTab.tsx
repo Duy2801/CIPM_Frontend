@@ -11,27 +11,23 @@ import { reachedStepIds } from "@/features/my-tasks/utils/my-tasks";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
 import { STEP_FLOW_META, STEP_FLOW_TONE } from "../../constants/procedure-step-status";
-import { sameDepartmentKey, type ProjectProcedureController } from "../../hooks/useProjectProcedure";
+import type { ProjectProcedureController } from "../../hooks/useProjectProcedure";
+import { sameDepartmentKey } from "../../utils/project-procedure-data";
 import { getStepFlow } from "../../utils/project-procedure-flow";
 import ProcedureStepFlowDrawer from "./ProcedureStepFlowDrawer";
 
-/** Bước chưa tới lượt (đang chờ bước trước hoàn thành) */
 const WAITING_TONE = { card: "border-slate-200 bg-slate-50/70", dot: "bg-slate-300", text: "text-slate-400" };
 
-/** Thẻ bước rộng hơn sơ đồ bên Quy trình để hiện đủ tên, trạng thái và người thực hiện */
 const CARD_WIDTH = 360;
 const CARD_HEIGHT = 128;
 
 interface ProjectProcedureTabProps {
   department: string;
   controller: ProjectProcedureController;
-  /** Quy trình loại GPMB: nội dung tab con "Hộ dân được bồi thường" */
   households?: React.ReactNode;
-  /** Quy trình loại GPMB: nội dung tab con "Bảng giá bồi thường" */
   prices?: React.ReactNode;
 }
 
-/** Tab của một quy trình trong dự án: sơ đồ các bước, bấm thẻ để xem chi tiết bước */
 export default function ProjectProcedureTab({ department, controller, households, prices }: ProjectProcedureTabProps) {
   const [openStepId, setOpenStepId] = useState<string | null>(null);
   const [view, setView] = useState<"procedure" | "households" | "prices">("procedure");
@@ -40,9 +36,7 @@ export default function ProjectProcedureTab({ department, controller, households
   const steps = data.steps.filter((s) => s.department && sameDepartmentKey(s.department, department));
   const openStep = steps.find((s) => s.id === openStepId) ?? null;
 
-  // Bước đã tới lượt: tuần tự thì bước sau chỉ tới lượt khi bước trước xong; song song thì cùng tới lượt
   const reached = reachedStepIds(steps);
-  /** Trạng thái hiển thị: bước chưa xong mà chưa tới lượt thì là "Chưa tới lượt" thay cho "Đang xử lý" */
   const displayOf = (step: ProcedureStep) => {
     const flow = getStepFlow(step);
     if ((flow === "IN_PROGRESS" || flow === "UNASSIGNED") && !reached.has(step.id)) {
@@ -51,17 +45,14 @@ export default function ProjectProcedureTab({ department, controller, households
     return { label: STEP_FLOW_META[flow].label, tone: STEP_FLOW_TONE[flow], locked: false };
   };
 
-  // Bước công việc (không tính mục lớn, bước không áp dụng)
   const workSteps = steps.filter((s) => !isHeadingStep(s, steps) && getStepFlow(s) !== "DISABLED");
   const doneCount = workSteps.filter((s) => ["COMPLETED", "SKIPPED"].includes(getStepFlow(s))).length;
   const percent = workSteps.length > 0 ? Math.round((doneCount / workSteps.length) * 100) : 0;
 
-  // Bước đang làm: đã tới lượt mà chưa xong (theo thứ tự quy trình)
   const current = workSteps
     .filter((s) => reached.has(s.id) && !["COMPLETED", "SKIPPED"].includes(getStepFlow(s)))
     .sort((a, b) => a.order - b.order);
   const head = current[0];
-  // Kế hoạch cả quy trình: từ ngày bắt đầu sớm nhất đến ngày kết thúc muộn nhất của các bước
   const starts = workSteps.map((s) => s.startDatePlanned).filter(Boolean).sort() as string[];
   const ends = workSteps.map((s) => s.endDatePlanned).filter(Boolean).sort() as string[];
   const planRange = starts.length && ends.length ? `${formatDateVi(starts[0])} – ${formatDateVi(ends[ends.length - 1])}` : "—";
@@ -87,7 +78,6 @@ export default function ProjectProcedureTab({ department, controller, households
         { label: "Kế hoạch quy trình", value: planRange },
       ];
 
-      /** Bước có bước con (mục lớn): số bước con đã xong */
       const headingBadge = (step: ProcedureStep) => {
         const children = steps.filter((s) => s.code.startsWith(`${step.code}.`) && !isHeadingStep(s, steps));
         const done = children.filter((s) => ["COMPLETED", "SKIPPED"].includes(getStepFlow(s))).length;
@@ -100,7 +90,6 @@ export default function ProjectProcedureTab({ department, controller, households
 
       return (
         <div className="flex flex-col gap-3">
-          {/* Quy trình GPMB: chuyển giữa sơ đồ quy trình và danh sách hộ dân được bồi thường của dự án */}
           {households && (
             <Segmented<"procedure" | "households" | "prices">
               value={view}
@@ -117,7 +106,6 @@ export default function ProjectProcedureTab({ department, controller, households
           {view === "procedure" && (
             <>
           <Card surface="workspace" padding="none" rounded="lg" className="border border-slate-200/80 shadow-xs">
-            {/* Tên quy trình · tiến độ · % hoàn thành */}
             <div className="flex items-center gap-6 px-5 pt-4 pb-3">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-base font-bold text-slate-900">
@@ -135,7 +123,6 @@ export default function ProjectProcedureTab({ department, controller, households
               <div className="shrink-0 text-3xl font-bold leading-none text-[#DC2626]">{percent}%</div>
             </div>
 
-            {/* Bước đang làm + kế hoạch: một dải, ngăn bằng vạch dọc */}
             <dl className="m-0 grid grid-cols-2 border-t border-slate-100 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
               {facts.map((f, i) => (
                 <div

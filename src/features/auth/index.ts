@@ -18,6 +18,7 @@ export {
   logout,
   changePassword,
   getCurrentUser,
+  refreshSessionUser,
   refreshToken,
   persistAuthSession,
   clearAuthSession,

@@ -34,14 +34,6 @@ export const STAGE_BADGE_CLASSES: Record<ProjectStage, string> = {
   COMPLETED: "bg-slate-100 text-slate-800 border-slate-200/80",
 };
 
-/**
- * Tính trạng thái trễ tiến độ theo quy tắc BRD 4.1.3:
- * - Chênh lệch = Thực tế - Kế hoạch
- * - Nếu Chậm < 15%: Bình thường (normal)
- * - Nếu Chậm 15% - <25%: Cần theo dõi (warning - vàng)
- * - Nếu Chậm 25% - <40%: Chậm tiến độ (danger - đỏ)
- * - Nếu Chậm >= 40%: Khẩn cấp (critical - đỏ đậm)
- */
 export function getProjectHealthStatus(actualProgress: number, plannedProgress: number): {
   status: ProjectHealthStatus;
   diff: number;
@@ -119,18 +111,6 @@ export const FUNDING_SOURCE_OPTIONS = [
   "Vốn ODA",
   "Vốn xã hội hóa",
   "Vốn vay thương mại",
-] as const;
-
-export const LOCATION_OPTIONS = [
-  "Phường Pháo Đài",
-  "Phường Đông Hồ",
-  "Phường Tô Châu",
-  "Phường Bình San",
-  "Phường Mỹ Đức",
-  "Xã Thuận Yên",
-  "Xã Tiên Hải",
-  "Khu vực Mũi Nai",
-  "Toàn địa bàn TP. Hà Tiên",
 ] as const;
 
 export const PERSONNEL_OPTIONS = [

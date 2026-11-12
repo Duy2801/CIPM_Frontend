@@ -9,9 +9,9 @@ import {
 } from "@/features/personnel-assignment/utils/activity-log";
 import type { AuthUser } from "@/types/auth";
 
-export const REPORT_LOG_MODULE = "Báo cáo";
+const REPORT_LOG_MODULE = "Báo cáo";
 
-export type ReportAction = "IMPORT" | "EXPORT" | "ADD_TYPE" | "REMOVE_TYPE";
+type ReportAction = "IMPORT" | "EXPORT" | "ADD_TYPE" | "REMOVE_TYPE";
 
 const ACTION_TEXT: Record<ReportAction, string> = {
   IMPORT: "Nhập Excel",

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionFeedback } from "@/components/workspace";
 import { useAuth } from "@/features/auth";
 import { todayIso } from "@/utils/date";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import { mockGpmbRepository } from "../services/mock-gpmb.repository";
 import type { GpmbDataset, HouseholdInput, SpecialStatus, StepCompletionInput } from "../types/gpmb.types";
 import { getGpmbRolePermissions } from "../utils/gpmb-permissions";
@@ -11,6 +12,9 @@ import { getLegalStatus, hasReceivedPayment } from "../utils/gpmb-rules";
 import { buildGpmbTasks } from "../utils/gpmb-workspace";
 
 const EMPTY_DATASET: GpmbDataset = { projects: [], households: [] };
+
+const loadDataset = () =>
+  hasBackendSession() ? Promise.resolve(EMPTY_DATASET) : mockGpmbRepository.getDataset();
 
 /**
  * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
@@ -27,19 +31,19 @@ export function useSiteClearance(fixedProjectId?: string) {
   const actor = permissions.userName;
 
   const refresh = useCallback(async () => {
-    setData(await mockGpmbRepository.getDataset());
+    setData(await loadDataset());
   }, []);
   const { feedback, run, clearFeedback } = useActionFeedback(refresh);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      let result = await mockGpmbRepository.getDataset();
+      let result = await loadDataset();
       // Mở từ dự án áp dụng quy trình GPMB mà chưa có hộ dân: nạp hộ dân mẫu (bản mock)
       const project = fixedProjectId ? result.projects.find((p) => p.id === fixedProjectId) : undefined;
       if (project && !result.households.some((h) => h.projectId === project.id)) {
         await mockGpmbRepository.ensureSampleHouseholds(project);
-        result = await mockGpmbRepository.getDataset();
+        result = await loadDataset();
       }
       if (active) {
         setData(result);

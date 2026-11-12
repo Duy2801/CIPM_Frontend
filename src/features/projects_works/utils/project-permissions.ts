@@ -8,21 +8,6 @@ export interface PermissionCheckResult {
   roleDescription?: string;
 }
 
-/**
- * Kiểm tra xem người dùng hiện tại có thuộc Ban Giám đốc hay không.
- */
-export function isBoardOfDirectors(user: AuthUser | null): boolean {
-  if (!user) return false;
-  return (
-    user.role === "ADMIN" ||
-    user.role === "DEPUTY_DIRECTOR" ||
-    user.department === "Ban Giám đốc"
-  );
-}
-
-/**
- * Kiểm tra xem người dùng có thuộc Tổ Giám sát – Kỹ thuật hay không.
- */
 export function isTechnicalInspectionTeam(user: AuthUser | null): boolean {
   if (!user) return false;
   return (
@@ -33,9 +18,6 @@ export function isTechnicalInspectionTeam(user: AuthUser | null): boolean {
   );
 }
 
-/**
- * Kiểm tra xem người dùng có phải là người phụ trách hoặc giám sát của dự án cụ thể này không.
- */
 export function isProjectPersonInCharge(
   user: AuthUser | null,
   project: ProjectItem
@@ -55,9 +37,6 @@ export function isProjectPersonInCharge(
   );
 }
 
-/**
- * Quy tắc 4: Chỉ người phụ trách dự án, Tổ Giám sát – KT, và Ban Giám đốc được cập nhật tiến độ.
- */
 export function canUpdateProjectProgress(
   user: AuthUser | null,
   project: ProjectItem | null
@@ -66,7 +45,6 @@ export function canUpdateProjectProgress(
     return { allowed: false, reason: "Dự án không tồn tại." };
   }
 
-  // Nếu dự án đã đóng, không cho phép cập nhật tiến độ
   if (project.status === "closed") {
     return {
       allowed: false,
@@ -83,10 +61,9 @@ export function canUpdateProjectProgress(
   }
 
   const permissions = getUserEffectivePermissions(user);
-  const hasInput = canDo(permissions, "m2_projects", "input") || permissions.includes("m2_projects:progress" as any);
+  const hasInput = canDo(permissions, "m2_projects", "input") || (permissions as string[]).includes("m2_projects:progress");
   const hasApprove = canDo(permissions, "m2_projects", "approve");
 
-  // 1. Quyền phê duyệt / Ban Giám đốc được cấp quyền
   if (hasApprove) {
     return {
       allowed: true,
@@ -94,7 +71,6 @@ export function canUpdateProjectProgress(
     };
   }
 
-  // 2. Quyền nhập liệu (m2_projects:input)
   if (hasInput) {
     return {
       allowed: true,
@@ -102,7 +78,6 @@ export function canUpdateProjectProgress(
     };
   }
 
-  // 3. Người phụ trách dự án cụ thể
   if (isProjectPersonInCharge(user, project)) {
     return {
       allowed: true,
@@ -118,10 +93,6 @@ export function canUpdateProjectProgress(
   };
 }
 
-/**
- * Quy tắc phân quyền xóa hoặc đóng dự án:
- * Dựa vào quyền m2_projects:configure / m2_projects:approve trong Ma trận phân quyền.
- */
 export function canDeleteOrCloseProject(user: AuthUser | null): PermissionCheckResult {
   if (!user) {
     return {
@@ -141,37 +112,6 @@ export function canDeleteOrCloseProject(user: AuthUser | null): PermissionCheckR
   return {
     allowed: false,
     reason: "Bạn không có quyền đóng hoặc xóa dự án trong Ma trận phân quyền.",
-  };
-}
-
-export interface ProjectExportScopeResult {
-  canExport: boolean;
-  scope: "ALL" | "OWN_PROJECTS" | "NONE";
-  reason?: string;
-}
-
-/**
- * Quyền xuất báo cáo danh mục dự án theo Ma trận phân quyền
- */
-export function getProjectExportScope(user: AuthUser | null): ProjectExportScopeResult {
-  if (!user) {
-    return { canExport: false, scope: "NONE", reason: "Chưa đăng nhập" };
-  }
-
-  const permissions = getUserEffectivePermissions(user);
-  if (canDo(permissions, "m2_projects", "export")) {
-    return { canExport: true, scope: "ALL" };
-  }
-
-  // Người phụ trách dự án cụ thể có thể xuất dự án mình
-  if (isTechnicalInspectionTeam(user) || user.role === "TECHNICAL_OFFICER") {
-    return { canExport: true, scope: "OWN_PROJECTS" };
-  }
-
-  return {
-    canExport: false,
-    scope: "NONE",
-    reason: "Chức danh của bạn chưa được cấp quyền xuất báo cáo dự án trong Ma trận phân quyền.",
   };
 }
 

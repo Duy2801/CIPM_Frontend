@@ -15,7 +15,7 @@ const TONES = {
   },
   sub: {
     row: "bg-red-50/70 border-y border-red-200 border-l-[3px] border-l-[#DC2626] transition-all",
-    code: "w-16 min-w-0 shrink border-red-200",
+    code: "w-[76px] shrink-0 border-red-200",
     name: "border-red-300 focus:border-[#DC2626]",
   },
 };
@@ -41,6 +41,8 @@ export default function StepInlineAddRow({
 }: StepInlineAddRowProps) {
   const isSub = !!parentCode;
   const tone = TONES[isSub ? "sub" : "main"];
+  const indent = FLOW_GUTTER + (parentCode ? FLOW_INDENT * (getStepDepth(parentCode) + 1) : 0);
+  const codeWidth = Math.max(96, indent + (isSub ? 92 : 64));
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") onSave(isSub);
     if (e.key === "Escape") onCancel();
@@ -50,10 +52,10 @@ export default function StepInlineAddRow({
     <div className={`flex flex-col gap-1 px-3.5 py-2 shadow-2xs ${tone.row}`}>
       <div className="flex items-center gap-3 w-full">
         <div
-          className={`w-24 shrink-0 flex items-center ${isSub ? "gap-0.5" : "gap-1.5 text-left"}`}
-          style={{ paddingLeft: FLOW_GUTTER + (parentCode ? FLOW_INDENT * (getStepDepth(parentCode) + 1) : 0) }}
+          className={`shrink-0 flex items-center ${isSub ? "gap-0.5" : "gap-1.5 text-left"}`}
+          style={{ paddingLeft: indent, width: codeWidth }}
         >
-          {isSub && <span className="text-[#DC2626] font-mono text-xs select-none">└</span>}
+          {isSub && <span className="shrink-0 text-[#DC2626] font-mono text-xs select-none">└</span>}
           <Input
             value={draft.code}
             onChange={(e) => onChange({ code: e.target.value })}

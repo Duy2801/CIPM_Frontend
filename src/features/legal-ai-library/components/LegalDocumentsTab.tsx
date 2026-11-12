@@ -12,29 +12,48 @@ import {
   isLegalFiltering,
   type LegalDocumentFilters,
 } from "../utils/legal-document-filters";
-import CreateDocumentDrawer from "./CreateDocumentDrawer";
-import LegalDocumentList from "./LegalDocumentList";
+import LegalDocumentList, { type LegalDateSort } from "./LegalDocumentList";
 import LegalDocumentToolbar from "./LegalDocumentToolbar";
 import LegalStatsChart from "./LegalStatsChart";
 
 const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 
 /** Tab "Danh sách văn bản": thống kê hiệu lực, lọc, phân trang, thêm văn bản; bấm văn bản để mở trang chi tiết */
-export default function LegalDocumentsTab({ onOpen }: { onOpen: (documentId: string) => void }) {
+export default function LegalDocumentsTab({
+  onOpen,
+  onCreate,
+  createdIds,
+}: {
+  onOpen: (documentId: string) => void;
+  onCreate: () => void;
+  createdIds: string[];
+}) {
   const { data: documents = [] } = useLegalDocuments();
   const canManage = useCanManageLegalDocuments();
 
   const [filters, setFilters] = useState<LegalDocumentFilters>(DEFAULT_LEGAL_FILTERS);
   const [page, setPage] = useState(1);
-  // Văn bản thêm trong phiên làm việc — mới nhất đứng đầu, luôn hiển thị trên cùng danh sách
-  const [recentlyAddedIds, setRecentlyAddedIds] = useState<string[]>([]);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [sort, setSort] = useState<LegalDateSort>(null);
+  const recentlyAddedIds = createdIds;
+  const [seenCreatedId, setSeenCreatedId] = useState(createdIds[0]);
+  if (seenCreatedId !== createdIds[0]) {
+    setSeenCreatedId(createdIds[0]);
+    setFilters(DEFAULT_LEGAL_FILTERS);
+    setPage(1);
+  }
 
   const categoryKeys = useMemo(() => getCategoryKeys(documents), [documents]);
-  const filtered = useMemo(
-    () => filterLegalDocuments(documents, filters, recentlyAddedIds),
-    [documents, filters, recentlyAddedIds],
-  );
+  const filtered = useMemo(() => {
+    const list = filterLegalDocuments(documents, filters, recentlyAddedIds);
+    if (!sort) return list;
+    const sign = sort.dir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      const x = a[sort.key] || "";
+      const y = b[sort.key] || "";
+      if (!x || !y) return x ? -1 : y ? 1 : 0;
+      return x.localeCompare(y) * sign;
+    });
+  }, [documents, filters, recentlyAddedIds, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -66,7 +85,7 @@ export default function LegalDocumentsTab({ onOpen }: { onOpen: (documentId: str
           {canManage && (
             <Button
               intent="primary"
-              onClick={() => setCreateOpen(true)}
+              onClick={onCreate}
               className="!bg-[#DC2626] !border-[#DC2626] hover:!bg-[#B91C1C] !text-white h-9 shrink-0 text-sm font-semibold shadow-2xs"
             >
               Thêm văn bản
@@ -96,6 +115,11 @@ export default function LegalDocumentsTab({ onOpen }: { onOpen: (documentId: str
         />
 
         <LegalDocumentList
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
           documents={paged}
           newestId={recentlyAddedIds[0]}
           canManage={canManage}
@@ -104,19 +128,6 @@ export default function LegalDocumentsTab({ onOpen }: { onOpen: (documentId: str
           onOpen={onOpen}
         />
       </Card>
-
-
-      {/* Drawer thêm mới văn bản: mở lại là form trống */}
-      {createOpen && (
-        <CreateDocumentDrawer
-          onClose={() => setCreateOpen(false)}
-          onCreated={(created) => {
-            setRecentlyAddedIds((prev) => [created.id, ...prev]);
-            resetFilters();
-            setCreateOpen(false);
-          }}
-        />
-      )}
     </>
   );
 }

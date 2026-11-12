@@ -1,9 +1,19 @@
 import type { ReactNode } from "react";
 
 /** Khối nhóm trường trong form văn bản: nền xám nhạt, tiêu đề có biểu tượng */
-export function LegalFormSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+export function LegalFormSection({
+  icon,
+  title,
+  children,
+  className,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3">
+    <div className={`rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 flex flex-col gap-3 ${className ?? ""}`}>
       <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
         <span className="text-[#DC2626]">{icon}</span>
         {title}

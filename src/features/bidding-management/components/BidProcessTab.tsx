@@ -48,7 +48,7 @@ export default function BidProcessTab({ controller }: { controller: BiddingContr
       align: "center",
       render: (_, row) => {
         const count = countAt(row.number);
-        return <Text className={`text-lg font-black ${count ? "text-[#0F4C81]" : "text-slate-300"}`}>{count}</Text>;
+        return <Text className={`text-xs ${count ? "text-slate-800" : "text-slate-300"}`}>{count}</Text>;
       },
     },
   ];

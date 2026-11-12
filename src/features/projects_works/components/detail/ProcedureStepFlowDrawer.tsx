@@ -18,7 +18,6 @@ interface ProcedureStepFlowDrawerProps {
   onClose: () => void;
 }
 
-/** Chi tiết một bước (chỉ xem): thông tin bước, người thực hiện, đã hoàn thành chưa, ghi chú và hồ sơ đã nộp */
 export default function ProcedureStepFlowDrawer({ step, controller, onClose }: ProcedureStepFlowDrawerProps) {
   return (
     <Drawer
@@ -31,7 +30,6 @@ export default function ProcedureStepFlowDrawer({ step, controller, onClose }: P
       className="[&_.ant-drawer-body]:!p-0"
       title={
         step && (
-          // Mã bước · tên bước cùng một hàng (tình trạng xem trong nội dung bên dưới)
           <StepHeading code={step.code} name={step.name} />
         )
       }
@@ -52,7 +50,6 @@ export function FlowBadge({ step }: { step: ProcedureStep }) {
 
 const date = (value?: string) => (value ? formatDateVi(value) : "—");
 
-/** Có ngày thực tế thì hiện ngày thực tế; chưa có thì hiện ngày kế hoạch (tự tính theo số ngày của bước) */
 const dateWithPlan = (actual?: string, planned?: string) =>
   actual ? (
     date(actual)

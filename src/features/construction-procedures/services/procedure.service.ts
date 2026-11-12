@@ -169,7 +169,7 @@ export async function createProcedure(input: CreateProcedureInput): Promise<void
  * Trả về null khi không dùng backend (tài khoản thử nghiệm / quy trình mẫu / mất kết nối) để màn hình dùng lịch sử mẫu.
  */
 export async function fetchProcedureHistory(id: string): Promise<ActivityEntry[] | null> {
-  if (!isBackendId(id)) return null;
+  if (!isBackendId(id)) return hasBackendSession() ? [] : null;
   return withBackend(
     async () => (await backend.getProcedureAuditLogsApi(id)).map(toProcedureActivityEntry),
     () => null,

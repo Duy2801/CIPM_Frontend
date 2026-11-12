@@ -12,8 +12,9 @@ import {
   getStoredUser,
   isBackendToken,
   persistAuthSession,
+  toAuthUser,
 } from "./auth-session";
-import { changePasswordApi, loginApi, logoutApi, refreshTokenApi } from "./auth.backend";
+import { changePasswordApi, getMeApi, loginApi, logoutApi, refreshTokenApi } from "./auth.backend";
 import { mockDefaultUser, mockLogin, mockRefreshToken } from "./auth.mock";
 
 /**
@@ -49,6 +50,7 @@ function toAuthData(data: BackendLoginResponse): AuthResponse {
       roleCode,
       roleName: user.positionTitle || roleCode,
       department: user.department?.name ?? "",
+      isLead: user.roles.some((role) => role.toUpperCase().endsWith("_LEAD")),
       initials: user.fullName.trim().split(/\s+/).slice(-2).map((w) => w[0]?.toUpperCase() ?? "").join(""),
       authSource: "backend",
       permissions: data.permissions,
@@ -109,7 +111,20 @@ export async function logout(): Promise<LogoutResponse> {
   return result;
 }
 
-/** Tài khoản đang đăng nhập (backend chưa có /auth/me nên đọc từ phiên đã lưu lúc đăng nhập) */
+/**
+ * Lấy lại tài khoản và quyền hiện tại từ backend (GET /auth/me), ghi đè phiên đã lưu.
+ * Dùng khi quyền được cấp / thu hồi sau lúc đăng nhập. Tài khoản thử nghiệm trả về null.
+ */
+export async function refreshSessionUser(): Promise<AuthUser | null> {
+  const accessToken = getStoredAccessToken();
+  if (!isBackendToken(accessToken)) return null;
+  const me = await getMeApi();
+  const authData = toAuthData({ ...me, accessToken, refreshToken: getStoredRefreshToken() ?? "" });
+  Cookies.set("user_info", JSON.stringify(authData.user), { ...COOKIE_OPTIONS, expires: 7 });
+  return toAuthUser(authData.user, expandBackendPermissions(me.permissions));
+}
+
+/** Tài khoản đang đăng nhập (đọc từ phiên đã lưu lúc đăng nhập) */
 export async function getCurrentUser(): Promise<ApiResponse<AuthUser>> {
   const stored = getStoredUser();
   if (stored) return { status: true, statusCode: 200, data: stored };

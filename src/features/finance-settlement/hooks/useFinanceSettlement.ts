@@ -10,6 +10,7 @@ import type {
   FinanceDataset,
   FinanceFilters,
 } from "../types/finance.types";
+import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import { mockFinanceRepository } from "../services/mock-finance.repository";
 import type { SettlementStepPayload } from "../services/finance.repository";
 import { getWorkingDaysUntil, validateDisbursement } from "../utils/finance-rules";
@@ -25,6 +26,9 @@ const EMPTY_DATASET: FinanceDataset = {
   settlements: [],
 };
 
+const loadDataset = () =>
+  hasBackendSession() ? Promise.resolve(EMPTY_DATASET) : mockFinanceRepository.getDataset();
+
 /**
  * `fixedProjectId`: mở từ trang chi tiết dự án — chỉ hiện dữ liệu của dự án đó,
  * danh sách dự án trong các hộp tạo mới cũng chỉ còn dự án này.
@@ -39,12 +43,12 @@ export function useFinanceSettlement(fixedProjectId?: string) {
   const rolePermissions = useMemo(() => getFinanceRolePermissions(user), [user]);
 
   const refresh = useCallback(async () => {
-    setData(await mockFinanceRepository.getDataset());
+    setData(await loadDataset());
   }, []);
 
   useEffect(() => {
     let active = true;
-    mockFinanceRepository.getDataset().then((result) => {
+    loadDataset().then((result) => {
       if (active) {
         setData(result);
         setLoading(false);

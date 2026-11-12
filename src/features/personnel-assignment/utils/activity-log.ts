@@ -24,7 +24,7 @@ export interface ActivityEntry {
   module: string;
   /** Mô tả ngắn thao tác, VD: "Cập nhật hồ sơ cán bộ" */
   action: string;
-  targetType?: "staff" | "team" | "role" | "disbursement" | "procedure";
+  targetType?: "staff" | "team" | "role" | "disbursement" | "procedure" | "project";
   targetId?: string;
   targetName?: string;
   changes?: ActivityChange[];

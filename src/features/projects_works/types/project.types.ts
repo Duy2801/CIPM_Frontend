@@ -1,12 +1,12 @@
 export type ProjectStage =
-  | "PREPARATION"      // Chuẩn bị ĐT
-  | "DESIGN"           // Thiết kế
-  | "BIDDING"          // Đấu thầu
-  | "CONSTRUCTION"     // Thi công
-  | "COMPENSATION"     // Bồi thường (GPMB)
-  | "INSPECTION"       // Nghiệm thu
-  | "SETTLEMENT"       // Quyết toán
-  | "COMPLETED";       // Hoàn thành
+  | "PREPARATION"
+  | "DESIGN"
+  | "BIDDING"
+  | "CONSTRUCTION"
+  | "COMPENSATION"
+  | "INSPECTION"
+  | "SETTLEMENT"
+  | "COMPLETED";
 
 export type ProjectStatusFilter = "ALL" | ProjectStage;
 
@@ -19,7 +19,7 @@ export type ProjectWorkType =
   | "Hạ tầng kỹ thuật"
   | "Công nghiệp";
 
-export type ProjectNature = "new" | "transitional"; // "new": Khởi công mới, "transitional": Chuyển tiếp (cũ)
+export type ProjectNature = "new" | "transitional";
 
 export type FundingSourceType =
   | "Ngân sách thành phố"
@@ -44,44 +44,38 @@ export interface ProgressHistoryRecord {
 
 export interface ProjectItem {
   id: string;
-  code: string;                      // BQL-DA-[YYYY]-[###]
-  name: string;                      // Tên công trình
-  type: ProjectWorkType;             // Loại công trình
-  location?: string;                 // Địa điểm xây dựng (Địa bàn): Phường Pháo Đài, Đông Hồ...
-  scale?: string;                    // Mục tiêu / Quy mô tóm tắt
+  code: string;
+  name: string;
+  type: ProjectWorkType;
+  location?: string;
+  scale?: string;
   
-  // Vốn đầu tư (Tỷ đồng, 2 chữ số thập phân)
   fundingSource: FundingSourceType;
   totalInvestment: number;
   plan2026: number;
-  disbursedAmount: number;           // Để kiểm tra quy tắc 5: Đã phát sinh tài chính thì không được xóa
+  disbursedAmount: number;
   
-  // Nhân sự & Phòng ban phụ trách
-  managerName: string;               // Người phụ trách chính / Chủ nhiệm DA (mặc định Giám đốc BQL)
-  supervisorName: string;            // Người giám sát KT ("Chưa phân công" nếu mới tạo)
-  departments?: string[];            // Các phòng ban/tổ phụ trách (chọn nhiều phòng ban)
+  managerName: string;
+  supervisorName: string;
+  managerId?: string;
+  supervisorId?: string;
+  departments?: string[];
   
-  // Thời gian
-  startDate: string;                 // YYYY-MM-DD
-  endDatePlanned: string;            // YYYY-MM-DD (phải sau startDate)
-  actualEndDate?: string;            // Bắt buộc khi tiến độ đạt 100%
+  startDate: string;
+  endDatePlanned: string;
+  actualEndDate?: string;
   
-  // Tiến độ
   currentStage: ProjectStage;
-  actualProgress: number;            // 0 - 100
-  plannedProgress: number;           // 0 - 100
+  actualProgress: number;
+  plannedProgress: number;
   
-  // Lịch sử cập nhật tiến độ (Audit trail)
   progressHistory: ProgressHistoryRecord[];
   
-  // Ghi chú
   note?: string;
   
-  // Trạng thái vận hành
   status: "active" | "closed";
-  nature?: ProjectNature;            // "new": Dự án mới (Khởi công mới) | "transitional": Dự án cũ (Chuyển tiếp)
+  nature?: ProjectNature;
 
-  // Tài liệu đính kèm (không bắt buộc)
   documents?: ProjectDocument[];
 }
 
@@ -105,6 +99,8 @@ export interface ProjectFormData {
   plan2026?: number;
   managerName?: string;
   supervisorName?: string;
+  managerId?: string;
+  supervisorId?: string;
   departments?: string[];
   startDate: string;
   endDatePlanned: string;
@@ -113,11 +109,14 @@ export interface ProjectFormData {
   actualProgress?: number;
   plannedProgress?: number;
   note?: string;
-  /** Ghi chú riêng cho nhật ký tiến độ tuần (không ghi đè ghi chú của dự án) */
   progressNote?: string;
   documents?: ProjectDocument[];
-  /** Quy trình áp dụng khi tạo dự án: phòng ban → id quy trình (chỉ dùng lúc tạo mới) */
   procedures?: Record<string, string>;
-  /** Tên đầu mục (tên tab) đặt lúc tạo: id quy trình → tên (chỉ dùng lúc tạo mới) */
   procedureTabLabels?: Record<string, string>;
 }
+
+export type ProjectActionType =
+  | "rule5_warning"
+  | "close_confirm"
+  | "delete_confirm"
+  | "reopen_confirm";

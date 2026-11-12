@@ -1,0 +1,275 @@
+"use client";
+
+import { useState } from "react";
+import {
+  CalendarOutlined,
+  ArrowLeftOutlined,
+  ExclamationCircleOutlined,
+  PaperClipOutlined,
+  UserOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
+import {
+  Button,
+  Input,
+  Drawer,
+  MoneyInput,
+  STANDARD_DRAWER_WIDTH,
+  StandardFileUpload,
+  type UploadedAttachment,
+} from "@/components/ui";
+import { SelectWithAddOption } from "@/components/workspace";
+import { cn } from "@/utils/cn";
+import { parseMoney } from "@/utils/format-money";
+import { formatDateVi } from "@/utils/date";
+import { type NewDisbursement } from "../../../hooks/useProjectDisbursements";
+import { toDisbursementAttachment, validateDisbursement, type DisbursementKind } from "../../../utils/project-disbursement";
+import { today } from "./disbursement-format";
+import { FieldLabel, FormSection, ReadonlyField } from "./DisbursementFormParts";
+
+export default function DisbursementFormDrawer({
+  kind,
+  categoryTotal,
+  projectName,
+  operatorName,
+  initialCategory,
+  categories,
+  unit,
+  remaining,
+  onAddCategory,
+  onCancel,
+  onSubmit,
+}: {
+  unit: string;
+  kind: DisbursementKind;
+  categoryTotal: (category: string) => number;
+  projectName: string;
+  operatorName: string;
+  initialCategory?: string;
+  categories: string[];
+  remaining?: number;
+  onAddCategory: (name: string) => void;
+  onCancel: () => void;
+  onSubmit: (input: NewDisbursement, files: File[]) => Promise<boolean | void> | void;
+}) {
+  const [category, setCategory] = useState<string | undefined>(
+    initialCategory || undefined,
+  );
+  const [amountRaw, setAmountRaw] = useState("");
+  const [content, setContent] = useState("");
+  const [files, setFiles] = useState<UploadedAttachment[]>([]);
+  const [error, setError] = useState<string>();
+
+  const withdraw = kind === "withdraw";
+  const label = unit === "đầu mục" ? "Đầu mục" : "Danh mục chi phí";
+  const verb = withdraw ? "thu hồi" : "giải ngân";
+  const amount = parseMoney(amountRaw);
+  const limit = withdraw ? (category ? categoryTotal(category) : 0) : remaining;
+  const overLimit = limit !== undefined && amount > limit;
+
+  const clearError = () => setError(undefined);
+
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    const err = validateDisbursement(
+      { kind, category, amount, attachmentCount: files.length, content },
+      limit,
+    );
+    if (err) {
+      setError(err);
+      return;
+    }
+    setSaving(true);
+    const attachments = await Promise.all(files.map(toDisbursementAttachment));
+    const result = await onSubmit(
+      { kind, category: category!, amount, content: content.trim() || undefined, attachments },
+      files.flatMap((f) => (f.rawFile ? [f.rawFile] : [])),
+    );
+    if (result === false) setSaving(false);
+  };
+
+  return (
+    <Drawer
+      open
+      onClose={onCancel}
+      width={STANDARD_DRAWER_WIDTH}
+      styles={{ body: { background: "#f8fafc", padding: 16 } }}
+      title={
+        <div className="flex items-center gap-3 py-1">
+          <Button
+            intent="outline"
+            scale="compact"
+            icon={<ArrowLeftOutlined />}
+            aria-label="Quay lại"
+            title="Quay lại"
+            onClick={onCancel}
+            className="h-9! w-9! shrink-0 p-0!"
+          />
+          <div className="min-w-0">
+            <div className="text-base font-bold text-slate-900">
+              {withdraw ? "Thu hồi giải ngân" : "Giải ngân"}
+            </div>
+            <div
+              className="truncate text-xs font-normal text-slate-500"
+              title={projectName}
+            >
+              {projectName}
+            </div>
+          </div>
+        </div>
+      }
+      footer={
+        <div className="flex w-full items-center gap-2.5 py-2">
+          <Button intent="primary" scale="sm" loading={saving} onClick={() => void submit()} className="px-5">
+            Xác nhận {verb}
+          </Button>
+          <Button
+            intent="outline"
+            scale="sm"
+            onClick={onCancel}
+            className="px-5"
+          >
+            Hủy
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <FormSection icon={<WalletOutlined />} title={`Thông tin ${verb}`}>
+          <div className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <ReadonlyField
+                icon={<CalendarOutlined />}
+                label={`Ngày ${verb}`}
+                value={formatDateVi(today())}
+                hint="Tự ghi nhận"
+              />
+              <ReadonlyField
+                icon={<UserOutlined />}
+                label="Người thực hiện"
+                value={operatorName}
+              />
+            </div>
+
+            {withdraw ? (
+              <ReadonlyField
+                icon={<WalletOutlined />}
+                label={label}
+                value={category ?? ""}
+              />
+            ) : (
+              <div>
+                <FieldLabel text={label} required />
+                <SelectWithAddOption
+                  aria-label={label}
+                  placeholder={`Chọn ${unit} hoặc gõ để thêm mới`}
+                  value={category}
+                  options={categories.map((c) => ({ value: c, label: c }))}
+                  filterByQuery
+                  addPlaceholder={`Gõ tên ${unit} mới…`}
+                  notFoundContent={
+                    <span className="text-xs text-slate-400">
+                      Không có {unit} phù hợp, bấm “Thêm” để tạo mới
+                    </span>
+                  }
+                  onChange={(v) => {
+                    setCategory(v);
+                    clearError();
+                  }}
+                  onAdd={(name) => {
+                    onAddCategory(name);
+                    setCategory(name);
+                    clearError();
+                  }}
+                  className="h-9"
+                />
+              </div>
+            )}
+
+            <div>
+              <FieldLabel text={`Số tiền ${verb}`} required />
+              <MoneyInput
+                value={amountRaw}
+                placeholder="0"
+                status={overLimit ? "error" : undefined}
+                suffix={
+                  <span className="text-xs font-medium text-slate-400">
+                    VNĐ
+                  </span>
+                }
+                onChange={(e: { target: { value: string } }) => {
+                  setAmountRaw(e.target.value);
+                  clearError();
+                }}
+                className="h-9 text-sm font-semibold"
+              />
+
+            </div>
+
+            <div>
+              <FieldLabel
+                text={withdraw ? "Lý do thu hồi" : "Nội dung thanh toán"}
+                required={withdraw}
+              />
+              <Input.TextArea
+                autoSize={{ minRows: 2, maxRows: 5 }}
+                value={content}
+                maxLength={500}
+                placeholder={
+                  withdraw
+                    ? "VD: Thu hồi tạm ứng do nhà thầu không thực hiện hợp đồng"
+                    : "VD: Thanh toán đợt 1 theo HĐ số 12/2026/HĐ-XD"
+                }
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  clearError();
+                }}
+                className="text-sm"
+              />
+              <div className="mt-1 text-right text-[11px] text-slate-400">
+                {content.length}/500
+              </div>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection
+          icon={<PaperClipOutlined />}
+          title={`Chứng từ ${verb} *`}
+          extra={
+            files.length > 0 ? (
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                {files.length} tệp
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-400">
+                Bắt buộc ít nhất 1 tệp
+              </span>
+            )
+          }
+        >
+          <StandardFileUpload
+            hideHeader
+            value={files}
+            promptText="Nhấn hoặc kéo thả tệp chứng từ vào đây"
+            onChange={(next) => {
+              setFiles(next);
+              clearError();
+            }}
+            className={cn(
+              "border-0 bg-transparent p-0",
+              error && files.length === 0 && "[&>label]:!border-rose-300",
+            )}
+          />
+        </FormSection>
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <ExclamationCircleOutlined />
+            {error}
+          </div>
+        )}
+      </div>
+    </Drawer>
+  );
+}
