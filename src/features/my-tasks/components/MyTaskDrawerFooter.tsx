@@ -19,7 +19,7 @@ export default function MyTaskDrawerFooter({ projectId, stepId }: MyTaskDrawerFo
   const actions = useMyTaskActions();
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2">
       {access.canAccept && (
         <Button intent="primary" scale="sm" onClick={() => actions.accept(ref)} className={PRIMARY_RED}>
           Thực hiện
@@ -51,6 +51,38 @@ export default function MyTaskDrawerFooter({ projectId, stepId }: MyTaskDrawerFo
             Hoàn trả
           </Button>
         </Tooltip>
+      )}
+      {(access.canReportIncident || access.canReview || access.canDecline) && (
+        <div className="ml-auto flex flex-wrap gap-2">
+          {access.canReportIncident && (
+            <Button
+              intent="outline"
+              scale="sm"
+              onClick={() => actions.openReason(ref, "incident")}
+              className="!border-orange-300 !text-orange-600 hover:!bg-orange-50"
+            >
+              Báo cáo sự cố
+            </Button>
+          )}
+          {(access.canReview || access.canDecline) && (
+            <Tooltip
+              title={
+                access.canReview
+                  ? "Trả kết quả về cho người thực hiện làm lại"
+                  : "Không làm việc này, trả về để giao người khác (giữ ghi chú và hồ sơ)"
+              }
+            >
+              <Button
+                intent="outline"
+                scale="sm"
+                onClick={() => actions.openReason(ref, access.canReview ? "reject" : "decline")}
+                className="!border-rose-300 !text-rose-600 hover:!bg-rose-50"
+              >
+                Từ chối
+              </Button>
+            </Tooltip>
+          )}
+        </div>
       )}
     </div>
   );

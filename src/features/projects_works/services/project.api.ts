@@ -123,7 +123,9 @@ export function addDisbursement(
   return withBackend(
     async () => {
       const created = await backend.createDisbursementApi(projectId, toApiDisbursementBody(input, await uploadFiles(files)));
-      return toDisbursementEntry(created.entry);
+      const latest = created.entry ?? [...(created.entries ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      if (!latest) throw new Error("Máy chủ không trả về đợt giải ngân vừa tạo.");
+      return toDisbursementEntry(latest);
     },
     () => repo.addDisbursement(projectId, input, actorName),
   );

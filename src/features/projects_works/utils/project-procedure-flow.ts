@@ -3,7 +3,6 @@ import type {
   ProcedureStep,
   StageApprovalStatus,
 } from "../../construction-procedures/types/procedure.types.ts";
-import { isHeadingStep } from "../../construction-procedures/utils/procedure-rules.ts";
 
 export type StepFlowKey =
   | "DISABLED"
@@ -57,7 +56,7 @@ export function groupStepsByStage(
   const stages = new Map<string, { title: string; steps: ProcedureStep[] }>();
   for (const step of ordered) {
     const stage = stages.get(step.groupCode) ?? { title: step.groupTitle, steps: [] };
-    if (!isHeadingStep(step, ordered)) stage.steps.push(step);
+    stage.steps.push(step);
     stages.set(step.groupCode, stage);
   }
 

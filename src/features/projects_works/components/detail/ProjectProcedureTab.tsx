@@ -6,7 +6,6 @@ import type React from "react";
 import { Card, Segmented } from "@/components/ui";
 import ProcedureRoadmap from "@/features/construction-procedures/components/ProcedureRoadmap";
 import type { ProcedureStep } from "@/features/construction-procedures/types/procedure.types";
-import { isHeadingStep } from "@/features/construction-procedures/utils/procedure-rules";
 import { reachedStepIds } from "@/features/my-tasks/utils/my-tasks";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
@@ -40,12 +39,13 @@ export default function ProjectProcedureTab({ department, controller, households
   const displayOf = (step: ProcedureStep) => {
     const flow = getStepFlow(step);
     if ((flow === "IN_PROGRESS" || flow === "UNASSIGNED") && !reached.has(step.id)) {
-      return { label: "Chưa tới lượt", tone: WAITING_TONE, locked: true };
+      const waitingChildren = steps.some((s) => s.code.startsWith(`${step.code}.`));
+      return { label: waitingChildren ? "Chờ bước con xong" : "Chưa tới lượt", tone: WAITING_TONE, locked: true };
     }
     return { label: STEP_FLOW_META[flow].label, tone: STEP_FLOW_TONE[flow], locked: false };
   };
 
-  const workSteps = steps.filter((s) => !isHeadingStep(s, steps) && getStepFlow(s) !== "DISABLED");
+  const workSteps = steps.filter((s) => getStepFlow(s) !== "DISABLED");
   const doneCount = workSteps.filter((s) => ["COMPLETED", "SKIPPED"].includes(getStepFlow(s))).length;
   const percent = workSteps.length > 0 ? Math.round((doneCount / workSteps.length) * 100) : 0;
 
@@ -77,16 +77,6 @@ export default function ProjectProcedureTab({ department, controller, households
         { label: "Hạn bước hiện tại", value: head?.endDatePlanned ? formatDateVi(head.endDatePlanned) : "—" },
         { label: "Kế hoạch quy trình", value: planRange },
       ];
-
-      const headingBadge = (step: ProcedureStep) => {
-        const children = steps.filter((s) => s.code.startsWith(`${step.code}.`) && !isHeadingStep(s, steps));
-        const done = children.filter((s) => ["COMPLETED", "SKIPPED"].includes(getStepFlow(s))).length;
-        return (
-          <span className="text-slate-500">
-            {done}/{children.length} bước xong
-          </span>
-        );
-      };
 
       return (
         <div className="flex flex-col gap-3">
@@ -156,10 +146,9 @@ export default function ProjectProcedureTab({ department, controller, households
             cardWidth: CARD_WIDTH,
             cardHeight: CARD_HEIGHT,
             large: true,
-            onClick: (step) => !isHeadingStep(step, steps) && setOpenStepId(step.id),
-            tone: (step) => (isHeadingStep(step, steps) ? undefined : displayOf(step).tone.card),
+            onClick: (step) => setOpenStepId(step.id),
+            tone: (step) => displayOf(step).tone.card,
             badge: (step) => {
-              if (isHeadingStep(step, steps)) return headingBadge(step);
               const { label, tone, locked } = displayOf(step);
               return (
                 <div className="flex flex-col gap-0.5">

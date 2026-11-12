@@ -165,6 +165,16 @@ export interface ApiProjectStep {
   approvedAt?: string | null;
   rejectionReason: string | null;
   rejectedBy?: string | null;
+  flowStage?: number | null;
+  acceptedBy?: string | null;
+  acceptedAt?: string | null;
+  handbackType?: ProcedureStep["handbackType"] | null;
+  handbackReason?: string | null;
+  handbackBy?: string | null;
+  handbackAt?: string | null;
+  incidentReason?: string | null;
+  incidentReportedBy?: string | null;
+  incidentReportedAt?: string | null;
   documents: ApiStepDocument[];
 }
 
@@ -207,10 +217,7 @@ export interface ApiDisbursementBody {
   fileIds: string[];
 }
 
-export interface ApiDisbursementCreated {
-  entry: ApiDisbursementEntry;
-  summary: ApiDisbursementSummary;
-}
+export type ApiDisbursementCreated = Partial<ApiDisbursementList> & { entry?: ApiDisbursementEntry };
 
 export interface ApiProgressBody {
   actualProgress: number;
@@ -374,6 +381,16 @@ export function toProjectStep(step: ApiProjectStep, index: number): ProcedureSte
     approvedAt: step.approvedAt ?? undefined,
     rejectionReason: step.rejectionReason ?? undefined,
     rejectedBy: step.rejectedBy ?? undefined,
+    flowStage: step.flowStage ?? undefined,
+    acceptedBy: step.acceptedBy ?? undefined,
+    acceptedAt: step.acceptedAt ?? undefined,
+    handbackType: step.handbackType ?? undefined,
+    handbackReason: step.handbackReason ?? undefined,
+    handbackBy: step.handbackBy ?? undefined,
+    handbackAt: step.handbackAt ?? undefined,
+    incidentReason: step.incidentReason ?? undefined,
+    incidentReportedBy: step.incidentReportedBy ?? undefined,
+    incidentReportedAt: step.incidentReportedAt ?? undefined,
     attachments: step.documents.map(toStepDocument),
   };
 }

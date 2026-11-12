@@ -112,8 +112,12 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
     {
       title: "Ngày tạo",
       key: "createdAt",
-      width: 110,
+      width: 130,
       align: "center",
+      defaultSortOrder: "descend",
+      sortDirections: ["descend", "ascend", "descend"],
+      sorter: (a, b) =>
+        timeOf(a.createdAt) - timeOf(b.createdAt) || timeOf(a.updatedAt ?? a.createdAt) - timeOf(b.updatedAt ?? b.createdAt),
       render: (_, p) => <span className="tabular-nums">{formatDate(p.createdAt) ?? EMPTY}</span>,
     },
     {
@@ -121,6 +125,7 @@ export default function ProcedureListView({ procedures, onOpen, onCreate, onTogg
       key: "updatedAt",
       width: 140,
       align: "center",
+      sortDirections: ["descend", "ascend", "descend"],
       sorter: (a, b) => timeOf(a.updatedAt ?? a.createdAt) - timeOf(b.updatedAt ?? b.createdAt),
       render: (_, p) => (
         <span className="tabular-nums">{formatLocalDate(p.updatedAt) ?? formatDate(p.createdAt) ?? EMPTY}</span>

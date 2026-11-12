@@ -42,7 +42,7 @@ export const MATRIX_MODULES: MatrixModule[] = [
   { id: "M6", code: "M6", name: "Bồi thường, GPMB & Tái định cư", shortName: "Bồi thường & GPMB", iconName: "EnvironmentOutlined" },
   { id: "M7", code: "M7", name: "Quản lý Đấu thầu xây lắp", shortName: "Đấu thầu", iconName: "AuditOutlined" },
   { id: "M8", code: "M8", name: "Bảo hành & Bảo trì công trình", shortName: "Bảo hành & Bảo trì", iconName: "SafetyOutlined" },
-  { id: "M9", code: "M9", name: "Thư viện Pháp lý & AI Trợ lý", shortName: "Thư viện Pháp lý", iconName: "ReadOutlined" },
+  { id: "M9", code: "M9", name: "Thư viện Pháp lý", shortName: "Thư viện Pháp lý", iconName: "ReadOutlined" },
   { id: "SYS", code: "SYS", name: "Quản trị Hệ thống & Phân quyền", shortName: "Hệ thống", iconName: "SettingOutlined" },
 ];
 
@@ -346,10 +346,10 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
   {
     id: "m9.view_search",
     code: "legal_library:view",
-    name: "Tra cứu thư viện pháp lý & AI",
+    name: "Tra cứu thư viện pháp lý",
     description: "Tra cứu văn bản pháp luật, tiêu chuẩn xây dựng, hỏi đáp AI",
     moduleId: "M9",
-    moduleName: "Thư viện Pháp lý & AI",
+    moduleName: "Thư viện Pháp lý",
     category: "read",
   },
   {
@@ -358,7 +358,7 @@ export const MATRIX_PERMISSIONS: MatrixPermission[] = [
     name: "Đăng tải & Quản lý văn bản pháp lý",
     description: "Bổ sung văn bản quy phạm pháp luật vào kho dữ liệu Ban",
     moduleId: "M9",
-    moduleName: "Thư viện Pháp lý & AI",
+    moduleName: "Thư viện Pháp lý",
     category: "write",
   },
 

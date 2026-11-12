@@ -62,12 +62,14 @@ export function useProjectDisbursements(
   const add = useCallback(
     async (input: NewDisbursement, files: File[] = []) => {
       if (isBackend) {
-        const entry = await addDisbursement(projectId, input, operatorName, files);
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: projectKeys.disbursements(projectId) }),
-          queryClient.invalidateQueries({ queryKey: projectKeys.list() }),
-        ]);
-        return entry;
+        try {
+          return await addDisbursement(projectId, input, operatorName, files);
+        } finally {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: projectKeys.disbursements(projectId) }),
+            queryClient.invalidateQueries({ queryKey: projectKeys.list() }),
+          ]);
+        }
       }
       const now = new Date();
       const entry: DisbursementEntry = {

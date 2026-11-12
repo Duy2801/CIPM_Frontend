@@ -4,7 +4,6 @@ import { Drawer, STANDARD_DRAWER_WIDTH } from "@/components/ui";
 import { StepHeading } from "@/components/workspace";
 import { useMyTask, useMyTaskAccess } from "../hooks/useMyTaskQueries";
 import MyTaskDrawerFooter from "./MyTaskDrawerFooter";
-import MyTaskDrawerHeaderActions from "./MyTaskDrawerHeaderActions";
 import MyTaskOverview from "./MyTaskOverview";
 import MyTaskResultView from "./MyTaskResultView";
 import MyTaskStepHistory from "./MyTaskStepHistory";
@@ -22,7 +21,13 @@ export default function MyTaskDrawer({ open, projectId, stepId, onClose }: MyTas
   const task = useMyTask(ref);
   const access = useMyTaskAccess(ref);
   const hasFooter =
-    access.canSubmit || access.canReview || access.canAccept || access.canResolveIncident || access.canGiveBack;
+    access.canSubmit ||
+    access.canReview ||
+    access.canAccept ||
+    access.canResolveIncident ||
+    access.canGiveBack ||
+    access.canReportIncident ||
+    access.canDecline;
   const shown = open && task && projectId && stepId ? { projectId, stepId } : null;
 
   return (
@@ -36,10 +41,7 @@ export default function MyTaskDrawer({ open, projectId, stepId, onClose }: MyTas
       title={
         shown &&
         task && (
-          <div className="flex min-w-0 items-center gap-3">
-            <StepHeading code={task.step.code} name={task.step.name} />
-            <MyTaskDrawerHeaderActions {...shown} />
-          </div>
+          <StepHeading code={task.step.code} name={task.step.name} />
         )
       }
       footer={shown && hasFooter ? <MyTaskDrawerFooter {...shown} /> : null}

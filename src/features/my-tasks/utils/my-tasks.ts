@@ -12,7 +12,6 @@ import type {
   ProcedureStep,
   ProjectProcedureData,
 } from "../../construction-procedures/types/procedure.types.ts";
-import { isHeadingStep } from "../../construction-procedures/utils/procedure-rules.ts";
 import { getSiblingSteps, getStageColumns } from "../../construction-procedures/utils/step-dependencies.ts";
 import { getStepFlow, type StepFlowKey } from "../../projects_works/utils/project-procedure-flow.ts";
 
@@ -57,16 +56,9 @@ export function isMine(step: ProcedureStep, me: TaskIdentity): boolean {
 
 const isMe = (name: string | undefined, me: TaskIdentity) => Boolean(name && normalize(name) === normalize(me.name));
 
-/**
- * Các bước đã tới lượt làm của một quy trình (một phòng ban), theo thứ tự trên sơ đồ:
- * cùng cấp, các bước cùng lượt (flowStage) làm song song; lượt sau chỉ tới khi mọi bước của lượt trước đã xong.
- * Bước con tới lượt khi bước cha tới lượt. Bước có bước con xong khi mọi bước con đang áp dụng đã xong.
- */
 export function reachedStepIds(steps: ProcedureStep[]): Set<string> {
   const active = steps.filter((s) => s.isEnabled && s.status !== "DISABLED").sort((a, b) => a.order - b.order);
   const isDone = (step: ProcedureStep): boolean => {
-    const children = getSiblingSteps(active, step.code);
-    if (children.length > 0) return children.every(isDone);
     const flow = getStepFlow(step);
     return flow === "COMPLETED" || flow === "SKIPPED";
   };
@@ -74,8 +66,9 @@ export function reachedStepIds(steps: ProcedureStep[]): Set<string> {
   const walk = (parentCode: string | null) => {
     for (const column of getStageColumns(getSiblingSteps(active, parentCode))) {
       for (const step of column) {
-        reached.add(step.id);
-        walk(step.code);
+        const children = getSiblingSteps(active, step.code);
+        if (children.length > 0) walk(step.code);
+        if (children.every(isDone)) reached.add(step.id);
       }
       if (!column.every(isDone)) break;
     }
@@ -97,7 +90,7 @@ export function collectTasks(
       reachedStepIds(project.steps.filter((s) => (s.department ?? "") === dept)).forEach((id) => reached.add(id));
     }
     return project.steps
-      .filter((step) => step.department && step.isEnabled && !isHeadingStep(step, project.steps))
+      .filter((step) => step.department && step.isEnabled)
       .map((step) => {
         const flow = getStepFlow(step);
         const department = step.department ?? "";

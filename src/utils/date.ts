@@ -27,6 +27,13 @@ export function addMonths(date: string, months: number): string {
 
 export function formatDateVi(date?: string): string {
   if (!date) return "—";
-  const [year, month, day] = date.split("-");
+  if (date.length > 10) {
+    const value = new Date(date);
+    if (!Number.isNaN(value.getTime())) {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${pad(value.getDate())}/${pad(value.getMonth() + 1)}/${value.getFullYear()}`;
+    }
+  }
+  const [year, month, day] = date.slice(0, 10).split("-");
   return `${day}/${month}/${year}`;
 }
