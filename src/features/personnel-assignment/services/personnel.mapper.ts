@@ -1,5 +1,4 @@
-import { BACKEND_PERMISSION_TO_MATRIX_ID } from "@/access-control";
-import { MATRIX_PERMISSIONS } from "../constants/role-matrix-data";
+import { LEGACY_BACKEND_PERMISSION_CODES } from "@/access-control";
 import type { Employment, Staff, StaffInput, Team, TeamId } from "../types/personnel.types";
 import { isLeaderTitle } from "../utils/role-code-inference";
 
@@ -159,17 +158,7 @@ export function toApiPositionRole(
   return mapped ? (isLeader ? mapped.lead : mapped.member) : toApiRoleCode(inferredRoleCode);
 }
 
-/** Mã quyền ma trận "m2_projects:view" → mã quyền backend BQL-HaTien "project:view" */
-const API_PERMISSION_BY_MATRIX_CODE = new Map(
-  Object.entries(BACKEND_PERMISSION_TO_MATRIX_ID).flatMap(([apiCode, matrixId]) => {
-    const permission = MATRIX_PERMISSIONS.find((p) => p.id === matrixId);
-    return permission ? [[permission.code, apiCode] as const] : [];
-  }),
-);
-
-/** Mã quyền ma trận → mã quyền backend (không có trong bảng đổi thì bỏ tiền tố "mX_" như cipm-service) */
-export const toApiPermissionCode = (matrixCode: string) =>
-  API_PERMISSION_BY_MATRIX_CODE.get(matrixCode) ?? matrixCode.replace(/^m\d+_/, "");
+export const toApiPermissionCode = (matrixCode: string) => LEGACY_BACKEND_PERMISSION_CODES[matrixCode] ?? matrixCode;
 
 // ── Ngày sinh, giới tính, hình thức tuyển dụng ──
 

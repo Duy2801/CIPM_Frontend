@@ -19,7 +19,7 @@ const LIST_TABS = [
 
 /** Modal quản lý chức danh & phân quyền; chỉ người quản lý tài khoản mới sửa được, người khác chỉ xem */
 export default function RolePermissionMatrixModal({ onClose }: { onClose: () => void }) {
-  const { canManageAccounts: canManage } = useStaffAccess();
+  const { canConfigurePermissions: canManage } = useStaffAccess();
   const [view, setView] = useState<MatrixView>({ mode: "list" });
   // Tab: danh sách chức danh / lịch sử thay đổi quyền (ai cũng xem được)
   const [listTab, setListTab] = useState<ListTab>("roles");

@@ -1,6 +1,16 @@
 import { InboxOutlined } from "@ant-design/icons";
+import { useReportPermissions } from "../hooks/useReportPermissions";
 
 export default function ReportEmptyImport({ onPickFile }: { onPickFile: () => void }) {
+  const { canImport } = useReportPermissions();
+  if (!canImport) {
+    return (
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white text-slate-500">
+        <InboxOutlined className="text-4xl text-slate-300" />
+        <span className="text-sm font-semibold">Chưa có báo cáo.</span>
+      </div>
+    );
+  }
   return (
     <button
       type="button"

@@ -7,11 +7,11 @@ export interface RoutePermission {
 }
 
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
-  { route: "/dashboard", permission: "dashboard:view", label: "Bang dieu khien" },
-  { route: "/projects_works", permission: "m2_projects:view", label: "M2 - Du an & Cong trinh" },
+  { route: "/dashboard", permission: "dashboard:view_kpi", label: "Bang dieu khien" },
+  { route: "/projects_works", permission: "project:view", label: "M2 - Du an & Cong trinh" },
   {
     route: "/construction-procedures",
-    permission: "m3_construction_procedures:view",
+    permission: "procedure:view",
     label: "M3 - Quy trinh du an",
   },
   {
@@ -21,7 +21,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
   {
     route: "/personnel-assignment",
-    permission: "m5_personnel_assignment:view",
+    permission: "staff:view_organization",
     label: "Nhan su & Phan cong",
   },
   {
@@ -31,6 +31,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
   { route: "/bidding-management", permission: "m7_bidding:view", label: "M7 - Quan ly Dau thau" },
   { route: "/warranty-maintenance", permission: "m8_warranty:view", label: "M8 - Bao hanh & Bao tri" },
+  { route: "/reports", permission: "report:view", label: "Bao cao" },
   { route: "/legal-ai-library", permission: "legal_library:view", label: "Thu vien Phap ly + AI" },
 ];
 
@@ -104,7 +105,7 @@ export function canDo(
   return permissions.includes(`${moduleKey}:${action}` as Permission);
 }
 
-export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v2";
+export const STORAGE_KEY_PERMISSIONS = "cipm_role_permissions_matrix_v3";
 /** Mã các chức danh đang tắt trong ma trận phân quyền: người giữ chức danh này tạm thời không có quyền nào */
 export const STORAGE_KEY_LOCKED_ROLES = "cipm_locked_roles_v1";
 
@@ -141,24 +142,13 @@ import {
   MATRIX_PERMISSIONS,
 } from "@/features/personnel-assignment/constants/role-matrix-data";
 
-/**
- * Chuyển đổi danh sách ID quyền trong ma trận (ví dụ "m6.input_survey", "m4.create_disbursement", "m5.manage_accounts")
- * sang mã quyền chuẩn Permission và lưu giữ cả ID ma trận để đối chiếu chính xác từng checkbox.
- */
 export function convertMatrixPermIdsToPermissionCodes(permIds: string[]): Permission[] {
   const result = new Set<Permission>();
-  permIds.forEach((id) => {
-    // Luôn đưa chính ID ma trận vào permission set (ví dụ "m5.manage_accounts", "m2.create_edit")
+  for (const id of permIds) {
     result.add(id as Permission);
-
-    if (id.includes(":")) {
-      result.add(id as Permission);
-    }
     const match = MATRIX_PERMISSIONS.find((p) => p.id === id);
-    if (match && match.code) {
-      result.add(match.code as Permission);
-    }
-  });
+    if (match) result.add(match.code as Permission);
+  }
   return Array.from(result);
 }
 
@@ -196,59 +186,16 @@ export function getRoleEffectivePermissions(roleCode?: string): Permission[] {
   return [];
 }
 
-/** Mã quyền backend BQL-HaTien ("project:view") → mã quyền trên ma trận phân quyền ("m2.view") */
-export const BACKEND_PERMISSION_TO_MATRIX_ID: Record<string, string> = {
-  "dashboard:view_kpi": "m1.view",
-  "dashboard:export_summary": "m1.export",
-  "project:view": "m2.view",
-  "project:create_update": "m2.create_edit",
-  "project:progress_rule4": "m2.update_progress",
-  "project:archive_rule5": "m2.close_open",
-  "project:export_report": "m2.export",
-  "procedure:view_46b": "m3.view",
-  "procedure:update_step": "m3.update_step",
-  "procedure:approve_step": "m3.approve_step",
-  "procedure:config_template": "m3.config_template",
-  "finance:view": "m4.view",
-  "finance:request_disbursement": "m4.create_disbursement",
-  "finance:approve_disbursement": "m4.approve_disbursement",
-  "finance:export_kbnn_report": "m4.export",
-  "staff:view_organization": "m5.view",
-  "staff:assign_project_leader": "m5.assign_project_leaders",
-  "staff:manage_cnda_permission": "m5.grant_cnda",
-  "staff:assign_staff_by_stage": "m5.assign_tasks",
-  "staff:review_and_supervise": "m5.review_submissions",
-  "staff:manage_users": "m5.manage_accounts",
-  "gpmb:view_16b": "m6.view",
-  "gpmb:create_update_household": "m6.input_survey",
-  "gpmb:approve_compensation_plan": "m6.approve_compensation",
-  "gpmb:export_report": "m6.export",
-  "bidding:view": "m7.view",
-  "bidding:create_evaluate": "m7.manage_tender",
-  "bidding:approve_result": "m7.approve_bid",
-  "warranty:view": "m8.view",
-  "warranty:log_issue_repair": "m8.manage_incidents",
-  "warranty:release_bond": "m8.release_bond",
-  "legal_library:view": "m9.view_search",
-  "legal_library:input": "m9.manage_docs",
-  "system:configure_permissions": "sys.config_permissions",
-  "system:view_audit_logs": "sys.audit_log",
+export const LEGACY_BACKEND_PERMISSION_CODES: Record<string, string> = {
+  "procedure:view_46b": "procedure:view",
+  "procedure:update_step": "procedure:assign_step",
+  "staff:assign_project_leader": "staff:manage_organization",
+  "finance:request_disbursement": "project:disburse",
 };
 
-/**
- * Quyền backend ("project:view") → quyền màn hình: giữ mã gốc, thêm mã ma trận ("m2.view") và mã phân hệ ("m2_projects:view").
- * Vẫn nhận mã kiểu cipm-service ("projects:view" = mã phân hệ bỏ tiền tố "mX_").
- */
 export function expandBackendPermissions(codes: string[] = []): Permission[] {
-  const granted = new Set(codes);
-  const matrixIds = MATRIX_PERMISSIONS.filter(
-    (p) => granted.has(p.code.replace(/^m\d+_/, "")),
-  ).map((p) => p.id);
-  for (const code of codes) {
-    const id = BACKEND_PERMISSION_TO_MATRIX_ID[code];
-    if (id) matrixIds.push(id);
-  }
-  return Array.from(new Set<Permission>([...(codes as Permission[]), ...convertMatrixPermIdsToPermissionCodes(matrixIds)]));
+  const ids = codes.map((code) => LEGACY_BACKEND_PERMISSION_CODES[code] ?? code);
+  return Array.from(new Set<Permission>([...(codes as Permission[]), ...convertMatrixPermIdsToPermissionCodes(ids)]));
 }
 
 /**

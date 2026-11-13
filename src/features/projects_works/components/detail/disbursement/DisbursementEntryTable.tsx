@@ -27,6 +27,13 @@ export default function DisbursementEntryTable({
   const columns: ColumnsType<DisbursementEntry> = [
     {
       title: "Ngày thực hiện",
+      key: "createdAt",
+      align: "center",
+      width: 110,
+      render: (_, e) => <span className="text-slate-700">{formatDateVi(e.createdAt)}</span>,
+    },
+    {
+      title: "Ngày giải ngân",
       key: "date",
       align: "center",
       width: 110,
@@ -149,7 +156,7 @@ export default function DisbursementEntryTable({
       columns={columns}
       dataSource={entries}
       pagination={false}
-      scroll={{ x: 1150 }}
+      scroll={{ x: 1260 }}
       locale={{ emptyText: "Chưa có đợt giải ngân nào." }}
       onRow={(e) => ({ onClick: () => onView(e.id), className: "cursor-pointer" })}
       className={TABLE_CLASS}

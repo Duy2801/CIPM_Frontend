@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { InboxOutlined } from "@ant-design/icons";
 import { useReportActions } from "../hooks/useReportActions";
+import { useReportPermissions } from "../hooks/useReportPermissions";
 import { useReportOf, useReportType } from "../hooks/useReportQueries";
 import { REPORT_ACCEPT } from "../utils/report-format";
 import ReportDetailHeader from "./ReportDetailHeader";
@@ -19,6 +20,7 @@ export default function ReportDetail({ typeId, onBack }: ReportDetailProps) {
   const type = useReportType(typeId);
   const report = useReportOf(typeId);
   const { importReport } = useReportActions();
+  const { canImport } = useReportPermissions();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -29,7 +31,7 @@ export default function ReportDetail({ typeId, onBack }: ReportDetailProps) {
       className="relative flex flex-col gap-3"
       onDragOver={(e) => {
         e.preventDefault();
-        if (!showHistory) setDragging(true);
+        if (!showHistory && canImport) setDragging(true);
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
@@ -37,7 +39,7 @@ export default function ReportDetail({ typeId, onBack }: ReportDetailProps) {
       onDrop={(e) => {
         e.preventDefault();
         setDragging(false);
-        if (!showHistory) void importReport(typeId, e.dataTransfer.files[0]);
+        if (!showHistory && canImport) void importReport(typeId, e.dataTransfer.files[0]);
       }}
     >
       <ReportDetailHeader

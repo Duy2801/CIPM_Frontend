@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { myTaskKeys, useMyTaskData } from "@/features/my-tasks/hooks/useMyTaskQueries";
 import { useProjectList } from "@/features/projects_works/hooks/useProjectList";
 import type { ProjectItem } from "@/features/projects_works/types/project.types";
 import { useAuthStore } from "@/stores/auth.store";
@@ -9,12 +11,11 @@ import {
   mockActivities,
   mockKpiData,
   mockQuarterlyData,
-  mockUrgentTasks,
   type ActivityItem,
   type KpiCardData,
   type QuarterlyData,
-  type UrgentTask,
 } from "../constants/dashboard-mock-data";
+import { buildUrgentTasks } from "../utils/urgent-tasks";
 
 const REFRESH_INTERVAL_SECONDS = 15 * 60; // 15 phút theo BRD 4.1.3
 
@@ -49,12 +50,13 @@ function kpiFromProjects(projects: ProjectItem[]): KpiCardData {
 export function useDashboardData() {
   const { isBackend, projects } = useProjectList();
   const [mockKpi, setKpiData] = useState<KpiCardData>(mockKpiData);
-  const [mockTasks, setTasks] = useState<UrgentTask[]>(mockUrgentTasks);
   const [mockQuarterly, setQuarterlyData] = useState<QuarterlyData[]>(mockQuarterlyData);
   const [mockActivityItems, setActivities] = useState<ActivityItem[]>(mockActivities);
   const backendKpi = useMemo(() => kpiFromProjects(projects), [projects]);
   const kpiData = isBackend ? backendKpi : mockKpi;
-  const tasks = isBackend ? [] : mockTasks;
+  const queryClient = useQueryClient();
+  const { groups } = useMyTaskData();
+  const tasks = useMemo(() => buildUrgentTasks(groups), [groups]);
   const quarterlyData = isBackend ? [] : mockQuarterly;
   const activities = isBackend ? [] : mockActivityItems;
   const [loading, setLoading] = useState<boolean>(false);
@@ -71,14 +73,14 @@ export function useDashboardData() {
     const formatted = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
     setKpiData({ ...mockKpiData });
-    setTasks([...mockUrgentTasks]);
+    await queryClient.invalidateQueries({ queryKey: myTaskKeys.all });
     setQuarterlyData([...mockQuarterlyData]);
     setActivities([...mockActivities]);
     setLastUpdated(formatted);
     setSecondsRemaining(REFRESH_INTERVAL_SECONDS);
     setLoading(false);
     useAppRefreshStore.getState().setRefreshing(false);
-  }, []);
+  }, [queryClient]);
 
   // Lắng nghe kích hoạt làm mới từ nút trên Topbar
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { DeleteOutlined, FolderOpenOutlined, RightOutlined } from "@ant-design/icons";
 import { useReportActions } from "../hooks/useReportActions";
+import { useReportPermissions } from "../hooks/useReportPermissions";
 import { useReportOf, useReportType } from "../hooks/useReportQueries";
 import { formatDate } from "../utils/report-format";
 
@@ -14,6 +15,7 @@ export default function ReportTypeCard({ typeId, onOpen }: ReportTypeCardProps) 
   const type = useReportType(typeId);
   const report = useReportOf(typeId);
   const { removeType } = useReportActions();
+  const { canConfigure } = useReportPermissions();
   if (!type) return null;
 
   return (
@@ -36,7 +38,7 @@ export default function ReportTypeCard({ typeId, onOpen }: ReportTypeCardProps) 
         </p>
       </div>
       <RightOutlined className="mt-1 text-xs text-slate-300 transition-colors group-hover:text-[#DC2626]" />
-      {type.custom && !report && (
+      {canConfigure && type.custom && !report && (
         <button
           type="button"
           aria-label={`Xóa loại ${type.name}`}

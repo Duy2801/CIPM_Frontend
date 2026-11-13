@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { canUserDo } from "@/access-control";
+import { hasMatrixPermission } from "@/access-control";
 import { useAuth } from "@/features/auth";
 import { useCatalog } from "@/features/catalogs";
 import { loadProjectProcedure } from "@/features/construction-procedures/utils/project-procedure-storage";
@@ -25,7 +25,10 @@ import {
 } from "../utils/project-disbursement";
 import { projectKeys, useProject } from "./useProjectList";
 
-export type NewDisbursement = Pick<DisbursementEntry, "kind" | "category" | "fundingSource" | "amount" | "content" | "attachments">;
+export type NewDisbursement = Pick<
+  DisbursementEntry,
+  "kind" | "category" | "fundingSource" | "amount" | "date" | "content" | "attachments"
+>;
 
 const CUSTOM_CATEGORIES_KEY = ["projects", "disbursement-custom-categories"] as const;
 const NO_ENTRIES: DisbursementEntry[] = [];
@@ -54,7 +57,7 @@ export function useProjectDisbursements(projectId: string) {
   const { user } = useAuth();
   const project = useProject(projectId);
   const operatorName = user?.name || user?.displayName || "Cán bộ quản lý";
-  const canDisburse = canUserDo(user, "m4_finance_settlement", "input") && project?.status !== "closed";
+  const canDisburse = hasMatrixPermission(user, "project:disburse") && project?.status !== "closed";
 
   const headings = useDisbursementHeadings(projectId);
   const byHeading = headings.length > 0;
@@ -115,7 +118,6 @@ export function useProjectDisbursements(projectId: string) {
       const entry: DisbursementEntry = {
         ...input,
         id: `GN-${now.getTime()}`,
-        date: now.toISOString().slice(0, 10),
         createdBy: operatorName,
         createdAt: now.toISOString(),
       };

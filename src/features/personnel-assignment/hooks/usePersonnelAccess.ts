@@ -18,17 +18,14 @@ export function usePersonnelPermissions() {
   return { permissions, isLoading, currentUser };
 }
 
-/** Những việc người đang đăng nhập được làm với hồ sơ / tài khoản cán bộ */
 export function useStaffAccess() {
   const { permissions } = usePersonnelPermissions();
-  const canManageAccounts = permissions.canManageAccounts;
   return {
-    /** Thêm tài khoản, sửa hồ sơ, khóa / mở tài khoản, ma trận phân quyền */
-    canManageAccounts,
-    /** Đổi tên phòng ban */
-    canManageTeams: canManageAccounts || permissions.canManageOrganization,
-    /** Đổi chức danh, chỉnh quyền riêng */
-    canManageRole: canManageAccounts && (permissions.canGrantRole ?? true),
+    canManageAccounts: permissions.canManageAccounts,
+    canManageTeams: permissions.canManageOrganization,
+    canManageRole: permissions.canGrantRole,
+    canConfigurePermissions: permissions.canConfigurePermissions,
+    canViewAuditLogs: permissions.canViewAuditLogs,
   };
 }
 

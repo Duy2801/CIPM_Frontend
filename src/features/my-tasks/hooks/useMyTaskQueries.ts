@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { canUserDo, hasMatrixPermission } from "@/access-control";
+import { hasMatrixPermission } from "@/access-control";
 import { useAuth } from "@/features/auth";
 import type { Permission } from "@/types/auth";
 import { isLeadOfDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
@@ -12,7 +12,7 @@ import { refOfTask, taskKey, type MyTaskData, type TaskRef } from "../utils/my-t
 import { hasIncident, hasStartedWork, isMine, matchesSearch, type MyTaskItem } from "../utils/my-tasks";
 import { useMyTaskStore } from "./useMyTaskStore";
 
-export const PROXY_PERMISSION = "procedure:proxy_step" as Permission;
+export const PROXY_PERMISSION = "my_task:act_on_behalf" as Permission;
 
 export const myTaskKeys = {
   all: ["my-tasks"] as const,
@@ -32,13 +32,12 @@ export function useMyTaskIdentity() {
   const { user } = useAuth();
   return useMemo(() => {
     const me = { id: user?.id, name: user?.displayName || user?.name || "" };
-    const canApproveAll =
-      canUserDo(user, "m3_construction_procedures", "approve") || hasMatrixPermission(user, "m3.approve_step");
+    const canApproveAll = hasMatrixPermission(user, "procedure:approve_step");
     return {
       me,
       actor: { name: me.name || "Cán bộ", role: user?.roleName || "Cán bộ Ban QLDA" },
       isReviewer: canApproveAll || isLeadOfDepartment(user),
-      canProxy: (user?.permissions ?? []).includes(PROXY_PERMISSION),
+      canProxy: hasMatrixPermission(user, PROXY_PERMISSION),
       canReview: (department: string) => canApproveAll || isLeadOfDepartment(user, department),
       userKey: `${user?.id ?? ""}|${me.name}|${user?.role ?? ""}|${(user?.permissions ?? []).length}`,
     };

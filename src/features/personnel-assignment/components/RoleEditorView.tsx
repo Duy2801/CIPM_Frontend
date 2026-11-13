@@ -25,7 +25,7 @@ export default function RoleEditorView({ roleCode, onBack }: RoleEditorViewProps
   const { modules, permissions } = useRoleMatrix();
   const { createRole, renameRole, updateRolePermissions } = useRoleMatrixActions();
   // Không có quyền quản lý → chỉ xem
-  const readOnly = !useStaffAccess().canManageAccounts;
+  const readOnly = !useStaffAccess().canConfigurePermissions;
   const logPermissionChange = usePermissionChangeLog();
   const role = roleCode ? roles.find((r) => r.code === roleCode) : undefined;
   const { modal } = App.useApp();

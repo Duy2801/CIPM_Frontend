@@ -52,6 +52,8 @@ export default function DisbursementFormDrawer({
   const [category, setCategory] = useState<string | undefined>(
     initialCategory || undefined,
   );
+  const todayIso = today();
+  const [date, setDate] = useState(todayIso);
   const [amountRaw, setAmountRaw] = useState("");
   const [source, setSource] = useState<string | undefined>(sources.length === 1 ? sources[0] : undefined);
   const [content, setContent] = useState("");
@@ -70,7 +72,17 @@ export default function DisbursementFormDrawer({
   const [saving, setSaving] = useState(false);
   const submit = async () => {
     const err = validateDisbursement(
-      { kind, category, amount, attachmentCount: files.length, content, fundingSource: source, requireSource: sources.length > 0 },
+      {
+        kind,
+        category,
+        date,
+        today: todayIso,
+        amount,
+        attachmentCount: files.length,
+        content,
+        fundingSource: source,
+        requireSource: sources.length > 0,
+      },
       limit,
     );
     if (err) {
@@ -81,7 +93,7 @@ export default function DisbursementFormDrawer({
     const attachments = await Promise.all(files.map(toDisbursementAttachment));
     try {
       await add(
-        { kind, category: category!, fundingSource: source, amount, content: content.trim() || undefined, attachments },
+        { kind, category: category!, fundingSource: source, amount, date, content: content.trim() || undefined, attachments },
         files.flatMap((f) => (f.rawFile ? [f.rawFile] : [])),
       );
     } catch (e) {
@@ -145,8 +157,8 @@ export default function DisbursementFormDrawer({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <ReadonlyField
                 icon={<CalendarOutlined />}
-                label={`Ngày ${verb}`}
-                value={formatDateVi(today())}
+                label="Ngày thực hiện"
+                value={formatDateVi(todayIso)}
                 hint="Tự ghi nhận"
               />
               <ReadonlyField
@@ -156,40 +168,56 @@ export default function DisbursementFormDrawer({
               />
             </div>
 
-            {withdraw ? (
-              <ReadonlyField
-                icon={<WalletOutlined />}
-                label={label}
-                value={category ?? ""}
-              />
-            ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {withdraw ? (
+                <ReadonlyField
+                  icon={<WalletOutlined />}
+                  label={label}
+                  value={category ?? ""}
+                />
+              ) : (
+                <div>
+                  <FieldLabel text={label} required />
+                  <SelectWithAddOption
+                    aria-label={label}
+                    placeholder={`Chọn ${unit} hoặc gõ để thêm mới`}
+                    value={category}
+                    options={categories.map((c) => ({ value: c, label: c }))}
+                    filterByQuery
+                    addPlaceholder={`Gõ tên ${unit} mới…`}
+                    notFoundContent={
+                      <span className="text-xs text-slate-400">
+                        Không có {unit} phù hợp, bấm “Thêm” để tạo mới
+                      </span>
+                    }
+                    onChange={(v) => {
+                      setCategory(v);
+                      clearError();
+                    }}
+                    onAdd={(name) => {
+                      onAddCategory(name);
+                      setCategory(name);
+                      clearError();
+                    }}
+                    className="h-9"
+                  />
+                </div>
+              )}
               <div>
-                <FieldLabel text={label} required />
-                <SelectWithAddOption
-                  aria-label={label}
-                  placeholder={`Chọn ${unit} hoặc gõ để thêm mới`}
-                  value={category}
-                  options={categories.map((c) => ({ value: c, label: c }))}
-                  filterByQuery
-                  addPlaceholder={`Gõ tên ${unit} mới…`}
-                  notFoundContent={
-                    <span className="text-xs text-slate-400">
-                      Không có {unit} phù hợp, bấm “Thêm” để tạo mới
-                    </span>
-                  }
-                  onChange={(v) => {
-                    setCategory(v);
+                <FieldLabel text={`Ngày ${verb}`} required />
+                <Input
+                  type="date"
+                  aria-label={`Ngày ${verb}`}
+                  value={date}
+                  max={todayIso}
+                  onChange={(e) => {
+                    setDate(e.target.value);
                     clearError();
                   }}
-                  onAdd={(name) => {
-                    onAddCategory(name);
-                    setCategory(name);
-                    clearError();
-                  }}
-                  className="h-9"
+                  className="h-9 text-sm"
                 />
               </div>
-            )}
+            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>

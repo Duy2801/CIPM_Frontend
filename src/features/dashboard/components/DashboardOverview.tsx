@@ -9,6 +9,7 @@ import DisbursementQuarterlyChart from "./DisbursementQuarterlyChart";
 import DashboardAlertPanel from "./DashboardAlertPanel";
 import ActivityLogSection from "./ActivityLogSection";
 import ActivityDetailPage from "./ActivityDetailPage";
+import ScheduleStatsPage, { type ScheduleFilter } from "./ScheduleStatsPage";
 
 export default function DashboardOverview() {
   const {
@@ -23,8 +24,8 @@ export default function DashboardOverview() {
     currentRole,
   } = useDashboardData();
   const [activityId, setActivityId] = useState<string>();
+  const [scheduleFilter, setScheduleFilter] = useState<ScheduleFilter>();
   const openedActivity = activities.find((a) => a.id === activityId);
-
 
   return (
     <>
@@ -33,12 +34,22 @@ export default function DashboardOverview() {
         <ActivityDetailPage activity={openedActivity} onBack={() => setActivityId(undefined)} />
       </div>
     )}
-    <div hidden={Boolean(openedActivity)}>
+    {scheduleFilter && (
+      <div className="mx-auto w-full max-w-[2560px]">
+        <ScheduleStatsPage filter={scheduleFilter} onBack={() => setScheduleFilter(undefined)} />
+      </div>
+    )}
+    <div hidden={Boolean(openedActivity) || Boolean(scheduleFilter)}>
     <Flex vertical gap={16} className="w-full max-w-[2560px] mx-auto select-none">
       <Spin spinning={loading} description="Đang làm mới dữ liệu Dashboard...">
         <Flex vertical gap={18} className="w-full">
           {/* 1. Hàng 4 Thẻ KPI trên cùng */}
-          <DashboardScheduleKpis />
+          <DashboardScheduleKpis
+            onOpen={(filter) => {
+              setScheduleFilter(filter);
+              window.scrollTo({ top: 0 });
+            }}
+          />
           <WeeklyProgressChart />
 
           {/* 2. Hàng giữa: Biểu đồ giải ngân theo quý (Trái) & Việc cần xử lý ngay (Phải) */}

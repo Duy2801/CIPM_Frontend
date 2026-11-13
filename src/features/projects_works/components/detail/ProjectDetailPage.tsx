@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui";
 import type { SegmentedTabItem } from "@/components/workspace";
 import { useAuth } from "@/features/auth";
-import { canUserDo } from "@/access-control";
+import { hasMatrixPermission } from "@/access-control";
 import type { ProjectItem } from "../../types/project.types";
 import { useProcedureDraft } from "../../hooks/useProcedureDraft";
 import { useProject } from "../../hooks/useProjectList";
@@ -39,8 +39,8 @@ function ProjectDetailContent({ project, onBack }: { project: ProjectItem; onBac
   const { updateProject, syncProcedure } = useProjectMutations();
   const isClosed = project.status === "closed";
 
-  const info = useProjectInfoDraft(project, canUserDo(user, "m2_projects", "input") && !isClosed);
-  const canViewProcedure = canUserDo(user, "m3_construction_procedures", "view");
+  const info = useProjectInfoDraft(project, hasMatrixPermission(user, "project:create_update") && !isClosed);
+  const canViewProcedure = hasMatrixPermission(user, "procedure:view");
 
   const procedure = useProjectProcedure(project, (sync) => syncProcedure(project.id, sync));
   const procedures = useProcedureDraft(procedure);

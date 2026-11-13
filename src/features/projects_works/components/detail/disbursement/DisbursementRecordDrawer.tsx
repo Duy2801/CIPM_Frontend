@@ -81,6 +81,7 @@ export default function DisbursementRecordDrawer({
           <DetailRow label={unit === "đầu mục" ? "Đầu mục" : "Danh mục"} value={entry.category} />
           {entry.fundingSource && <DetailRow label="Nguồn vốn" value={entry.fundingSource} />}
           <DetailRow label={`Ngày ${verb}`} value={formatDateVi(entry.date)} />
+          <DetailRow label="Ngày thực hiện" value={formatDateVi(entry.createdAt)} />
           <DetailRow label="Người thực hiện" value={entry.createdBy} />
           <DetailRow
             label={withdraw ? "Lý do thu hồi" : "Nội dung"}

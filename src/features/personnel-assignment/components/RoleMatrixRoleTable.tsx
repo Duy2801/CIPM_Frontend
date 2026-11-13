@@ -33,7 +33,7 @@ export default function RoleMatrixRoleTable({ onOpenRole, onClose }: RoleMatrixR
   const { sortedRoles: roles } = useSortedMatrixRoles();
   const { permissions, hasPermission, lockedRoleCodes } = useRoleMatrix();
   const { setRoleLocked } = useRoleMatrixActions();
-  const { canManageAccounts: canManage } = useStaffAccess();
+  const { canConfigurePermissions: canManage } = useStaffAccess();
   const logPermissionChange = usePermissionChangeLog();
   const [search, setSearch] = useState("");
   const visibleTagCount = getVisibleTagCount(useWindowWidth());

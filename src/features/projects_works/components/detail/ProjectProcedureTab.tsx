@@ -15,7 +15,7 @@ import { sameDepartmentKey } from "../../utils/project-procedure-data";
 import { getStepFlow } from "../../utils/project-procedure-flow";
 import ProcedureStepFlowDrawer from "./ProcedureStepFlowDrawer";
 
-const WAITING_TONE = { card: "border-slate-200 bg-slate-50/70", dot: "bg-slate-300", text: "text-slate-400" };
+const WAITING_TONE = { card: "border-slate-200 bg-slate-100", dot: "bg-slate-300", text: "text-slate-400" };
 
 const CARD_WIDTH = 360;
 const CARD_HEIGHT = 128;

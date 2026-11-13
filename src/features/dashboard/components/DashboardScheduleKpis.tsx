@@ -3,6 +3,7 @@
 import { Spin } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { useDashboardSchedule } from "../hooks/useDashboardSchedule";
+import type { ScheduleFilter } from "./ScheduleStatsPage";
 
 const TONES = {
   total: { text: "text-[#DC2626]", tint: "bg-red-50/70" },
@@ -13,7 +14,7 @@ const TONES = {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export default function DashboardScheduleKpis() {
+export default function DashboardScheduleKpis({ onOpen }: { onOpen: (filter: ScheduleFilter) => void }) {
   const { projects, tasks, loadingTasks } = useDashboardSchedule();
   const cards = [
     { tone: "total" as const, title: "Tổng dự án", projects: projects.total, tasks: tasks.total },
@@ -25,7 +26,15 @@ export default function DashboardScheduleKpis() {
   return (
     <div className="grid w-full grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
       {cards.map((c) => (
-        <div key={c.tone} className={cn("rounded-2xl px-4 py-4", TONES[c.tone].tint)}>
+        <button
+          key={c.tone}
+          type="button"
+          onClick={() => onOpen(c.tone)}
+          className={cn(
+            "cursor-pointer rounded-2xl border-0 px-4 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-md",
+            TONES[c.tone].tint,
+          )}
+        >
           <span className={cn("text-sm font-semibold", TONES[c.tone].text)}>{c.title}</span>
           <div className="mt-3 flex items-end justify-between">
             <div>
@@ -39,7 +48,7 @@ export default function DashboardScheduleKpis() {
               <div className="mt-1 text-[11px] text-slate-500">Công việc</div>
             </div>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );

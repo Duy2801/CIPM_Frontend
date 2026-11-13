@@ -3,26 +3,23 @@ import { getUserEffectivePermissions } from "@/access-control";
 
 /** Quyền của người đăng nhập trong phân hệ Nhân sự (lấy từ ma trận phân quyền) */
 export interface PersonnelPermissions {
-  /** Được vào phân hệ Nhân sự */
   canAccessModule: boolean;
-  /** Thêm tài khoản, sửa hồ sơ, khóa / mở tài khoản, ma trận phân quyền */
   canManageAccounts: boolean;
-  /** Quản lý cơ cấu tổ chức (đổi tên phòng ban) */
   canManageOrganization: boolean;
-  /** Cấp / thu hồi quyền theo chức danh của cán bộ */
   canGrantRole: boolean;
+  canConfigurePermissions: boolean;
+  canViewAuditLogs: boolean;
 }
 
 export function getPersonnelPermissions(user: AuthUser | null): PersonnelPermissions {
   const permissions = (getUserEffectivePermissions(user) ?? []) as string[];
-  const has = (...codes: string[]) => codes.some((code) => permissions.includes(code));
-
-  const canManageAccounts = has("m5.manage_accounts", "m5_personnel_assignment:accounts");
-  const canAssignProjectLeaders = has("m5.assign_project_leaders", "m5_personnel_assignment:configure");
+  const has = (code: string) => permissions.includes(code);
   return {
-    canAccessModule: has("m5_personnel_assignment:view", "m5.view"),
-    canManageAccounts,
-    canManageOrganization: canAssignProjectLeaders || canManageAccounts,
-    canGrantRole: has("m5.grant_cnda", "m5_personnel_assignment:grant_cnda"),
+    canAccessModule: has("staff:view_organization"),
+    canManageAccounts: has("staff:manage_users"),
+    canManageOrganization: has("staff:manage_organization"),
+    canGrantRole: has("staff:manage_cnda_permission"),
+    canConfigurePermissions: has("system:configure_permissions"),
+    canViewAuditLogs: has("system:view_audit_logs"),
   };
 }

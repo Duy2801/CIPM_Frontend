@@ -1,6 +1,6 @@
 import type { AuthUser } from "@/types/auth";
 import type { ProjectItem } from "../types/project.types";
-import { canDo, getUserEffectivePermissions } from "@/access-control";
+import { getUserEffectivePermissions } from "@/access-control";
 
 export interface PermissionCheckResult {
   allowed: boolean;
@@ -61,17 +61,7 @@ export function canUpdateProjectProgress(
   }
 
   const permissions = getUserEffectivePermissions(user);
-  const hasInput = canDo(permissions, "m2_projects", "input") || (permissions as string[]).includes("m2_projects:progress");
-  const hasApprove = canDo(permissions, "m2_projects", "approve");
-
-  if (hasApprove) {
-    return {
-      allowed: true,
-      roleDescription: "Quyền phê duyệt / Chỉ đạo dự án",
-    };
-  }
-
-  if (hasInput) {
+  if (permissions.includes("project:create_update")) {
     return {
       allowed: true,
       roleDescription: "Quyền cập nhật tiến độ dự án",
@@ -102,7 +92,7 @@ export function canDeleteOrCloseProject(user: AuthUser | null): PermissionCheckR
   }
 
   const permissions = getUserEffectivePermissions(user);
-  if (canDo(permissions, "m2_projects", "configure") || canDo(permissions, "m2_projects", "approve")) {
+  if (permissions.includes("project:archive_rule5")) {
     return {
       allowed: true,
       roleDescription: "Có quyền đóng hoặc quản lý vòng đời dự án.",

@@ -127,6 +127,8 @@ export function validateDisbursement(
   input: {
     kind: DisbursementKind;
     category?: string;
+    date?: string;
+    today?: string;
     amount: number;
     attachmentCount: number;
     content?: string;
@@ -137,6 +139,10 @@ export function validateDisbursement(
 ): string | undefined {
   const withdraw = input.kind === "withdraw";
   if (!input.category) return "Vui lòng chọn danh mục.";
+  if (!input.date) return `Vui lòng chọn ngày ${withdraw ? "thu hồi" : "giải ngân"}.`;
+  if (input.today && input.date > input.today) {
+    return `Ngày ${withdraw ? "thu hồi" : "giải ngân"} không được sau ngày hôm nay.`;
+  }
   if (input.requireSource && !input.fundingSource) return "Vui lòng chọn nguồn vốn.";
   if (!(input.amount > 0)) return `Số tiền ${withdraw ? "thu hồi" : "giải ngân"} phải lớn hơn 0.`;
   if (limit !== undefined && input.amount > limit) {

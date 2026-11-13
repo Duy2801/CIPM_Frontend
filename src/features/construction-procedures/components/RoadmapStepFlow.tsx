@@ -167,8 +167,8 @@ export default function RoadmapStepFlow({
         }}
         onDragEnd={endDrag}
         onClick={stepView?.onClick ? () => stepView.onClick?.(s) : undefined}
-        className={`absolute flex flex-col justify-center rounded-lg border bg-white transition-shadow ${large ? "px-4" : "px-3"} hover:shadow-md ${
-          tone ?? (optional ? "border-dashed border-amber-300" : "border-slate-200")
+        className={`absolute flex flex-col justify-center rounded-lg border transition-shadow ${large ? "px-4" : "px-3"} hover:shadow-md ${
+          tone ?? (optional ? "border-dashed border-amber-300 bg-white" : "border-slate-200 bg-white")
         } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""} ${stepView?.onClick ? "cursor-pointer" : ""} ${
           draggingId === s.id ? "opacity-35" : ""
         }`}

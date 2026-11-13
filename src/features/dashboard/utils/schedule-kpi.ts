@@ -166,3 +166,71 @@ export function buildLastWeekReport(steps: ScheduledStep[], weeksAgo = 0, today 
     planned: days.reduce((sum, d) => sum + d.planned, 0),
   };
 }
+
+type AssignedStep = ScheduledStep & { id: string; name: string; assignedTo?: string };
+
+export interface ScheduleTaskRow {
+  id: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  name: string;
+  assignee: string;
+  due: string;
+  done?: string;
+  completed: boolean;
+  group: ScheduleGroup;
+  lagDays: number;
+}
+
+export interface SchedulePersonRow {
+  name: string;
+  total: number;
+  ahead: number;
+  late: number;
+  onTrack: number;
+}
+
+const UNASSIGNED = "Chưa giao";
+const dayDiff = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
+
+export function buildScheduleTaskRows(
+  stepsByProject: { id: string; code: string; name: string; steps: AssignedStep[] }[],
+  today = new Date().toISOString().slice(0, 10),
+): ScheduleTaskRow[] {
+  return stepsByProject.flatMap((project) =>
+    project.steps.flatMap((step) => {
+      const group = taskScheduleGroupOf(step, today);
+      if (!group) return [];
+      const due = step.endDatePlanned!.slice(0, 10);
+      const completed = step.status === "COMPLETED";
+      const done = completed ? step.actualEndDate?.slice(0, 10) : undefined;
+      return [
+        {
+          id: `${project.id}:${step.id}`,
+          projectId: project.id,
+          projectCode: project.code,
+          projectName: project.name,
+          name: step.name,
+          assignee: step.assignedTo?.trim() || UNASSIGNED,
+          due,
+          done,
+          completed,
+          group,
+          lagDays: completed ? (done ? dayDiff(due, done) : 0) : Math.max(0, dayDiff(due, today)),
+        },
+      ];
+    }),
+  );
+}
+
+export function buildSchedulePeople(rows: ScheduleTaskRow[]): SchedulePersonRow[] {
+  const people = new Map<string, SchedulePersonRow>();
+  for (const row of rows) {
+    const person = people.get(row.assignee) ?? { name: row.assignee, total: 0, ahead: 0, late: 0, onTrack: 0 };
+    person.total += 1;
+    person[row.group] += 1;
+    people.set(row.assignee, person);
+  }
+  return [...people.values()];
+}

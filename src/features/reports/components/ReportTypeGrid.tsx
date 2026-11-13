@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useReportPermissions } from "../hooks/useReportPermissions";
 import { useReportTypes } from "../hooks/useReportQueries";
 import ReportAddTypeModal from "./ReportAddTypeModal";
 import ReportTypeCard from "./ReportTypeCard";
@@ -8,6 +9,7 @@ import ReportTypeCard from "./ReportTypeCard";
 export default function ReportTypeGrid({ onOpen }: { onOpen: (typeId: string) => void }) {
   const types = useReportTypes();
   const [adding, setAdding] = useState(false);
+  const { canConfigure } = useReportPermissions();
 
   return (
     <>
@@ -15,6 +17,7 @@ export default function ReportTypeGrid({ onOpen }: { onOpen: (typeId: string) =>
         {types.map((type) => (
           <ReportTypeCard key={type.id} typeId={type.id} onOpen={onOpen} />
         ))}
+        {canConfigure && (
         <button
           type="button"
           onClick={() => setAdding(true)}
@@ -22,6 +25,7 @@ export default function ReportTypeGrid({ onOpen }: { onOpen: (typeId: string) =>
         >
           Thêm loại báo cáo
         </button>
+        )}
       </div>
       <ReportAddTypeModal open={adding} onClose={() => setAdding(false)} />
     </>

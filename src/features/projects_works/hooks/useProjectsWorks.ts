@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { App } from "antd";
-import { canUserDo } from "@/access-control";
+import { hasMatrixPermission } from "@/access-control";
 import { useAuth } from "@/features/auth";
 import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
 import { useProjectStore } from "@/stores/project.store";
@@ -158,7 +158,7 @@ export function useProjectsWorks() {
     pageSize: PAGE_SIZE,
     filteredProjects,
     paginatedProjects,
-    canCreateProject: canUserDo(user, "m2_projects", "input"),
+    canCreateProject: hasMatrixPermission(user, "project:create_update"),
     isCreateOpen,
     openCreate: () => setIsCreateOpen(true),
     closeCreate: () => setIsCreateOpen(false),

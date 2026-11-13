@@ -21,7 +21,7 @@ Quy ước chung (base URL, header, dạng lỗi, ngày giờ, số tiền) gi�
 | **3. Chi tiết dự án** | 3.1 Xem chi tiết dự án | `GET /projects/:id` | 🔧 | Trả `fundingSources[]` |
 | *Tab Thông tin chung* | 3.2 Lưu thay đổi thông tin | `PATCH /projects/:id` | 🔧 | Nhận `fundingSources[]` |
 | *Tab Giải ngân* | 3.5 Xem các đợt giải ngân | `GET /projects/:id/disbursements` | 🔧 | Mỗi đợt trả `fundingSource`; trả đủ mọi đợt; `category` khớp tên đầu mục |
-| | 3.6 Thêm đợt giải ngân / thu hồi | `POST /projects/:id/disbursements` | 🔧 | Nhận `fundingSource`; hạn mức theo nguồn; cập nhật `disbursedAmount`; trả `{ entry, summary }` |
+| | 3.6 Thêm đợt giải ngân / thu hồi | `POST /projects/:id/disbursements` | 🔧 | Nhận `fundingSource` và `date` (ngày giải ngân); hạn mức theo nguồn; cập nhật `disbursedAmount`; trả `{ entry, summary }` |
 | **1. Danh sách dự án** | 1.1 Xem danh sách dự án | `GET /projects` | 🔧 | Trả `fundingSources[]` (không bắt buộc) |
 
 Cần sửa 6 API, không có API mới.
@@ -224,7 +224,8 @@ Vì vậy backend cần đảm bảo:
 
 | Cột | Lấy từ | Backend |
 |---|---|---|
-| Ngày thực hiện | `date` | ✅ |
+| Ngày thực hiện | `createdAt` (ngày ghi nhận trên hệ thống) | ✅ |
+| Ngày giải ngân | `date` (ngày người dùng chọn ở 3.6) | 🔧 hiện luôn bằng ngày ghi nhận, vì 3.6 chưa nhận `date` |
 | Loại thu chi | `kind` → "Cấp giải ngân" / "Thu hồi vốn" | ✅ |
 | Nội dung giải ngân | `content` | ✅ |
 | Người thực hiện | `createdBy.fullName` | ✅ |
@@ -283,11 +284,18 @@ POST /projects/:id/disbursements
   "kind": "disburse",
   "category": "FIMI",
   "fundingSource": "Ngân sách tỉnh",
+  "date": "2026-11-10",
   "amount": 200000000,
   "content": "Tạm ứng hợp đồng tư vấn",
   "fileIds": ["f1..."]
 }
 ```
+**Hai ngày khác nhau:**
+- **Ngày thực hiện**: ngày cán bộ ghi đợt này lên hệ thống, tự ghi nhận, không sửa được. Backend lấy theo `createdAt`.
+- **Ngày giải ngân / thu hồi** (`date`): ngày tiền thực tế được giải ngân / thu hồi theo chứng từ, người dùng chọn, **bắt buộc**, mặc định là hôm nay, **không được sau hôm nay**. Có thể sớm hơn ngày thực hiện (ghi bù đợt đã chi).
+
+Cột `project_disbursements.date` đã có sẵn (đang `@default(now())`). Backend chỉ cần thêm `date` vào `CreateDisbursementDto` (`@IsDateString()`, định dạng `YYYY-MM-DD`) và ghi vào cột này thay cho mặc định. **Lưu ý:** `ValidationPipe` đang bật `forbidNonWhitelisted`, nên FE **chưa gửi** `date` cho tới khi DTO nhận trường này (gửi sớm sẽ bị 400).
+
 Ngăn "Cấp giải ngân / Thu hồi vốn" có thêm ô **Nguồn vốn** cạnh ô số tiền; danh sách = `fundingSources` của dự án; bắt buộc nếu dự án có nguồn vốn; dự án chỉ có 1 nguồn thì FE tự chọn sẵn. Dòng gợi ý dưới ô số tiền hiện hạn mức theo nguồn đã chọn.
 
 **Kiểm tra** (thay bảng kiểm tra 3.6 gốc; FE đang dùng `validateDisbursement` + `limitFor`):
@@ -295,6 +303,8 @@ Ngăn "Cấp giải ngân / Thu hồi vốn" có thêm ô **Nguồn vốn** cạ
 | Điều kiện | Lỗi 400 |
 |---|---|
 | thiếu `category` | `Vui lòng chọn danh mục.` |
+| thiếu `date` | `Vui lòng chọn ngày giải ngân.` / `Vui lòng chọn ngày thu hồi.` |
+| `date` sau ngày hôm nay (giờ Việt Nam) | `Ngày giải ngân không được sau ngày hôm nay.` / `Ngày thu hồi không được sau ngày hôm nay.` |
 | dự án có `fundingSources` mà thiếu `fundingSource` | `Vui lòng chọn nguồn vốn.` |
 | `fundingSource` không thuộc `fundingSources` của dự án | `Nguồn vốn không thuộc dự án.` |
 | `amount <= 0` | `Số tiền giải ngân phải lớn hơn 0.` / `Số tiền thu hồi phải lớn hơn 0.` |
@@ -379,7 +389,7 @@ model ProjectFundingSource {
 |---|---|---|
 | Gửi `fundingSources` | `services/project.mapper.ts` → `toApiCreateBody`, `toApiUpdateBody` | 2.1, 3.2 |
 | Đọc `fundingSources` | `services/project.mapper.ts` → `toProjectItem` | 1.1, 3.1 |
-| Gửi `fundingSource` của đợt | `services/project.mapper.ts` → `toApiDisbursementBody` | 3.6 |
+| Gửi `fundingSource` và `date` của đợt | `services/project.mapper.ts` → `toApiDisbursementBody` | 3.6 |
 | Đọc `fundingSource` của đợt | `services/project.mapper.ts` → `toDisbursementEntry` | 3.5 |
 | Bỏ localStorage nguồn vốn / tính chất / loại dự án tự thêm, đổi sang `useCatalog` | `hooks/useCustomOptions.ts`, `utils/custom-options.ts` | 2.4 |
 | Đọc `summary.byCategory[].granted / withdrawn` (nếu backend làm đề xuất) | `hooks/useProjectDisbursements.ts`, `DisbursementCategorySummary` | 3.5 |

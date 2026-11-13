@@ -80,14 +80,13 @@ export const mockProjectRepository = {
 
   async addDisbursement(
     projectId: string,
-    input: Pick<DisbursementEntry, "kind" | "category" | "fundingSource" | "amount" | "content" | "attachments">,
+    input: Pick<DisbursementEntry, "kind" | "category" | "fundingSource" | "amount" | "date" | "content" | "attachments">,
     actorName: string,
   ): Promise<DisbursementEntry> {
     const now = new Date();
     const entry: DisbursementEntry = {
       ...input,
       id: `GN-${now.getTime()}`,
-      date: now.toISOString().slice(0, 10),
       createdBy: actorName,
       createdAt: now.toISOString(),
     };

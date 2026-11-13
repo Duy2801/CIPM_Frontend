@@ -5,7 +5,7 @@ import { SafetyCertificateOutlined, UserOutlined } from "@ant-design/icons";
 import { Drawer } from "@/components/ui";
 import { SegmentedTabs } from "@/components/workspace";
 import type { SegmentedTabItem } from "@/components/workspace";
-import { useStaffDetail } from "../hooks/usePersonnelAccess";
+import { useStaffAccess, useStaffDetail } from "../hooks/usePersonnelAccess";
 import StaffActivityHistory from "./StaffActivityHistory";
 import StaffDetailHeader from "./StaffDetailHeader";
 import StaffInfoCard from "./StaffInfoCard";
@@ -24,6 +24,7 @@ const TAB_ITEMS: SegmentedTabItem<StaffDetailTab>[] = [
  */
 export default function StaffDetailDrawer({ staffId, onClose }: { staffId: string; onClose: () => void }) {
   const detail = useStaffDetail(staffId);
+  const { canViewAuditLogs } = useStaffAccess();
   const [activeTab, setActiveTab] = useState<StaffDetailTab>("info");
 
   return (
@@ -51,7 +52,7 @@ export default function StaffDetailDrawer({ staffId, onClose }: { staffId: strin
           {activeTab === "info" && (
             <>
               <StaffInfoCard staffId={staffId} />
-              <StaffActivityHistory staffId={staffId} />
+              {canViewAuditLogs && <StaffActivityHistory staffId={staffId} />}
             </>
           )}
 

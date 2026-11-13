@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
 import { useAuth } from "@/features/auth";
 import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import { canUserDo, hasMatrixPermission } from "@/access-control";
+import { hasMatrixPermission } from "@/access-control";
 import {
   getDepartmentLead,
   isDirectorUser,
@@ -68,16 +68,15 @@ export function useProjectProcedure(project: ProjectItem, onSync?: (sync: Projec
   const data = isBackend ? (remote.data ?? localData) : localData;
 
   const canConfigure =
-    canUserDo(user, "m3_construction_procedures", "configure") || hasMatrixPermission(user, "m3.config_template");
+    hasMatrixPermission(user, "procedure:assign_step");
   const canManageDepartment = (department: string) => canConfigure || isLeadOfDepartment(user, department);
   const canApproveSteps = (department?: string) =>
     Boolean(department && isLeadOfDepartment(user, department)) ||
-    canUserDo(user, "m3_construction_procedures", "approve") ||
-    hasMatrixPermission(user, "m3.approve_step");
+    hasMatrixPermission(user, "procedure:approve_step");
   const userKey = actorName.trim().toLowerCase();
   const isAssignee = (step: ProcedureStep) => Boolean(step.assignedTo && step.assignedTo.trim().toLowerCase() === userKey);
   const canWorkOnStep = (step: ProcedureStep) =>
-    isAssignee(step) || canApproveSteps(step.department) || canUserDo(user, "m3_construction_procedures", "input");
+    isAssignee(step) || canApproveSteps(step.department) || hasMatrixPermission(user, "my_task:act_on_behalf");
   const canDecideStage = isDirectorUser(user);
   const departmentLead = (department: string) => getDepartmentLead(department)?.name;
 

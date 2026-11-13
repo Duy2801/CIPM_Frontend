@@ -98,75 +98,6 @@ export const mockQuarterlyData: QuarterlyData[] = [
   { quarter: "Quý 4", plan: 150, actual: 0 },
 ];
 
-export const mockUrgentTasks: UrgentTask[] = [
-  {
-    id: "TSK-01",
-    title: "Kè bảo vệ bờ biển phường Pháo Đài",
-    badge: "Chậm 42 ngày",
-    badgeColor: "danger",
-    description: "Nhà thầu thiếu hụt nguồn đá hộc san lấp tại mỏ Kiên Lương. Ảnh hưởng đoạn kè K0+800.",
-    department: "Tổ Kỹ thuật & Giám sát",
-    actionText: "Xử lý ngay",
-    actionColor: "danger",
-    targetUrl: "/projects_works",
-  },
-  {
-    id: "TSK-02",
-    title: "Gói thầu XL-02 Đường ven biển",
-    badge: "Quá hạn 14 ngày",
-    badgeColor: "warning",
-    description: "Hồ sơ nghiệm thu đợt 2 chưa giải ngân thanh toán với số tiền 18.4 tỷ đồng tại Kho bạc.",
-    department: "Phòng Kế hoạch - Tài chính",
-    actionText: "Xử lý ngay",
-    actionColor: "warning",
-    targetUrl: "/finance-settlement",
-  },
-  {
-    id: "TSK-03",
-    title: "GPMB Khu dân cư phường Pháo Đài",
-    badge: "Hạn chót 28/06",
-    badgeColor: "info",
-    description: "Còn 02 hộ dân chưa đồng thuận nhận tiền bồi thường đợt cuối, cần tổ chức đối thoại trực tiếp.",
-    department: "Tổ Công tác GPMB",
-    actionText: "Xử lý ngay",
-    actionColor: "info",
-    targetUrl: "/site-clearance-resettlement",
-  },
-  {
-    id: "TSK-04",
-    title: "Cầu Tô Châu (Nhánh nâng cấp)",
-    badge: "Còn 28 ngày",
-    badgeColor: "success",
-    description: "Sắp hết thời hạn bảo hành công trình, cần tổ chức đoàn kiểm tra hiện trường để hoàn tất hồ sơ quyết toán.",
-    department: "Tổ Kỹ thuật & Nghiệm thu",
-    actionText: "Xử lý ngay",
-    actionColor: "brand",
-    targetUrl: "/warranty-maintenance",
-  },
-  {
-    id: "TSK-05",
-    title: "Khu tái định cư Bình San",
-    badge: "Hạn chót 05/07",
-    badgeColor: "info",
-    description: "Tổ chức bốc thăm phân lô và nhận bàn giao nền đất đợt 1 cho 18 hộ dân.",
-    department: "Tổ Công tác GPMB",
-    actionText: "Xử lý ngay",
-    actionColor: "info",
-    targetUrl: "/site-clearance-resettlement",
-  },
-  {
-    id: "TSK-06",
-    title: "Trường Mầm non Pháo Đài",
-    badge: "Chậm 7 ngày",
-    badgeColor: "danger",
-    description: "Nhà thầu chưa nộp kết quả thí nghiệm nén mẫu bê tông dầm sàn tầng 2.",
-    department: "Tổ Kỹ thuật & Giám sát",
-    actionText: "Xử lý ngay",
-    actionColor: "danger",
-    targetUrl: "/projects_works",
-  },
-];
-
 /**
  * Chuyển chuỗi thời gian tương đối (VD: "14:15 hôm nay", "08:30 2 ngày trước")
  * thành ngày cụ thể dạng dd/MM/yyyy + giờ HH:mm.
@@ -975,4 +906,36 @@ export function mockDailyProgress(projectId: string, date: string, dayIndex: num
   const planned = Math.round(WEEKDAY_LOAD[dayIndex] * (0.5 + seeded(`${projectId}-${date}-p`)));
   const completed = Math.max(0, Math.round(planned * (0.55 + seeded(`${projectId}-${date}-c`) * 0.6)));
   return { planned, completed };
+}
+
+export const MOCK_SCHEDULE = true;
+
+const shiftDay = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+export function mockProjectProgress<T extends { id: string; plannedProgress: number; actualProgress: number }>(
+  project: T,
+  index: number,
+): T {
+  const planned = 40 + Math.round(seeded(`${project.id}-plan`) * 40);
+  const delta = 3 + Math.round(seeded(`${project.id}-delta`) * 12);
+  const actual = [planned + delta, planned - delta, planned][index % 3];
+  return { ...project, plannedProgress: planned, actualProgress: actual };
+}
+
+export function mockStepSchedule<T extends { id: string; isEnabled: boolean; status: string; endDatePlanned?: string; actualEndDate?: string }>(
+  step: T,
+  projectId: string,
+): T {
+  if (!step.isEnabled || step.status === "SKIPPED" || step.status === "DISABLED") return step;
+  const r = seeded(`${projectId}-${step.id}-kind`);
+  const k = 1 + Math.round(seeded(`${projectId}-${step.id}-days`) * 12);
+  if (r < 0.3) return { ...step, status: "COMPLETED", endDatePlanned: shiftDay(-k), actualEndDate: shiftDay(-k - 2 - (k % 5)) };
+  if (r < 0.6) return { ...step, status: "COMPLETED", endDatePlanned: shiftDay(-k), actualEndDate: shiftDay(-k) };
+  if (r < 0.75) return { ...step, status: "COMPLETED", endDatePlanned: shiftDay(-k - 6), actualEndDate: shiftDay(-k) };
+  if (r < 0.88) return { ...step, status: "IN_PROGRESS", endDatePlanned: shiftDay(-k) };
+  return { ...step, status: "IN_PROGRESS", endDatePlanned: shiftDay(k), actualEndDate: undefined };
 }

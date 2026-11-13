@@ -16,7 +16,7 @@ import StaffModal from "./StaffModal";
 export default function PersonnelDirectoryTab() {
   const { data: teams = [] } = useTeams();
   const { data: staff = [] } = useStaffList();
-  const { canManageAccounts } = useStaffAccess();
+  const { canManageAccounts, canConfigurePermissions } = useStaffAccess();
 
   const [filters, setFilters] = useState<DirectoryFilters>(DEFAULT_DIRECTORY_FILTERS);
   const [staffModalOpen, setStaffModalOpen] = useState(false);
@@ -59,8 +59,9 @@ export default function PersonnelDirectoryTab() {
               : `${filteredStaff.length}/${staff.length} cán bộ`
           }
           actions={
-            canManageAccounts && (
+            (canManageAccounts || canConfigurePermissions) && (
               <Flex align="center" gap={8} wrap="wrap">
+                {canConfigurePermissions && (
                 <Button
                   intent="outline"
                   icon={<AppstoreOutlined />}
@@ -69,6 +70,8 @@ export default function PersonnelDirectoryTab() {
                 >
                   Ma trận phân quyền
                 </Button>
+                )}
+                {canManageAccounts && (
                 <Button
                   intent="primary"
                   icon={<UserAddOutlined />}
@@ -77,6 +80,7 @@ export default function PersonnelDirectoryTab() {
                 >
                   Thêm tài khoản
                 </Button>
+                )}
               </Flex>
             )
           }

@@ -5,6 +5,7 @@ import { useQueries } from "@tanstack/react-query";
 import { projectKeys, useProjectList } from "@/features/projects_works/hooks/useProjectList";
 import { getProjectProcedure } from "@/features/projects_works/services/project.api";
 import { withPlannedDates } from "@/features/projects_works/utils/step-schedule";
+import { MOCK_SCHEDULE, mockProjectProgress, mockStepSchedule } from "../constants/dashboard-mock-data";
 import { buildScheduleKpi, buildTaskKpi } from "../utils/schedule-kpi";
 
 export function useDashboardSchedule() {
@@ -20,14 +21,21 @@ export function useDashboardSchedule() {
     }),
   });
 
-  const projectKpi = useMemo(() => buildScheduleKpi(projects), [projects]);
+  const projectKpi = useMemo(
+    () => buildScheduleKpi(MOCK_SCHEDULE ? projects.map(mockProjectProgress) : projects),
+    [projects],
+  );
   const stepsByProject = useMemo(
     () =>
       projects.map((project, i) => ({
         id: project.id,
         code: project.code,
         name: project.name,
-        steps: procedures.data[i] ? withPlannedDates(procedures.data[i]!.steps, project.startDate) : [],
+        steps: procedures.data[i]
+          ? withPlannedDates(procedures.data[i]!.steps, project.startDate).map((step) =>
+              MOCK_SCHEDULE ? mockStepSchedule(step, project.id) : step,
+            )
+          : [],
       })),
     [procedures.data, projects],
   );

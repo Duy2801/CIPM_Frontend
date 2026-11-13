@@ -3,6 +3,7 @@
 import { ArrowLeftOutlined, DownloadOutlined, HistoryOutlined, UploadOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui";
 import { useReportActions } from "../hooks/useReportActions";
+import { useReportPermissions } from "../hooks/useReportPermissions";
 import { useReportImporting, useReportOf, useReportType } from "../hooks/useReportQueries";
 
 interface ReportDetailHeaderProps {
@@ -18,6 +19,7 @@ export default function ReportDetailHeader({ typeId, showHistory, onBack, onShow
   const report = useReportOf(typeId);
   const importing = useReportImporting();
   const { exportReport } = useReportActions();
+  const { canImport, canExport } = useReportPermissions();
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -41,6 +43,7 @@ export default function ReportDetailHeader({ typeId, showHistory, onBack, onShow
           <Button intent="outline" scale="sm" icon={<HistoryOutlined />} onClick={onShowHistory} className="h-9 px-4 text-xs font-semibold">
             Lịch sử
           </Button>
+          {canImport && (
           <Button
             intent="outline"
             scale="sm"
@@ -51,7 +54,8 @@ export default function ReportDetailHeader({ typeId, showHistory, onBack, onShow
           >
             Nhập Excel
           </Button>
-          {report && (
+          )}
+          {report && canExport && (
             <Button
               intent="primary"
               scale="sm"

@@ -44,53 +44,12 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
     return tasks.filter((t) => t.badgeColor === activeFilter);
   }, [tasks, activeFilter]);
 
-  // Các tùy chọn trong Dropdown lọc trạng thái: Tinh tế, trung tính, không màu mè, không hiện số
   const statusFilterOptions = [
-    {
-      value: "all",
-      label: (
-        <div className="flex items-center gap-2 py-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-          <span className="text-slate-700 text-xs font-medium">Tất cả trạng thái</span>
-        </div>
-      ),
-    },
-    {
-      value: "danger",
-      label: (
-        <div className="flex items-center gap-2 py-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-          <span className="text-slate-700 text-xs font-medium">Khẩn cấp</span>
-        </div>
-      ),
-    },
-    {
-      value: "warning",
-      label: (
-        <div className="flex items-center gap-2 py-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-          <span className="text-slate-700 text-xs font-medium">Quan trọng</span>
-        </div>
-      ),
-    },
-    {
-      value: "info",
-      label: (
-        <div className="flex items-center gap-2 py-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />
-          <span className="text-slate-700 text-xs font-medium">Chú ý</span>
-        </div>
-      ),
-    },
-    {
-      value: "success",
-      label: (
-        <div className="flex items-center gap-2 py-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-          <span className="text-slate-700 text-xs font-medium">Thông tin</span>
-        </div>
-      ),
-    },
+    { value: "all", label: "Tất cả trạng thái" },
+    { value: "danger", label: "Khẩn cấp" },
+    { value: "warning", label: "Quan trọng" },
+    { value: "info", label: "Chú ý" },
+    { value: "success", label: "Thông tin" },
   ];
 
   return (
@@ -187,7 +146,7 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
                   </Text>
 
                   <Flex align="center" justify="end" className="pt-2 mt-1 border-t border-slate-100">
-                    {canAccessPath(permissions, task.targetUrl) ? (
+                    {canAccessPath(permissions, task.targetUrl.split("?")[0]) ? (
                       <Link href={task.targetUrl}>
                         <Button
                           scale="xs"
