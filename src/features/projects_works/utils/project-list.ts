@@ -91,6 +91,7 @@ export function createProjectItem(data: ProjectFormData, code: string, creatorNa
     location: data.location || "TP. Hà Tiên",
     scale: data.scale?.trim() || "",
     fundingSource: data.fundingSource ?? "Ngân sách thành phố",
+    fundingSources: data.fundingSources,
     totalInvestment: data.totalInvestment ?? 0,
     plan2026: data.plan2026 ?? 0,
     disbursedAmount: 0.0,

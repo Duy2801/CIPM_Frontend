@@ -3,6 +3,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
 import { useAuthStore } from "@/stores/auth.store";
+import * as handoverApi from "../services/handover.api";
+import type { HandoverInput } from "../services/handover.api";
 import * as personnelApi from "../services/personnel.api";
 import type { TeamInput } from "../services/personnel.api";
 import type { Staff, StaffInput, Team } from "../types/personnel.types";
@@ -217,6 +219,33 @@ export function useUnlockAccount() {
       }),
     },
   );
+}
+
+export function useHandoverTasks() {
+  const queryClient = useQueryClient();
+  const action = usePersonnelAction((input: HandoverInput) => handoverApi.handoverOpenTasks(input), {
+    successText: ({ to }, moved) => `Đã bàn giao ${moved} việc cho ${to.name}.`,
+    log: (input, moved) => ({
+      module: "Nhân sự",
+      action: "Bàn giao công việc",
+      targetType: "staff",
+      targetId: input.from.id ?? input.from.name,
+      targetName: input.from.name,
+      changes: [{ label: "Người thực hiện", from: `${input.from.name} (${moved} việc)`, to: input.to.name }],
+      note: handoverApi.handoverNote(input) || undefined,
+    }),
+  });
+  const run = async (input: HandoverInput) => {
+    const moved = await action.run(input);
+    if (moved !== null) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["my-tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      ]);
+    }
+    return moved;
+  };
+  return { run, isPending: action.isPending };
 }
 
 // ── Phòng ban ──

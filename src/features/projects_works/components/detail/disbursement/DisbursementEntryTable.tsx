@@ -4,21 +4,26 @@ import { PaperClipOutlined } from "@ant-design/icons";
 import { Table, type ColumnsType } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
+import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
 import { DISBURSEMENT_KIND_LABEL, type DisbursementEntry } from "../../../utils/project-disbursement";
-import { money } from "./disbursement-format";
+import { money } from "../../../utils/disbursement-format";
 
 const TABLE_CLASS =
   "text-xs [&_.ant-table-thead>tr>th]:!bg-slate-100 [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-[11px] [&_.ant-table-thead>tr>th]:!text-slate-600 [&_.ant-table-tbody>tr:hover>td]:!bg-red-50/40";
 
 export default function DisbursementEntryTable({
-  entries,
-  remaining,
+  projectId,
+  category,
   onView,
 }: {
-  entries: DisbursementEntry[];
-  remaining: Map<string, number | undefined>;
-  onView: (entry: DisbursementEntry) => void;
+  projectId: string;
+  category: string;
+  onView: (entryId: string) => void;
 }) {
+  const { entries: all, remainingById: remaining } = useProjectDisbursements(projectId);
+  const entries = all
+    .filter((e) => e.category === category)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const columns: ColumnsType<DisbursementEntry> = [
     {
       title: "Ngày thực hiện",
@@ -146,7 +151,7 @@ export default function DisbursementEntryTable({
       pagination={false}
       scroll={{ x: 1150 }}
       locale={{ emptyText: "Chưa có đợt giải ngân nào." }}
-      onRow={(e) => ({ onClick: () => onView(e), className: "cursor-pointer" })}
+      onRow={(e) => ({ onClick: () => onView(e.id), className: "cursor-pointer" })}
       className={TABLE_CLASS}
     />
   );

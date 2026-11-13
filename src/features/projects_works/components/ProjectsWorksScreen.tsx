@@ -14,15 +14,8 @@ export default function ProjectsWorksScreen() {
     <div className="w-full max-w-[2560px] mx-auto flex flex-col gap-2.5 select-none">
       {ctl.isCreateOpen ? (
         <CreateProjectPage nextAutoCode={ctl.nextAutoCode} onBack={ctl.closeCreate} onCreateProject={ctl.createProject} />
-      ) : ctl.detailProject ? (
-        <ProjectDetailPage
-          key={ctl.detailProject.id}
-          project={ctl.detailProject}
-          onBack={ctl.closeDetail}
-          onUpdateProject={ctl.updateProject}
-          onProcedureSync={ctl.syncProcedure}
-          onDisbursedChange={ctl.setDisbursedAmount}
-        />
+      ) : ctl.detailProjectId ? (
+        <ProjectDetailPage key={ctl.detailProjectId} projectId={ctl.detailProjectId} onBack={ctl.closeDetail} />
       ) : (
         <>
           <ProjectsFilterToolbar

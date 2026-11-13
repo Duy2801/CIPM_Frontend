@@ -13,12 +13,13 @@ import { Button } from "@/components/ui";
 import type { SegmentedTabItem } from "@/components/workspace";
 import { useAuth } from "@/features/auth";
 import { canUserDo } from "@/access-control";
-import type { ProjectFormData, ProjectItem } from "../../types/project.types";
+import type { ProjectItem } from "../../types/project.types";
 import { useProcedureDraft } from "../../hooks/useProcedureDraft";
+import { useProject } from "../../hooks/useProjectList";
 import { useProjectInfoDraft } from "../../hooks/useProjectInfoDraft";
+import { useProjectMutations } from "../../hooks/useProjectMutations";
 import { useProjectProcedure } from "../../hooks/useProjectProcedure";
-import type { ProjectProcedureSync } from "../../types/project-procedure.types";
-import { shortProcedureLabel } from "../../utils/procedure-target";
+import { procedureTabLabel } from "../../utils/procedure-target";
 import ProjectDisbursementTab from "./disbursement/ProjectDisbursementTab";
 import ProjectChangesSummary from "./ProjectChangesSummary";
 import ProjectDetailTabBar, { type DetailTab } from "./ProjectDetailTabBar";
@@ -27,36 +28,26 @@ import ProjectInfoTab from "./ProjectInfoTab";
 import ProjectProcedureTab from "./ProjectProcedureTab";
 import ProjectSaveBar from "./ProjectSaveBar";
 
-interface ProjectDetailPageProps {
-  project: ProjectItem;
-  onBack: () => void;
-  onUpdateProject: (projectId: string, data: ProjectFormData) => void;
-  onProcedureSync: (projectId: string, sync: ProjectProcedureSync) => void;
-  onDisbursedChange: (projectId: string, total: number) => void;
+export default function ProjectDetailPage({ projectId, onBack }: { projectId: string; onBack: () => void }) {
+  const project = useProject(projectId);
+  return project ? <ProjectDetailContent project={project} onBack={onBack} /> : null;
 }
 
-export default function ProjectDetailPage({
-  project,
-  onBack,
-  onUpdateProject,
-  onProcedureSync,
-  onDisbursedChange,
-}: ProjectDetailPageProps) {
+function ProjectDetailContent({ project, onBack }: { project: ProjectItem; onBack: () => void }) {
   const { modal, message } = App.useApp();
   const { user } = useAuth();
+  const { updateProject, syncProcedure } = useProjectMutations();
   const isClosed = project.status === "closed";
 
   const info = useProjectInfoDraft(project, canUserDo(user, "m2_projects", "input") && !isClosed);
-  const canDisburse = canUserDo(user, "m4_finance_settlement", "input") && !isClosed;
   const canViewProcedure = canUserDo(user, "m3_construction_procedures", "view");
 
-  const procedure = useProjectProcedure(project, (sync) => onProcedureSync(project.id, sync));
+  const procedure = useProjectProcedure(project, (sync) => syncProcedure(project.id, sync));
   const procedures = useProcedureDraft(procedure);
-  const { appliedDepartments, departmentStatus } = procedure;
+  const { appliedDepartments } = procedure;
   const canEditProcedures = procedure.canConfigure && !isClosed;
 
-  const tabLabelOf = (dept: string) =>
-    departmentStatus(dept)?.tabLabel || shortProcedureLabel(departmentStatus(dept)?.procedureName ?? dept);
+  const tabLabelOf = (dept: string) => procedureTabLabel(procedure.data, dept);
 
   const [tab, setTab] = useState<DetailTab>("info");
   const detailTabs: SegmentedTabItem<DetailTab>[] = [
@@ -89,7 +80,7 @@ export default function ProjectDetailPage({
       onOk: () => {
         if (info.isDirty) {
           const { view } = info;
-          onUpdateProject(project.id, {
+          void updateProject(project.id, {
             ...info.pending,
             name: view.name,
             type: view.type,
@@ -157,21 +148,15 @@ export default function ProjectDetailPage({
       )}
 
       {activeTab === "info" && (
-        <ProjectInfoTab project={project} info={info} procedures={procedures} canEditProcedures={canEditProcedures} />
+        <ProjectInfoTab projectId={project.id} info={info} procedures={procedures} canEditProcedures={canEditProcedures} />
       )}
       {activeTab.startsWith("proc:") && (
         <ProjectProcedureTab key={activeTab} department={activeTab.slice(5)} controller={procedure} />
       )}
       {activeTab === "disbursement" && (
-        <ProjectDisbursementTab
-          project={project}
-          operatorName={user?.name || user?.displayName || "Cán bộ quản lý"}
-          canDisburse={canDisburse}
-          headings={appliedDepartments.map(tabLabelOf)}
-          onTotalChange={(total) => onDisbursedChange(project.id, total)}
-        />
+        <ProjectDisbursementTab projectId={project.id} />
       )}
-      {activeTab === "history" && <ProjectHistoryTab project={project} procedureLogs={procedure.data.history ?? []} />}
+      {activeTab === "history" && <ProjectHistoryTab projectId={project.id} procedureLogs={procedure.data.history ?? []} />}
 
       {isDirty && activeTab === "info" && (
         <ProjectSaveBar changeCount={changeCount} onDiscard={discardChanges} onSave={confirmSaveChanges} />

@@ -1,5 +1,6 @@
 export const FUNDING_STORAGE_KEY = "cipm_custom_funding_sources";
 export const NATURE_STORAGE_KEY = "cipm_custom_project_natures";
+export const WORK_TYPE_STORAGE_KEY = "cipm_custom_work_types";
 
 export const DROPDOWN_LIST_HEIGHT = 5 * 32;
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@/utils/cn";
-import type { CategorySummary } from "../../../utils/project-disbursement";
-import { money } from "./disbursement-format";
+import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
+import { money } from "../../../utils/disbursement-format";
 
 const SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
 const OTHER_COLOR = "#94a3b8";
@@ -18,23 +18,18 @@ const GAUGE_HEIGHT = SIZE / 2 + STROKE / 2;
 const colorAt = (index: number) => SERIES_COLORS[index] ?? OTHER_COLOR;
 const formatPct = (value: number) => `${value.toFixed(1)}%`;
 
-interface DisbursementOverviewProps {
-  title: string;
-  totalInvestment: number;
-  disbursed: number;
-  count: number;
-  categories: CategorySummary[];
-  onSelect: (category: string) => void;
-}
-
 export default function DisbursementOverview({
-  title,
-  totalInvestment,
-  disbursed,
-  count,
-  categories,
+  projectId,
   onSelect,
-}: DisbursementOverviewProps) {
+}: {
+  projectId: string;
+  onSelect: (category: string) => void;
+}) {
+  const { summary, unit, totalInvestment } = useProjectDisbursements(projectId);
+  const title = `Tổng các ${unit}`;
+  const disbursed = summary.total;
+  const count = summary.count;
+  const categories = summary.byCategory;
   const items = categories.map((c, index) => ({
     key: c.category,
     value: Math.max(0, c.total),

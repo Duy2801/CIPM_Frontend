@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export function MyTaskHeading({ children }: { children: ReactNode }) {
-  return <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-600">{children}</h3>;
+  return <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">{children}</h3>;
 }
 
 export function MyTaskFact({ label, value, wide }: { label: string; value: ReactNode; wide?: boolean }) {

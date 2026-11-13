@@ -181,7 +181,7 @@ export default function ProjectEditTab({
           </div>
 
           <div className="pt-2 border-t border-slate-100">
-            <Text strong className="text-[11px] text-slate-500 uppercase tracking-wider block mb-2.5 font-bold">
+            <Text strong className="text-[11px] text-[#DC2626] uppercase tracking-wider block mb-2.5 font-bold">
               TIẾN ĐỘ & TRẠNG THÁI
             </Text>
 

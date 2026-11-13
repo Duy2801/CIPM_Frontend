@@ -3,17 +3,14 @@
 import { useState } from "react";
 import { Button, Divider, Input } from "@/components/ui";
 
-interface StaffFormAddOptionProps {
+interface DropdownAddOptionProps {
   placeholder: string;
   loading?: boolean;
-  /** Tên đã có trong danh sách → khóa nút "Thêm" */
   isDuplicate: (name: string) => boolean;
-  /** Trả về true khi thêm thành công để xóa ô nhập */
   onAdd: (name: string) => Promise<boolean>;
 }
 
-/** Ô nhập tên mới ngay cuối danh sách chọn: gõ rồi bấm "Thêm" (hoặc Enter) */
-export default function StaffFormAddOption({ placeholder, loading, isDuplicate, onAdd }: StaffFormAddOptionProps) {
+export default function DropdownAddOption({ placeholder, loading, isDuplicate, onAdd }: DropdownAddOptionProps) {
   const [value, setValue] = useState("");
   const query = value.trim();
   const canAdd = Boolean(query) && !isDuplicate(query);
@@ -31,7 +28,6 @@ export default function StaffFormAddOption({ placeholder, loading, isDuplicate, 
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            // Không để phím gõ trong ô này điều khiển danh sách chọn
             e.stopPropagation();
             if (e.key === "Enter" && canAdd) {
               e.preventDefault();

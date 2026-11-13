@@ -39,6 +39,7 @@ export interface DisbursementEntry {
   id: string;
   kind?: DisbursementKind;
   category: string;
+  fundingSource?: string;
   amount: number;
   date: string;
   content?: string;
@@ -49,6 +50,49 @@ export interface DisbursementEntry {
 
 export const signedAmount = (e: Pick<DisbursementEntry, "amount" | "kind">) =>
   e.kind === "withdraw" ? -e.amount : e.amount;
+
+export const DISBURSEMENT_KIND_LABEL: Record<DisbursementKind, string> = {
+  disburse: "Cấp giải ngân",
+  withdraw: "Thu hồi vốn",
+};
+
+export interface FundingBudget {
+  source: string;
+  amount: number;
+}
+
+const POOL = "__ALL__";
+
+export function remainingAfterEach(
+  entries: DisbursementEntry[],
+  budgets: FundingBudget[],
+  totalInvestment: number,
+): Map<string, number | undefined> {
+  const perSource = budgets.some((b) => b.amount > 0);
+  const balance = new Map<string, number>(
+    perSource ? budgets.map((b) => [b.source, b.amount]) : [[POOL, totalInvestment]],
+  );
+  const result = new Map<string, number | undefined>();
+  const ordered = [...entries].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  for (const e of ordered) {
+    const key = perSource ? (e.fundingSource ?? "") : POOL;
+    const start = balance.get(key);
+    if (start === undefined || (!perSource && totalInvestment <= 0)) {
+      result.set(e.id, undefined);
+      continue;
+    }
+    const next = start - signedAmount(e);
+    balance.set(key, next);
+    result.set(e.id, next);
+  }
+  return result;
+}
+
+export function sourceBalance(entries: DisbursementEntry[], budget: FundingBudget): number {
+  return entries
+    .filter((e) => e.fundingSource === budget.source)
+    .reduce((left, e) => left - signedAmount(e), budget.amount);
+}
 
 export interface CategorySummary {
   category: string;
@@ -80,16 +124,25 @@ export function summarizeDisbursements(entries: DisbursementEntry[], categories:
 }
 
 export function validateDisbursement(
-  input: { kind: DisbursementKind; category?: string; amount: number; attachmentCount: number; content?: string },
+  input: {
+    kind: DisbursementKind;
+    category?: string;
+    amount: number;
+    attachmentCount: number;
+    content?: string;
+    fundingSource?: string;
+    requireSource?: boolean;
+  },
   limit: number | undefined,
 ): string | undefined {
   const withdraw = input.kind === "withdraw";
   if (!input.category) return "Vui lòng chọn danh mục.";
+  if (input.requireSource && !input.fundingSource) return "Vui lòng chọn nguồn vốn.";
   if (!(input.amount > 0)) return `Số tiền ${withdraw ? "thu hồi" : "giải ngân"} phải lớn hơn 0.`;
   if (limit !== undefined && input.amount > limit) {
     return withdraw
-      ? "Số tiền thu hồi vượt số đã giải ngân của danh mục."
-      : "Số tiền vượt phần còn lại của tổng mức đầu tư.";
+      ? "Số tiền thu hồi vượt số đã giải ngân của danh mục từ nguồn vốn này."
+      : "Số tiền vượt phần vốn còn lại.";
   }
   if (withdraw && !input.content?.trim()) return "Vui lòng nhập lý do thu hồi.";
   if (input.attachmentCount < 1) return "Vui lòng đính kèm ít nhất 1 file chứng từ.";
@@ -146,4 +199,18 @@ export function saveProjectDisbursements(projectId: string, entries: Disbursemen
   } catch (e) {
     console.error("Failed to save project disbursements", e);
   }
+}
+
+export function projectFundingBudgets(project: {
+  fundingSource?: string;
+  fundingSources?: { source: string; amount: number }[];
+  totalInvestment?: number;
+}): FundingBudget[] {
+  if (project.fundingSources?.length) return project.fundingSources.map((f) => ({ source: f.source, amount: f.amount }));
+  const names = (project.fundingSource ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (names.length === 1) return [{ source: names[0], amount: project.totalInvestment ?? 0 }];
+  return names.map((source) => ({ source, amount: 0 }));
 }

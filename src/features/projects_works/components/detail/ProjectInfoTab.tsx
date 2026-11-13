@@ -1,48 +1,57 @@
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/components/ui";
 import { InlineEditField } from "@/components/workspace";
-import StaffFormAddOption from "@/features/personnel-assignment/components/StaffFormAddOption";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
-import { formatMoneyString } from "@/utils/format-money";
-import { FUNDING_SOURCE_OPTIONS, PERSONNEL_OPTIONS } from "../../constants/project-enums";
+import { PERSONNEL_SELECT_OPTIONS, PROJECT_NATURE_OPTIONS } from "../../constants/project-enums";
 import type { ProcedureDraft } from "../../hooks/useProcedureDraft";
+import { useProject } from "../../hooks/useProjectList";
 import type { ProjectInfoDraft } from "../../hooks/useProjectInfoDraft";
-import type { FundingSourceType, ProjectItem, ProjectNature } from "../../types/project.types";
-import {
-  DROPDOWN_LIST_HEIGHT,
-  FUNDING_STORAGE_KEY,
-  loadCustomOptions,
-  sameText,
-  saveCustomOptions,
-} from "../../utils/custom-options";
-import { FIELD_LABELS, NATURE_LABELS, parseMoney, validateMoney } from "../../utils/project-detail-fields";
+import type { FundingSourceType, ProjectNature } from "../../types/project.types";
+import { toFundingSources, type FundingLine } from "../../utils/create-project-form";
+import { projectFundingBudgets } from "../../utils/project-disbursement";
+import { FIELD_LABELS, NATURE_LABELS } from "../../utils/project-detail-fields";
+import FundingSourceRows from "../shared/FundingSourceRows";
 import ProjectProcedurePicker from "../shared/ProjectProcedurePicker";
 import WorkTypeSelect from "../shared/WorkTypeSelect";
 import ProjectInfoFieldGroup from "./ProjectInfoFieldGroup";
 import { ProjectDocumentsSection } from "./ProjectDocumentsSection";
 
-const PERSONNEL_SELECT_OPTIONS = PERSONNEL_OPTIONS.map((p) => ({ value: p.name, label: `${p.name} (${p.role})` }));
-const NATURE_SELECT_OPTIONS = (Object.keys(NATURE_LABELS) as ProjectNature[]).map((n) => ({ value: n, label: NATURE_LABELS[n] }));
-
 const personName = (name: string) => (name === "Chưa phân công" ? "Chờ BQL phân công (M5)" : name || "—");
 
 export default function ProjectInfoTab({
-  project,
+  projectId,
   info,
   procedures,
   canEditProcedures,
 }: {
-  project: ProjectItem;
+  projectId: string;
   info: ProjectInfoDraft;
   procedures: ProcedureDraft;
   canEditProcedures: boolean;
 }) {
+  const project = useProject(projectId);
   const { view, isChanged, saver } = info;
-  const [customFunding, setCustomFunding] = useState(() => loadCustomOptions(FUNDING_STORAGE_KEY));
-  const fundingOptions = [...FUNDING_SOURCE_OPTIONS, ...customFunding].map((f) => ({ value: f, label: f }));
+  const fundingLines: FundingLine[] = projectFundingBudgets(view).map((b, i) => ({
+    id: `FUND-${i}`,
+    source: b.source as FundingSourceType,
+    amount: b.amount,
+  }));
+
+  const changeFundings = (lines: FundingLine[]) => {
+    const next = toFundingSources(lines);
+    if (!project) return;
+    const unchanged = JSON.stringify(next) === JSON.stringify(projectFundingBudgets(project));
+    info.setField("fundingSources", unchanged ? project.fundingSources : next);
+    info.setField(
+      "fundingSource",
+      unchanged ? project.fundingSource : ((next.map((f) => f.source).join(", ") || project.fundingSource) as FundingSourceType),
+    );
+    info.setField("totalInvestment", unchanged ? project.totalInvestment : next.reduce((sum, f) => sum + f.amount, 0));
+  };
+
+  if (!project) return null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -62,7 +71,7 @@ export default function ProjectInfoTab({
               changed={isChanged("nature")}
               value={view.nature ?? ""}
               display={view.nature ? NATURE_LABELS[view.nature] : "—"}
-              editor={{ kind: "select", options: NATURE_SELECT_OPTIONS }}
+              editor={{ kind: "select", options: PROJECT_NATURE_OPTIONS }}
               onSave={saver("nature", (v) => v as ProjectNature)}
             />
             <InlineEditField
@@ -75,41 +84,17 @@ export default function ProjectInfoTab({
             />
           </ProjectInfoFieldGroup>
 
-          <ProjectInfoFieldGroup title="Vốn đầu tư" cols="even2">
-            <InlineEditField
-              label={FIELD_LABELS.fundingSource}
-              changed={isChanged("fundingSource")}
-              value={view.fundingSource}
-              display={view.fundingSource}
-              editor={{
-                kind: "select",
-                options: fundingOptions,
-                listHeight: DROPDOWN_LIST_HEIGHT,
-                renderAddOption: (pick) => (
-                  <StaffFormAddOption
-                    placeholder="Nhập nguồn vốn mới..."
-                    isDuplicate={(name) => fundingOptions.some((o) => sameText(o.label, name))}
-                    onAdd={async (name) => {
-                      const label = name.trim();
-                      setCustomFunding((prev) => saveCustomOptions(FUNDING_STORAGE_KEY, [...prev, label]));
-                      pick(label);
-                      return true;
-                    }}
-                  />
-                ),
-              }}
-              onSave={saver("fundingSource", (v) => v as FundingSourceType)}
+          <section>
+            <h3 className="m-0 mb-3 border-b border-slate-100 pb-1.5 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">
+              Vốn đầu tư
+            </h3>
+            <FundingSourceRows
+              value={fundingLines}
+              disabled={!info.canEdit}
+              highlighted={isChanged("fundingSources") || isChanged("totalInvestment")}
+              onChange={changeFundings}
             />
-            <InlineEditField
-              label={FIELD_LABELS.totalInvestment}
-              changed={isChanged("totalInvestment")}
-              value={String(view.totalInvestment || 0)}
-              display={`${formatMoneyString(view.totalInvestment || 0)} VNĐ`}
-              editor={{ kind: "text", placeholder: "Số tiền (VNĐ)" }}
-              validate={validateMoney}
-              onSave={saver("totalInvestment", parseMoney)}
-            />
-          </ProjectInfoFieldGroup>
+          </section>
 
           <ProjectInfoFieldGroup title="Nhân sự & thời gian" cols={2}>
             <InlineEditField

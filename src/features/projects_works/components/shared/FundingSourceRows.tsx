@@ -2,28 +2,29 @@
 
 import { DeleteOutlined } from "@ant-design/icons";
 import { Button, MoneyInput, Select, Tooltip } from "@/components/ui";
+import { DropdownAddOption } from "@/components/workspace";
 import { formatMoneyString, parseMoney } from "@/utils/format-money";
+import { FUNDING_SOURCE_OPTIONS } from "../../constants/project-enums";
+import { useCustomOptions } from "../../hooks/useCustomOptions";
 import type { FundingSourceType } from "../../types/project.types";
-import { DROPDOWN_LIST_HEIGHT } from "../../utils/custom-options";
+import { DROPDOWN_LIST_HEIGHT, FUNDING_STORAGE_KEY, sameText } from "../../utils/custom-options";
 import type { FundingLine } from "../../utils/create-project-form";
 
 interface FundingSourceRowsProps {
   value: FundingLine[];
-  options: { value: string; label: string }[];
   onChange: (lines: FundingLine[]) => void;
-  renderAddOption: (onAdded: (label: string) => void) => React.ReactNode;
   disabled?: boolean;
   highlighted?: boolean;
 }
 
 export default function FundingSourceRows({
   value,
-  options,
   onChange,
-  renderAddOption,
   disabled,
   highlighted,
 }: FundingSourceRowsProps) {
+  const { custom, add } = useCustomOptions(FUNDING_STORAGE_KEY);
+  const options = [...new Set([...FUNDING_SOURCE_OPTIONS, ...custom])].map((v) => ({ value: v, label: v }));
   const selectClass = highlighted ? "[&_.ant-select-selector]:!border-amber-400 [&_.ant-select-selector]:!bg-amber-50/60" : "";
   const inputClass = highlighted ? "!border-amber-400 !bg-amber-50/60" : "";
   const total = value.reduce((sum, line) => sum + (line.amount === "" ? 0 : line.amount), 0);
@@ -55,7 +56,16 @@ export default function FundingSourceRows({
             popupRender={(menu) => (
               <>
                 {menu}
-                {renderAddOption((label) => patch(index, { source: label as FundingSourceType }))}
+                <DropdownAddOption
+                  placeholder="Nhập nguồn vốn mới..."
+                  isDuplicate={(name) => options.some((o) => sameText(o.label, name))}
+                  onAdd={async (name) => {
+                    const label = name.trim();
+                    add(label);
+                    patch(index, { source: label as FundingSourceType });
+                    return true;
+                  }}
+                />
               </>
             )}
           />

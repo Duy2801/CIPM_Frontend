@@ -1,4 +1,4 @@
-import type { ProjectHealthStatus, ProjectStage, ProjectStatusFilter } from "../types/project.types";
+import type { ProjectHealthStatus, ProjectNature, ProjectStage, ProjectStatusFilter } from "../types/project.types";
 
 export const PROJECT_STATUS_TABS: { key: ProjectStatusFilter; label: string }[] = [
   { key: "ALL", label: "Tất cả" },
@@ -122,6 +122,16 @@ export const PERSONNEL_OPTIONS = [
   { name: "Phạm Quốc Bảo", role: "Tổ trưởng – Chuyên viên Bồi thường", dept: "Tổ Bồi thường – GPMB – TĐC" },
   { name: "Đặng Thị Kim Ngân", role: "Kế toán trưởng", dept: "Tổ Hành chính – Tổng hợp" },
 ] as const;
+
+export const PERSONNEL_SELECT_OPTIONS = PERSONNEL_OPTIONS.map((p) => ({
+  value: p.name,
+  label: `${p.name} — ${p.role} (${p.dept})`,
+}));
+
+export const PROJECT_NATURE_OPTIONS: { value: ProjectNature; label: string }[] = [
+  { value: "new", label: "Dự án mới (Khởi công mới)" },
+  { value: "transitional", label: "Dự án cũ (Chuyển tiếp)" },
+];
 
 export const DEPARTMENT_OPTIONS = [
   { value: "Tổ Giám sát – Kỹ thuật", label: "Tổ Giám sát – Kỹ thuật", short: "GSKT" },

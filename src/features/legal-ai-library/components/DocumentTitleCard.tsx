@@ -24,7 +24,7 @@ export default function DocumentTitleCard({ title, onChange }: DocumentTitleCard
       title={canStartEdit ? "Nhấp để chỉnh sửa tên văn bản" : undefined}
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#DC2626]">
           <FileTextOutlined className="text-[#DC2626]" />
           Tên văn bản / Trích yếu nội dung
         </span>

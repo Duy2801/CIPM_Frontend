@@ -24,3 +24,8 @@ export function useProjectList() {
     error: isBackend ? (query.error as Error | null) : null,
   };
 }
+
+export function useProject(projectId: string | null | undefined) {
+  const { projects } = useProjectList();
+  return projectId ? projects.find((p) => p.id === projectId) : undefined;
+}

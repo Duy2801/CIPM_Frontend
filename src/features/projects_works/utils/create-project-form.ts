@@ -6,12 +6,17 @@ import type {
   ProjectWorkType,
 } from "../types/project.types";
 
+export interface FundingLine {
+  id: string;
+  source: FundingSourceType | "";
+  amount: number | "";
+}
+
 export interface CreateProjectForm {
   name: string;
   type: ProjectWorkType | "";
   location: string;
-  fundingSource: FundingSourceType | "";
-  totalInvestment: number | "";
+  fundings: FundingLine[];
   plan2026: number | "";
   procedures: Record<string, string>;
   tabLabels: Record<string, string>;
@@ -29,8 +34,7 @@ export const createInitialForm = (today = new Date().toISOString().slice(0, 10))
   name: "",
   type: "Giao thông",
   location: "",
-  fundingSource: "Ngân sách thành phố",
-  totalInvestment: "",
+  fundings: [{ id: "FUND-1", source: "Ngân sách thành phố", amount: "" }],
   plan2026: "",
   procedures: {},
   tabLabels: {},
@@ -53,13 +57,21 @@ export function validateCreateForm(form: CreateProjectForm): string {
   return "";
 }
 
+export function toFundingSources(lines: FundingLine[]) {
+  return lines.flatMap((line) =>
+    line.source ? [{ source: line.source, amount: line.amount === "" ? 0 : Number(line.amount) }] : [],
+  );
+}
+
 export function toProjectFormData(form: CreateProjectForm): ProjectFormData {
+  const fundingSources = toFundingSources(form.fundings);
   return {
     name: form.name.trim(),
     type: form.type || "Giao thông",
     location: form.location.trim() || undefined,
-    fundingSource: form.fundingSource || "Ngân sách thành phố",
-    totalInvestment: form.totalInvestment === "" ? 0 : Number(form.totalInvestment),
+    fundingSource: (fundingSources.map((f) => f.source).join(", ") || "Ngân sách thành phố") as FundingSourceType,
+    fundingSources,
+    totalInvestment: fundingSources.reduce((sum, f) => sum + f.amount, 0),
     plan2026: form.plan2026 === "" ? 0 : Number(form.plan2026),
     departments: Object.keys(form.procedures),
     managerName: form.managerName.trim() || DEFAULT_PERSON,

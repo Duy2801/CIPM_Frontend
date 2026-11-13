@@ -1,63 +1,103 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { canUserDo } from "@/access-control";
+import { useAuth } from "@/features/auth";
 import { useCatalog } from "@/features/catalogs";
+import { loadProjectProcedure } from "@/features/construction-procedures/utils/project-procedure-storage";
 import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import { addDisbursement, getDisbursements } from "../services/project.api";
-import { projectKeys } from "./useProjectList";
+import { addDisbursement, getDisbursements, getProjectProcedure } from "../services/project.api";
+import { procedureHeadings } from "../utils/procedure-target";
 import {
   DEFAULT_DISBURSEMENT_CATEGORIES,
   loadCustomCategories,
   loadProjectDisbursements,
+  projectFundingBudgets,
+  remainingAfterEach,
   saveCustomCategories,
   saveProjectDisbursements,
+  signedAmount,
+  sourceBalance,
   summarizeDisbursements,
   type DisbursementEntry,
+  type DisbursementKind,
 } from "../utils/project-disbursement";
+import { projectKeys, useProject } from "./useProjectList";
 
-export type NewDisbursement = Pick<DisbursementEntry, "kind" | "category" | "amount" | "content" | "attachments">;
+export type NewDisbursement = Pick<DisbursementEntry, "kind" | "category" | "fundingSource" | "amount" | "content" | "attachments">;
 
-export function useProjectDisbursements(
-  projectId: string,
-  operatorName: string,
-  headings?: readonly string[],
-) {
+const CUSTOM_CATEGORIES_KEY = ["projects", "disbursement-custom-categories"] as const;
+const NO_ENTRIES: DisbursementEntry[] = [];
+const NO_STRINGS: string[] = [];
+
+function useDisbursementHeadings(projectId: string) {
+  const project = useProject(projectId);
+  const isBackend = hasBackendSession();
+  const remote = useQuery({
+    queryKey: projectKeys.procedure(projectId),
+    queryFn: () => getProjectProcedure(project!),
+    enabled: isBackend && Boolean(project),
+  });
+  const projectCode = project?.code;
+  const local = useMemo(
+    () => (!isBackend && projectCode ? loadProjectProcedure(projectId, projectCode) : undefined),
+    [isBackend, projectId, projectCode],
+  );
+  const data = isBackend ? remote.data : local;
+  return useMemo(() => (data ? procedureHeadings(data) : NO_STRINGS), [data]);
+}
+
+export function useProjectDisbursements(projectId: string) {
   const isBackend = hasBackendSession();
   const queryClient = useQueryClient();
-  const [localEntries, setEntries] = useState<DisbursementEntry[]>(() =>
-    isBackend ? [] : loadProjectDisbursements(projectId),
-  );
-  const [customCategories, setCustomCategories] = useState<string[]>(loadCustomCategories);
+  const { user } = useAuth();
+  const project = useProject(projectId);
+  const operatorName = user?.name || user?.displayName || "Cán bộ quản lý";
+  const canDisburse = canUserDo(user, "m4_finance_settlement", "input") && project?.status !== "closed";
 
+  const headings = useDisbursementHeadings(projectId);
+  const byHeading = headings.length > 0;
+  const unit = byHeading ? "đầu mục" : "danh mục";
+
+  const { data: customCategories = NO_STRINGS } = useQuery({
+    queryKey: CUSTOM_CATEGORIES_KEY,
+    queryFn: loadCustomCategories,
+    staleTime: Infinity,
+  });
   const { items: catalog, add: addToCatalog } = useCatalog("EXPENSE_TYPE");
-  const headingKey = JSON.stringify(headings ?? []);
   const categories = useMemo(() => {
-    const list = JSON.parse(headingKey) as string[];
-    if (list.length > 0) return list;
+    if (byHeading) return headings;
     const base = catalog.length > 0 ? catalog.map((c) => c.name) : [...DEFAULT_DISBURSEMENT_CATEGORIES];
     return [...base, ...customCategories.filter((c) => !base.includes(c))];
-  }, [catalog, customCategories, headingKey]);
+  }, [byHeading, headings, catalog, customCategories]);
 
-  const remote = useQuery({
+  const { data: entries = NO_ENTRIES } = useQuery({
     queryKey: projectKeys.disbursements(projectId),
-    queryFn: () => getDisbursements(projectId, categories),
-    enabled: isBackend,
+    queryFn: async () =>
+      isBackend ? (await getDisbursements(projectId, categories)).entries : loadProjectDisbursements(projectId),
   });
-  const remoteEntries = remote.data?.entries;
-  const entries = useMemo(
-    () => (isBackend ? (remoteEntries ?? []) : localEntries),
-    [isBackend, remoteEntries, localEntries],
-  );
   const summary = useMemo(() => summarizeDisbursements(entries, categories), [entries, categories]);
 
-  const commit = useCallback(
-    (next: DisbursementEntry[]) => {
-      setEntries(next);
-      saveProjectDisbursements(projectId, next);
-    },
-    [projectId],
+  const totalInvestment = project?.totalInvestment || 0;
+  const remaining = totalInvestment > 0 ? Math.max(0, totalInvestment - summary.total) : undefined;
+  const budgets = useMemo(() => (project ? projectFundingBudgets(project) : []), [project]);
+  const perSource = budgets.some((b) => b.amount > 0);
+  const remainingById = useMemo(
+    () => remainingAfterEach(entries, budgets, totalInvestment),
+    [entries, budgets, totalInvestment],
   );
+
+  const limitFor = (kind: DisbursementKind, category: string, source?: string) => {
+    if (kind === "withdraw") {
+      return entries
+        .filter((e) => e.category === category && (!source || e.fundingSource === source))
+        .reduce((sum, e) => sum + signedAmount(e), 0);
+    }
+    const budget = budgets.find((b) => b.source === source);
+    if (perSource && budget && budget.amount > 0) return Math.max(0, sourceBalance(entries, budget));
+    return remaining;
+  };
 
   const add = useCallback(
     async (input: NewDisbursement, files: File[] = []) => {
@@ -79,24 +119,41 @@ export function useProjectDisbursements(
         createdBy: operatorName,
         createdAt: now.toISOString(),
       };
-      commit([entry, ...entries]);
+      const next = [entry, ...loadProjectDisbursements(projectId)];
+      saveProjectDisbursements(projectId, next);
+      queryClient.setQueryData(projectKeys.disbursements(projectId), next);
       return entry;
     },
-    [entries, commit, operatorName, isBackend, projectId, queryClient],
+    [isBackend, operatorName, projectId, queryClient],
   );
-
-  const remove = useCallback((id: string) => commit(entries.filter((e) => e.id !== id)), [entries, commit]);
 
   const addCategory = useCallback(
     (name: string) => {
-      if (categories.includes(name)) return;
+      if (byHeading || categories.includes(name)) return;
       const next = [...customCategories, name];
-      setCustomCategories(next);
       saveCustomCategories(next);
+      queryClient.setQueryData(CUSTOM_CATEGORIES_KEY, next);
       void addToCatalog(name);
     },
-    [categories, customCategories, addToCatalog],
+    [byHeading, categories, customCategories, addToCatalog, queryClient],
   );
 
-  return { isBackend, entries, categories, summary, add, remove, addCategory };
+  return {
+    project,
+    isBackend,
+    operatorName,
+    canDisburse,
+    byHeading,
+    unit,
+    entries,
+    categories,
+    summary,
+    totalInvestment,
+    budgets,
+    perSource,
+    remainingById,
+    limitFor,
+    add,
+    addCategory,
+  };
 }

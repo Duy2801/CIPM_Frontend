@@ -222,7 +222,7 @@ function StaffInfoForm({ staff }: { staff: Staff }) {
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <Text className="block text-xs font-bold text-slate-800 uppercase tracking-wide">Thông tin cá nhân & công tác</Text>
+        <Text className="block text-xs font-bold text-[#DC2626] uppercase tracking-wide">Thông tin cá nhân & công tác</Text>
         {editable && (
           <Button
             intent="outline"

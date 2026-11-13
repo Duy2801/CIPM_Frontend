@@ -122,7 +122,7 @@ function StepDetail({
         )}
 
         <section>
-          <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-600">Ghi chú</h3>
+          <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">Ghi chú</h3>
           {step.notes || step.submissionNote ? (
             <div className="space-y-2 rounded-lg border border-slate-200 px-3 py-2 text-xs leading-relaxed text-slate-700">
               {step.notes && <p className="m-0 whitespace-pre-line">{step.notes}</p>}
@@ -139,7 +139,7 @@ function StepDetail({
         </section>
 
         <section>
-          <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+          <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">
             Hồ sơ đính kèm{step.attachments.length > 0 && ` (${step.attachments.length})`}
           </h3>
           {step.attachments.length > 0 ? (
@@ -177,7 +177,7 @@ function StepDetail({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-600">{title}</h3>
+      <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">{title}</h3>
       <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
         {children}
       </dl>

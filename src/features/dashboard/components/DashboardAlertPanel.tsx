@@ -26,13 +26,6 @@ const badgeColorStyles: Record<string, string> = {
   success: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
 };
 
-const dotColorStyles: Record<string, string> = {
-  danger: "bg-red-600",
-  warning: "bg-slate-500",
-  info: "bg-red-600",
-  success: "bg-emerald-600",
-};
-
 const buttonVariantStyles: Record<string, string> = {
   danger: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
   warning: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
@@ -179,7 +172,6 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
                   {/* Title and Top Right Badge */}
                   <Flex align="start" justify="space-between" gap={8}>
                     <Flex align="center" gap={6} className="min-w-0 flex-1">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${dotColorStyles[task.badgeColor]}`} />
                       <Text strong className="text-xs sm:text-sm text-slate-900 truncate">
                         {task.title}
                       </Text>
@@ -190,16 +182,11 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
                   </Flex>
 
                   {/* Description */}
-                  <Text className="text-xs text-slate-600 leading-relaxed pl-3.5">
+                  <Text className="text-xs text-slate-600 leading-relaxed">
                     {task.description}
                   </Text>
 
-                  {/* Footer: Department & Action Button */}
-                  <Flex align="center" justify="space-between" className="pt-2 pl-3.5 mt-1 border-t border-slate-100">
-                    <span className="text-[11px] text-slate-600 font-medium">
-                      {task.department}
-                    </span>
-
+                  <Flex align="center" justify="end" className="pt-2 mt-1 border-t border-slate-100">
                     {canAccessPath(permissions, task.targetUrl) ? (
                       <Link href={task.targetUrl}>
                         <Button

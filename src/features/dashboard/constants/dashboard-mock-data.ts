@@ -960,3 +960,19 @@ function enrichActivityItem(item: ActivityItem): ActivityItem {
 
 export const mockActivities: ActivityItem[] = rawMockActivities.map(enrichActivityItem);
 
+
+export const MOCK_WEEKLY_PROGRESS = true;
+
+const WEEKDAY_LOAD = [3, 4, 4, 5, 4, 2, 1];
+
+function seeded(text: string) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 1000) / 1000;
+}
+
+export function mockDailyProgress(projectId: string, date: string, dayIndex: number) {
+  const planned = Math.round(WEEKDAY_LOAD[dayIndex] * (0.5 + seeded(`${projectId}-${date}-p`)));
+  const completed = Math.max(0, Math.round(planned * (0.55 + seeded(`${projectId}-${date}-c`) * 0.6)));
+  return { planned, completed };
+}

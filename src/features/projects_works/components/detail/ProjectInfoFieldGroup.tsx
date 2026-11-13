@@ -21,7 +21,7 @@ export default function ProjectInfoFieldGroup({
 }) {
   return (
     <section>
-      <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</h3>
+      <h3 className="m-0 mb-2 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">{title}</h3>
       <div
         className={cn(
           "grid grid-cols-1 gap-2",

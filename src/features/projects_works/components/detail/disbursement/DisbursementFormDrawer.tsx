@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { App } from "antd";
 import {
   CalendarOutlined,
   ArrowLeftOutlined,
@@ -15,47 +16,44 @@ import {
   Drawer,
   MoneyInput,
   STANDARD_DRAWER_WIDTH,
+  Select,
   StandardFileUpload,
   type UploadedAttachment,
 } from "@/components/ui";
 import { SelectWithAddOption } from "@/components/workspace";
 import { cn } from "@/utils/cn";
-import { parseMoney } from "@/utils/format-money";
+import { formatMoneyString, parseMoney } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
-import { type NewDisbursement } from "../../../hooks/useProjectDisbursements";
+import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
 import { toDisbursementAttachment, validateDisbursement, type DisbursementKind } from "../../../utils/project-disbursement";
-import { today } from "./disbursement-format";
+import { money, today } from "../../../utils/disbursement-format";
 import { FieldLabel, FormSection, ReadonlyField } from "./DisbursementFormParts";
 
 export default function DisbursementFormDrawer({
+  projectId,
   kind,
-  categoryTotal,
-  projectName,
-  operatorName,
   initialCategory,
-  categories,
-  unit,
-  remaining,
-  onAddCategory,
-  onCancel,
-  onSubmit,
+  onClose: onCancel,
+  onSaved,
 }: {
-  unit: string;
+  projectId: string;
   kind: DisbursementKind;
-  categoryTotal: (category: string) => number;
-  projectName: string;
-  operatorName: string;
   initialCategory?: string;
-  categories: string[];
-  remaining?: number;
-  onAddCategory: (name: string) => void;
-  onCancel: () => void;
-  onSubmit: (input: NewDisbursement, files: File[]) => Promise<boolean | void> | void;
+  onClose: () => void;
+  onSaved: (category: string) => void;
 }) {
+  const { message } = App.useApp();
+  const { project, operatorName, summary, unit, budgets, limitFor: limitOf, add, addCategory: onAddCategory } =
+    useProjectDisbursements(projectId);
+  const categories = summary.byCategory.map((row) => row.category);
+  const projectName = project?.name ?? "";
+  const sources = budgets.map((b) => b.source);
+  const limitFor = (category: string, source?: string) => limitOf(kind, category, source);
   const [category, setCategory] = useState<string | undefined>(
     initialCategory || undefined,
   );
   const [amountRaw, setAmountRaw] = useState("");
+  const [source, setSource] = useState<string | undefined>(sources.length === 1 ? sources[0] : undefined);
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<UploadedAttachment[]>([]);
   const [error, setError] = useState<string>();
@@ -64,7 +62,7 @@ export default function DisbursementFormDrawer({
   const label = unit === "đầu mục" ? "Đầu mục" : "Danh mục chi phí";
   const verb = withdraw ? "thu hồi" : "giải ngân";
   const amount = parseMoney(amountRaw);
-  const limit = withdraw ? (category ? categoryTotal(category) : 0) : remaining;
+  const limit = category ? limitFor(category, source) : withdraw ? 0 : undefined;
   const overLimit = limit !== undefined && amount > limit;
 
   const clearError = () => setError(undefined);
@@ -72,7 +70,7 @@ export default function DisbursementFormDrawer({
   const [saving, setSaving] = useState(false);
   const submit = async () => {
     const err = validateDisbursement(
-      { kind, category, amount, attachmentCount: files.length, content },
+      { kind, category, amount, attachmentCount: files.length, content, fundingSource: source, requireSource: sources.length > 0 },
       limit,
     );
     if (err) {
@@ -81,11 +79,18 @@ export default function DisbursementFormDrawer({
     }
     setSaving(true);
     const attachments = await Promise.all(files.map(toDisbursementAttachment));
-    const result = await onSubmit(
-      { kind, category: category!, amount, content: content.trim() || undefined, attachments },
-      files.flatMap((f) => (f.rawFile ? [f.rawFile] : [])),
-    );
-    if (result === false) setSaving(false);
+    try {
+      await add(
+        { kind, category: category!, fundingSource: source, amount, content: content.trim() || undefined, attachments },
+        files.flatMap((f) => (f.rawFile ? [f.rawFile] : [])),
+      );
+    } catch (e) {
+      message.error((e as Error).message);
+      setSaving(false);
+      return;
+    }
+    message.success(withdraw ? `Đã thu hồi ${money(amount)} của ${category}.` : `Đã giải ngân ${money(amount)} cho ${category}.`);
+    onSaved(category!);
   };
 
   return (
@@ -186,24 +191,41 @@ export default function DisbursementFormDrawer({
               </div>
             )}
 
-            <div>
-              <FieldLabel text={`Số tiền ${verb}`} required />
-              <MoneyInput
-                value={amountRaw}
-                placeholder="0"
-                status={overLimit ? "error" : undefined}
-                suffix={
-                  <span className="text-xs font-medium text-slate-400">
-                    VNĐ
-                  </span>
-                }
-                onChange={(e: { target: { value: string } }) => {
-                  setAmountRaw(e.target.value);
-                  clearError();
-                }}
-                className="h-9 text-sm font-semibold"
-              />
-
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <FieldLabel text="Nguồn vốn" required={sources.length > 0} />
+                <Select
+                  aria-label="Nguồn vốn"
+                  placeholder={sources.length > 0 ? "Chọn nguồn vốn" : "Dự án chưa khai báo nguồn vốn"}
+                  value={source}
+                  disabled={sources.length === 0}
+                  options={sources.map((s) => ({ value: s, label: s }))}
+                  onChange={(v) => {
+                    setSource(v);
+                    clearError();
+                  }}
+                  className="h-9 w-full"
+                />
+              </div>
+              <div>
+                <FieldLabel text={`Số tiền ${verb}`} required />
+                <MoneyInput
+                  value={amountRaw}
+                  placeholder="0"
+                  status={overLimit ? "error" : undefined}
+                  suffix={<span className="text-xs font-medium text-slate-400">VNĐ</span>}
+                  onChange={(e: { target: { value: string } }) => {
+                    setAmountRaw(e.target.value);
+                    clearError();
+                  }}
+                  className="h-9 text-sm font-semibold"
+                />
+                {limit !== undefined && (
+                  <div className={cn("mt-1 text-[11px]", overLimit ? "text-rose-600" : "text-slate-400")}>
+                    {withdraw ? "Có thể thu hồi tối đa" : "Vốn còn lại"}: {formatMoneyString(limit)} VNĐ
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>

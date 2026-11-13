@@ -32,3 +32,36 @@ export default function DisbursementStat({
     </div>
   );
 }
+
+export function DisbursementRateStat({ label, rate }: { label: string; rate: number }) {
+  return (
+    <div className="border-t border-l border-slate-200 px-4 py-3 lg:border-t-0">
+      <div className="text-[11px] font-medium text-slate-500">{label}</div>
+      <div className="mt-1 flex items-center gap-2.5">
+        <span className="text-sm font-bold text-slate-900">{rate.toFixed(1)}%</span>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full rounded-full bg-[#DC2626] transition-all" style={{ width: `${Math.min(100, rate)}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DisbursementSummaryBox({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={className}>
+      <div className="mb-1.5 truncate text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</div>
+      <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-slate-50/60 lg:grid-cols-4">
+        {children}
+      </div>
+    </section>
+  );
+}

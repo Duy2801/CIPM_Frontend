@@ -12,7 +12,7 @@ import { useConfirmAction } from "../hooks/useConfirmAction";
 import { useStaffRoleOptions } from "../hooks/useStaffRoleOptions";
 import { useCreateStaff, useCreateTeam, useUpdateTeam } from "../hooks/usePersonnelMutations";
 import { useTeams } from "../hooks/usePersonnelQueries";
-import StaffFormAddOption from "./StaffFormAddOption";
+import { DropdownAddOption } from "@/components/workspace";
 import StaffFormCustomFields, { type StaffCustomField } from "./StaffFormCustomFields";
 
 interface StaffFormValues extends Omit<StaffInput, "isLeader" | "title"> {
@@ -392,7 +392,7 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
                   popupRender={(menu) => (
                     <>
                       {menu}
-                      <StaffFormAddOption
+                      <DropdownAddOption
                         placeholder="Nhập tên phòng ban mới..."
                         loading={createTeam.isPending}
                         isDuplicate={(name) => teams.some((t) => normalizeSearchText(t.name) === normalizeSearchText(name))}
@@ -424,7 +424,7 @@ export default function StaffModal({ onClose, onCreated }: StaffModalProps) {
                   popupRender={(menu) => (
                     <>
                       {menu}
-                      <StaffFormAddOption
+                      <DropdownAddOption
                         placeholder="Nhập tên chức danh mới..."
                         loading={updateTeam.isPending}
                         isDuplicate={(name) => allRoleOptions.some((opt) => normalizeSearchText(opt.title) === normalizeSearchText(name))}

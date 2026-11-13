@@ -29,7 +29,6 @@ interface ChartMetrics {
 
 interface ChartDataset {
   title: string;
-  subtitle: string;
   unit: string;
   maxScale: number;
   items: ChartBarItem[];
@@ -211,7 +210,6 @@ export default function DisbursementQuarterlyChart({
 
       return {
         title: `BIỂU ĐỒ GIẢI NGÂN THEO TUẦN (NIÊN ĐỘ ${yr})`,
-        subtitle: `Theo dõi tiến độ giải ngân Tuần ${startW} - ${endW} (Niên độ ${yr})`,
         unit: "ĐVT: Tỷ đồng",
         maxScale: Math.ceil(maxVal * 1.25),
         items,
@@ -263,7 +261,6 @@ export default function DisbursementQuarterlyChart({
 
       return {
         title: `BIỂU ĐỒ GIẢI NGÂN THEO THÁNG (THÁNG ${startM} - ${endM} / NIÊN ĐỘ ${yr})`,
-        subtitle: `Kế hoạch phân bổ & Thực tế giải ngân các tháng (Tháng ${startM} - ${endM}) niên độ ${yr}`,
         unit: "ĐVT: Tỷ đồng",
         maxScale: Math.ceil(maxVal * 1.25),
         items,
@@ -323,7 +320,6 @@ export default function DisbursementQuarterlyChart({
 
       return {
         title: `BIỂU ĐỒ GIẢI NGÂN THEO QUÝ (NIÊN ĐỘ ${yr})`,
-        subtitle: `So sánh Kế hoạch phân bổ và Thực tế giải ngân qua các quý năm ${yr}`,
         unit: "ĐVT: Tỷ đồng",
         maxScale: Math.ceil(maxVal * 1.2),
         items: quarterItems,
@@ -371,7 +367,6 @@ export default function DisbursementQuarterlyChart({
 
     return {
       title: `BIỂU ĐỒ GIẢI NGÂN CHI TIẾT QUÝ ${qNum} (NIÊN ĐỘ ${yr})`,
-      subtitle: `Tiến độ giải ngân 3 tháng thuộc Quý ${qNum} niên độ ${yr}`,
       unit: "ĐVT: Tỷ đồng",
       maxScale: Math.ceil(maxVal * 1.25),
       items: quarterMonthItems,
@@ -419,9 +414,6 @@ export default function DisbursementQuarterlyChart({
           <Flex vertical gap={2} className="w-full">
             <Text strong className="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-tight">
               {currentData.title}
-            </Text>
-            <Text className="text-xs text-slate-600 font-medium">
-              {currentData.subtitle}
             </Text>
           </Flex>
         </Flex>
@@ -527,12 +519,12 @@ export default function DisbursementQuarterlyChart({
             {/* Chú thích màu sắc */}
             <Flex align="center" gap={10} className="text-xs text-slate-600">
               <Flex align="center" gap={5}>
-                <span className="w-3 h-3 rounded-xs bg-[#F59E0B] inline-block shadow-2xs" />
-                <span className="text-xs font-semibold text-[#D97706]">Kế hoạch</span>
+                <span className="w-3 h-3 rounded-xs bg-[#cbd5e1] inline-block" />
+                <span className="text-xs font-semibold text-slate-600">Kế hoạch</span>
               </Flex>
               <Flex align="center" gap={5}>
-                <span className="w-3 h-3 rounded-xs bg-[#DC2626] inline-block shadow-2xs" />
-                <span className="text-xs font-semibold text-[#DC2626]">Thực tế</span>
+                <span className="w-3 h-3 rounded-xs bg-[#2a78d6] inline-block" />
+                <span className="text-xs font-semibold text-slate-600">Thực tế</span>
               </Flex>
               <span className="text-xs text-slate-500 font-medium">{currentData.unit}</span>
             </Flex>
@@ -560,30 +552,30 @@ export default function DisbursementQuarterlyChart({
               return (
                 <Flex key={item.label} vertical align="center" justify="end" className="h-full">
                   <Flex align="end" justify="center" gap={4} className="w-full h-full pb-0.5">
-                    {/* Plan Bar (Kế hoạch - Vàng Hổ Phách ấm áp, sang trọng) */}
+                    {/* Plan Bar */}
                     <div className="flex flex-col items-center flex-1 max-w-[30px] sm:max-w-[40px] 2xl:max-w-[48px] h-full justify-end">
-                      <span className="text-[10px] sm:text-[10.5px] font-mono text-[#D97706] font-bold mb-1 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-[10.5px] font-mono text-slate-500 font-bold mb-1 whitespace-nowrap">
                         {item.plan} tỷ
                       </span>
                       <div
                         style={{ height: `${planPercent}%` }}
-                        className="w-full rounded-t bg-[#F59E0B] hover:brightness-105 transition-all shadow-2xs"
+                        className="w-full rounded-t bg-[#cbd5e1] hover:brightness-95 transition-all"
                       />
                     </div>
 
-                    {/* Actual Bar (Thực tế - Đỏ tươi thanh lịch; Chưa giải ngân - Slate) */}
+                    {/* Actual Bar */}
                     <div className="flex flex-col items-center flex-1 max-w-[30px] sm:max-w-[40px] 2xl:max-w-[48px] h-full justify-end">
                       <span
                         className={`text-[10px] sm:text-[10.5px] font-mono font-bold mb-1 whitespace-nowrap ${
-                          item.actual > 0 ? "text-[#DC2626]" : "text-slate-400 font-semibold"
+                          item.actual > 0 ? "text-slate-800" : "text-slate-400 font-semibold"
                         }`}
                       >
                         {item.actual > 0 ? `${item.actual} tỷ` : "Dự kiến"}
                       </span>
                       <div
                         style={{ height: item.actual > 0 ? `${actualPercent}%` : "6px" }}
-                        className={`w-full rounded-t transition-all shadow-2xs ${
-                          item.actual > 0 ? "bg-[#DC2626] hover:brightness-105" : "bg-slate-200"
+                        className={`w-full rounded-t transition-all ${
+                          item.actual > 0 ? "bg-[#2a78d6] hover:brightness-110" : "bg-slate-100"
                         }`}
                       />
                     </div>
@@ -598,7 +590,7 @@ export default function DisbursementQuarterlyChart({
             {currentData.items.map((item) => (
               <div key={item.label} className="flex justify-center items-center">
                 {item.isCurrent ? (
-                  <span className="bg-red-50 text-red-700 border border-red-200/80 px-2 sm:px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold inline-block">
+                  <span className="bg-sky-50 text-[#2a78d6] border border-sky-200 px-2 sm:px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold inline-block">
                     {item.label}
                   </span>
                 ) : (
@@ -615,7 +607,7 @@ export default function DisbursementQuarterlyChart({
         <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 w-full text-center">
           <Flex vertical gap={2}>
             <Text className="text-[11px] text-slate-700 font-semibold">{currentData.metrics.m1Label}</Text>
-            <span className="text-base sm:text-xl font-bold text-slate-900 font-sans tracking-tight">
+            <span className="text-base sm:text-xl font-bold text-[#2a78d6] font-sans tracking-tight">
               {currentData.metrics.m1Value}
             </span>
             <span className="text-[10px] text-slate-600 font-semibold">{currentData.metrics.m1Sub}</span>
@@ -623,10 +615,10 @@ export default function DisbursementQuarterlyChart({
 
           <Flex vertical gap={2} className="border-x border-slate-200/80 px-2">
             <Text className="text-[11px] text-slate-700 font-semibold">{currentData.metrics.m2Label}</Text>
-            <span className="text-base sm:text-xl font-bold text-red-600 font-sans tracking-tight">
+            <span className="text-base sm:text-xl font-bold text-slate-900 font-sans tracking-tight">
               {currentData.metrics.m2Value}
             </span>
-            <span className="text-[10px] text-red-700 font-semibold">{currentData.metrics.m2Sub}</span>
+            <span className="text-[10px] text-slate-600 font-semibold">{currentData.metrics.m2Sub}</span>
           </Flex>
 
           <Flex vertical gap={2}>

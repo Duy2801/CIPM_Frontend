@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
 import { getProjectHistory } from "../../services/project.api";
-import { projectKeys } from "../../hooks/useProjectList";
+import { projectKeys, useProject } from "../../hooks/useProjectList";
 import { Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
 import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
 import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
@@ -53,19 +53,20 @@ function buildEntries(project: ProjectItem, procedureLogs: ProcedureHistoryLog[]
 }
 
 export default function ProjectHistoryTab({
-  project,
+  projectId,
   procedureLogs,
 }: {
-  project: ProjectItem;
+  projectId: string;
   procedureLogs: ProcedureHistoryLog[];
 }) {
+  const project = useProject(projectId);
   const [historyDate, setHistoryDate] = useState("");
   const [page, setPage] = useState(1);
 
   const isBackend = hasBackendSession();
   const remote = useQuery({
-    queryKey: projectKeys.history(project.id),
-    queryFn: () => getProjectHistory(project.id),
+    queryKey: projectKeys.history(projectId),
+    queryFn: () => getProjectHistory(projectId),
     enabled: isBackend,
   });
   const remoteEntries = remote.data;
@@ -73,7 +74,9 @@ export default function ProjectHistoryTab({
   const history = useMemo(() => {
     const all = isBackend
       ? [...(remoteEntries ?? [])].sort((a, b) => b.at.localeCompare(a.at))
-      : buildEntries(project, procedureLogs);
+      : project
+        ? buildEntries(project, procedureLogs)
+        : [];
     return historyDate ? all.filter((e) => toLocalDate(e.at) === historyDate) : all;
   }, [isBackend, remoteEntries, project, procedureLogs, historyDate]);
 

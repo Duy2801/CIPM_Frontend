@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { getOpenTasksOf } from "../services/handover.api";
 import * as personnelApi from "../services/personnel.api";
 import { useActivityLogVersion } from "./useActivityLogVersion";
 import { roleMatrixKey } from "./useRoleMatrix";
@@ -12,6 +13,7 @@ export const personnelKeys = {
   staffList: () => [...personnelKeys.all, "staff"] as const,
   staff: (staffId: string) => [...personnelKeys.all, "staff", staffId] as const,
   activity: (staffId: string) => [...personnelKeys.all, "activity", staffId] as const,
+  openTasks: (staffId: string) => [...personnelKeys.all, "open-tasks", staffId] as const,
 };
 
 /** Danh sách phòng ban */
@@ -49,5 +51,15 @@ export function usePermissionHistory() {
   return useQuery({
     queryKey: [...roleMatrixKey, "history", logVersion],
     queryFn: personnelApi.getPermissionHistory,
+  });
+}
+
+export function useStaffOpenTasks(staffId: string) {
+  const { data: staff } = useStaff(staffId);
+  return useQuery({
+    queryKey: personnelKeys.openTasks(staffId),
+    queryFn: () => getOpenTasksOf({ id: staff!.id, name: staff!.name }),
+    enabled: Boolean(staff),
+    retry: false,
   });
 }

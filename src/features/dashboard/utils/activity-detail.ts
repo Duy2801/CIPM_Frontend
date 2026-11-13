@@ -1,7 +1,5 @@
 import type { ActivityItem } from "../constants/dashboard-mock-data";
 
-export const ACTIVITY_DETAIL_DRAWER_WIDTH = "min(680px, 100vw)";
-
 export interface ActivityDetailFact {
   label: string;
   value: string;

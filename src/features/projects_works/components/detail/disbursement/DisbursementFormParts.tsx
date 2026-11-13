@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-import { cn } from "@/utils/cn";
 
 export function FormSection({
   icon,
@@ -17,7 +16,7 @@ export function FormSection({
   return (
     <section className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h4 className="m-0 flex items-center gap-2 text-xs font-bold text-slate-700">
+        <h4 className="m-0 flex items-center gap-2 text-xs font-bold text-[#DC2626]">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-red-50 text-[13px] text-[#DC2626]">
             {icon}
           </span>
@@ -66,17 +65,6 @@ export function ReadonlyField({
           {value}
         </span>
       </div>
-    </div>
-  );
-}
-
-export function DetailRow({ label, value, multiline }: { label: string; value: React.ReactNode; multiline?: boolean }) {
-  return (
-    <div className={cn("flex gap-4 py-3 text-xs", multiline ? "items-start" : "items-center")}>
-      <dt className="w-32 shrink-0 text-slate-500">{label}</dt>
-      <dd className={cn("m-0 min-w-0 flex-1 font-semibold text-slate-800", multiline ? "whitespace-pre-wrap leading-relaxed" : "truncate")}>
-        {value}
-      </dd>
     </div>
   );
 }

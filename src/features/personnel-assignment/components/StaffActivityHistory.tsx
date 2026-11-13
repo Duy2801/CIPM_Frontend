@@ -36,7 +36,7 @@ export default function StaffActivityHistory({ staffId }: { staffId: string }) {
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <Text className="text-xs font-bold uppercase tracking-wide text-slate-800">
+        <Text className="text-xs font-bold uppercase tracking-wide text-[#DC2626]">
           Lịch sử thay đổi{" "}
           <span className="font-semibold normal-case text-slate-400">
             ({filterDate ? `${entries.length}/${allEntries.length}` : allEntries.length})

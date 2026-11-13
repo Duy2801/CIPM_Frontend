@@ -108,7 +108,7 @@ export default function StaffPermissionPanel({ staffId }: { staffId: string }) {
   return (
     <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
       <div className="mb-1 flex items-center justify-between gap-2 flex-wrap">
-        <Text className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+        <Text className="text-xs font-bold text-[#DC2626] uppercase tracking-wide">
           Quyền hạn hệ thống & Nghiệp vụ chuyên môn
         </Text>
         <div className="flex items-center gap-2">

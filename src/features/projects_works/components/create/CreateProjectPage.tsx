@@ -2,38 +2,23 @@
 
 import { useState } from "react";
 import { App } from "antd";
-import StaffFormAddOption from "@/features/personnel-assignment/components/StaffFormAddOption";
-import {
-  DROPDOWN_LIST_HEIGHT,
-  FUNDING_STORAGE_KEY,
-  NATURE_STORAGE_KEY,
-  loadCustomOptions,
-  sameText,
-  saveCustomOptions,
-} from "../../utils/custom-options";
-import WorkTypeSelect from "../shared/WorkTypeSelect";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
   Input,
-  MoneyInput,
   Select,
   StandardFileUpload,
   detectAttachmentType,
 } from "@/components/ui";
-import { parseMoney } from "@/utils/format-money";
-import ProjectProcedurePicker from "../shared/ProjectProcedurePicker";
-import {
-  FUNDING_SOURCE_OPTIONS,
-  PERSONNEL_OPTIONS,
-} from "../../constants/project-enums";
-import type {
-  FundingSourceType,
-  ProjectFormData,
-  ProjectNature,
-} from "../../types/project.types";
+import { PERSONNEL_SELECT_OPTIONS, PROJECT_NATURE_OPTIONS } from "../../constants/project-enums";
 import { useCreateProjectForm } from "../../hooks/useCreateProjectForm";
+import type { ProjectFormData, ProjectNature } from "../../types/project.types";
+import { NATURE_STORAGE_KEY } from "../../utils/custom-options";
+import CustomOptionSelect from "../shared/CustomOptionSelect";
+import FundingSourceRows from "../shared/FundingSourceRows";
+import ProjectProcedurePicker from "../shared/ProjectProcedurePicker";
+import WorkTypeSelect from "../shared/WorkTypeSelect";
 import { FormField, FormFieldGroup } from "./ProjectFormFields";
 
 interface CreateProjectPageProps {
@@ -41,16 +26,6 @@ interface CreateProjectPageProps {
   onBack: () => void;
   onCreateProject: (data: ProjectFormData, autoCode: string, files: File[]) => void;
 }
-
-const PROJECT_NATURE_OPTIONS = [
-  { value: "new", label: "Dự án mới (Khởi công mới)" },
-  { value: "transitional", label: "Dự án cũ (Chuyển tiếp)" },
-];
-
-const PERSONNEL_SELECT_OPTIONS = PERSONNEL_OPTIONS.map((p) => ({
-  value: p.name,
-  label: `${p.name} — ${p.role} (${p.dept})`,
-}));
 
 export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProject }: CreateProjectPageProps) {
   const { modal } = App.useApp();
@@ -62,10 +37,6 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
       (data.documents ?? []).flatMap((doc) => (rawFiles[doc.id] ? [rawFiles[doc.id]] : [])),
     ),
   );
-  const [customFunding, setCustomFunding] = useState(() => loadCustomOptions(FUNDING_STORAGE_KEY));
-  const [customNatures, setCustomNatures] = useState(() => loadCustomOptions(NATURE_STORAGE_KEY));
-  const fundingOptions = [...FUNDING_SOURCE_OPTIONS, ...customFunding].map((v) => ({ value: v, label: v }));
-  const natureOptions = [...PROJECT_NATURE_OPTIONS, ...customNatures.map((v) => ({ value: v, label: v }))];
 
   const handleBack = () => {
     if (!isDirty) {
@@ -115,29 +86,12 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
                 />
               </FormField>
               <FormField label="Tính chất dự án" required>
-                <Select
-                  showSearch
-                  optionFilterProp="label"
+                <CustomOptionSelect
+                  storageKey={NATURE_STORAGE_KEY}
+                  baseOptions={PROJECT_NATURE_OPTIONS}
                   value={form.nature}
                   onChange={(val) => update({ nature: val as ProjectNature })}
-                  options={natureOptions}
-                  listHeight={DROPDOWN_LIST_HEIGHT}
-                  className="w-full text-xs"
-                  popupRender={(menu) => (
-                    <>
-                      {menu}
-                      <StaffFormAddOption
-                        placeholder="Nhập tính chất dự án mới..."
-                        isDuplicate={(name) => natureOptions.some((o) => sameText(o.label, name))}
-                        onAdd={async (name) => {
-                          const label = name.trim();
-                          setCustomNatures((prev) => saveCustomOptions(NATURE_STORAGE_KEY, [...prev, label]));
-                          update({ nature: label as ProjectNature });
-                          return true;
-                        }}
-                      />
-                    </>
-                  )}
+                  addPlaceholder="Nhập tính chất dự án mới..."
                 />
               </FormField>
               <FormField label="Địa bàn xây dựng">
@@ -150,41 +104,8 @@ export default function CreateProjectPage({ nextAutoCode, onBack, onCreateProjec
               </FormField>
             </FormFieldGroup>
 
-            <FormFieldGroup title="Vốn đầu tư" cols={2}>
-              <FormField label="Nguồn vốn">
-                <Select
-                  showSearch
-                  optionFilterProp="label"
-                  value={form.fundingSource || undefined}
-                  onChange={(val) => update({ fundingSource: val as FundingSourceType })}
-                  options={fundingOptions}
-                  listHeight={DROPDOWN_LIST_HEIGHT}
-                  className="w-full text-xs"
-                  popupRender={(menu) => (
-                    <>
-                      {menu}
-                      <StaffFormAddOption
-                        placeholder="Nhập nguồn vốn mới..."
-                        isDuplicate={(name) => fundingOptions.some((o) => sameText(o.label, name))}
-                        onAdd={async (name) => {
-                          const label = name.trim();
-                          setCustomFunding((prev) => saveCustomOptions(FUNDING_STORAGE_KEY, [...prev, label]));
-                          update({ fundingSource: label as FundingSourceType });
-                          return true;
-                        }}
-                      />
-                    </>
-                  )}
-                />
-              </FormField>
-              <FormField label="Tổng mức đầu tư (VNĐ)">
-                <MoneyInput
-                  placeholder="VD: 1.000.000.000"
-                  value={form.totalInvestment}
-                  onChange={(e) => update({ totalInvestment: e.target.value === "" ? "" : parseMoney(e.target.value) })}
-                  className="w-full font-mono text-xs"
-                />
-              </FormField>
+            <FormFieldGroup title="Vốn đầu tư" cols={1}>
+              <FundingSourceRows value={form.fundings} onChange={(fundings) => update({ fundings })} />
             </FormFieldGroup>
 
             <FormFieldGroup title="Nhân sự & thời gian" cols={2}>

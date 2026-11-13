@@ -102,7 +102,7 @@ export default function DocumentInfoTable({ document, isChanged, onChange }: Doc
   return (
     <>
       <div className="flex items-center justify-between px-0.5">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#DC2626]">
           <SafetyCertificateOutlined className="text-[#DC2626]" />
           Thông tin ban hành &amp; hiệu lực
         </span>

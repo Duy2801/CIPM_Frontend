@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LockOutlined, UnlockOutlined } from "@ant-design/icons";
+import { LockOutlined, SwapOutlined, UnlockOutlined } from "@ant-design/icons";
 import { App } from "antd";
 import { Avatar, Button, Text, Tooltip } from "@/components/ui";
 import { getInitials } from "@/utils/initials";
@@ -10,6 +10,7 @@ import { useStaffAccess, useStaffDetail } from "../hooks/usePersonnelAccess";
 import { useUnlockAccount } from "../hooks/usePersonnelMutations";
 import { useRoleNameMap } from "../hooks/useRoleNameMap";
 import ConfirmDialogContent, { CONFIRM_DIALOG_CLASS } from "./ConfirmDialogContent";
+import StaffHandoverModal from "./StaffHandoverModal";
 import StaffLockAccountModal from "./StaffLockAccountModal";
 
 /** Đầu hồ sơ cán bộ: ảnh đại diện, chức danh, phòng ban, email và nút khóa / mở lại tài khoản */
@@ -20,6 +21,7 @@ export default function StaffDetailHeader({ staffId }: { staffId: string }) {
   const roleNameMap = useRoleNameMap();
   const unlockAccount = useUnlockAccount();
   const [lockOpen, setLockOpen] = useState(false);
+  const [handoverOpen, setHandoverOpen] = useState(false);
 
   if (!detail) return null;
   const { staff, team, titleLocked } = detail;
@@ -85,9 +87,17 @@ export default function StaffDetailHeader({ staffId }: { staffId: string }) {
           </div>
         </div>
 
-        {/* Khóa / Mở lại tài khoản cán bộ */}
         {canManageAccounts && (
           <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+            <Button
+              intent="outline"
+              scale="compact"
+              onClick={() => setHandoverOpen(true)}
+              icon={<SwapOutlined />}
+              className="!border-slate-300 !text-[#0F4C81] hover:!border-[#0F4C81] hover:!bg-sky-50 text-xs"
+            >
+              Bàn giao công việc
+            </Button>
             {staff.accountActive ? (
               <Button
                 intent="outline"
@@ -114,6 +124,7 @@ export default function StaffDetailHeader({ staffId }: { staffId: string }) {
       </div>
 
       {lockOpen && <StaffLockAccountModal staffId={staff.id} onClose={() => setLockOpen(false)} />}
+      {handoverOpen && <StaffHandoverModal staffId={staff.id} onClose={() => setHandoverOpen(false)} />}
     </div>
   );
 }

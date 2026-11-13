@@ -3,20 +3,10 @@
 import React, { useMemo, useState } from "react";
 import {
   HistoryOutlined,
-  InfoCircleOutlined,
-  ProjectOutlined,
-  UserOutlined,
-  EnvironmentOutlined,
-  PhoneOutlined,
-  MailOutlined,
-  ArrowRightOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
 } from "@ant-design/icons";
 import {
   Button,
   Card,
-  Drawer,
   Flex,
   Pagination,
   Select,
@@ -24,21 +14,16 @@ import {
 } from "@/components/ui";
 import type { ActivityItem } from "../constants/dashboard-mock-data";
 import { resolveActivityTime } from "../constants/dashboard-mock-data";
-import {
-  ACTIVITY_DETAIL_DRAWER_WIDTH,
-  buildActivityDetailFacts,
-} from "../utils/activity-detail";
 
 interface ActivityLogSectionProps {
   activities: ActivityItem[];
+  onOpen: (activityId: string) => void;
 }
 
 export default function ActivityLogSection({
   activities,
+  onOpen,
 }: ActivityLogSectionProps) {
-  const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(
-    null,
-  );
   const [filterMethod, setFilterMethod] = useState<"ALL" | "PROJECT" | "ACTOR">(
     "ALL",
   );
@@ -117,12 +102,7 @@ export default function ActivityLogSection({
     setCurrentPage(1);
   };
 
-  const detailFacts = selectedActivity
-    ? buildActivityDetailFacts(selectedActivity)
-    : [];
-
   return (
-    <>
       <Card
         surface="workspace"
         padding="compact"
@@ -170,6 +150,7 @@ export default function ActivityLogSection({
               </div>
 
               {/* Nút 2: Nút còn lại để lọc theo phương thức đã chọn */}
+              {filterMethod !== "ALL" && (
               <div className="w-full sm:w-[280px]">
                 {filterMethod === "PROJECT" ? (
                   <Select
@@ -203,15 +184,9 @@ export default function ActivityLogSection({
                     options={actorOptions}
                     className="w-full text-xs [&_.ant-select-selector]:!rounded-lg [&_.ant-select-selector]:!border-slate-300 hover:[&_.ant-select-selector]:!border-[#DC2626] [&_.ant-select-selection-placeholder]:!text-slate-500 [&_.ant-select-selector]:!bg-white [&_.ant-select-selector]:!shadow-xs [&_.ant-select-selector]:!h-9 [&_.ant-select-selection-search-input]:!h-9"
                   />
-                ) : (
-                  <Select
-                    disabled
-                    value="all"
-                    options={[{ value: "all", label: "Hiển thị toàn bộ nhật ký" }]}
-                    className="w-full text-xs [&_.ant-select-selector]:!rounded-lg [&_.ant-select-selector]:!border-slate-200 [&_.ant-select-selector]:!bg-slate-50 [&_.ant-select-selection-item]:!text-slate-400 [&_.ant-select-selector]:!h-9 cursor-not-allowed"
-                  />
-                )}
+                ) : null}
               </div>
+              )}
             </Flex>
 
             {/* Khối bên phải: Phân trang */}
@@ -260,7 +235,7 @@ export default function ActivityLogSection({
                     <tr
                       key={item.id}
                       className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
-                      onClick={() => setSelectedActivity(item)}
+                      onClick={() => onOpen(item.id)}
                     >
                       <td className="py-3 px-3 font-mono whitespace-nowrap text-xs">
                         {(() => {
@@ -301,7 +276,7 @@ export default function ActivityLogSection({
                           className="!text-[#DC2626] text-xs font-semibold hover:underline !p-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedActivity(item);
+                            onOpen(item.id);
                           }}
                         >
                           Chi tiết
@@ -315,166 +290,6 @@ export default function ActivityLogSection({
           </div>
         </Flex>
       </Card>
-
-      {/* Detail Drawer — Chuẩn thông tin đầy đủ về Dự án, Người thực hiện & Nội dung điều hành */}
-      <Drawer
-        showBack
-        title={
-          <div className="flex flex-col gap-0.5">
-            <span className="flex items-center gap-2">
-              <span className="text-base font-bold text-[#102A43]">
-                Chi tiết nhật ký điều hành
-              </span>
-            </span>
-            {selectedActivity && (
-              <span className="text-xs font-normal text-slate-500">
-                Mã bản ghi: <span className="font-mono font-medium text-slate-700">{selectedActivity.id}</span>
-                {selectedActivity.status && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/60">
-                    {selectedActivity.status}
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
-        }
-        open={Boolean(selectedActivity)}
-        width={ACTIVITY_DETAIL_DRAWER_WIDTH}
-        onClose={() => setSelectedActivity(null)}
-      >
-        {selectedActivity && (
-          <article className="space-y-4">
-            {/* KHỐI 1: THÔNG TIN NGƯỜI THỰC HIỆN */}
-            <section className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
-                <UserOutlined className="text-[#DC2626] text-sm" />
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  Thông tin người thực hiện
-                </span>
-              </div>
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-red-100/80 text-[#DC2626] flex items-center justify-center font-bold text-sm shrink-0 border border-red-200/60 mt-0.5">
-                  {selectedActivity.actor.split(" ").slice(-1)[0]?.charAt(0) || "U"}
-                </div>
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-slate-900">
-                      {selectedActivity.actor}
-                    </div>
-                    <div className="text-xs font-medium text-slate-600 mt-0.5">
-                      {selectedActivity.actorTitle || "Cán bộ chuyên môn"}
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      {selectedActivity.actorDepartment || "Ban QLDA Đầu tư Xây dựng"}
-                    </div>
-                  </div>
-                  {(selectedActivity.actorPhone || selectedActivity.actorEmail) && (
-                    <div className="flex flex-col sm:items-end gap-1.5 text-xs text-slate-600 shrink-0">
-                      {selectedActivity.actorPhone && (
-                        <span className="flex items-center gap-1.5">
-                          <PhoneOutlined className="text-slate-400 text-[11px]" />
-                          <span className="font-mono text-slate-700 font-medium">{selectedActivity.actorPhone}</span>
-                        </span>
-                      )}
-                      {selectedActivity.actorEmail && (
-                        <span className="flex items-center gap-1.5">
-                          <MailOutlined className="text-slate-400 text-[11px]" />
-                          <span className="text-slate-700">{selectedActivity.actorEmail}</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* KHỐI 2: THÔNG TIN DỰ ÁN */}
-            <section className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/80">
-                <ProjectOutlined className="text-[#DC2626] text-sm" />
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  Dự án & Công trình liên quan
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <div className="text-[11px] text-slate-500 font-medium">Tên dự án</div>
-                  <div className="text-sm font-semibold text-slate-900 leading-snug mt-0.5">
-                    {selectedActivity.projectName || "Dự án trực thuộc Ban QLDA ĐTXD"}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <div className="text-[11px] text-slate-500 font-medium">Mã dự án</div>
-                    <div className="text-xs font-mono font-semibold text-slate-800 mt-0.5">
-                      {selectedActivity.projectCode || "Đang cập nhật"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-slate-500 font-medium">Giai đoạn dự án</div>
-                    <div className="text-xs font-semibold text-[#DC2626] mt-0.5">
-                      {selectedActivity.projectStage || "Đang thực hiện"}
-                    </div>
-                  </div>
-                </div>
-                {selectedActivity.packageItem && (
-                  <div className="pt-1">
-                    <div className="text-[11px] text-slate-500 font-medium">Gói thầu / Hạng mục</div>
-                    <div className="text-xs font-medium text-slate-800 mt-0.5">
-                      {selectedActivity.packageItem}
-                    </div>
-                  </div>
-                )}
-                {selectedActivity.projectLocation && (
-                  <div className="pt-1 flex items-start gap-1.5 text-xs text-slate-600">
-                    <EnvironmentOutlined className="text-slate-400 mt-0.5 shrink-0" />
-                    <span>{selectedActivity.projectLocation}</span>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* KHỐI 3: NỘI DUNG ĐIỀU HÀNH & KẾ HOẠCH BỔ SUNG */}
-            <section className="rounded-xl border border-slate-200/90 bg-white p-4 space-y-3.5 shadow-2xs">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  Nội dung điều hành & Bổ sung
-                </span>
-                <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
-                  <ClockCircleOutlined className="text-slate-400" />
-                  {(() => {
-                    const { date, timeOfDay } = resolveActivityTime(selectedActivity.time);
-                    return `${date} · ${timeOfDay}`;
-                  })()}
-                </span>
-              </div>
-
-              {/* Thông số căn cứ & pháp lý */}
-              <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-lg border border-slate-100 bg-slate-50/70 p-3">
-                {detailFacts.map((fact) => (
-                  <div key={fact.label}>
-                    <dt className="text-[11px] text-slate-500 font-medium">{fact.label}</dt>
-                    <dd className="m-0 text-xs font-semibold text-slate-800 mt-0.5">
-                      {fact.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-
-              {/* Diễn giải chi tiết công việc */}
-              <div>
-                <Text className="block text-xs font-semibold uppercase text-slate-500">
-                  Nội dung chi tiết đã thực hiện
-                </Text>
-                <div className="mt-1 rounded-lg border border-slate-100 bg-slate-50/40 p-3 text-xs leading-relaxed font-medium text-slate-800">
-                  {selectedActivity.content}
-                </div>
-              </div>
-            </section>
-          </article>
-        )}
-      </Drawer>
-    </>
   );
 }
 

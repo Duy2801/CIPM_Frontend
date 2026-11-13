@@ -540,3 +540,43 @@ export function giveBackTask(data: ProjectProcedureData, stepId: string, reason:
     now,
   );
 }
+
+const CLOSED_STATUSES = ["COMPLETED", "SKIPPED", "DISABLED"];
+
+export function isOpenTaskOf(step: ProcedureStep, owner: TaskIdentity): boolean {
+  return step.isEnabled && !CLOSED_STATUSES.includes(step.status) && isMine(step, owner);
+}
+
+export function handoverTasks(
+  data: ProjectProcedureData,
+  stepIds: string[],
+  from: TaskIdentity,
+  to: TaskIdentity,
+  note: string,
+  actor: TaskActor,
+  now = new Date(),
+): ProjectProcedureData {
+  return stepIds.reduce(
+    (current, stepId, index) =>
+      patchStep(
+        current,
+        stepId,
+        (step) => ({
+          assignedTo: to.name,
+          assignedToId: to.id,
+          assignedBy: actor.name,
+          assignedAt: now.toISOString(),
+          ...(step.submissionStatus === "SUBMITTED" ? {} : { acceptedBy: undefined, acceptedAt: undefined }),
+        }),
+        (step) => ({
+          action: "START_STEP",
+          actionLabel: "Bàn giao công việc",
+          reason: note || undefined,
+          details: `Bàn giao bước [${step.code}] ${step.name} từ ${from.name} sang ${to.name}${note ? `: ${note}` : "."}`,
+        }),
+        actor,
+        new Date(now.getTime() + index),
+      ),
+    data,
+  );
+}

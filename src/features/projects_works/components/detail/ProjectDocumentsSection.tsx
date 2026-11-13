@@ -14,7 +14,7 @@ export function ProjectDocumentsSection({ project, fill = false }: { project: Pr
       <Flex align="center" justify="space-between" className="mb-3">
         <Flex align="center" gap={6}>
           <FileTextOutlined className="text-slate-500" />
-          <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
+          <Text className="text-xs font-bold uppercase tracking-wide text-[#DC2626]">
             Tài liệu đính kèm ({documents.length})
           </Text>
         </Flex>

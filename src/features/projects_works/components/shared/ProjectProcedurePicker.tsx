@@ -51,7 +51,7 @@ export default function ProjectProcedurePicker({
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5">
-        <h3 className="m-0 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        <h3 className="m-0 text-[11px] font-bold uppercase tracking-wide text-[#DC2626]">
           Quy trình dự án <span className="text-rose-500">*</span>
         </h3>
         <span className="text-[11px] text-slate-500">

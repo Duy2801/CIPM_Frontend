@@ -9,7 +9,7 @@ export function ProjectHistorySection({ project }: { project: ProjectItem }) {
     <section className="rounded-xl border border-slate-200 p-4">
       <Flex align="center" gap={6} className="mb-3">
         <HistoryOutlined className="text-slate-500" />
-        <Text className="text-xs font-bold uppercase tracking-wide text-slate-600">
+        <Text className="text-xs font-bold uppercase tracking-wide text-[#DC2626]">
           Nhật ký tiến độ tuần ({(project.progressHistory ?? []).length})
         </Text>
       </Flex>

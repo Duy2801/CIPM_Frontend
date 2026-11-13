@@ -42,6 +42,11 @@ export interface ProgressHistoryRecord {
   stageRecorded?: ProjectStage;
 }
 
+export interface ProjectFundingSource {
+  source: FundingSourceType;
+  amount: number;
+}
+
 export interface ProjectItem {
   id: string;
   code: string;
@@ -51,6 +56,7 @@ export interface ProjectItem {
   scale?: string;
   
   fundingSource: FundingSourceType;
+  fundingSources?: ProjectFundingSource[];
   totalInvestment: number;
   plan2026: number;
   disbursedAmount: number;
@@ -95,6 +101,7 @@ export interface ProjectFormData {
   location?: string;
   scale?: string;
   fundingSource?: FundingSourceType;
+  fundingSources?: ProjectFundingSource[];
   totalInvestment?: number;
   plan2026?: number;
   managerName?: string;

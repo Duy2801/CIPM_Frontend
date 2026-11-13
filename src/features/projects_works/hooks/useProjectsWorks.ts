@@ -2,24 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { App } from "antd";
-import { useQueryClient } from "@tanstack/react-query";
 import { canUserDo } from "@/access-control";
 import { useAuth } from "@/features/auth";
 import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
 import { useProjectStore } from "@/stores/project.store";
 import type { ProjectActionType, ProjectFormData, ProjectItem, ProjectWorkType } from "../types/project.types";
 import {
-  applyProcedureSync,
-  applyProjectUpdate,
   createProjectItem,
   filterAndSortProjects,
   nextProjectCode,
   type ProjectStatusFilter,
 } from "../utils/project-list";
-import type { ProjectProcedureSync } from "../types/project-procedure.types";
 import { initProjectProcedure } from "../utils/project-procedure-data";
 import * as projectApi from "../services/project.api";
-import { projectKeys, useProjectList } from "./useProjectList";
+import { useProjectList } from "./useProjectList";
+import { useProjectMutations } from "./useProjectMutations";
 
 const PAGE_SIZE = 15;
 
@@ -29,10 +26,9 @@ const CLOSED_CONFIRM: ConfirmState = { open: false, type: "rule5_warning", proje
 export function useProjectsWorks() {
   const { message } = App.useApp();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { isBackend, projects, isLoading, error: loadError } = useProjectList();
+  const { projects, isLoading, error: loadError } = useProjectList();
+  const { isBackend, refreshProjects } = useProjectMutations();
   const setProjects = useProjectStore((s) => s.setProjects);
-  const refreshProjects = () => queryClient.invalidateQueries({ queryKey: projectKeys.all });
   const actorRole = user?.roleName || "Cán bộ Ban QLDA";
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,10 +42,7 @@ export function useProjectsWorks() {
 
   const actorName = (fallback: string) => user?.name || user?.displayName || fallback;
 
-  const detailProject = useMemo(
-    () => projects.find((p) => p.id === detailProjectId) ?? null,
-    [projects, detailProjectId],
-  );
+  const openDetailId = projects.some((p) => p.id === detailProjectId) ? detailProjectId : null;
   const nextAutoCode = useMemo(() => nextProjectCode(projects.length), [projects.length]);
 
   const filteredProjects = useMemo(
@@ -105,41 +98,6 @@ export function useProjectsWorks() {
 
     setProjects((prev) => [newProject, ...prev]);
     afterCreated(autoCode);
-  };
-
-  const updateProject = async (projectId: string, data: ProjectFormData) => {
-    const updaterName = actorName("Cán bộ quản lý");
-    if (isBackend) {
-      const current = projects.find((p) => p.id === projectId);
-      if (!current) return;
-      try {
-        await projectApi.updateProject(current, data, updaterName);
-        await refreshProjects();
-        message.success("Đã cập nhật thông tin dự án thành công!");
-      } catch (e) {
-        message.error((e as Error).message);
-      }
-      return;
-    }
-    setProjects((prev) => prev.map((p) => (p.id === projectId ? applyProjectUpdate(p, data, updaterName) : p)));
-    message.success("Đã cập nhật thông tin dự án thành công!");
-  };
-
-  const setDisbursedAmount = (projectId: string, total: number) => {
-    if (isBackend) {
-      void refreshProjects();
-      return;
-    }
-    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, disbursedAmount: total } : p)));
-  };
-
-  const syncProcedure = (projectId: string, sync: ProjectProcedureSync) => {
-    if (isBackend) {
-      void refreshProjects();
-      return;
-    }
-    const updaterName = actorName("Cán bộ quản lý");
-    setProjects((prev) => prev.map((p) => (p.id === projectId ? applyProcedureSync(p, sync, updaterName) : p)));
   };
 
   const requestToggleProject = (project: ProjectItem) => {
@@ -205,13 +163,10 @@ export function useProjectsWorks() {
     openCreate: () => setIsCreateOpen(true),
     closeCreate: () => setIsCreateOpen(false),
     nextAutoCode,
-    detailProject,
+    detailProjectId: openDetailId,
     openDetail: (project: ProjectItem) => setDetailProjectId(project.id),
     closeDetail: () => setDetailProjectId(null),
     createProject,
-    updateProject,
-    syncProcedure,
-    setDisbursedAmount,
     confirmAction,
     requestToggleProject,
     confirmProjectAction,

@@ -1,13 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Flex, Spin } from "@/components/ui";
 import { useDashboardData } from "../hooks/useDashboardData";
-import DashboardKpiSection from "./DashboardKpiSection";
+import DashboardScheduleKpis from "./DashboardScheduleKpis";
+import WeeklyProgressChart from "./WeeklyProgressChart";
 import DisbursementQuarterlyChart from "./DisbursementQuarterlyChart";
 import DashboardAlertPanel from "./DashboardAlertPanel";
-import DashboardProjectsSection from "./DashboardProjectsSection";
 import ActivityLogSection from "./ActivityLogSection";
+import ActivityDetailPage from "./ActivityDetailPage";
 
 export default function DashboardOverview() {
   const {
@@ -21,13 +22,24 @@ export default function DashboardOverview() {
     refreshData,
     currentRole,
   } = useDashboardData();
+  const [activityId, setActivityId] = useState<string>();
+  const openedActivity = activities.find((a) => a.id === activityId);
+
 
   return (
+    <>
+    {openedActivity && (
+      <div className="mx-auto w-full max-w-[2560px]">
+        <ActivityDetailPage activity={openedActivity} onBack={() => setActivityId(undefined)} />
+      </div>
+    )}
+    <div hidden={Boolean(openedActivity)}>
     <Flex vertical gap={16} className="w-full max-w-[2560px] mx-auto select-none">
       <Spin spinning={loading} description="Đang làm mới dữ liệu Dashboard...">
         <Flex vertical gap={18} className="w-full">
           {/* 1. Hàng 4 Thẻ KPI trên cùng */}
-          <DashboardKpiSection data={kpiData} />
+          <DashboardScheduleKpis />
+          <WeeklyProgressChart />
 
           {/* 2. Hàng giữa: Biểu đồ giải ngân theo quý (Trái) & Việc cần xử lý ngay (Phải) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full items-stretch">
@@ -47,13 +59,18 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          {/* 3. Hàng giữa-dưới: Khung danh sách các dự án (Phân trang 5 dự án/trang & Bộ lọc) */}
-          <DashboardProjectsSection />
-
           {/* 4. Hàng dưới cùng: Bảng Nhật ký điều hành gần nhất */}
-          <ActivityLogSection activities={activities} />
+          <ActivityLogSection
+            activities={activities}
+            onOpen={(id) => {
+              setActivityId(id);
+              window.scrollTo({ top: 0 });
+            }}
+          />
         </Flex>
       </Spin>
     </Flex>
+    </div>
+    </>
   );
 }

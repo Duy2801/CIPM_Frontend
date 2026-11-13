@@ -6,25 +6,28 @@ import { Button, Drawer, STANDARD_DRAWER_WIDTH } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
-import { type DisbursementAttachment, type DisbursementEntry } from "../../../utils/project-disbursement";
+import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
+import type { DisbursementAttachment } from "../../../utils/project-disbursement";
 import DisbursementFilePreview from "./DisbursementFilePreview";
-import { DetailRow } from "./DisbursementFormParts";
 
 export default function DisbursementRecordDrawer({
-  entry,
-  projectName,
-  unit,
+  projectId,
+  entryId,
   onClose,
 }: {
-  entry: DisbursementEntry;
-  projectName: string;
-  unit: string;
+  projectId: string;
+  entryId: string;
   onClose: () => void;
 }) {
+  const { project, entries, unit } = useProjectDisbursements(projectId);
+  const [preview, setPreview] = useState<DisbursementAttachment>();
+  const entry = entries.find((e) => e.id === entryId);
+  if (!entry) return null;
+
+  const projectName = project?.name ?? "";
   const withdraw = entry.kind === "withdraw";
   const verb = withdraw ? "thu hồi" : "giải ngân";
   const files = entry.attachments ?? [];
-  const [preview, setPreview] = useState<DisbursementAttachment>();
 
   return (
     <Drawer
@@ -76,6 +79,7 @@ export default function DisbursementRecordDrawer({
 
         <dl className="m-0 divide-y divide-slate-100 px-5">
           <DetailRow label={unit === "đầu mục" ? "Đầu mục" : "Danh mục"} value={entry.category} />
+          {entry.fundingSource && <DetailRow label="Nguồn vốn" value={entry.fundingSource} />}
           <DetailRow label={`Ngày ${verb}`} value={formatDateVi(entry.date)} />
           <DetailRow label="Người thực hiện" value={entry.createdBy} />
           <DetailRow
@@ -141,5 +145,16 @@ export default function DisbursementRecordDrawer({
         />
       )}
     </Drawer>
+  );
+}
+
+function DetailRow({ label, value, multiline }: { label: string; value: React.ReactNode; multiline?: boolean }) {
+  return (
+    <div className={cn("flex gap-4 py-3 text-xs", multiline ? "items-start" : "items-center")}>
+      <dt className="w-32 shrink-0 text-slate-500">{label}</dt>
+      <dd className={cn("m-0 min-w-0 flex-1 font-semibold text-slate-800", multiline ? "whitespace-pre-wrap leading-relaxed" : "truncate")}>
+        {value}
+      </dd>
+    </div>
   );
 }
