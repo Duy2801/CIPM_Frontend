@@ -1,0 +1,831 @@
+import type { ProcedureStep } from "../types/procedure.types";
+import { PERSONNEL_MOCK_DATA } from "@/shared/personnel-assignment/constants/personnel-mock-data";
+
+export interface DepartmentTemplate {
+  id: string;
+  department: string;
+  name: string;
+  shortName: string;
+  description: string;
+  badge: string;
+  tagColor: "teal" | "blue" | "amber" | "purple" | "red";
+  createSteps: () => ProcedureStep[];
+}
+
+
+interface TemplateStepDef {
+  name: string;
+  unit: string;
+  conditional?: boolean;
+  notes?: string;
+  /** Thời hạn (ngày) theo quy định; không có = để trống */
+  days?: number;
+  children?: (Omit<TemplateStepDef, "unit"> & { unit?: string })[];
+}
+
+interface TemplateGroupDef {
+  code: string;
+  title: string;
+  unit?: string;
+  note?: string;
+  conditional?: boolean;
+  disabledByDefault?: boolean;
+  steps: TemplateStepDef[];
+}
+
+function buildTemplateSteps(prefix: string, department: string, groups: TemplateGroupDef[]): ProcedureStep[] {
+  let order = 0;
+  const makeStep = (
+    code: string,
+    group: TemplateGroupDef,
+    name: string,
+    unit: string,
+    conditional: boolean,
+    notes?: string,
+    enabled = true,
+    days?: number
+  ): ProcedureStep => {
+    order += 1;
+    return {
+      id: `${prefix}-${order}`,
+      order,
+      code,
+      groupCode: group.code,
+      groupTitle: group.title,
+      name,
+      type: conditional ? "CONDITIONAL" : "MANDATORY",
+      responsibleUnit: unit,
+      department,
+      durationMargin: days ? `${days} ngày` : "Theo quy định",
+      durationDaysMin: days ?? null,
+      durationDaysMax: days ?? null,
+      ...(days ? { plannedDays: days } : {}),
+      isEnabled: enabled,
+      status: enabled ? "NOT_STARTED" : "DISABLED",
+      submissionStatus: "PENDING_SUBMISSION",
+      attachments: [],
+      notes: notes ?? "",
+    };
+  };
+
+  type StepNode = Omit<TemplateStepDef, "unit"> & { unit?: string };
+  const buildChildren = (
+    parentCode: string,
+    group: TemplateGroupDef,
+    nodes: StepNode[],
+    inheritedUnit: string,
+    inheritedConditional: boolean,
+    enabled: boolean
+  ): ProcedureStep[] =>
+    nodes.flatMap((node, index) => {
+      const code = `${parentCode}.${index + 1}`;
+      const unit = node.unit ?? inheritedUnit;
+      const conditional = inheritedConditional || Boolean(node.conditional);
+      const self = makeStep(code, group, node.name, unit, conditional, node.notes, enabled, node.days);
+      return [self, ...buildChildren(code, group, node.children ?? [], unit, conditional, enabled)];
+    });
+
+  return groups.flatMap((group) => {
+    const parentUnit = group.unit ?? Array.from(new Set(group.steps.map((s) => s.unit))).join(", ");
+    const enabled = !group.disabledByDefault;
+    const parent = makeStep(group.code, group, group.title, parentUnit, Boolean(group.conditional), group.note, enabled);
+    return [parent, ...buildChildren(group.code, group, group.steps, parentUnit, Boolean(group.conditional), enabled)];
+  });
+}
+
+const DEPT_KHKT = "Tổ Kế hoạch – Kỹ thuật";
+const DEPT_DT = "Tổ Quản lý Đấu thầu";
+const DEPT_GSKT = "Tổ Giám sát – Kỹ thuật";
+const DEPT_BT = "Tổ Bồi thường, giải tỏa, GPMB – TĐC";
+
+/**
+ * Quy trình 16 bước GPMB – Phụ lục I kèm CV Sở NN&MT Kiên Giang (BRD 4.6.2).
+ * Thời hạn ghi theo BRD; bước 14, 15 chỉ phát sinh khi có hộ không đồng ý / không bàn giao đất.
+ */
+const GPMB_GROUPS: TemplateGroupDef[] = [
+  {
+    code: "I",
+    title: "Chuẩn bị thu hồi đất",
+    steps: [
+      { name: "Xây dựng kế hoạch thu hồi đất", unit: "Tổ BT – GPMB", notes: "Sản phẩm: Kế hoạch thu hồi đất." },
+      {
+        name: "Họp phổ biến với người có đất thu hồi",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        notes: "Biểu mẫu: Mẫu 01. Sản phẩm: Biên bản họp dân.",
+      },
+      {
+        name: "Thông báo thu hồi đất",
+        unit: "UBND cấp có thẩm quyền",
+        notes: "Biểu mẫu: Mẫu 02, 02.1, 02.2. Sản phẩm: Thông báo thu hồi đất.",
+      },
+    ],
+  },
+  {
+    code: "II",
+    title: "Điều tra, kiểm đếm và lập phương án bồi thường",
+    steps: [
+      {
+        name: "Điều tra, đo đạc, kiểm đếm",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        days: 30,
+        notes: "Thời hạn ≤ 30 ngày. Biểu mẫu: Mẫu 03, 03.1–03.3. Sản phẩm: Biên bản kiểm kê.",
+      },
+      {
+        name: "Lập phương án bồi thường, hỗ trợ, tái định cư",
+        unit: "Tổ BT – GPMB",
+        notes: "Sản phẩm: Dự thảo phương án BT-HT-TĐC.",
+      },
+    ],
+  },
+  {
+    code: "III",
+    title: "Công khai, thẩm định và phê duyệt phương án",
+    steps: [
+      {
+        name: "Niêm yết công khai phương án",
+        unit: "UBND xã/phường",
+        days: 10,
+        notes: "Thời hạn BẮT BUỘC 10 ngày. Biểu mẫu: Mẫu 04, 04.1. Sản phẩm: Biên bản niêm yết.",
+      },
+      {
+        name: "Lấy ý kiến về phương án",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        days: 30,
+        notes: "Thời hạn 30 ngày. Sản phẩm: Biên bản lấy ý kiến, biên bản đối thoại.",
+      },
+      {
+        name: "Thẩm định phương án",
+        unit: "Hội đồng thẩm định",
+        days: 30,
+        notes: "Thời hạn BẮT BUỘC 30 ngày. Sản phẩm: Biên bản thẩm định.",
+      },
+      {
+        name: "Phê duyệt phương án bồi thường, hỗ trợ, tái định cư",
+        unit: "UBND cấp có thẩm quyền",
+        notes: "Bước quan trọng: Tổ BT – GPMB đề xuất, Giám đốc / Phó Giám đốc duyệt. Biểu mẫu: Mẫu 05. Sản phẩm: Quyết định phê duyệt.",
+      },
+    ],
+  },
+  {
+    code: "IV",
+    title: "Công bố quyết định và chi trả bồi thường",
+    steps: [
+      {
+        name: "Phổ biến, niêm yết quyết định phê duyệt phương án",
+        unit: "UBND xã/phường",
+        notes: "Biểu mẫu: Mẫu 06. Sản phẩm: Biên bản niêm yết.",
+      },
+      {
+        name: "Gửi quyết định phê duyệt phương án đến từng hộ dân",
+        unit: "Tổ BT – GPMB",
+        notes: "Biểu mẫu: Mẫu 07. Sản phẩm: Biên bản giao quyết định.",
+      },
+      {
+        name: "Thực hiện chi trả tiền bồi thường, hỗ trợ, tái định cư",
+        unit: "Tổ BT – GPMB",
+        notes: "Chỉ thực hiện khi phương án đã được phê duyệt. Sản phẩm: Hồ sơ, biên bản chi trả.",
+      },
+    ],
+  },
+  {
+    code: "V",
+    title: "Thu hồi đất và xử lý vướng mắc",
+    steps: [
+      {
+        name: "Ban hành quyết định thu hồi đất",
+        unit: "UBND cấp có thẩm quyền",
+        days: 10,
+        notes: "Thời hạn BẮT BUỘC 10 ngày kể từ khi đủ điều kiện. Bước quan trọng: GĐ/PGĐ duyệt. Biểu mẫu: Mẫu 08.",
+      },
+      {
+        name: "Xử lý hộ không đồng ý phương án (vận động, thuyết phục)",
+        unit: "Tổ BT – GPMB, UBND xã/phường",
+        days: 20,
+        conditional: true,
+        notes: "Phát sinh khi có hộ không đồng ý. Thời hạn BẮT BUỘC ≤ 20 ngày. Biểu mẫu: Mẫu 08. Sản phẩm: Biên bản vận động.",
+      },
+      {
+        name: "Xử lý hộ không bàn giao đất (cưỡng chế thu hồi đất)",
+        unit: "UBND cấp có thẩm quyền",
+        days: 20,
+        conditional: true,
+        notes: "Phát sinh khi có hộ không bàn giao đất. Thời hạn BẮT BUỘC ≤ 20 ngày. GĐ/PGĐ duyệt. Biểu mẫu: Mẫu 09. Sản phẩm: Quyết định cưỡng chế.",
+      },
+    ],
+  },
+  {
+    code: "VI",
+    title: "Quản lý đất đã thu hồi",
+    steps: [
+      {
+        name: "Bàn giao, quản lý quỹ đất đã thu hồi",
+        unit: "Tổ BT – GPMB",
+        notes: "Sản phẩm: Biên bản bàn giao mặt bằng cho đơn vị quản lý.",
+      },
+    ],
+  },
+];
+
+const CHUAN_BI_DAU_TU_GROUPS: TemplateGroupDef[] = [
+  {
+    code: "I",
+    title: "Lập, thẩm định và phê duyệt chủ trương đầu tư",
+    note: "Thực hiện đối với dự án thuộc trường hợp phải quyết định chủ trương đầu tư theo pháp luật về đầu tư công và pháp luật có liên quan.",
+    steps: [
+      { name: "Báo cáo đề xuất chủ trương đầu tư", unit: "BQL" },
+      { name: "Tờ trình thẩm định báo cáo đề xuất chủ trương đầu tư", unit: "BQL" },
+      {
+        name: "Thẩm định báo cáo đề xuất chủ trương đầu tư (bao gồm thẩm định nguồn vốn và khả năng cân đối vốn theo thẩm quyền)",
+        unit: "Cơ quan chuyên môn",
+      },
+      { name: "Tờ trình phê duyệt báo cáo đề xuất chủ trương đầu tư", unit: "BQL" },
+      { name: "Quyết định chủ trương đầu tư", unit: "Cấp QĐ chủ trương" },
+    ],
+  },
+  {
+    code: "II",
+    title: "Tổ chức lập Báo cáo nghiên cứu khả thi / Báo cáo kinh tế – kỹ thuật",
+    steps: [
+      {
+        name: "Hợp đồng ủy thác (đại diện chủ đầu tư, quản lý dự án, giám sát) (do đơn vị khác làm chủ đầu tư)",
+        unit: "Chủ đầu tư – BQL",
+      },
+      { name: "Dự toán chuẩn bị đầu tư", unit: "Tư vấn" },
+      { name: "Tờ trình phê duyệt dự toán chuẩn bị đầu tư", unit: "BQL" },
+      { name: "Quyết định phê duyệt dự toán chuẩn bị đầu tư", unit: "Chủ đầu tư" },
+      { name: "Tờ trình phê duyệt kế hoạch lựa chọn nhà thầu tư vấn giai đoạn chuẩn bị đầu tư", unit: "BQL" },
+      {
+        name: "Quyết định phê duyệt kế hoạch lựa chọn nhà thầu tư vấn giai đoạn chuẩn bị đầu tư",
+        unit: "Chủ đầu tư",
+        notes: "Đối với dự án có quy mô lớn, chi phí tư vấn khảo sát, lập BCNCKT > 3 tỷ đồng sẽ tổ chức đấu thầu tư vấn.",
+      },
+      {
+        name: "Nhiệm vụ khảo sát, lập BCKTKT (hoặc BCNCKT)",
+        unit: "Tư vấn",
+        notes: "Đối với dự án có quy mô khảo sát phức tạp có lập thủy hải văn, mô hình toán sẽ thuê tư vấn thẩm tra nhiệm vụ.",
+      },
+      { name: "Tờ trình phê duyệt đề cương nhiệm vụ khảo sát, lập báo cáo kinh tế – kỹ thuật", unit: "BQL" },
+      {
+        name: "Quyết định phê duyệt đề cương nhiệm vụ khảo sát, lập báo cáo kinh tế – kỹ thuật",
+        unit: "Chủ đầu tư",
+        notes: "Đối với dự án có quy mô lớn, chi phí tư vấn > 3 tỷ đồng sẽ tổ chức đấu thầu tư vấn.",
+      },
+      { name: "Tờ trình chỉ định thầu tư vấn khảo sát địa chất (nếu có)", unit: "BQL" },
+      {
+        name: "Quyết định phê duyệt kết quả chỉ định thầu tư vấn khảo sát địa chất (nếu có)",
+        unit: "Chủ đầu tư",
+      },
+      { name: "Tờ trình chỉ định thầu tư vấn khảo sát địa hình, lập báo cáo kinh tế – kỹ thuật", unit: "BQL" },
+      {
+        name: "Quyết định phê duyệt kết quả chỉ định thầu tư vấn khảo sát địa hình, lập báo cáo kinh tế – kỹ thuật",
+        unit: "Chủ đầu tư",
+      },
+      { name: "Báo cáo kết quả khảo sát địa chất (nếu có khảo sát)", unit: "Tư vấn" },
+      { name: "Tờ trình phê duyệt báo cáo kết quả khảo sát địa chất (nếu có khảo sát)", unit: "BQL" },
+      {
+        name: "Quyết định phê duyệt báo cáo kết quả khảo sát địa chất (nếu có khảo sát)",
+        unit: "Chủ đầu tư",
+      },
+      { name: "Báo cáo kết quả khảo sát địa hình (nếu có khảo sát)", unit: "Tư vấn" },
+      { name: "Tờ trình phê duyệt báo cáo kết quả khảo sát địa hình (nếu có khảo sát)", unit: "BQL" },
+      {
+        name: "Quyết định phê duyệt báo cáo kết quả khảo sát địa hình (nếu có khảo sát)",
+        unit: "Chủ đầu tư",
+      },
+    ],
+  },
+  {
+    code: "III",
+    title: "Thẩm định giá (nếu có)",
+    conditional: true,
+    steps: [
+      { name: "Tờ trình phê duyệt đề cương thẩm định giá", unit: "BQL" },
+      { name: "Quyết định phê duyệt đề cương thẩm định giá", unit: "Chủ đầu tư" },
+      { name: "Tờ trình chỉ định thầu tư vấn thẩm định giá", unit: "BQL" },
+      { name: "Quyết định phê duyệt kết quả chỉ định thầu tư vấn thẩm định giá", unit: "Chủ đầu tư" },
+    ],
+  },
+  {
+    code: "IV",
+    title: "Thẩm tra thiết kế – dự toán (nếu có)",
+    conditional: true,
+    steps: [
+      { name: "Tờ trình phê duyệt đề cương thẩm tra thiết kế dự toán", unit: "BQL" },
+      { name: "Quyết định phê duyệt đề cương thẩm tra thiết kế dự toán", unit: "Chủ đầu tư" },
+      { name: "Lập thương thảo hợp đồng tư vấn thẩm tra thiết kế dự toán", unit: "Chủ đầu tư – Tư vấn" },
+      { name: "Tờ trình chỉ định thầu tư vấn thẩm tra thiết kế dự toán", unit: "BQL" },
+      { name: "Quyết định phê duyệt kết quả chỉ định thầu tư vấn thẩm tra thiết kế dự toán", unit: "Chủ đầu tư" },
+      { name: "Báo cáo thẩm tra thiết kế – dự toán (của tư vấn thẩm tra)", unit: "Tư vấn" },
+    ],
+  },
+  {
+    code: "V",
+    title: "Thẩm định Báo cáo nghiên cứu khả thi / Báo cáo kinh tế – kỹ thuật",
+    steps: [
+      { name: "Báo cáo kết quả thẩm định BCNCKT, BCKTKT", unit: "Chủ đầu tư" },
+      { name: "Tờ trình thẩm định BCNCKT", unit: "Chủ đầu tư" },
+      { name: "Văn bản trình thẩm định BCKTKT", unit: "Chủ đầu tư" },
+      { name: "Thông báo thẩm định BCKTKT (hoặc BCNCKT) + Dự toán kết quả thẩm định", unit: "Cơ quan chuyên môn" },
+      { name: "Tờ trình phê duyệt BCKTKT (hoặc BCNCKT)", unit: "Cơ quan chuyên môn" },
+      { name: "Quyết định phê duyệt BCKTKT (hoặc BCNCKT)", unit: "Cấp QĐ đầu tư" },
+    ],
+  },
+];
+
+const KE_HOACH_LCNT_STEPS: TemplateGroupDef[] = [
+  { code: "1", title: "Tờ trình phê duyệt kế hoạch lựa chọn nhà thầu (chủ đầu tư)", unit: "BQL", steps: [] },
+  { code: "2", title: "Quyết định phê duyệt kế hoạch lựa chọn nhà thầu", unit: "Chủ đầu tư", steps: [] },
+];
+
+const TU_VAN_DAU_THAU_STEPS: TemplateStepDef[] = [
+  { name: "Tờ trình chỉ định thầu rút gọn gói thầu tư vấn lập HSMT, đánh giá HSDT", unit: "BQL" },
+  { name: "Quyết định chỉ định thầu rút gọn gói thầu tư vấn lập HSMT, đánh giá HSDT", unit: "Chủ đầu tư" },
+  { name: "Tờ trình chỉ định thầu rút gọn gói thầu tư vấn thẩm định HSMT, thẩm định KQLCNT", unit: "BQL" },
+  { name: "Quyết định chỉ định thầu rút gọn gói thầu tư vấn thẩm định HSMT, thẩm định KQLCNT", unit: "Chủ đầu tư" },
+  { name: "Tư vấn lập HSMT, trình phê duyệt HSMT", unit: "Tư vấn đấu thầu" },
+  { name: "Tư vấn thẩm định HSMT", unit: "Tư vấn đấu thầu" },
+  { name: "Quyết định phê duyệt HSMT", unit: "Chủ đầu tư" },
+  { name: "Đăng báo mời thầu qua mạng", unit: "Chủ đầu tư" },
+];
+
+const CHI_DINH_THAU_RUT_GON_GROUP: TemplateGroupDef = {
+  code: "",
+  title: "Chỉ định thầu rút gọn",
+  note:
+    "Gói thầu thuộc dự toán mua sắm không hình thành dự án có giá gói thầu không quá 01 tỷ đồng; gói thầu dịch vụ tư vấn thuộc dự án có giá gói thầu không quá 03 tỷ đồng; gói thầu dịch vụ phi tư vấn, hàng hóa, xây lắp, hỗn hợp thuộc dự án có giá gói thầu không quá 05 tỷ đồng (khoản 5 Điều 4 – NĐ 349/2026/NĐ-CP).",
+  steps: [
+    { name: "Lập thương thảo hợp đồng", unit: "CĐT – TV" },
+    { name: "Tờ trình chỉ định thầu rút gọn", unit: "BQL" },
+    { name: "Quyết định phê duyệt kết quả chỉ định thầu rút gọn", unit: "Chủ đầu tư" },
+    { name: "Ký kết hợp đồng", unit: "Chủ đầu tư – Nhà thầu" },
+  ],
+};
+
+const CHI_DINH_THAU_THONG_THUONG_GROUP: TemplateGroupDef = {
+  code: "",
+  title: "Chỉ định thầu thông thường",
+  note: "Điều 78 – NĐ 214/2025/NĐ-CP.",
+  steps: [
+    { name: "Lập hồ sơ yêu cầu chỉ định thầu, trình phê duyệt HSYC", unit: "BQL" },
+    { name: "Phê duyệt HSYC", unit: "Chủ đầu tư" },
+    { name: "Phát hành HSYC trên Hệ thống đấu thầu cho nhà thầu dự kiến chỉ định", unit: "Chủ đầu tư" },
+    { name: "Mở thầu", unit: "Chủ đầu tư" },
+    { name: "Đánh giá kết quả lựa chọn nhà thầu", unit: "BQL" },
+    { name: "Thương thảo hợp đồng", unit: "CĐT – Nhà thầu" },
+    { name: "Tờ trình chỉ định thầu", unit: "BQL" },
+    { name: "Quyết định phê duyệt kết quả chỉ định thầu", unit: "Chủ đầu tư" },
+    { name: "Ký kết hợp đồng", unit: "Chủ đầu tư – Nhà thầu" },
+  ],
+};
+
+const CHAO_HANG_CANH_TRANH_GROUP: TemplateGroupDef = {
+  code: "",
+  title: "Chào hàng cạnh tranh",
+  note: "Các gói thầu có giá gói thầu không quá 10 tỷ đồng, không bao gồm gói thầu tư vấn (Điều 81 – NĐ 214/2025/NĐ-CP).",
+  steps: [
+    { name: "Tờ trình chỉ định thầu rút gọn gói thầu tư vấn lập HSMT, đánh giá HSDT", unit: "BQL" },
+    { name: "Quyết định chỉ định thầu rút gọn gói thầu tư vấn lập HSMT, đánh giá HSDT", unit: "Chủ đầu tư" },
+    { name: "Tư vấn lập HSMT, trình phê duyệt HSMT", unit: "Tư vấn đấu thầu" },
+    { name: "Quyết định phê duyệt HSMT", unit: "Chủ đầu tư" },
+    { name: "Đăng báo mời thầu qua mạng", unit: "Chủ đầu tư" },
+    { name: "Mở thầu", unit: "Chủ đầu tư" },
+    { name: "Yêu cầu làm rõ hồ sơ dự thầu", unit: "Chủ đầu tư" },
+    { name: "Làm rõ hồ sơ dự thầu", unit: "Nhà thầu" },
+    { name: "Báo cáo đánh giá hồ sơ dự thầu", unit: "Tư vấn đấu thầu" },
+    { name: "Thông báo mời đối chiếu tài liệu và thương thảo hợp đồng", unit: "Chủ đầu tư" },
+    { name: "Đối chiếu tài liệu và thương thảo hợp đồng", unit: "Chủ đầu tư – Nhà thầu" },
+    { name: "Tờ trình phê duyệt kết quả lựa chọn nhà thầu", unit: "BQL" },
+    { name: "Quyết định phê duyệt kết quả lựa chọn nhà thầu", unit: "Chủ đầu tư" },
+  ],
+};
+
+const DAU_THAU_RONG_RAI_GROUP: TemplateGroupDef = {
+  code: "",
+  title: "Đấu thầu rộng rãi",
+  steps: [
+    {
+      name: "Một giai đoạn một túi hồ sơ",
+      unit: "BQL, Chủ đầu tư, Tư vấn đấu thầu, Nhà thầu",
+      notes: "Các gói thầu có giá gói thầu > 10 tỷ đồng, không bao gồm gói thầu tư vấn (Điều 30 – Luật Đấu thầu).",
+      children: [
+        ...TU_VAN_DAU_THAU_STEPS,
+        { name: "Mở thầu", unit: "Chủ đầu tư" },
+        { name: "Yêu cầu làm rõ hồ sơ dự thầu", unit: "Chủ đầu tư" },
+        { name: "Làm rõ hồ sơ dự thầu", unit: "Nhà thầu" },
+        { name: "Báo cáo đánh giá hồ sơ dự thầu", unit: "Tư vấn đấu thầu" },
+        { name: "Thông báo mời đối chiếu tài liệu và thương thảo hợp đồng", unit: "Chủ đầu tư" },
+        { name: "Đối chiếu tài liệu và thương thảo hợp đồng", unit: "Chủ đầu tư – Nhà thầu" },
+        { name: "Báo cáo thẩm định kết quả lựa chọn nhà thầu", unit: "Tư vấn đấu thầu" },
+        { name: "Tờ trình phê duyệt kết quả lựa chọn nhà thầu", unit: "BQL" },
+        { name: "Quyết định trúng thầu (chủ đầu tư)", unit: "Chủ đầu tư" },
+        { name: "Ký kết hợp đồng xây dựng", unit: "CĐT – ĐVTC" },
+      ],
+    },
+    {
+      name: "Một giai đoạn hai túi hồ sơ",
+      unit: "BQL, Chủ đầu tư, Tư vấn đấu thầu, Nhà thầu",
+      notes: "Gói thầu tư vấn > 3 tỷ đồng (Điều 31 – Luật Đấu thầu).",
+      children: [
+        ...TU_VAN_DAU_THAU_STEPS,
+        { name: "Mở thầu (hồ sơ kỹ thuật)", unit: "Chủ đầu tư" },
+        { name: "Yêu cầu làm rõ hồ sơ dự thầu", unit: "Chủ đầu tư" },
+        { name: "Làm rõ hồ sơ dự thầu", unit: "Nhà thầu" },
+        { name: "Báo cáo đánh giá hồ sơ dự thầu (hồ sơ kỹ thuật)", unit: "Tư vấn đấu thầu" },
+        { name: "Báo cáo thẩm định danh sách nhà thầu đáp ứng kỹ thuật", unit: "Tư vấn đấu thầu" },
+        { name: "Tờ trình phê duyệt danh sách nhà thầu đáp ứng kỹ thuật", unit: "BQL" },
+        { name: "Quyết định phê duyệt danh sách nhà thầu đáp ứng kỹ thuật", unit: "Chủ đầu tư" },
+        { name: "Mở thầu (hồ sơ tài chính)", unit: "Chủ đầu tư" },
+        { name: "Thông báo mời đối chiếu tài liệu và thương thảo hợp đồng", unit: "Chủ đầu tư" },
+        { name: "Đối chiếu tài liệu và thương thảo hợp đồng", unit: "Chủ đầu tư – Nhà thầu" },
+        { name: "Báo cáo thẩm định kết quả lựa chọn nhà thầu", unit: "Tư vấn đấu thầu" },
+        { name: "Tờ trình phê duyệt kết quả lựa chọn nhà thầu", unit: "BQL" },
+        { name: "Quyết định trúng thầu (chủ đầu tư)", unit: "Chủ đầu tư" },
+        { name: "Ký kết hợp đồng xây dựng", unit: "CĐT – ĐVTC" },
+      ],
+    },
+  ],
+};
+
+const asBiddingMethod = (group: TemplateGroupDef, code: string): TemplateGroupDef => ({
+  ...group,
+  code,
+  conditional: true,
+  disabledByDefault: true,
+  note: [group.note, "Bật hình thức này nếu gói thầu áp dụng hình thức lựa chọn nhà thầu tương ứng."]
+    .filter(Boolean)
+    .join(" "),
+});
+
+const DAU_THAU_GROUPS: TemplateGroupDef[] = [
+  ...KE_HOACH_LCNT_STEPS,
+  asBiddingMethod(CHI_DINH_THAU_RUT_GON_GROUP, "I"),
+  asBiddingMethod(CHI_DINH_THAU_THONG_THUONG_GROUP, "II"),
+  asBiddingMethod(CHAO_HANG_CANH_TRANH_GROUP, "III"),
+  asBiddingMethod(DAU_THAU_RONG_RAI_GROUP, "IV"),
+];
+
+const GIAM_SAT_GROUPS: TemplateGroupDef[] = [
+  {
+    code: "I",
+    title: "Triển khai thi công",
+    steps: [
+      { name: "Hợp đồng xây dựng", unit: "A – B" },
+      { name: "Thông báo khởi công", unit: "CĐT" },
+      { name: "Bàn giao mặt bằng thi công", unit: "BQL – Hội đồng" },
+      { name: "Lập báo cáo giám sát đánh giá trước khi thực hiện dự án", unit: "CĐT" },
+    ],
+  },
+  {
+    code: "II",
+    title: "Hồ sơ nghiệm thu khối lượng hoàn thành giai đoạn",
+    steps: [
+      { name: "Biên bản nghiệm thu (giai đoạn thực hiện)", unit: "A – B – TVGS" },
+      { name: "Bảng kê giá trị khối lượng hoàn thành (giai đoạn thực hiện)", unit: "A – B – TVGS" },
+      { name: "Phụ lục thanh toán 03a/TT (theo hợp đồng + phát sinh (nếu có))", unit: "A – B", conditional: true },
+      { name: "Bản vẽ hoàn công (giai đoạn thực hiện)", unit: "A – B – TVGS" },
+      {
+        name: "Hồ sơ KCS giai đoạn",
+        unit: "A – B – TVGS",
+        children: [
+          { name: "Nhật ký, biên bản nghiệm thu hoàn thành hạng mục (hoặc khối lượng công việc)" },
+          { name: "Kết quả thí nghiệm, kiểm tra, kiểm định vật liệu, cấu kiện, sản phẩm xây dựng, thử nghiệm, chạy thử" },
+          { name: "Chủ trương chấp thuận UBND (nếu có)", conditional: true },
+          { name: "Biên bản xử lý kỹ thuật (nếu có)", conditional: true },
+          { name: "Quyết định phê duyệt tăng, giảm (nếu có)", conditional: true },
+          { name: "Phụ lục hợp đồng (nếu có)", conditional: true },
+        ],
+      },
+    ],
+  },
+  {
+    code: "III",
+    title: "Phê duyệt khối lượng phát sinh",
+    steps: [
+      { name: "Chủ trương chấp thuận phát sinh", unit: "Cấp QĐ đầu tư" },
+      {
+        name: "Biên bản xử lý kỹ thuật",
+        unit: "Cơ quan chuyên môn – A – B – TVGS – TK",
+        children: [
+          {
+            name: "Khối lượng phát sinh trong hợp đồng (không vượt tổng mức)",
+            unit: "BQL – CĐT",
+            conditional: true,
+            notes:
+              "Lập hồ sơ khối lượng phát sinh tăng, giảm; lập báo cáo và trình chủ đầu tư phê duyệt quyết định phát sinh tăng, giảm.",
+          },
+          {
+            name: "Khối lượng phát sinh ngoài hợp đồng (hoặc vượt tổng mức đầu tư)",
+            unit: "Tư vấn lập, BQL, Cơ quan chuyên môn, Cấp QĐ đầu tư, A – B",
+            conditional: true,
+            children: [
+              { name: "Lập hồ sơ điều chỉnh", unit: "Tư vấn lập" },
+              {
+                name: "Lập hồ sơ trình phê duyệt điều chỉnh (hồ sơ thiết kế bổ sung (nếu có))",
+                unit: "BQL",
+                conditional: true,
+              },
+              { name: "Báo cáo kết quả thẩm định điều chỉnh", unit: "Cơ quan chuyên môn" },
+              { name: "Quyết định phê duyệt điều chỉnh", unit: "Cấp QĐ đầu tư" },
+              { name: "Lập phụ lục hợp đồng phát sinh", unit: "A – B" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    code: "IV",
+    title: "Nghiệm thu hoàn thành đưa vào sử dụng",
+    steps: [
+      {
+        name: "Hồ sơ KCS",
+        unit: "A – B – TVGS",
+        children: [
+          { name: "Hợp đồng xây dựng" },
+          { name: "Biên bản bàn giao mặt bằng" },
+          { name: "Biên bản nghiệm thu vật tư đưa vào công trình" },
+          { name: "Biên bản nghiệm thu nội bộ của nhà thầu xây lắp" },
+          { name: "Phiếu yêu cầu nghiệm thu" },
+          { name: "Biên bản nghiệm thu công việc" },
+          { name: "Biên bản xử lý kỹ thuật (nếu có)", conditional: true },
+          { name: "Chủ trương phát sinh (nếu có)", conditional: true },
+          { name: "Phụ lục gia hạn hợp đồng (nếu có)", conditional: true },
+          { name: "Phụ lục phát sinh tăng, giảm (nếu có)", conditional: true },
+          { name: "Các kết quả kiểm định, thí nghiệm vật liệu" },
+          { name: "Chứng thư thẩm định giá (nếu có)", conditional: true },
+          { name: "Báo cáo thực hiện dự án định kỳ, hàng tháng, hàng quý" },
+          { name: "Báo cáo chất lượng hoàn thành công trình của tư vấn giám sát, thiết kế và nhà thầu" },
+          { name: "Biên bản xác nhận khối lượng hoàn thành theo hợp đồng" },
+          { name: "Biên bản xác nhận khối lượng tăng, giảm (nếu có)", conditional: true },
+          { name: "Quyết định phê duyệt phát sinh (nếu có khối lượng phát sinh)", conditional: true },
+          { name: "Biên bản nghiệm thu hoàn thành đưa vào sử dụng" },
+          { name: "Nhật ký công trình" },
+          { name: "Bản vẽ hoàn công (kèm theo danh mục; nếu bản vẽ thiết kế chưa có danh mục thì phải bổ sung danh mục theo quy định)" },
+        ],
+      },
+      {
+        name: "Bảng khối lượng quyết toán",
+        unit: "A – B – TVGS",
+        children: [
+          { name: "Phụ lục 03a, phụ lục 03c quyết toán" },
+          { name: "Bảng tổng hợp khối lượng quyết toán (bao gồm giá trị thực hiện, tăng, giảm)" },
+          { name: "Bảng kê giá trị khối lượng hoàn thành theo hợp đồng" },
+          { name: "Bảng kê giá trị khối lượng phát sinh tăng, giảm (nếu có)", conditional: true },
+        ],
+      },
+    ],
+  },
+];
+
+const QUY_HOACH_GROUPS: TemplateGroupDef[] = [
+  {
+    code: "I",
+    title: "Phê duyệt chủ trương quy hoạch",
+    steps: [
+      { name: "Tờ trình chấp thuận chủ trương lập quy hoạch", unit: "Cơ quan chuyên môn" },
+      { name: "Tờ trình chấp thuận chủ trương lập quy hoạch", unit: "UBND phường" },
+      { name: "Kết luận của BTV về chấp thuận chủ trương (nếu có)", unit: "BTV", conditional: true },
+      {
+        name: "Công văn chấp thuận chủ trương hoặc Quyết định chấp thuận chủ trương lập quy hoạch",
+        unit: "UBND phường",
+      },
+    ],
+  },
+  {
+    code: "II",
+    title: "Lập nhiệm vụ quy hoạch",
+    steps: [
+      { name: "Đề cương nhiệm vụ lập quy hoạch (bao gồm khảo sát nếu có)", unit: "Tư vấn lập nhiệm vụ" },
+      { name: "Tờ trình phê duyệt đề cương nhiệm vụ lập quy hoạch (bao gồm khảo sát nếu có)", unit: "BQL" },
+      { name: "Quyết định phê duyệt đề cương nhiệm vụ lập quy hoạch (bao gồm khảo sát nếu có)", unit: "UBND phường" },
+      { name: "Tờ trình phê duyệt kế hoạch lựa chọn nhà thầu tư vấn lập nhiệm vụ quy hoạch", unit: "BQL" },
+      { name: "Quyết định phê duyệt kế hoạch lựa chọn nhà thầu tư vấn lập nhiệm vụ quy hoạch", unit: "UBND phường" },
+      { name: "Lập thương thảo hợp đồng tư vấn", unit: "BQL – TV lập NV" },
+      { name: "Tờ trình chỉ định thầu tư vấn lập nhiệm vụ quy hoạch", unit: "BQL" },
+      { name: "Quyết định chỉ định thầu tư vấn lập nhiệm vụ quy hoạch", unit: "UBND phường" },
+      { name: "Hợp đồng tư vấn lập nhiệm vụ", unit: "BQL – TV lập NV" },
+      { name: "Nhiệm vụ lập quy hoạch", unit: "Tư vấn lập nhiệm vụ" },
+    ],
+  },
+  {
+    code: "III",
+    title: "Phê duyệt nhiệm vụ quy hoạch",
+    steps: [
+      { name: "Thông báo lấy ý kiến cộng đồng khu dân cư về nhiệm vụ quy hoạch", unit: "UBND phường" },
+      { name: "Lấy ý kiến cơ quan chuyên môn về xây dựng (nếu có)", unit: "Sở Xây dựng", conditional: true },
+      {
+        name: "Biên bản niêm yết công khai lấy ý kiến cộng đồng dân cư về nhiệm vụ (tối thiểu 20 ngày, tối đa 30 ngày)",
+        unit: "UBND phường",
+      },
+      { name: "Biên bản kết thúc niêm yết lấy ý kiến cộng đồng dân cư về nhiệm vụ", unit: "UBND phường" },
+      { name: "Tờ trình thẩm định phê duyệt nhiệm vụ quy hoạch", unit: "BQL" },
+      { name: "Báo cáo kết quả thẩm định nhiệm vụ quy hoạch", unit: "P.KTHTĐT" },
+      { name: "Tờ trình phê duyệt nhiệm vụ quy hoạch", unit: "P.KTHTĐT" },
+      { name: "Quyết định phê duyệt nhiệm vụ quy hoạch", unit: "UBND phường" },
+    ],
+  },
+  {
+    code: "IV",
+    title: "Lập đồ án quy hoạch",
+    steps: [
+      { name: "Tờ trình phê duyệt kế hoạch lựa chọn nhà thầu tư vấn lập đồ án quy hoạch", unit: "BQL" },
+      { name: "Quyết định phê duyệt kế hoạch lựa chọn nhà thầu tư vấn lập đồ án quy hoạch", unit: "UBND phường" },
+      { name: "Lập thương thảo hợp đồng tư vấn", unit: "BQL – TV lập NV" },
+      { name: "Tờ trình chỉ định thầu tư vấn lập đồ án quy hoạch", unit: "BQL" },
+      { name: "Quyết định chỉ định thầu tư vấn lập đồ án quy hoạch", unit: "UBND phường" },
+      { name: "Hợp đồng tư vấn lập đồ án quy hoạch", unit: "BQL – TV lập NV" },
+    ],
+  },
+  {
+    code: "V",
+    title: "Phê duyệt đồ án quy hoạch",
+    steps: [
+      { name: "Thông báo lấy ý kiến cộng đồng khu dân cư về đồ án quy hoạch", unit: "UBND phường" },
+      { name: "Lấy ý kiến cơ quan chuyên môn về xây dựng (nếu có)", unit: "Sở Xây dựng", conditional: true },
+      {
+        name: "Biên bản niêm yết công khai lấy ý kiến cộng đồng dân cư về đồ án quy hoạch (tối thiểu 20 ngày, tối đa 30 ngày)",
+        unit: "UBND phường",
+      },
+      { name: "Biên bản kết thúc niêm yết lấy ý kiến cộng đồng dân cư về đồ án quy hoạch", unit: "UBND phường" },
+      { name: "Tờ trình thẩm định phê duyệt đồ án quy hoạch", unit: "BQL" },
+      { name: "Báo cáo kết quả thẩm định đồ án quy hoạch", unit: "P.KTHTĐT" },
+      { name: "Tờ trình phê duyệt đồ án quy hoạch", unit: "P.KTHTĐT" },
+      { name: "Quyết định phê duyệt đồ án quy hoạch", unit: "UBND phường" },
+    ],
+  },
+];
+
+function defineTemplate(
+  config: Omit<DepartmentTemplate, "badge" | "createSteps" | "shortName"> & {
+    shortLabel: string;
+    groups: TemplateGroupDef[];
+  }
+): DepartmentTemplate {
+  const { shortLabel, groups, ...rest } = config;
+  return {
+    ...rest,
+    shortName: shortLabel,
+    badge: "",
+    createSteps: () => buildTemplateSteps(rest.id, rest.department, groups),
+  };
+}
+
+export const DEPARTMENT_PROCEDURE_TEMPLATES: Record<string, DepartmentTemplate> = {
+  [DEPT_KHKT]: defineTemplate({
+    id: "template-khkt",
+    department: DEPT_KHKT,
+    name: "Quy trình chuẩn bị đầu tư",
+    shortLabel: "Quy trình chuẩn bị đầu tư",
+    description:
+      "Chủ trương đầu tư; lập BCNCKT/BCKTKT (dự toán CBĐT, KHLCNT tư vấn, khảo sát); thẩm định giá, thẩm tra thiết kế – dự toán (nếu có); thẩm định và phê duyệt BCNCKT/BCKTKT.",
+    tagColor: "blue",
+    groups: CHUAN_BI_DAU_TU_GROUPS,
+  }),
+  [DEPT_DT]: defineTemplate({
+    id: "template-dauthau",
+    department: DEPT_DT,
+    name: "Quy trình đấu thầu",
+    shortLabel: "Quy trình đấu thầu",
+    description:
+      "Kế hoạch lựa chọn nhà thầu; chỉ định thầu rút gọn, chỉ định thầu thông thường, chào hàng cạnh tranh, đấu thầu rộng rãi một giai đoạn một túi / hai túi hồ sơ (bật hình thức áp dụng cho gói thầu).",
+    tagColor: "purple",
+    groups: DAU_THAU_GROUPS,
+  }),
+  [DEPT_GSKT]: defineTemplate({
+    id: "template-gskt",
+    department: DEPT_GSKT,
+    name: "Quy trình giám sát",
+    shortLabel: "Quy trình giám sát",
+    description:
+      "Triển khai thi công; hồ sơ nghiệm thu khối lượng hoàn thành giai đoạn; phê duyệt khối lượng phát sinh (nếu có); nghiệm thu hoàn thành đưa vào sử dụng.",
+    tagColor: "teal",
+    groups: GIAM_SAT_GROUPS,
+  }),
+  "template-quy-hoach": defineTemplate({
+    id: "template-quy-hoach",
+    department: DEPT_KHKT,
+    name: "Quy trình quy hoạch",
+    shortLabel: "Quy trình quy hoạch",
+    description:
+      "Phê duyệt chủ trương quy hoạch; lập và phê duyệt nhiệm vụ quy hoạch; lập và phê duyệt đồ án quy hoạch (lấy ý kiến cộng đồng dân cư).",
+    tagColor: "amber",
+    groups: QUY_HOACH_GROUPS,
+  }),
+  "template-gpmb": defineTemplate({
+    id: "template-gpmb",
+    department: DEPT_BT,
+    name: "Quy trình giải phóng mặt bằng",
+    shortLabel: "Quy trình GPMB",
+    description:
+      "16 bước GPMB theo Phụ lục I (CV Sở NN&MT Kiên Giang): kế hoạch, thông báo thu hồi đất; kiểm đếm; lập, niêm yết, thẩm định, phê duyệt phương án BT-HT-TĐC; chi trả; quyết định thu hồi, vận động / cưỡng chế; bàn giao đất.",
+    tagColor: "red",
+    groups: GPMB_GROUPS,
+  }),
+};
+
+export function getDepartmentStaff(deptName?: string) {
+  let allStaff = PERSONNEL_MOCK_DATA.staff;
+  let allTeams = PERSONNEL_MOCK_DATA.teams;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage.getItem("cipm_personnel_test_flow_v9") || window.localStorage.getItem("cipm_personnel_test_flow_v8");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.staff) && parsed.staff.length > 0) {
+          allStaff = parsed.staff;
+        }
+        if (Array.isArray(parsed.teams) && parsed.teams.length > 0) {
+          allTeams = parsed.teams;
+        }
+      }
+    } catch {}
+  }
+  if (!deptName) return allStaff;
+  const target = deptName.toLowerCase();
+
+  const team = allTeams.find(
+    (t) =>
+      t.name.toLowerCase() === target ||
+      t.id.toLowerCase() === target ||
+      t.name.toLowerCase().includes(target) ||
+      target.includes(t.name.toLowerCase()) ||
+      (target.includes("giám sát") && t.id === "GSKT") ||
+      (target.includes("kế hoạch") && t.id === "KHKT") ||
+      (target.includes("đấu thầu") && t.id === "DT") ||
+      (target.includes("bồi thường") && t.id === "BT") ||
+      (target.includes("gpmb") && t.id === "BT") ||
+      (target.includes("hành chính") && t.id === "HCTH")
+  );
+
+  if (team) {
+    return allStaff.filter((s) => s.teamId === team.id);
+  }
+
+  return allStaff.filter(
+    (s) => s.teamId.toLowerCase() === target || s.title.toLowerCase().includes(target)
+  );
+}
+
+export function getDepartmentLead(deptName?: string) {
+  if (!deptName) return undefined;
+  let allTeams = PERSONNEL_MOCK_DATA.teams;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage.getItem("cipm_personnel_test_flow_v9") || window.localStorage.getItem("cipm_personnel_test_flow_v8");
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed?.teams) && parsed.teams.length > 0) allTeams = parsed.teams;
+    } catch {}
+  }
+  const staff = getDepartmentStaff(deptName);
+  const team = allTeams.find((t) => staff.some((s) => s.teamId === t.id));
+  return staff.find((s) => s.id === team?.leaderId);
+}
+
+export function getDepartmentCode(dept?: string): string {
+  if (!dept) return "";
+  const d = dept.trim().toLowerCase();
+  if (d === "gskt" || d.includes("giám sát")) return "GSKT";
+  if (d === "khkt" || d.includes("kế hoạch")) return "KHKT";
+  if (d === "bt" || d.includes("bồi thường") || d.includes("gpmb") || d.includes("tđc")) return "BT";
+  if (d === "dt" || d.includes("đấu thầu")) return "DT";
+  if (d === "hcth" || d.includes("hành chính") || d.includes("tổng hợp")) return "HCTH";
+  return d;
+}
+
+export function isSameDepartment(deptA?: string, deptB?: string): boolean {
+  if (!deptA || !deptB) return false;
+  if (deptA === deptB) return true;
+  const a = deptA.trim().toLowerCase();
+  const b = deptB.trim().toLowerCase();
+  if (a === b) return true;
+  const codeA = getDepartmentCode(deptA);
+  const codeB = getDepartmentCode(deptB);
+  if (codeA && codeB && codeA === codeB) return true;
+  return false;
+}
+
+interface ProcedureUser {
+  name?: string;
+  displayName?: string;
+  role?: string;
+  roleCode?: string;
+  department?: string;
+  isLead?: boolean;
+}
+
+export function isLeadOfDepartment(user: ProcedureUser | null | undefined, deptName?: string): boolean {
+  if (!user) return false;
+  const roleCode = (user.roleCode || user.role || "").toUpperCase();
+  if (roleCode === "ADMIN" || roleCode === "DEPUTY_DIRECTOR") return false;
+  if (!user.isLead && !roleCode.endsWith("_LEAD")) return false;
+  if (!deptName) return true;
+  return isSameDepartment(user.department, deptName);
+}
+
+export function isDirectorUser(user: ProcedureUser | null | undefined): boolean {
+  if (!user) return false;
+  const role = (user.roleCode || user.role || "").toUpperCase();
+  const dept = (user.department || "").toLowerCase();
+  return role === "ADMIN" || role === "DEPUTY_DIRECTOR" || dept.includes("giám đốc");
+}
+
