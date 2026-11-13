@@ -1,6 +1,6 @@
 import { getRoleEffectivePermissions } from "@/access-control";
-import { MATRIX_PERMISSIONS } from "../constants/role-matrix-data";
-import type { Staff, Team } from "../types/personnel.types";
+import { MATRIX_PERMISSIONS } from "@/shared/personnel-assignment/constants/role-matrix-data";
+import type { Staff, Team } from "@/shared/personnel-assignment/types/personnel.types";
 
 export interface RbacPermissionItem {
   code: string;

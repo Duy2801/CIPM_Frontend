@@ -8,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import { Flex, Tag, Text } from "@/components/ui";
 import { APPROVAL_STAGES } from "../constants/finance-labels";
-import type { Disbursement, TreasuryAccount } from "../types/finance.types";
+import type { Disbursement, TreasuryAccount } from "@/shared/finance-settlement/types/finance.types";
 import {
   getApprovalStageViewModel,
   type ApprovalStageState,

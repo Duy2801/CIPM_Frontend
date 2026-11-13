@@ -5,7 +5,7 @@ Tài liệu mô tả các chức năng của màn **Nhân sự & Phân công**, 
 - Frontend: `src/features/personnel-assignment`
 - Backend: `cipm-service`
 - Lớp gọi API phía FE: `services/personnel.api.ts` (nhân sự, phòng ban, lịch sử, trường tùy biến) và `services/role-matrix.api.ts` (chức danh, quyền); ánh xạ dữ liệu ở `services/personnel.mapper.ts`.
-- Chọn nguồn dữ liệu (`services/backend.ts`): đăng nhập bằng token backend thì gọi API; tài khoản thử nghiệm (token `mock_...`) hoặc server không phản hồi thì chạy dữ liệu mock / localStorage (chưa xóa mock).
+- Chọn nguồn dữ liệu (`src/config/backend.ts`, dùng chung mọi phân hệ): đăng nhập bằng token backend thì gọi API; tài khoản thử nghiệm (token `mock_...`) hoặc server không phản hồi thì chạy dữ liệu mock / localStorage (chưa xóa mock).
 
 Ký hiệu: ✅ backend đã có · ⚠ backend chưa có (đề xuất).
 

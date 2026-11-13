@@ -2,10 +2,10 @@
 
 import { FileTextOutlined, PaperClipOutlined } from "@ant-design/icons";
 import { Flex, Text } from "@/components/ui";
-import type { ProjectItem } from "../../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import { getProjectDocuments } from "../../constants/project-documents-mock";
 import { cn } from "@/utils/cn";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+import { hasBackendSession } from "@/config/backend";
 
 export function ProjectDocumentsSection({ project, fill = false }: { project: ProjectItem; fill?: boolean }) {
   const documents = hasBackendSession() ? (project.documents ?? []) : getProjectDocuments(project);

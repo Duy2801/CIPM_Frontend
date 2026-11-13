@@ -6,8 +6,8 @@ import { Button, Checkbox, Modal, Select, Spin, StandardFileUpload, Text, type U
 import { useAuthStore } from "@/stores/auth.store";
 import { formatDateVi } from "@/utils/date";
 import { useHandoverTasks } from "../hooks/usePersonnelMutations";
-import { useStaff, useStaffList, useStaffOpenTasks, useTeams } from "../hooks/usePersonnelQueries";
-import type { HandoverTask } from "../services/handover.api";
+import { useStaff, useStaffList, useStaffOpenTasks, useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
+import type { HandoverTask } from "@/shared/personnel-assignment/services/handover.api";
 
 export default function StaffHandoverModal({ staffId, onClose }: { staffId: string; onClose: () => void }) {
   const { data: staff } = useStaff(staffId);
@@ -77,7 +77,25 @@ export default function StaffHandoverModal({ staffId, onClose }: { staffId: stri
       open
       centered
       width={620}
-      footer={null}
+      footer={
+        <div className="flex w-full justify-end gap-2 border-t border-slate-100 pt-3.5">
+          <Button
+            intent="primary"
+            onClick={confirm}
+            loading={handover.isPending}
+            disabled={!receiver || selectedIds.length === 0}
+          >
+            Bàn giao{selectedIds.length > 0 ? ` ${selectedIds.length} việc` : ""}
+          </Button>
+          <Button intent="outline" onClick={onClose} disabled={handover.isPending}>
+            Đóng
+          </Button>
+        </div>
+      }
+      styles={{
+        container: { maxHeight: "calc(100vh - 32px)", display: "flex", flexDirection: "column" },
+        body: { flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 4 },
+      }}
       onCancel={onClose}
       destroyOnHidden
       title={
@@ -145,7 +163,7 @@ export default function StaffHandoverModal({ staffId, onClose }: { staffId: stri
             Cán bộ này không có công việc nào đang mở.
           </div>
         ) : (
-          <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200">
+          <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-slate-200">
             {byProject.map(([projectId, group]) => (
               <div key={projectId} className="border-b border-slate-100 last:border-b-0">
                 <div className="sticky top-0 z-10 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -188,7 +206,7 @@ export default function StaffHandoverModal({ staffId, onClose }: { staffId: stri
         )}
       </div>
 
-      <div className="mb-4">
+      <div>
         <Text strong className="mb-1.5 block text-[13px] text-slate-800">
           Hồ sơ bàn giao
         </Text>
@@ -201,19 +219,6 @@ export default function StaffHandoverModal({ staffId, onClose }: { staffId: stri
         />
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-slate-100 pt-3.5">
-        <Button
-          intent="primary"
-          onClick={confirm}
-          loading={handover.isPending}
-          disabled={!receiver || selectedIds.length === 0}
-        >
-          Bàn giao{selectedIds.length > 0 ? ` ${selectedIds.length} việc` : ""}
-        </Button>
-        <Button intent="outline" onClick={onClose} disabled={handover.isPending}>
-          Đóng
-        </Button>
-      </div>
     </Modal>
   );
 }

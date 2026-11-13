@@ -1,4 +1,4 @@
-import type { ApprovalStatus, CapitalSource, FinanceTabKey } from "../types/finance.types";
+import type { ApprovalStatus, CapitalSource, FinanceTabKey } from "@/shared/finance-settlement/types/finance.types";
 
 export type StatusIntent = "muted" | "warning" | "info" | "success" | "danger";
 

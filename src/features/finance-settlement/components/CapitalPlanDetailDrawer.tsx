@@ -11,7 +11,7 @@ import { Button, Drawer, Flex, Progress, Table, Tag, Text, Tooltip } from "@/com
 import type { ColumnsType } from "@/components/ui";
 import { SOURCE_TAG_INTENTS } from "../constants/finance-labels";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
-import type { CapitalPlan, Disbursement, FinanceProject } from "../types/finance.types";
+import type { CapitalPlan, Disbursement, FinanceProject } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions } from "../utils/finance-rules";
 
 interface CapitalPlanDetailDrawerProps {

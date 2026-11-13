@@ -1,6 +1,5 @@
 import apiClient from "@/config";
-import type { ApiAuditLog } from "@/features/personnel-assignment/services/personnel.mapper";
-import { REPORT_AUDIT_MODULE, type ApiReportFile, type ApiReportType } from "../services/report.mapper";
+import type { ApiReportFile, ApiReportType } from "../services/report.mapper";
 
 export async function getReportTypesApi(): Promise<ApiReportType[]> {
   return (await apiClient.get<ApiReportType[]>("reports/types")).data;
@@ -38,8 +37,3 @@ export async function downloadReportApi(reportId: string, inline: boolean): Prom
   });
 }
 
-export async function getReportAuditLogsApi(typeId?: string): Promise<ApiAuditLog[]> {
-  return (
-    await apiClient.get<ApiAuditLog[]>("audit-logs", { params: { module: REPORT_AUDIT_MODULE, targetId: typeId } })
-  ).data;
-}

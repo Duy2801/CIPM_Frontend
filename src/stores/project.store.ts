@@ -2,8 +2,8 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { INITIAL_PROJECTS_MOCK } from "../features/projects_works/constants/projects-mock-data.ts";
-import type { ProjectItem, ProjectFormData } from "../features/projects_works/types/project.types";
+import { INITIAL_PROJECTS_MOCK } from "@/shared/projects_works/constants/projects-mock-data.ts";
+import type { ProjectItem, ProjectFormData } from "@/shared/projects_works/types/project.types";
 
 interface ProjectStoreState {
   projects: ProjectItem[];

@@ -3,7 +3,7 @@ import type {
   DisbursementValidationInput,
   SettlementStepContext,
   SettlementStepResult,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 
 export function formatVndBillions(value: number): string {
   return `${new Intl.NumberFormat("vi-VN", {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { FINANCE_MOCK_DATA } from "../src/features/finance-settlement/constants/finance-mock-data.ts";
+import { FINANCE_MOCK_DATA } from "../src/shared/finance-settlement/constants/finance-mock-data.ts";
 import {
   canActOnSettlementStep,
   getFinanceRolePermissions,

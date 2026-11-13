@@ -3,7 +3,7 @@
 import { FilePreviewModal } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
-import { attachmentUrl, type DisbursementAttachment, type DisbursementEntry } from "../../../utils/project-disbursement";
+import { attachmentUrl, type DisbursementAttachment, type DisbursementEntry } from "@/shared/projects_works/utils/project-disbursement";
 
 export default function DisbursementFilePreview({
   file,

@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Button, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
-import { usePermissionHistory } from "../hooks/usePersonnelQueries";
-import ActivityDateFilter, { toLocalDate } from "./ActivityDateFilter";
-import ActivityTimeline from "./ActivityTimeline";
+import { usePermissionHistory } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
+import ActivityDateFilter, { toLocalDate } from "@/shared/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
 
 /** Tab "Lịch sử thay đổi quyền" trong modal quản lý chức danh (ai cũng xem được), lọc theo ngày */
 export default function RoleMatrixHistoryTab({ onClose }: { onClose: () => void }) {

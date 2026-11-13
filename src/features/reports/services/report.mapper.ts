@@ -1,5 +1,5 @@
-import type { ApiAuditLog } from "@/features/personnel-assignment/services/personnel.mapper";
-import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
+import type { ApiAuditLog } from "@/shared/audit-logs/api/audit-log.api";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import type { ReportFile, ReportType } from "../types/report.types";
 
 export const REPORT_AUDIT_MODULE = "reports";

@@ -21,7 +21,7 @@ import {
   Tooltip,
 } from "@/components/ui";
 import { themeClassNames } from "@/components/theme";
-import { logout } from "@/features/auth";
+import { logout } from "@/shared/auth";
 import { useAuthStore } from "@/stores/auth.store";
 import { getSidebarMenuItemsForUser } from "./sidebar-menu-config";
 

@@ -4,8 +4,8 @@ import React from "react";
 import Image from "next/image";
 import { Card, Title } from "@/components/ui";
 import LoginForm from "./LoginForm";
-import { useAuth } from "../hooks/useAuth";
-import type { LoginCredentials } from "../types/auth.types";
+import { useAuth } from "@/shared/auth/hooks/useAuth";
+import type { LoginCredentials } from "@/shared/auth/types/auth.types";
 
 import { ComprehensiveCulturalWatermark } from "./CulturalMotifs";
 

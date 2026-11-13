@@ -5,7 +5,7 @@ import { RightOutlined } from "@ant-design/icons";
 import { Table } from "@/components/ui";
 import { useCustomFieldDefs } from "../hooks/useCustomFieldDefs";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
-import type { Staff, Team } from "../types/personnel.types";
+import type { Staff, Team } from "@/shared/personnel-assignment/types/personnel.types";
 import { sortStaffByRank } from "../utils/personnel-sorting";
 import { useDirectoryStaffColumns } from "./DirectoryStaffColumns";
 import DirectoryTeamName from "./DirectoryTeamName";

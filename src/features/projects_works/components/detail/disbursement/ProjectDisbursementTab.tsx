@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui";
 import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
 import { useProjectMutations } from "../../../hooks/useProjectMutations";
-import type { DisbursementKind } from "../../../utils/project-disbursement";
+import type { DisbursementKind } from "@/shared/projects_works/utils/project-disbursement";
 import DisbursementCategoryBar from "./DisbursementCategoryBar";
 import DisbursementCategorySummary from "./DisbursementCategorySummary";
 import DisbursementEntryTable from "./DisbursementEntryTable";

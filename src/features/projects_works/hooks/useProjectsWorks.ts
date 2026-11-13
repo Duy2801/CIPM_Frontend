@@ -3,19 +3,19 @@
 import { useMemo, useState } from "react";
 import { App } from "antd";
 import { hasMatrixPermission } from "@/access-control";
-import { useAuth } from "@/features/auth";
-import { loadProcedureLibrary } from "@/features/construction-procedures/utils/procedure-library";
+import { useAuth } from "@/shared/auth";
+import { loadProcedureLibrary } from "@/shared/construction-procedures/utils/procedure-library";
 import { useProjectStore } from "@/stores/project.store";
-import type { ProjectActionType, ProjectFormData, ProjectItem, ProjectWorkType } from "../types/project.types";
+import type { ProjectActionType, ProjectFormData, ProjectItem, ProjectWorkType } from "@/shared/projects_works/types/project.types";
 import {
   createProjectItem,
   filterAndSortProjects,
   nextProjectCode,
   type ProjectStatusFilter,
-} from "../utils/project-list";
-import { initProjectProcedure } from "../utils/project-procedure-data";
-import * as projectApi from "../services/project.api";
-import { useProjectList } from "./useProjectList";
+} from "@/shared/projects_works/utils/project-list";
+import { initProjectProcedure } from "@/shared/projects_works/utils/project-procedure-data";
+import * as projectApi from "@/shared/projects_works/services/project.api";
+import { useProjectList } from "@/shared/projects_works/hooks/useProjectList";
 import { useProjectMutations } from "./useProjectMutations";
 
 const PAGE_SIZE = 15;

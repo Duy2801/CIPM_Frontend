@@ -1,4 +1,4 @@
-import type { Staff, Team } from "../types/personnel.types";
+import type { Staff, Team } from "@/shared/personnel-assignment/types/personnel.types";
 
 /**
  * Tính trọng số thứ bậc chức vụ trong cơ quan BQL ĐTXD:

@@ -2,14 +2,14 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MATRIX_PERMISSIONS } from "../constants/role-matrix-data";
-import { hasBackendSession } from "../services/backend";
-import * as personnelApi from "../services/personnel.api";
-import { toApiPermissionCode } from "../services/personnel.mapper";
+import { MATRIX_PERMISSIONS } from "@/shared/personnel-assignment/constants/role-matrix-data";
+import { hasBackendSession } from "@/config/backend";
+import * as personnelApi from "@/shared/personnel-assignment/services/personnel.api";
+import { toApiPermissionCode } from "@/shared/personnel-assignment/services/personnel.mapper";
 import { getAllRbacPermissions, getStaffEffectivePermissions, type RbacPermissionItem } from "../utils/personnel-rbac";
 import { useStaffDetail } from "./usePersonnelAccess";
-import { personnelKeys } from "./usePersonnelQueries";
-import { useRoleMatrix } from "./useRoleMatrix";
+import { personnelKeys } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
+import { useRoleMatrix } from "@/shared/personnel-assignment/hooks/useRoleMatrix";
 
 /** Danh mục quyền backend, tên lấy theo ma trận phân quyền */
 const BACKEND_PERMISSION_CATALOG: RbacPermissionItem[] = MATRIX_PERMISSIONS.map((p) => ({

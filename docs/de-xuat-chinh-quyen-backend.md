@@ -402,7 +402,7 @@ Thứ tự nhóm: Bảng điều khiển → Việc cần xử lý → Dự án 
 
 ## 9. Phía frontend sẽ làm sau khi backend chốt
 
-- Cập nhật `MATRIX_MODULES` / `MATRIX_PERMISSIONS` (`personnel-assignment/constants/role-matrix-data.ts`) theo mục 2. Ẩn các nhóm M4, M6, M7, M8.
+- Cập nhật `MATRIX_MODULES` / `MATRIX_PERMISSIONS` (`shared/personnel-assignment/constants/role-matrix-data.ts`) theo mục 2. Ẩn các nhóm M4, M6, M7, M8.
 - Cập nhật `BACKEND_PERMISSION_TO_MATRIX_ID` (`src/access-control.ts`) và `ROUTE_PERMISSIONS`. Thêm route `/reports` với quyền `report:view`.
 - Gắn quyền cho từng nút theo mục 3, đặc biệt các chỗ đang mở tự do:
   - Màn Báo cáo (xem, nhập, xuất, loại báo cáo)

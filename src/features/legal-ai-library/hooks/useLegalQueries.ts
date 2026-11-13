@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useActivityLogVersion } from "@/features/personnel-assignment/hooks/useActivityLogVersion";
+import { useActivityLogVersion } from "@/shared/personnel-assignment/hooks/useActivityLogVersion";
 import * as legalApi from "../services/legal.api";
 import type { AttachedDocumentFile, LegalDocument } from "../types/legal-ai.types";
 

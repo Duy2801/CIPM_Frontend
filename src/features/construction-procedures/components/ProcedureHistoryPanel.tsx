@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui";
-import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
-import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
-import type { ProjectProcedureData, StepStatus } from "../types/procedure.types";
+import ActivityDateFilter, { toLocalDate } from "@/shared/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
+import type { ProjectProcedureData, StepStatus } from "@/shared/construction-procedures/types/procedure.types";
 
 interface ProcedureHistoryPanelProps {
   projects: ProjectProcedureData[];

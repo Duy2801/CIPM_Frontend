@@ -1,7 +1,7 @@
 import type { UploadedAttachment } from "@/components/ui";
-import { withBackend } from "@/api/backend";
+import { withBackend } from "@/config/backend";
 import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
-import { uploadProjectFileApi } from "@/api/project-file.api";
+import { uploadProjectFileApi } from "@/shared/projects_works/api/project-file.api";
 import * as backend from "../api/my-tasks.backend";
 import { buildMyTaskData, type MyTaskData, type TaskRef } from "../utils/my-task-data";
 import type { TaskActor, TaskIdentity } from "../utils/my-tasks";

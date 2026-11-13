@@ -2,9 +2,9 @@
 
 import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Flex, Modal, Text } from "@/components/ui";
-import type { Disbursement, FinanceRolePermissions } from "../types/finance.types";
+import type { Disbursement, FinanceRolePermissions } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
-import type { Contract, FinanceProject } from "../types/finance.types";
+import type { Contract, FinanceProject } from "@/shared/finance-settlement/types/finance.types";
 
 interface DisbursementActionsProps {
   disbursement: Disbursement;

@@ -6,7 +6,7 @@ import { ACTION_COL, ASSIGNEE_COL, STEP_TYPE_OPTIONS, TYPE_COL } from "../consta
 import type { StepRowEdit } from "../hooks/useStepRowEdit";
 import type { StepStaff } from "../hooks/useStepStaff";
 import type { StepFlowProps } from "../hooks/useStepTree";
-import type { ProcedureStep, StepType } from "../types/procedure.types";
+import type { ProcedureStep, StepType } from "@/shared/construction-procedures/types/procedure.types";
 import StepFlowCell from "./StepFlowCell";
 import {
   ICON_BUTTON_CLASS,

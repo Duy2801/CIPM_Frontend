@@ -11,8 +11,8 @@ import {
 } from "@ant-design/icons";
 import { Tooltip } from "@/components/ui";
 import { cn } from "@/utils/cn";
-import { MY_TASK_COLUMNS, type MyTaskColumn } from "../constants/my-task-tabs";
-import { useMyTaskColumns } from "../hooks/useMyTaskQueries";
+import { MY_TASK_COLUMNS, type MyTaskColumn } from "@/shared/my-tasks/constants/my-task-tabs";
+import { useMyTaskColumns } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import MyTaskCard from "./MyTaskCard";
 
 const COLUMN_STYLE: Record<MyTaskColumn, { icon: ReactNode; bar: string; iconBox: string; header: string; title: string }> = {

@@ -5,8 +5,8 @@ import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { Button, InputNumber, Select, Tooltip } from "@/components/ui";
 import { ACTION_COL, ASSIGNEE_COL, DATE_COL, EMAIL_COL, SUPERVISOR_COL } from "../constants/step-table";
 import { FLOATING_LAYER_SELECTOR } from "../hooks/useStepRowEdit";
-import type { ProcedureStep } from "../types/procedure.types";
-import { getStepDays } from "../utils/step-duration";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
+import { getStepDays } from "@/shared/construction-procedures/utils/step-duration";
 
 const showStaffName = ({ value }: { value: string | number }) => String(value);
 

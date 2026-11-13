@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ProcedureStep, StepType } from "../types/procedure.types";
-import { buildDurationFields, getStepDays } from "../utils/step-duration";
+import type { ProcedureStep, StepType } from "@/shared/construction-procedures/types/procedure.types";
+import { buildDurationFields, getStepDays } from "@/shared/construction-procedures/utils/step-duration";
 import { missingFieldsMessage, missingStepFields, type StepRequiredField } from "../utils/step-validation";
 import type { StepStaff } from "./useStepStaff";
 

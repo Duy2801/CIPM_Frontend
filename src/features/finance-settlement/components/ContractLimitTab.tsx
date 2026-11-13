@@ -20,7 +20,7 @@ import {
 import type { ColumnsType } from "@/components/ui";
 import { FilterChip, SectionIntro } from "@/components/workspace";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
-import type { DisbursementPrefill } from "../types/finance.types";
+import type { DisbursementPrefill } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
 import { useProjectScope } from "@/components/workspace";
 

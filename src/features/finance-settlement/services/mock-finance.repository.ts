@@ -1,4 +1,4 @@
-import { FINANCE_MOCK_DATA } from "../constants/finance-mock-data.ts";
+import { FINANCE_MOCK_DATA } from "@/shared/finance-settlement/constants/finance-mock-data.ts";
 import type {
   ApprovalEvent,
   CapitalPlan,
@@ -8,11 +8,11 @@ import type {
   DisbursementInput,
   FinanceDataset,
   SettlementRecord,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 import { canCompleteSettlementStep } from "../utils/finance-rules.ts";
 import type { FinanceRepository, SettlementStepPayload } from "./finance.repository.ts";
 import { getSharedProjects, useProjectStore } from "@/stores/project.store";
-import type { ProjectItem } from "@/features/projects_works/types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 

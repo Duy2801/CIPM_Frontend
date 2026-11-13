@@ -7,8 +7,8 @@ import { normalizeSearchText } from "@/utils/search-text";
 import { useConfirmAction } from "../hooks/useConfirmAction";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
 import { useUpdateTeam } from "../hooks/usePersonnelMutations";
-import { useTeams } from "../hooks/usePersonnelQueries";
-import type { Team } from "../types/personnel.types";
+import { useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
+import type { Team } from "@/shared/personnel-assignment/types/personnel.types";
 
 /** Tên phòng ban trên tiêu đề, kèm bút chì để đổi tên tại chỗ (Lưu / Hủy) nếu có quyền */
 export default function DirectoryTeamName({ team }: { team: Team }) {

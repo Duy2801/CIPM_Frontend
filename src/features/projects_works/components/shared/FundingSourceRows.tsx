@@ -6,7 +6,7 @@ import { DropdownAddOption } from "@/components/workspace";
 import { formatMoneyString, parseMoney } from "@/utils/format-money";
 import { FUNDING_SOURCE_OPTIONS } from "../../constants/project-enums";
 import { useCustomOptions } from "../../hooks/useCustomOptions";
-import type { FundingSourceType } from "../../types/project.types";
+import type { FundingSourceType } from "@/shared/projects_works/types/project.types";
 import { DROPDOWN_LIST_HEIGHT, FUNDING_STORAGE_KEY, sameText } from "../../utils/custom-options";
 import type { FundingLine } from "../../utils/create-project-form";
 

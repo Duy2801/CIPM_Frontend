@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ProcedureStep } from "../types/procedure.types";
-import { getParentCode } from "../utils/step-dependencies";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
+import { getParentCode } from "@/shared/construction-procedures/utils/step-dependencies";
 import { getAncestorCodes, getStepDepth } from "../utils/step-tree";
 
 export interface StepFlowProps {

@@ -5,10 +5,10 @@ import { EditOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Pagination, Switch, Tag, Tooltip } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
-import { useAuth } from "@/features/auth";
-import type { ProjectItem } from "../../types/project.types";
+import { useAuth } from "@/shared/auth";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import ProjectProgressCell from "./ProjectProgressCell";
-import { PlainColumnHeader, SortColumnHeader } from "./ProjectsTableHeaders";
+import { PlainColumnHeader, SortColumnHeader } from "@/shared/projects_works/components/list/ProjectsTableHeaders";
 import {
   canDeleteOrCloseProject,
 } from "../../utils/project-permissions";

@@ -2,7 +2,7 @@
 
 import { SearchOutlined } from "@ant-design/icons";
 import { Button, Flex, Input, Select } from "@/components/ui";
-import { useTeams } from "../hooks/usePersonnelQueries";
+import { useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
 
 export interface DirectoryFilters {
   search: string;

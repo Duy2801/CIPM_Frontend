@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { HistoryOutlined } from "@ant-design/icons";
-import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
 import { useLegalHistory } from "../hooks/useLegalQueries";
 import type { LegalDocument } from "../types/legal-ai.types";
 import { getDocumentHistory } from "../utils/legal-history";

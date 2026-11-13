@@ -70,16 +70,16 @@ const shouldReturnStep =
 
 **a) Thiếu `isEnabled` bị hiểu là "không áp dụng"**
 
-- `src/features/projects_works/services/project.mapper.ts` → `toProjectStep`: trước đây gán thẳng `isEnabled: step.isEnabled` → thành `undefined`.
-- `src/features/my-tasks/utils/my-tasks.ts` dòng 99 chỉ giữ bước có `step.isEnabled` đúng → **toàn bộ 25 bước bị loại** trước khi chia cột → bảng trống.
+- `src/shared/projects_works/services/project.mapper.ts` → `toProjectStep`: trước đây gán thẳng `isEnabled: step.isEnabled` → thành `undefined`.
+- `src/shared/my-tasks/utils/my-tasks.ts` dòng 99 chỉ giữ bước có `step.isEnabled` đúng → **toàn bộ 25 bước bị loại** trước khi chia cột → bảng trống.
 
 **b) Lỗi API bị "nuốt"**
 
-- `src/features/my-tasks/hooks/useMyTaskQueries.ts` dòng 47: `return data ?? EMPTY_DATA;` — API lỗi thì cũng chỉ hiện bảng trống, không báo gì, nên khó phát hiện nguyên nhân.
+- `src/shared/my-tasks/hooks/useMyTaskQueries.ts` dòng 47: `return data ?? EMPTY_DATA;` — API lỗi thì cũng chỉ hiện bảng trống, không báo gì, nên khó phát hiện nguyên nhân.
 
 ## 5. Phân quyền ở frontend (đã đúng quy tắc)
 
-`src/features/my-tasks/utils/my-task-data.ts`, `src/features/my-tasks/utils/my-tasks.ts`:
+`src/shared/my-tasks/utils/my-task-data.ts`, `src/shared/my-tasks/utils/my-tasks.ts`:
 
 - Cột việc của mình: chỉ bước giao cho người đăng nhập (`isMine`).
 - Cột Chờ duyệt: chỉ bước đang chờ duyệt mà người đó có quyền duyệt (`canReview`).

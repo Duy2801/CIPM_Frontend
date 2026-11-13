@@ -1,6 +1,6 @@
 "use client";
 
-import { useMyTask } from "../hooks/useMyTaskQueries";
+import { useMyTask } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import MyTaskAttachmentList from "./MyTaskAttachmentList";
 import { MyTaskEmpty, MyTaskHeading } from "./MyTaskSection";
 

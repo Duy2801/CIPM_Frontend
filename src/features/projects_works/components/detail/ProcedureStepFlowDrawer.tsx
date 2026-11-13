@@ -4,13 +4,13 @@ import React from "react";
 import { FileTextOutlined } from "@ant-design/icons";
 import { Drawer, STANDARD_DRAWER_WIDTH } from "@/components/ui";
 import { StepHeading } from "@/components/workspace";
-import { getDepartmentStaff } from "@/features/construction-procedures/constants/procedure-department-templates";
-import type { ProcedureStep } from "@/features/construction-procedures/types/procedure.types";
+import { getDepartmentStaff } from "@/shared/construction-procedures/constants/procedure-department-templates";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
 import { STEP_FLOW_META } from "../../constants/procedure-step-status";
 import type { ProjectProcedureController } from "../../hooks/useProjectProcedure";
-import { getStepFlow } from "../../utils/project-procedure-flow";
+import { getStepFlow } from "@/shared/projects_works/utils/project-procedure-flow";
 
 interface ProcedureStepFlowDrawerProps {
   step: ProcedureStep | null;

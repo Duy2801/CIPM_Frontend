@@ -1,5 +1,5 @@
 import { MATRIX_PERMISSIONS, type MatrixRole } from "../constants/role-matrix-data";
-import { withBackend } from "@/api/backend";
+import { withBackend } from "@/config/backend";
 import { toApiPermissionCode, toApiRoleCode, toRoleCode, type ApiRole } from "./personnel.mapper";
 import * as backend from "../api/role-matrix.backend";
 import { loadActiveRoles, loadDeletedRoleCodes, loadLockedRoleCodes, loadRolePermissions } from "./role-matrix.storage";

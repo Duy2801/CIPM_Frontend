@@ -1,4 +1,4 @@
-import type { ProjectItem } from "@/features/projects_works/types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 
 export type ScheduleGroup = "ahead" | "late" | "onTrack";
 

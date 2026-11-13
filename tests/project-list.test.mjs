@@ -6,7 +6,7 @@ import {
   createProjectItem,
   filterAndSortProjects,
   nextProjectCode,
-} from "../src/features/projects_works/utils/project-list.ts";
+} from "../src/shared/projects_works/utils/project-list.ts";
 
 const base = (over) => ({
   id: "P1",

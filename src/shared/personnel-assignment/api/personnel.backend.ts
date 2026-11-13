@@ -1,5 +1,5 @@
 import apiClient from "@/config";
-import type { ApiAuditLog } from "@/api/audit-log.api";
+import type { ApiAuditLog } from "@/shared/audit-logs/api/audit-log.api";
 import type {
   ApiDepartment,
   ApiDepartmentPosition,

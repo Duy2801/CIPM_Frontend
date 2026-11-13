@@ -1,9 +1,9 @@
-import { isSameDepartment } from "@/features/construction-procedures/constants/procedure-department-templates";
-import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
-import type { ProjectProcedureData } from "@/features/construction-procedures/types/procedure.types";
+import { isSameDepartment } from "@/shared/construction-procedures/constants/procedure-department-templates";
+import type { ProcedureLibraryItem } from "@/shared/construction-procedures/utils/procedure-library";
+import type { ProjectProcedureData } from "@/shared/construction-procedures/types/procedure.types";
 import { DEPARTMENT_OPTIONS } from "../constants/project-enums";
-import { sameDepartmentKey } from "./project-procedure-data";
-import { getAppliedDepartments } from "./project-procedure-flow";
+import { sameDepartmentKey } from "@/shared/projects_works/utils/project-procedure-data";
+import { getAppliedDepartments } from "@/shared/projects_works/utils/project-procedure-flow";
 
 export const procedureDepartment = (procedure: ProcedureLibraryItem) =>
   procedure.department

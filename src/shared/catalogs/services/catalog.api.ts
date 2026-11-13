@@ -1,4 +1,4 @@
-import { withBackend } from "@/api/backend";
+import { withBackend } from "@/config/backend";
 import * as backend from "../api/catalog.backend";
 import type { ApiCatalogItem, CatalogType } from "./catalog.types";
 

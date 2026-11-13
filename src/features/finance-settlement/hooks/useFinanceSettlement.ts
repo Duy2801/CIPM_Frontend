@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import type {
   CapitalPlanAdjustmentInput,
   CapitalPlanInput,
   DisbursementInput,
   FinanceDataset,
   FinanceFilters,
-} from "../types/finance.types";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+} from "@/shared/finance-settlement/types/finance.types";
+import { hasBackendSession } from "@/config/backend";
 import { mockFinanceRepository } from "../services/mock-finance.repository";
 import type { SettlementStepPayload } from "../services/finance.repository";
 import { getWorkingDaysUntil, validateDisbursement } from "../utils/finance-rules";

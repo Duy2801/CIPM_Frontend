@@ -2,15 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import { getProjectHistory } from "../../services/project.api";
-import { projectKeys, useProject } from "../../hooks/useProjectList";
+import { hasBackendSession } from "@/config/backend";
+import { getProjectHistory } from "@/shared/projects_works/services/project.api";
+import { projectKeys, useProject } from "@/shared/projects_works/hooks/useProjectList";
 import { Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
-import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
-import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
-import type { ProcedureHistoryLog } from "@/features/construction-procedures/types/procedure.types";
-import type { ProjectItem } from "../../types/project.types";
+import ActivityDateFilter, { toLocalDate } from "@/shared/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
+import type { ProcedureHistoryLog } from "@/shared/construction-procedures/types/procedure.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 
 const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;
 

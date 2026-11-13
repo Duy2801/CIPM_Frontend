@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 import { PERSONNEL_SELECT_OPTIONS, PROJECT_NATURE_OPTIONS } from "../../constants/project-enums";
 import { useCreateProjectForm } from "../../hooks/useCreateProjectForm";
-import type { ProjectFormData, ProjectNature } from "../../types/project.types";
+import type { ProjectFormData, ProjectNature } from "@/shared/projects_works/types/project.types";
 import { NATURE_STORAGE_KEY } from "../../utils/custom-options";
 import CustomOptionSelect from "../shared/CustomOptionSelect";
 import FundingSourceRows from "../shared/FundingSourceRows";

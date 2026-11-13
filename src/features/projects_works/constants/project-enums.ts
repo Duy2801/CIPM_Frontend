@@ -1,4 +1,4 @@
-import type { ProjectHealthStatus, ProjectNature, ProjectStage, ProjectStatusFilter } from "../types/project.types";
+import type { ProjectHealthStatus, ProjectNature, ProjectStage, ProjectStatusFilter } from "@/shared/projects_works/types/project.types";
 
 export const PROJECT_STATUS_TABS: { key: ProjectStatusFilter; label: string }[] = [
   { key: "ALL", label: "Tất cả" },

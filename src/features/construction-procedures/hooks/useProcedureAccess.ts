@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import { hasMatrixPermission } from "@/access-control";
 
 export function useProcedureAccess() {

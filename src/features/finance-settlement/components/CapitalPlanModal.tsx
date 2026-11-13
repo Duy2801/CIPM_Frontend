@@ -12,7 +12,7 @@ import type {
   CapitalPlanInput,
   CapitalSource,
   FinanceProject,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions } from "../utils/finance-rules";
 import { useProjectScope } from "@/components/workspace";
 

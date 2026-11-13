@@ -1,5 +1,5 @@
 import type { AuthUser } from "@/types/auth";
-import type { ProjectItem } from "../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import { getUserEffectivePermissions } from "@/access-control";
 
 export interface PermissionCheckResult {

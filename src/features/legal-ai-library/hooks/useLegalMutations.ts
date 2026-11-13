@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
-import { appendActivity } from "@/features/personnel-assignment/utils/activity-log";
+import { appendActivity } from "@/shared/personnel-assignment/utils/activity-log";
 import { useAuthStore } from "@/stores/auth.store";
 import { LEGAL_LOG_MODULE, STATUS_META, getCategoryLabel } from "../constants/legal-labels";
 import * as legalApi from "../services/legal.api";

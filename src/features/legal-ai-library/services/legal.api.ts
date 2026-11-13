@@ -1,5 +1,6 @@
-import { withBackend } from "@/features/personnel-assignment/services/backend";
-import { getPersonnelActivities, type ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
+import { getAuditLogsApi } from "@/shared/audit-logs/api/audit-log.api";
+import { withBackend } from "@/config/backend";
+import { getPersonnelActivities, type ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import * as backend from "../api/legal.backend";
 import { LEGAL_LOG_MODULE } from "../constants/legal-labels";
 import type { AttachedDocumentFile, LegalDocument } from "../types/legal-ai.types";
@@ -62,7 +63,7 @@ export function getDocument(documentId: string): Promise<LegalDocument> {
 /** Lịch sử thay đổi của thư viện, hoặc của một văn bản khi có `documentId` */
 export function getLegalHistory(documentId?: string): Promise<ActivityEntry[]> {
   return withBackend(
-    async () => (await backend.getLegalAuditLogsApi(documentId)).map(toLegalActivityEntry),
+    async () => (await getAuditLogsApi({ module: "legal_library", targetId: documentId })).map(toLegalActivityEntry),
     () => getPersonnelActivities().filter((e) => e.module === LEGAL_LOG_MODULE),
   );
 }

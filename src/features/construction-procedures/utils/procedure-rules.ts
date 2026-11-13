@@ -1,7 +1,7 @@
 import type {
   AlertLevel,
   ProcedureStep,
-} from "../types/procedure.types";
+} from "@/shared/construction-procedures/types/procedure.types";
 
 export interface ProcedureAlertItem {
   step: ProcedureStep;

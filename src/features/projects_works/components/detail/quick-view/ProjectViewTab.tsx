@@ -5,7 +5,7 @@ import { Button, Flex, Progress, Tag, Text } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
 import type { AuthUser } from "@/types/auth";
 import { getProjectHealthStatus } from "../../../constants/project-enums";
-import type { ProjectItem } from "../../../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import { canUserDo } from "@/access-control";
 import { ProjectHistorySection } from "./ProjectProgressLogSection";
 import { ProjectDocumentsSection } from "../ProjectDocumentsSection";

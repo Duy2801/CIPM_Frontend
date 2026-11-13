@@ -4,7 +4,7 @@ import type {
   ProjectFormData,
   ProjectNature,
   ProjectWorkType,
-} from "../types/project.types";
+} from "@/shared/projects_works/types/project.types";
 
 export interface FundingLine {
   id: string;

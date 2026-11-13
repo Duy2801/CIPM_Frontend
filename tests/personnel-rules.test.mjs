@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PERSONNEL_MOCK_DATA } from "../src/features/personnel-assignment/constants/personnel-mock-data.ts";
+import { PERSONNEL_MOCK_DATA } from "../src/shared/personnel-assignment/constants/personnel-mock-data.ts";
 import { PERSONNEL_TAB_LABELS } from "../src/features/personnel-assignment/constants/personnel-labels.ts";
 import {
   getWorkload,
@@ -12,7 +12,7 @@ import {
 } from "../src/features/personnel-assignment/utils/personnel-rules.ts";
 import { getPersonnelRolePermissions } from "../src/features/personnel-assignment/utils/personnel-permissions.ts";
 import { buildPersonnelTasks } from "../src/features/personnel-assignment/utils/personnel-workspace.ts";
-import { createMockPersonnelRepository } from "../src/features/personnel-assignment/services/mock-personnel.repository.ts";
+import { createMockPersonnelRepository } from "../src/shared/personnel-assignment/services/mock-personnel.repository.ts";
 
 const TODAY = "2026-09-20";
 const { staff } = PERSONNEL_MOCK_DATA;

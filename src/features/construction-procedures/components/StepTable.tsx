@@ -16,9 +16,9 @@ import type { StepInlineAdd } from "../hooks/useStepInlineAdd";
 import type { StepRowEdit } from "../hooks/useStepRowEdit";
 import type { StepStaff } from "../hooks/useStepStaff";
 import type { StepTree } from "../hooks/useStepTree";
-import { useStickyScrollbar } from "../hooks/useStickyScrollbar";
-import type { ProcedureStep } from "../types/procedure.types";
-import { buildDurationFields, getSpanDays } from "../utils/step-duration";
+import { useStickyScrollbar } from "@/shared/construction-procedures/hooks/useStickyScrollbar";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
+import { buildDurationFields, getSpanDays } from "@/shared/construction-procedures/utils/step-duration";
 import StepInlineAddRow from "./StepInlineAddRow";
 import StepTableRow from "./StepTableRow";
 

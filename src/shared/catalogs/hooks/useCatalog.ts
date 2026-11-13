@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
-import { hasBackendSession } from "@/api/backend";
+import { hasBackendSession } from "@/config/backend";
 import * as catalogApi from "../services/catalog.api";
 import type { ApiCatalogItem, CatalogType } from "../services/catalog.types";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useMyTaskStore } from "../hooks/useMyTaskStore";
+import { useMyTaskStore } from "@/shared/my-tasks/hooks/useMyTaskStore";
 import MyTaskBoard from "./MyTaskBoard";
 import MyTaskDrawer from "./MyTaskDrawer";
 import MyTaskReasonModal from "./MyTaskReasonModal";

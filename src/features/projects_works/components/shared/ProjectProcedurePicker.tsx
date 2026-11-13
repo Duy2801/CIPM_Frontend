@@ -2,8 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { Checkbox, Select } from "@/components/ui";
-import { getProcedureCategories } from "@/features/construction-procedures/constants/procedure-categories";
-import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
+import { getProcedureCategories } from "@/shared/construction-procedures/constants/procedure-categories";
+import type { ProcedureLibraryItem } from "@/shared/construction-procedures/utils/procedure-library";
 import { departmentName, procedureDepartment } from "../../utils/procedure-target";
 import ProcedurePickerRow from "./ProcedurePickerRow";
 

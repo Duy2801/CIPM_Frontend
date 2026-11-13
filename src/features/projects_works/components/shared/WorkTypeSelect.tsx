@@ -1,7 +1,7 @@
 "use client";
 
 import { WORK_TYPE_OPTIONS } from "../../constants/project-enums";
-import type { ProjectWorkType } from "../../types/project.types";
+import type { ProjectWorkType } from "@/shared/projects_works/types/project.types";
 import { WORK_TYPE_STORAGE_KEY } from "../../utils/custom-options";
 import CustomOptionSelect from "./CustomOptionSelect";
 

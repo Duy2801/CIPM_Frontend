@@ -7,7 +7,7 @@ import { getInitials } from "@/utils/initials";
 import { isStaffTitleLocked, useLockedTitles } from "../hooks/useLockedTitles";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
 import { useRoleNameMap } from "../hooks/useRoleNameMap";
-import type { Staff } from "../types/personnel.types";
+import type { Staff } from "@/shared/personnel-assignment/types/personnel.types";
 import { ACCOUNT_STATUS_LEGEND, getAccountStatus, getStaffDisplayRoles } from "../utils/staff-display-roles";
 
 /** Chức danh chính + "+N" gom các chức danh còn lại (rê chuột xem đủ) */

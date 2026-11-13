@@ -2,7 +2,7 @@
 
 import { Drawer, STANDARD_DRAWER_WIDTH } from "@/components/ui";
 import { StepHeading } from "@/components/workspace";
-import { useMyTask, useMyTaskAccess } from "../hooks/useMyTaskQueries";
+import { useMyTask, useMyTaskAccess } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import MyTaskDrawerFooter from "./MyTaskDrawerFooter";
 import MyTaskOverview from "./MyTaskOverview";
 import MyTaskResultView from "./MyTaskResultView";

@@ -1,10 +1,11 @@
-import { withBackend } from "@/features/personnel-assignment/services/backend";
-import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
+import { getAuditLogsApi } from "@/shared/audit-logs/api/audit-log.api";
+import { withBackend } from "@/config/backend";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import type { AuthUser } from "@/types/auth";
 import * as backend from "../api/report.backend";
 import type { ReportFile, ReportType } from "../types/report.types";
 import { mockReportRepository } from "./mock-report.repository";
-import { toReportActivityEntry, toReportFile, toReportType } from "./report.mapper";
+import { REPORT_AUDIT_MODULE, toReportActivityEntry, toReportFile, toReportType } from "./report.mapper";
 
 const repo = mockReportRepository;
 
@@ -60,7 +61,7 @@ export function downloadReport(reportId: string, user: AuthUser | null): Promise
 
 export function getReportHistory(typeId?: string): Promise<ActivityEntry[]> {
   return withBackend(
-    async () => (await backend.getReportAuditLogsApi(typeId)).map(toReportActivityEntry),
+    async () => (await getAuditLogsApi({ module: REPORT_AUDIT_MODULE, targetId: typeId })).map(toReportActivityEntry),
     () => repo.getHistory(typeId),
   );
 }

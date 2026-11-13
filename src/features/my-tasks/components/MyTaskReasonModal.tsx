@@ -1,10 +1,10 @@
 "use client";
 
 import { ReasonModal } from "@/components/workspace";
-import { DECLINE_REASON_PRESETS, INCIDENT_REASON_PRESETS, REJECT_REASON_PRESETS } from "../constants/my-task-tabs";
+import { DECLINE_REASON_PRESETS, INCIDENT_REASON_PRESETS, REJECT_REASON_PRESETS } from "@/shared/my-tasks/constants/my-task-tabs";
 import { useMyTaskActions } from "../hooks/useMyTaskActions";
-import { useMyTask } from "../hooks/useMyTaskQueries";
-import type { MyTaskReasonKind } from "../hooks/useMyTaskStore";
+import { useMyTask } from "@/shared/my-tasks/hooks/useMyTaskQueries";
+import type { MyTaskReasonKind } from "@/shared/my-tasks/hooks/useMyTaskStore";
 
 const REASON_TEXT: Record<
   MyTaskReasonKind,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ProjectItem } from "../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import { FIELD_LABELS, formatField, type EditableField, type EditablePatch } from "../utils/project-detail-fields";
 
 export interface FieldChange {

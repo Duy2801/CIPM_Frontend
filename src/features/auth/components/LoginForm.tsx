@@ -2,7 +2,7 @@
 
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Flex, Form, Input, Text, useForm } from "@/components/ui";
-import type { LoginCredentials } from "../types/auth.types";
+import type { LoginCredentials } from "@/shared/auth/types/auth.types";
 
 interface LoginFormProps {
   onSubmit: (values: LoginCredentials) => void;

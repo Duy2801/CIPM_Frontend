@@ -1,5 +1,5 @@
-import { getAuditLogsApi } from "@/api/audit-log.api";
-import { hasBackendSession, withBackend } from "@/api/backend";
+import { getAuditLogsApi } from "@/shared/audit-logs/api/audit-log.api";
+import { hasBackendSession, withBackend } from "@/config/backend";
 import * as backend from "../api/procedure.backend";
 import type { ProcedureStep } from "../types/procedure.types";
 import {

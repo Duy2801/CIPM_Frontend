@@ -1,4 +1,4 @@
-import type { MatrixRole } from "../constants/role-matrix-data";
+import type { MatrixRole } from "@/shared/personnel-assignment/constants/role-matrix-data";
 
 /** Tên (viết thường) các chức danh đã khóa trong ma trận phân quyền */
 export function getLockedTitles(matrixRoles: MatrixRole[], lockedRoleCodes: string[]): Set<string> {

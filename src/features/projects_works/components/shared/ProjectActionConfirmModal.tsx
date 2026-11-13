@@ -4,7 +4,7 @@ import React from "react";
 import { WarningOutlined, LockOutlined, DeleteOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Modal, Button } from "@/components/ui";
 import { formatMoneyString } from "@/utils/format-money";
-import type { ProjectActionType, ProjectItem } from "../../types/project.types";
+import type { ProjectActionType, ProjectItem } from "@/shared/projects_works/types/project.types";
 
 export interface ProjectActionConfirmModalProps {
   open: boolean;

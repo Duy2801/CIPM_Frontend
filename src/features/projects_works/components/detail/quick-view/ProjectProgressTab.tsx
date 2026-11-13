@@ -9,7 +9,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Card, Flex, Input, Select, Text } from "@/components/ui";
 import type { AuthUser } from "@/types/auth";
-import type { ProjectItem, ProjectStage } from "../../../types/project.types";
+import type { ProjectItem, ProjectStage } from "@/shared/projects_works/types/project.types";
 import {
   PROJECT_STATUS_TABS,
   STAGE_DISPLAY_NAMES,

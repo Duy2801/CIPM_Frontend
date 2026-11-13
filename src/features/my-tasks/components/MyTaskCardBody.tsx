@@ -13,8 +13,8 @@ import {
 import { Tooltip } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
-import { useMyTask } from "../hooks/useMyTaskQueries";
-import type { MyTask, MyTaskTab } from "../utils/my-tasks";
+import { useMyTask } from "@/shared/my-tasks/hooks/useMyTaskQueries";
+import type { MyTask, MyTaskTab } from "@/shared/my-tasks/utils/my-tasks";
 
 const date = (value?: string) => (value ? formatDateVi(value) : "—");
 

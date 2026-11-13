@@ -2,7 +2,7 @@
 
 import { Button, Tooltip } from "@/components/ui";
 import { useMyTaskActions } from "../hooks/useMyTaskActions";
-import { useMyTask, useMyTaskAccess } from "../hooks/useMyTaskQueries";
+import { useMyTask, useMyTaskAccess } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 
 const PRIMARY_RED = "!border-[#DC2626] !bg-[#DC2626] font-semibold hover:!bg-[#B91C1C]";
 const PRIMARY_GREEN = "!border-emerald-600 !bg-emerald-600 font-semibold hover:!bg-emerald-700";

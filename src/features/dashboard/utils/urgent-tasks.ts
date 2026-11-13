@@ -1,5 +1,5 @@
-import type { MyTask, MyTaskTab } from "../../my-tasks/utils/my-tasks.ts";
-import type { UrgentTask } from "../constants/dashboard-mock-data.ts";
+import type { MyTask, MyTaskTab } from "@/shared/my-tasks/utils/my-tasks.ts";
+import type { UrgentTask } from "../types/dashboard.types.ts";
 
 const DUE_SOON_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -57,9 +57,7 @@ export function buildUrgentTasks(groups: Record<MyTaskTab, MyTask[]>, now = new 
           badge: urgency.badge,
           badgeColor: urgency.badgeColor,
           description: urgency.note ? `${stepLabel}: ${urgency.note}` : stepLabel,
-          department: task.department,
           actionText: "Xử lý ngay",
-          actionColor: urgency.badgeColor === "danger" ? "danger" : "brand",
           targetUrl: myTaskUrl(task),
         },
         rank: urgency.rank,

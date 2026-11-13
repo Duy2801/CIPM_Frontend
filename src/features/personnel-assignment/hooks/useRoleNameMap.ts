@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getStoredRoleName, readStoredRoleItems } from "../services/custom-roles.storage";
-import { subscribeRolesUpdated } from "../services/role-matrix.storage";
-import { useRoleMatrix } from "./useRoleMatrix";
+import { subscribeRolesUpdated } from "@/shared/personnel-assignment/services/role-matrix.storage";
+import { useRoleMatrix } from "@/shared/personnel-assignment/hooks/useRoleMatrix";
 
 function loadStoredRoleNames(): Map<string, string> {
   const map = new Map<string, string>();

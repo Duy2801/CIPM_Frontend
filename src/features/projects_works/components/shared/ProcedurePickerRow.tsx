@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CheckOutlined } from "@ant-design/icons";
 import { Input } from "@/components/ui";
 import { cn } from "@/utils/cn";
-import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
+import type { ProcedureLibraryItem } from "@/shared/construction-procedures/utils/procedure-library";
 import { shortProcedureLabel } from "../../utils/procedure-target";
 
 export default function ProcedurePickerRow({

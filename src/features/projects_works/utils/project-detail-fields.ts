@@ -1,6 +1,6 @@
 import { formatMoneyString } from "../../../utils/format-money.ts";
 import { PROJECT_NATURE_OPTIONS } from "../constants/project-enums.ts";
-import type { ProjectItem, ProjectNature } from "../types/project.types";
+import type { ProjectItem, ProjectNature } from "@/shared/projects_works/types/project.types";
 
 export type EditablePatch = Partial<
   Pick<

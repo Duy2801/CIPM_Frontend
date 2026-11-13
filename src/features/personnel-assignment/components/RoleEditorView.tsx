@@ -9,8 +9,8 @@ import PermissionChecklist from "./PermissionChecklist";
 import { useConfirmAction } from "../hooks/useConfirmAction";
 import { usePermissionChangeLog } from "../hooks/usePermissionChangeLog";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
-import { useRoleMatrix, useRoleMatrixActions, useSortedMatrixRoles } from "../hooks/useRoleMatrix";
-import type { ActivityChange } from "../utils/activity-log";
+import { useRoleMatrix, useRoleMatrixActions, useSortedMatrixRoles } from "@/shared/personnel-assignment/hooks/useRoleMatrix";
+import type { ActivityChange } from "@/shared/personnel-assignment/utils/activity-log";
 
 interface RoleEditorViewProps {
   /** Mã chức danh cần xem / sửa; bỏ trống = tạo chức danh mới */

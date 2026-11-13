@@ -1,4 +1,4 @@
-import type { ActivityItem } from "../constants/dashboard-mock-data";
+import type { ActivityItem } from "../types/dashboard.types.ts";
 
 export interface ActivityDetailFact {
   label: string;

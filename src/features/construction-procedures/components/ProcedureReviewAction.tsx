@@ -3,8 +3,8 @@
 import { CheckOutlined, SendOutlined } from "@ant-design/icons";
 import { App } from "antd";
 import { Button, toast, Tooltip } from "@/components/ui";
-import { approveProcedureReview, submitProcedureForReview } from "../services/procedure.service";
-import type { ProcedureLibraryItem } from "../utils/procedure-library";
+import { approveProcedureReview, submitProcedureForReview } from "@/shared/construction-procedures/services/procedure.service";
+import type { ProcedureLibraryItem } from "@/shared/construction-procedures/utils/procedure-library";
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : "Không thể hoàn tất thao tác, vui lòng thử lại.");
 

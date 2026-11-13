@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui";
-import { useProcedureLibrary } from "../hooks/useProcedureLibrary";
-import { createProcedure, toggleProcedure } from "../services/procedure.service";
-import type { StepChange } from "../types/procedure.types";
+import { useProcedureLibrary } from "@/shared/construction-procedures/hooks/useProcedureLibrary";
+import { createProcedure, toggleProcedure } from "@/shared/construction-procedures/services/procedure.service";
+import type { StepChange } from "@/shared/construction-procedures/types/procedure.types";
 import CreateProcedurePage from "./CreateProcedurePage";
 import ProcedureDetailPage from "./ProcedureDetailPage";
 import ProcedureListView from "./ProcedureListView";

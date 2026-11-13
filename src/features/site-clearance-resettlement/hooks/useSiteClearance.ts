@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionFeedback } from "@/components/workspace";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import { todayIso } from "@/utils/date";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+import { hasBackendSession } from "@/config/backend";
 import { mockGpmbRepository } from "../services/mock-gpmb.repository";
 import type { GpmbDataset, HouseholdInput, SpecialStatus, StepCompletionInput } from "../types/gpmb.types";
 import { getGpmbRolePermissions } from "../utils/gpmb-permissions";

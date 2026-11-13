@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { SYSTEM_MATRIX_ROLES } from "../constants/role-matrix-data";
+import { SYSTEM_MATRIX_ROLES } from "@/shared/personnel-assignment/constants/role-matrix-data";
 import { getLockedTitles } from "../utils/assignable-roles";
-import { applyRoleNameOverrides } from "../services/role-matrix.storage";
-import { useRoleMatrix } from "./useRoleMatrix";
+import { applyRoleNameOverrides } from "@/shared/personnel-assignment/services/role-matrix.storage";
+import { useRoleMatrix } from "@/shared/personnel-assignment/hooks/useRoleMatrix";
 
 /** Tên (viết thường) các chức danh đang tắt hoặc đã xóa; tự cập nhật khi thay đổi ở màn phân quyền */
 export function useLockedTitles(): Set<string> {

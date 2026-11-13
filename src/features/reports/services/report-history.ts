@@ -6,7 +6,7 @@ import {
   appendActivity,
   getPersonnelActivities,
   type ActivityEntry,
-} from "@/features/personnel-assignment/utils/activity-log";
+} from "@/shared/personnel-assignment/utils/activity-log";
 import type { AuthUser } from "@/types/auth";
 
 const REPORT_LOG_MODULE = "Báo cáo";

@@ -7,7 +7,7 @@ import type { ColumnsType } from "@/components/ui";
 import { SOURCE_TAG_INTENTS } from "../constants/finance-labels";
 import { SectionIntro } from "@/components/workspace";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
-import type { CapitalPlan, FinanceProject } from "../types/finance.types";
+import type { CapitalPlan, FinanceProject } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions } from "../utils/finance-rules";
 import CapitalPlanModal from "./CapitalPlanModal";
 import CapitalPlanDetailDrawer from "./CapitalPlanDetailDrawer";

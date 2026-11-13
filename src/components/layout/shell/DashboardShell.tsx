@@ -16,11 +16,11 @@ import {
   persistAuthSession,
   refreshSessionUser,
   toAuthUser,
-} from "@/features/auth";
+} from "@/shared/auth";
 import { useAppRefreshStore } from "@/stores/app-refresh.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { getUserEffectivePermissions } from "@/access-control";
-import { ensureMyTasksDemo } from "@/features/my-tasks/utils/my-tasks-demo";
+import { ensureMyTasksDemo } from "@/shared/my-tasks/utils/my-tasks-demo";
 
 interface DashboardShellProps {
   children: React.ReactNode;

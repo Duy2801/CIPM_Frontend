@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMockPersonnelRepository } from "../src/features/personnel-assignment/services/mock-personnel.repository.ts";
+import { createMockPersonnelRepository } from "../src/shared/personnel-assignment/services/mock-personnel.repository.ts";
 
 const phaseId = "AS-DEMO-PHASE-001";
 const childId = "AS-DEMO-TASK-001";

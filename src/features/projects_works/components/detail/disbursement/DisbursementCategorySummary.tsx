@@ -1,7 +1,7 @@
 "use client";
 
 import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
-import { sourceBalance } from "../../../utils/project-disbursement";
+import { sourceBalance } from "@/shared/projects_works/utils/project-disbursement";
 import { money, percent } from "../../../utils/disbursement-format";
 import DisbursementStat, { DisbursementRateStat, DisbursementSummaryBox } from "./DisbursementStat";
 

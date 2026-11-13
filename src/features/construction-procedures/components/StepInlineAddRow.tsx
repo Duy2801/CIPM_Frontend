@@ -3,7 +3,7 @@
 import { Input, Select } from "@/components/ui";
 import { FLOW_GUTTER, FLOW_INDENT, STEP_TYPE_OPTIONS, TYPE_COL } from "../constants/step-table";
 import type { NewStepDraft } from "../hooks/useStepInlineAdd";
-import type { StepType } from "../types/procedure.types";
+import type { StepType } from "@/shared/construction-procedures/types/procedure.types";
 import { getStepDepth } from "../utils/step-tree";
 import { InlineRowActions, StepAssigneeCells, StepDurationInput, StepSupervisorCell } from "./StepTableCells";
 

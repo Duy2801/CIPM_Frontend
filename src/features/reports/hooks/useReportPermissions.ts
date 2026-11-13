@@ -1,7 +1,7 @@
 "use client";
 
 import { hasMatrixPermission } from "@/access-control";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 
 export function useReportPermissions() {
   const { user } = useAuth();

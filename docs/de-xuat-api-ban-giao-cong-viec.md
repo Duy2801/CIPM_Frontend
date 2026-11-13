@@ -56,4 +56,4 @@ Kiểm tra đầu vào:
 
 ## 3. Phía frontend sẽ nối
 
-Trong `src/features/personnel-assignment/services/handover.api.ts`, nhánh backend của `getOpenTasksOf` và `handoverOpenTasks` hiện đang báo chưa hỗ trợ. Khi có API, thay hai nhánh này bằng lời gọi thật. Giao diện giữ nguyên.
+Trong `src/shared/personnel-assignment/services/handover.api.ts`, nhánh backend của `getOpenTasksOf` và `handoverOpenTasks` hiện đang báo chưa hỗ trợ. Khi có API, thay hai nhánh này bằng lời gọi thật. Giao diện giữ nguyên.

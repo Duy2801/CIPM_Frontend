@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { hasBackendSession } from "@/api/backend";
+import { hasBackendSession } from "@/config/backend";
 import { useProjectStore } from "@/stores/project.store";
 import { getProjects } from "../services/project.api";
 

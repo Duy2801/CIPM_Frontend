@@ -1,5 +1,5 @@
 import { PERSONNEL_MOCK_DATA } from "@/shared/personnel-assignment/constants/personnel-mock-data";
-import { hasBackendSession } from "@/api/backend";
+import { hasBackendSession } from "@/config/backend";
 import {
   loadProcedureProjects,
   saveProjectProcedure,

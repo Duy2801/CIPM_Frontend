@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { DeleteOutlined, FileTextOutlined } from "@ant-design/icons";
 import { FilePreviewModal, Tooltip } from "@/components/ui";
-import type { ProcedureDocument } from "@/features/construction-procedures/types/procedure.types";
+import type { ProcedureDocument } from "@/shared/construction-procedures/types/procedure.types";
 import { formatDateVi } from "@/utils/date";
 import { storedFileUrl } from "@/utils/stored-file";
 import { useMyTaskActions } from "../hooks/useMyTaskActions";
-import { useMyTask, useMyTaskIdentity } from "../hooks/useMyTaskQueries";
+import { useMyTask, useMyTaskIdentity } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 
 interface MyTaskAttachmentListProps {
   projectId: string;

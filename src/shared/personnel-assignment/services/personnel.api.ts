@@ -1,9 +1,9 @@
-import { getAuditLogsApi } from "@/api/audit-log.api";
+import { getAuditLogsApi } from "@/shared/audit-logs/api/audit-log.api";
 import { toast } from "@/components/ui";
 import type { Staff, StaffInput, Team, TeamId } from "../types/personnel.types";
 import { getPermissionChangeHistory, getStaffProfileHistory, type ActivityEntry } from "../utils/activity-log";
 import { inferRoleCode, isLeaderTitle } from "../utils/role-code-inference";
-import { isNotFoundError, withBackend } from "@/api/backend";
+import { isNotFoundError, withBackend } from "@/config/backend";
 import { mockPersonnelRepository } from "./mock-personnel.repository";
 import * as backend from "../api/personnel.backend";
 import {

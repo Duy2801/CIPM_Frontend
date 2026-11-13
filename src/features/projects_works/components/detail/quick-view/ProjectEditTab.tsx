@@ -17,7 +17,7 @@ import type {
   ProjectNature,
   ProjectStage,
   ProjectWorkType,
-} from "../../../types/project.types";
+} from "@/shared/projects_works/types/project.types";
 import {
   formFromProject,
   toEditProjectFormData,

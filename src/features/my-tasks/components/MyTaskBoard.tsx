@@ -1,6 +1,6 @@
 "use client";
 
-import { MY_TASK_COLUMN_ORDER } from "../constants/my-task-tabs";
+import { MY_TASK_COLUMN_ORDER } from "@/shared/my-tasks/constants/my-task-tabs";
 import { useHorizontalBoard } from "../hooks/useHorizontalBoard";
 import MyTaskBoardColumn from "./MyTaskBoardColumn";
 import MyTaskScrollButton from "./MyTaskScrollButton";

@@ -6,7 +6,7 @@ import type {
   ProjectNature,
   ProjectStage,
   ProjectWorkType,
-} from "../types/project.types";
+} from "@/shared/projects_works/types/project.types";
 
 export interface EditProjectForm {
   name: string;

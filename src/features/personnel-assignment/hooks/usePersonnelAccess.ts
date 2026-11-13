@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { getStoredUser, useAuth } from "@/features/auth";
+import { getStoredUser, useAuth } from "@/shared/auth";
 import type { AuthUser } from "@/types/auth";
 import { getPersonnelPermissions } from "../utils/personnel-permissions";
 import { resolveStaffBasePermissions } from "../utils/personnel-rbac";
 import { isStaffTitleLocked, useLockedTitles } from "./useLockedTitles";
-import { useStaff, useStaffList, useTeams } from "./usePersonnelQueries";
+import { useStaff, useStaffList, useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
 
 /** Quyền của người đang đăng nhập trong phân hệ Nhân sự (theo ma trận phân quyền) */
 export function usePersonnelPermissions() {

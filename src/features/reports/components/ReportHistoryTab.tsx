@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Card, DEFAULT_LIST_PAGE_SIZE, Pagination } from "@/components/ui";
-import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
-import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
+import ActivityDateFilter, { toLocalDate } from "@/shared/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
 import { useReportHistory } from "../hooks/useReportQueries";
 
 const PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE;

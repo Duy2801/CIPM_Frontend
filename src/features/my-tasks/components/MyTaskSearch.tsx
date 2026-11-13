@@ -3,8 +3,8 @@
 import { AutoComplete } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { Input, Select } from "@/components/ui";
-import { useMyTaskColumns } from "../hooks/useMyTaskQueries";
-import { useMyTaskStore } from "../hooks/useMyTaskStore";
+import { useMyTaskColumns } from "@/shared/my-tasks/hooks/useMyTaskQueries";
+import { useMyTaskStore } from "@/shared/my-tasks/hooks/useMyTaskStore";
 
 export default function MyTaskSearch() {
   const { matchedProjects: projects, procedureOptions: procedures, activeProcedure } = useMyTaskColumns();

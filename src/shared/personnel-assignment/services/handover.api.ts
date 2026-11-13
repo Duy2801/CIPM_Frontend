@@ -4,7 +4,7 @@ import {
   saveProjectProcedure,
 } from "@/shared/construction-procedures/utils/project-procedure-storage";
 import { handoverTasks, isOpenTaskOf, type TaskActor, type TaskIdentity } from "@/shared/my-tasks/utils/my-tasks";
-import { withBackend } from "@/api/backend";
+import { withBackend } from "@/config/backend";
 
 export interface HandoverTask {
   projectId: string;

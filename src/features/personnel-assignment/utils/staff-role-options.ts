@@ -1,6 +1,6 @@
 import type { StoredRoleItem } from "../services/custom-roles.storage";
-import type { Staff, Team } from "../types/personnel.types";
-import { inferRoleCode, isDirectorTitle, isLeaderTitle } from "./role-code-inference.ts";
+import type { Staff, Team } from "@/shared/personnel-assignment/types/personnel.types";
+import { inferRoleCode, isDirectorTitle, isLeaderTitle } from "@/shared/personnel-assignment/utils/role-code-inference.ts";
 
 interface PositionSeed {
   title: string;

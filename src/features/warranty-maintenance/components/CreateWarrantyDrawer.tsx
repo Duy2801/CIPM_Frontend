@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Drawer, Input, MoneyInput, Select } from "@/components/ui";
-import { FINANCE_MOCK_DATA } from "@/features/finance-settlement/constants/finance-mock-data";
+import { FINANCE_MOCK_DATA } from "@/shared/finance-settlement/constants/finance-mock-data";
 import { todayIso } from "@/utils/date";
 import { parseMoney } from "@/utils/format-money";
 import type { BondStatus, WarrantyCreateInput, WarrantyProject, WarrantyRecord } from "../types/warranty.types";

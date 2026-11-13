@@ -1,94 +1,12 @@
-export interface KpiCardData {
-  totalProjects: number;
-  ongoingProjects: number;
-  newProjects: number;
+import type { ActivityItem, DashboardSummary, QuarterlyData } from "../types/dashboard.types.ts";
 
-  disbursedAmount: number;
-  plannedAmount: number;
-  disbursementRate: number;
-
-  delayedProjects: number;
-  criticalDelayed: number;
-  delayedNote: string;
-
-  completedProjects: number;
-  warrantyProjects: number;
-
-  gpmbRate: number;
-  gpmbRemainingHouseholds: number;
-  gpmbHandedOver: number;
-  gpmbTotal: number;
-  gpmbDialogNeeded: number;
-}
-
-export interface QuarterlyData {
-  quarter: string;
-  plan: number;
-  actual: number;
-  isCurrent?: boolean;
-}
-
-export interface UrgentTask {
-  id: string;
-  title: string;
-  badge: string;
-  badgeColor: "danger" | "warning" | "info" | "success";
-  description: string;
-  department: string;
-  actionText: string;
-  actionColor: "danger" | "warning" | "info" | "brand";
-  targetUrl: string;
-}
-
-export interface ActivityItem {
-  id: string;
-  time: string;
-  actor: string;
-  actorTitle?: string;
-  actorDepartment?: string;
-  actorRoleInProject?: string;
-  actorPhone?: string;
-  actorEmail?: string;
-  projectId?: string;
-  projectCode?: string;
-  projectName?: string;
-  projectStage?: string;
-  projectLocation?: string;
-  packageItem?: string;
-  actionType?: string;
-  status?: string;
-  content: string;
-  detailUrl?: string;
-  detailData?: {
-    docNumber?: string;
-    docDate?: string;
-    value?: string;
-    note?: string;
-    nextStep?: string;
-  };
-}
-
-export const mockKpiData: KpiCardData = {
+export const mockDashboardSummary: DashboardSummary = {
   totalProjects: 48,
-  ongoingProjects: 32,
-  newProjects: 16,
-
-  disbursedAmount: 418.5,
-  plannedAmount: 650.0,
-  disbursementRate: 64.4,
-
-  delayedProjects: 5,
-  criticalDelayed: 2,
-  delayedNote: "Cần xử lý bù tiến độ ngay trong tháng 6",
-
   completedProjects: 12,
-  warrantyProjects: 5,
-
-  gpmbRate: 100,
-  gpmbRemainingHouseholds: 57,
-  gpmbHandedOver: 685,
-  gpmbTotal: 742,
-  gpmbDialogNeeded: 12,
+  inProgressProjects: 36,
+  totalInvestment: 650_000_000_000,
+  totalDisbursed: 418_500_000_000,
+  projectsByType: [],
 };
 
 export const mockQuarterlyData: QuarterlyData[] = [
@@ -97,39 +15,6 @@ export const mockQuarterlyData: QuarterlyData[] = [
   { quarter: "Quý 3", plan: 190, actual: 76.5 },
   { quarter: "Quý 4", plan: 150, actual: 0 },
 ];
-
-/**
- * Chuyển chuỗi thời gian tương đối (VD: "14:15 hôm nay", "08:30 2 ngày trước")
- * thành ngày cụ thể dạng dd/MM/yyyy + giờ HH:mm.
- */
-export function resolveActivityTime(relativeTime: string): { date: string; timeOfDay: string } {
-  const now = new Date();
-  const parts = relativeTime.split(" ");
-  const timeOfDay = parts[0]; // "14:15"
-
-  let daysAgo = 0;
-  const rest = parts.slice(1).join(" ");
-
-  if (rest === "hôm nay") {
-    daysAgo = 0;
-  } else if (rest === "hôm qua") {
-    daysAgo = 1;
-  } else if (rest.includes("tuần trước")) {
-    const weeks = parseInt(rest, 10) || 1;
-    daysAgo = weeks * 7;
-  } else if (rest.includes("ngày trước")) {
-    daysAgo = parseInt(rest, 10) || 0;
-  }
-
-  const target = new Date(now);
-  target.setDate(target.getDate() - daysAgo);
-
-  const day = String(target.getDate()).padStart(2, "0");
-  const month = String(target.getMonth() + 1).padStart(2, "0");
-  const year = target.getFullYear();
-
-  return { date: `${day}/${month}/${year}`, timeOfDay };
-}
 
 const rawMockActivities: ActivityItem[] = [
   {
@@ -788,7 +673,7 @@ function enrichActivityItem(item: ActivityItem): ActivityItem {
   let packageItem = "Gói thầu XL-01 · Xây lắp kè bảo vệ bờ";
   let actionType = "Kiểm tra & Giám sát hiện trường";
   let status = "Đã hoàn thành";
-  let docDate = "05/10/2026";
+  const docDate = "05/10/2026";
   let nextStep = "Tiếp tục đôn đốc nhà thầu duy trì ca kíp và báo cáo nhật ký định kỳ.";
 
   if (content.includes("Đông Hồ") || content.includes("đầm Đông Hồ")) {
@@ -842,7 +727,6 @@ function enrichActivityItem(item: ActivityItem): ActivityItem {
     packageItem = "Toàn bộ dự án hoàn thành";
   }
 
-  // Phân loại actionType & trạng thái
   if (content.includes("Nghiệm thu") || content.includes("nghiệm thu")) {
     actionType = "Nghiệm thu kỹ thuật";
     nextStep = "Hoàn tất ký biên bản nghiệm thu và lưu hồ sơ quản lý chất lượng.";
@@ -890,7 +774,6 @@ function enrichActivityItem(item: ActivityItem): ActivityItem {
 }
 
 export const mockActivities: ActivityItem[] = rawMockActivities.map(enrichActivityItem);
-
 
 export const MOCK_WEEKLY_PROGRESS = true;
 

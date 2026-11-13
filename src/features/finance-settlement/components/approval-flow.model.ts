@@ -1,4 +1,4 @@
-import type { ApprovalEvent, Disbursement } from "../types/finance.types.ts";
+import type { ApprovalEvent, Disbursement } from "@/shared/finance-settlement/types/finance.types.ts";
 
 export type ApprovalStageState = "done" | "rejected" | "current" | "waiting";
 

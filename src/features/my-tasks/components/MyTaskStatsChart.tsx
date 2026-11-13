@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import { Card } from "@/components/ui";
 import { cn } from "@/utils/cn";
-import { useMyTaskColumns } from "../hooks/useMyTaskQueries";
+import { useMyTaskColumns } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import MyTaskSearch from "./MyTaskSearch";
 
 const DONUT_SIZE = 104;

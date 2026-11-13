@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { useStaffList } from "@/features/personnel-assignment/hooks/usePersonnelQueries";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import { getDepartmentStaff } from "../constants/procedure-department-templates";
-import type { ProcedureStep } from "../types/procedure.types";
+import { useStaffList } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
+import { hasBackendSession } from "@/config/backend";
+import { getDepartmentStaff } from "@/shared/construction-procedures/constants/procedure-department-templates";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
 
 /**
  * Cán bộ chọn làm người thực hiện bước.

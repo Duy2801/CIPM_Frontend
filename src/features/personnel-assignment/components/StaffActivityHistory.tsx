@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Text } from "@/components/ui";
-import { useStaffActivity } from "../hooks/usePersonnelQueries";
-import ActivityDateFilter, { toLocalDate } from "./ActivityDateFilter";
-import ActivityTimeline from "./ActivityTimeline";
+import { useStaffActivity } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
+import ActivityDateFilter, { toLocalDate } from "@/shared/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
 
 /** Số dòng hiện trước; bấm "Xem thêm" để hiện thêm từng ấy dòng */
 const PAGE_SIZE = 5;

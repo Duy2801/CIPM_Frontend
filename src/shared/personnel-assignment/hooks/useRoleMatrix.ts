@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
 import { MATRIX_MODULES, MATRIX_PERMISSIONS, type MatrixRole } from "../constants/role-matrix-data";
-import { hasBackendSession, withBackend } from "@/api/backend";
+import { hasBackendSession, withBackend } from "@/config/backend";
 import * as roleMatrixApi from "../services/role-matrix.api";
 import { loadLocalRoleMatrix, type RoleMatrixState } from "../services/role-matrix.api";
 import {

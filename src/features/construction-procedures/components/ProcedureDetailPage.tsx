@@ -1,7 +1,7 @@
 "use client";
 
-import type { ProcedureStep, StepChange } from "../types/procedure.types";
-import type { ProcedureLibraryItem } from "../utils/procedure-library";
+import type { ProcedureStep, StepChange } from "@/shared/construction-procedures/types/procedure.types";
+import type { ProcedureLibraryItem } from "@/shared/construction-procedures/utils/procedure-library";
 import ProcedurePageHeader from "./ProcedurePageHeader";
 import ProcedureReviewAction from "./ProcedureReviewAction";
 import ProcedureStepEditor from "./ProcedureStepEditor";

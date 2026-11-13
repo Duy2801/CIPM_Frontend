@@ -4,7 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import { SafetyCertificateOutlined } from "@ant-design/icons";
 import { Input, Select } from "@/components/ui";
 import { formatDateVi } from "@/utils/date";
-import { useCatalog } from "@/features/catalogs";
+import { useCatalog } from "@/shared/catalogs";
 import { COMMON_FIELDS, STATUS_META, STATUS_ORDER, getCategoryLabel } from "../constants/legal-labels";
 import { useLegalDocuments } from "../hooks/useLegalQueries";
 import type { LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types";

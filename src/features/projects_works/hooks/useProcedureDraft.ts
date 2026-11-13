@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useProcedureLibrary } from "@/features/construction-procedures/hooks/useProcedureLibrary";
-import type { ProcedureLibraryItem } from "@/features/construction-procedures/utils/procedure-library";
+import { useProcedureLibrary } from "@/shared/construction-procedures/hooks/useProcedureLibrary";
+import type { ProcedureLibraryItem } from "@/shared/construction-procedures/utils/procedure-library";
 import { procedureTarget } from "../utils/procedure-target";
 import type { ProjectProcedureController } from "./useProjectProcedure";
 

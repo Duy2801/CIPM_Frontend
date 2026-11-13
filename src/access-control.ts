@@ -140,7 +140,7 @@ import type { AuthUser } from "@/types/auth";
 import {
   DEFAULT_ROLE_PERMISSIONS_MAP,
   MATRIX_PERMISSIONS,
-} from "@/features/personnel-assignment/constants/role-matrix-data";
+} from "@/shared/personnel-assignment/constants/role-matrix-data";
 
 export function convertMatrixPermIdsToPermissionCodes(permIds: string[]): Permission[] {
   const result = new Set<Permission>();

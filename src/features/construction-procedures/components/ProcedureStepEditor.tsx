@@ -10,16 +10,16 @@ import { useStepInlineAdd } from "../hooks/useStepInlineAdd";
 import { useStepRowEdit } from "../hooks/useStepRowEdit";
 import { useStepStaff } from "../hooks/useStepStaff";
 import { useStepTree } from "../hooks/useStepTree";
-import type { ProcedureStep, StepChange } from "../types/procedure.types";
-import { moveProcedureStepStage } from "../services/procedure.service";
-import { applyStageOrder } from "../utils/step-dependencies";
+import type { ProcedureStep, StepChange } from "@/shared/construction-procedures/types/procedure.types";
+import { moveProcedureStepStage } from "@/shared/construction-procedures/services/procedure.service";
+import { applyStageOrder } from "@/shared/construction-procedures/utils/step-dependencies";
 import { diffSteps } from "../utils/step-diff";
-import { withParentRollups } from "../utils/step-duration";
+import { withParentRollups } from "@/shared/construction-procedures/utils/step-duration";
 import { isDescendantOf } from "../utils/step-tree";
 import ProcedureChangeHistory from "./ProcedureChangeHistory";
 import ProcedureEditorTabs, { type ProcedureEditorView } from "./ProcedureEditorTabs";
-import ProcedureRoadmap from "./ProcedureRoadmap";
-import type { StageMove } from "./RoadmapStepFlow";
+import ProcedureRoadmap from "@/shared/construction-procedures/components/ProcedureRoadmap";
+import type { StageMove } from "@/shared/construction-procedures/components/RoadmapStepFlow";
 import StepTable from "./StepTable";
 
 interface ProcedureStepEditorProps {

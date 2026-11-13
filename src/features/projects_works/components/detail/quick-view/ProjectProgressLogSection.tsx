@@ -2,7 +2,7 @@
 
 import { HistoryOutlined } from "@ant-design/icons";
 import { Flex, Tag, Text } from "@/components/ui";
-import type { ProjectItem } from "../../../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 
 export function ProjectHistorySection({ project }: { project: ProjectItem }) {
   return (

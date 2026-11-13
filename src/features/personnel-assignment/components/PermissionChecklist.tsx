@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Checkbox } from "@/components/ui";
-import type { MatrixModule, MatrixPermission } from "../constants/role-matrix-data";
+import type { MatrixModule, MatrixPermission } from "@/shared/personnel-assignment/constants/role-matrix-data";
 
 interface PermissionChecklistProps {
   modules: MatrixModule[];

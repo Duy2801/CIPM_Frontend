@@ -3,46 +3,46 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
-import { useAuth } from "@/features/auth";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+import { useAuth } from "@/shared/auth";
+import { hasBackendSession } from "@/config/backend";
 import { hasMatrixPermission } from "@/access-control";
 import {
   getDepartmentLead,
   isDirectorUser,
   isLeadOfDepartment,
-} from "@/features/construction-procedures/constants/procedure-department-templates";
+} from "@/shared/construction-procedures/constants/procedure-department-templates";
 import {
   loadProjectProcedure,
   saveProjectProcedure,
-} from "@/features/construction-procedures/utils/project-procedure-storage";
+} from "@/shared/construction-procedures/utils/project-procedure-storage";
 import type {
   DepartmentProcedureStatus,
   ProcedureDocument,
   ProcedureHistoryLog,
   ProcedureStep,
   ProjectProcedureData,
-} from "@/features/construction-procedures/types/procedure.types";
-import type { ProjectItem } from "../types/project.types";
+} from "@/shared/construction-procedures/types/procedure.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import type {
   ProcedureChanges,
   ProjectProcedureSync,
   StepDraft,
-} from "../types/project-procedure.types";
+} from "@/shared/projects_works/types/project-procedure.types";
 import {
   createEmptyProcedure,
   sameDepartmentKey,
   toDepartmentSteps,
   withProcedureAssignees,
-} from "../utils/project-procedure-data";
+} from "@/shared/projects_works/utils/project-procedure-data";
 import {
   getAppliedDepartments,
   getProcedureProgress,
   isReadyToStart,
   type StageSummary,
-} from "../utils/project-procedure-flow";
-import { withPlannedDates } from "../utils/step-schedule";
-import { getProjectProcedure, saveProjectProcedures } from "../services/project.api";
-import { projectKeys } from "./useProjectList";
+} from "@/shared/projects_works/utils/project-procedure-flow";
+import { withPlannedDates } from "@/shared/projects_works/utils/step-schedule";
+import { getProjectProcedure, saveProjectProcedures } from "@/shared/projects_works/services/project.api";
+import { projectKeys } from "@/shared/projects_works/hooks/useProjectList";
 
 export function useProjectProcedure(project: ProjectItem, onSync?: (sync: ProjectProcedureSync) => void) {
   const { user } = useAuth();

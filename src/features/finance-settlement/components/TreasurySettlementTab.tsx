@@ -11,7 +11,7 @@ import type { ColumnsType } from "@/components/ui";
 import { SETTLEMENT_STEPS } from "../constants/finance-labels";
 import { SectionIntro } from "@/components/workspace";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
-import type { SettlementRecord } from "../types/finance.types";
+import type { SettlementRecord } from "@/shared/finance-settlement/types/finance.types";
 import { canActOnSettlementStep } from "../utils/finance-permissions";
 import { formatVndBillions, getNextSettlementStep } from "../utils/finance-rules";
 import SettlementWorkflowModal from "./SettlementWorkflowModal";

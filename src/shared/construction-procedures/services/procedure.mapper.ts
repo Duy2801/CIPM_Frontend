@@ -1,4 +1,4 @@
-import type { ApiAuditLog } from "@/api/audit-log.api";
+import type { ApiAuditLog } from "@/shared/audit-logs/api/audit-log.api";
 import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import { PROCEDURE_CATEGORY } from "../constants/procedure-categories";
 import type { ProcedureStep, StepType } from "../types/procedure.types";

@@ -1,5 +1,5 @@
-import type { ApiAuditLog } from "@/api/audit-log.api";
-import type { ApiProjectFile } from "@/api/project-file.api";
+import type { ApiAuditLog } from "@/shared/audit-logs/api/audit-log.api";
+import type { ApiProjectFile } from "@/shared/projects_works/api/project-file.api";
 import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import type {
   ProcedureDocument,

@@ -2,8 +2,8 @@
 
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Card } from "@/components/ui";
-import type { ActivityItem } from "../constants/dashboard-mock-data";
-import { resolveActivityTime } from "../constants/dashboard-mock-data";
+import { useDashboardActivity } from "../hooks/useDashboardQueries";
+import { resolveActivityTime } from "../utils/activity-time";
 import { buildActivityDetailFacts } from "../utils/activity-detail";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,9 @@ function Field({ label, children, className }: { label: string; children: React.
   );
 }
 
-export default function ActivityDetailPage({ activity, onBack }: { activity: ActivityItem; onBack: () => void }) {
+export default function ActivityDetailPage({ activityId, onBack }: { activityId: string; onBack: () => void }) {
+  const activity = useDashboardActivity(activityId);
+  if (!activity) return null;
   const facts = buildActivityDetailFacts(activity);
   const { date, timeOfDay } = resolveActivityTime(activity.time);
   const initial = activity.actor.split(" ").slice(-1)[0]?.charAt(0) || "U";

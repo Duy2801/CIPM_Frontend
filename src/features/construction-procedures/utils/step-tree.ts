@@ -1,6 +1,6 @@
-import type { ProcedureStep, StepType } from "../types/procedure.types";
-import { fromRoman } from "./step-dependencies.ts";
-import { buildDurationFields } from "./step-duration.ts";
+import type { ProcedureStep, StepType } from "@/shared/construction-procedures/types/procedure.types";
+import { fromRoman } from "@/shared/construction-procedures/utils/step-dependencies.ts";
+import { buildDurationFields } from "@/shared/construction-procedures/utils/step-duration.ts";
 
 export const toRoman = (num: number): string => {
   const romanMap: [number, string][] = [

@@ -3,7 +3,7 @@
 import { HistoryOutlined } from "@ant-design/icons";
 import { Flex, Tag, Text } from "@/components/ui";
 import { STAGE_BADGE_CLASSES, STAGE_DISPLAY_NAMES } from "../../../constants/project-enums";
-import type { ProjectItem } from "../../../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 
 export default function ProjectRecentProgressList({ project }: { project: ProjectItem }) {
   return (

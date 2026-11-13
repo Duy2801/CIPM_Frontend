@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { App } from "antd";
 import { Drawer, Flex, Spin, Tag, STANDARD_DRAWER_WIDTH } from "@/components/ui";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import {
   STAGE_BADGE_CLASSES,
   STAGE_DISPLAY_NAMES,
@@ -12,7 +12,7 @@ import type {
   ProjectFormData,
   ProjectItem,
   ProjectStage,
-} from "../../../types/project.types";
+} from "@/shared/projects_works/types/project.types";
 import { canUserDo } from "@/access-control";
 import ProjectViewTab from "./ProjectViewTab";
 import ProjectProgressTab from "./ProjectProgressTab";

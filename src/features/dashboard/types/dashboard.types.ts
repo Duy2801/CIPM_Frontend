@@ -1,82 +1,86 @@
-/**
- * dashboard.types.ts — Data Contracts cho Bảng điều khiển (Module M1) theo BRD 4.1
- */
-
-export interface DashboardKPIDTO {
-  /** 1. Tổng dự án đang quản lý (Module M2) - Xanh teal */
-  totalProjects: number;
-  activeConstructionCount: number;
-
-  /** 2. Giải ngân 2026 (Module M4) - Vàng gold */
-  disbursedAmount: number; // Tỷ đồng đã giải ngân
-  plannedAmount: number;   // Kế hoạch vốn năm 2026 (Tỷ đồng)
-  disbursementRate: number; // % hoàn thành
-
-  /** 3. Chậm tiến độ (Module M2, chậm ≥ 25% so KH) - Đỏ cảnh báo cao */
-  delayedProjectsCount: number;
-  criticalDelayCount: number; // Chậm ≥ 40%
-
-  /** 4. Hoàn thành (Module M2, số công trình đã nghiệm thu) - Xanh lá */
-  completedProjectsCount: number;
-  warrantyCount: number; // Công trình đang trong hạn bảo hành
-
-  /** 5. Hộ dân GPMB (Module M6, đã chi trả / tổng hộ dân) - Xanh dương */
-  gpmbPaidHouseholds: number;
-  gpmbTotalHouseholds: number;
-  gpmbRate: number; // % đã chi trả
+export interface QuarterlyData {
+  quarter: string;
+  plan: number;
+  actual: number;
+  isCurrent?: boolean;
 }
 
-export type AlertSeverity = "critical" | "high" | "medium" | "low";
-
-export interface AlertItemDTO {
+export interface UrgentTask {
   id: string;
-  /** Mức độ: Đỏ (Khẩn cấp) | Cam (Quan trọng) | Vàng (Chú ý) | Xanh (Thông tin) */
-  severity: AlertSeverity;
   title: string;
+  badge: string;
+  badgeColor: "danger" | "warning" | "info" | "success";
   description: string;
-  moduleCode: "M2" | "M4" | "M6" | "M7" | "M8" | "M9";
-  moduleName: string;
+  actionText: string;
+  targetUrl: string;
+}
+
+export interface ActivityItem {
+  id: string;
+  time: string;
+  actor: string;
+  actorTitle?: string;
+  actorDepartment?: string;
+  actorRoleInProject?: string;
+  actorPhone?: string;
+  actorEmail?: string;
+  projectId?: string;
   projectCode?: string;
   projectName?: string;
-  targetUrl: string;
-  actionText: string;
-  timestamp: string;
-  dueDays?: number; // Số ngày quá hạn hoặc số ngày còn lại
-}
-
-export interface QuarterlyDisbursementDTO {
-  quarter: "Q1" | "Q2" | "Q3" | "Q4";
-  quarterLabel: string;
-  planAmount: number; // Tỷ đồng
-  actualAmount: number; // Tỷ đồng
-  rate: number; // %
-  status: "completed" | "in_progress" | "upcoming";
-}
-
-export interface ActivityLogDTO {
-  id: string;
-  userId: string;
-  userName: string;
-  userRole: string;
-  userInitials: string;
-  action: string;
-  targetName: string;
-  moduleName: string;
-  timestamp: string;
-  formattedTime: string;
-  details?: {
+  projectStage?: string;
+  projectLocation?: string;
+  packageItem?: string;
+  actionType?: string;
+  status?: string;
+  content: string;
+  detailUrl?: string;
+  detailData?: {
     docNumber?: string;
-    projectCode?: string;
+    docDate?: string;
     value?: string;
     note?: string;
+    nextStep?: string;
   };
 }
 
-export interface DashboardDataDTO {
-  kpis: DashboardKPIDTO;
-  alerts: AlertItemDTO[];
-  quarterlyDisbursements: QuarterlyDisbursementDTO[];
-  recentActivities: ActivityLogDTO[];
-  fiscalYear: number;
-  lastUpdated: string;
+export interface DashboardSummary {
+  totalProjects: number;
+  completedProjects: number;
+  inProgressProjects: number;
+  totalInvestment: number;
+  totalDisbursed: number;
+  projectsByType: { type: string; count: number; investment: number }[];
+}
+
+export interface DisbursementTotals {
+  disbursed: number;
+  remaining: number;
+  monthlySpeed: number;
+}
+
+export type UrgentFilter = "all" | UrgentTask["badgeColor"];
+
+export type ActivityFilterMethod = "ALL" | "PROJECT" | "ACTOR";
+
+export type DisbursementTimeFilter = "week" | "month" | "quarter";
+
+export interface ChartBarItem {
+  label: string;
+  plan: number;
+  actual: number;
+  isCurrent?: boolean;
+}
+
+export interface ChartMetric {
+  label: string;
+  value: string;
+  sub: string;
+}
+
+export interface ChartDataset {
+  title: string;
+  unit: string;
+  maxScale: number;
+  items: ChartBarItem[];
+  metrics: [ChartMetric, ChartMetric, ChartMetric];
 }

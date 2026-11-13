@@ -1,5 +1,4 @@
 import apiClient from "@/config";
-import type { ApiAuditLog } from "@/features/personnel-assignment/services/personnel.mapper";
 import type { ApiLegalDocument, ApiLegalDocumentBody, ApiLegalDocumentPage, ApiLegalFile } from "../services/legal.mapper";
 
 /**
@@ -54,8 +53,3 @@ export async function downloadFileApi(documentId: string, fileId: string, inline
 }
 
 // ── Lịch sử ──
-
-/** GET /audit-logs?module=legal_library — cả thư viện, hoặc một văn bản khi có `targetId` */
-export async function getLegalAuditLogsApi(targetId?: string): Promise<ApiAuditLog[]> {
-  return (await apiClient.get<ApiAuditLog[]>("audit-logs", { params: { module: "legal_library", targetId } })).data;
-}

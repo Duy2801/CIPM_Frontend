@@ -1,7 +1,7 @@
 "use client";
 
-import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import { useMyTaskHistory } from "../hooks/useMyTaskQueries";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
+import { useMyTaskHistory } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import { MyTaskHeading } from "./MyTaskSection";
 
 interface MyTaskStepHistoryProps {

@@ -5,7 +5,7 @@ import { Table, type ColumnsType } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { formatDateVi } from "@/utils/date";
 import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
-import { DISBURSEMENT_KIND_LABEL, type DisbursementEntry } from "../../../utils/project-disbursement";
+import { DISBURSEMENT_KIND_LABEL, type DisbursementEntry } from "@/shared/projects_works/utils/project-disbursement";
 import { money } from "../../../utils/disbursement-format";
 
 const TABLE_CLASS =

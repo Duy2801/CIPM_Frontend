@@ -12,7 +12,7 @@ import {
 import { Button, Drawer, Input, MoneyInput, Progress, Switch, Tag, Text } from "@/components/ui";
 import { SETTLEMENT_STEPS } from "../constants/finance-labels";
 import type { SettlementStepPayload } from "../services/finance.repository";
-import type { FinanceProject, FinanceRolePermissions, SettlementRecord } from "../types/finance.types";
+import type { FinanceProject, FinanceRolePermissions, SettlementRecord } from "@/shared/finance-settlement/types/finance.types";
 import { canActOnSettlementStep } from "../utils/finance-permissions";
 import { formatVndBillions } from "../utils/finance-rules";
 import { parseMoney } from "@/utils/format-money";

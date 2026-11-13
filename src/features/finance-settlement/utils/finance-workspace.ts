@@ -6,7 +6,7 @@ import type {
   FinanceTask,
   FinanceTaskTone,
   SettlementRecord,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 import { sortWorkspaceTasks } from "../../../components/workspace/workspace.types.ts";
 import { getNextSettlementStep } from "./finance-rules.ts";
 

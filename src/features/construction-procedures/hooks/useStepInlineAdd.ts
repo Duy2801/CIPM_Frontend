@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ProcedureStep, StepType } from "../types/procedure.types";
+import type { ProcedureStep, StepType } from "@/shared/construction-procedures/types/procedure.types";
 import {
   buildNewStep,
   getNextParentCode,

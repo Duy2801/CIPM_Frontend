@@ -13,7 +13,7 @@ import type { ColumnsType } from "@/components/ui";
 import { ReasonModal, SectionIntro } from "@/components/workspace";
 import { APPROVAL_STATUS_META, STATUS_FILTER_ORDER } from "../constants/finance-labels";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
-import type { Disbursement, DisbursementStatusFilter } from "../types/finance.types";
+import type { Disbursement, DisbursementStatusFilter } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
 import DisbursementActions from "./DisbursementActions";
 import DisbursementDetailDrawer from "./DisbursementDetailDrawer";

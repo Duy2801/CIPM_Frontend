@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Form, Input, toast } from "@/components/ui";
 import { SelectWithAddOption } from "@/components/workspace";
-import { addProcedureCategory, getProcedureCategories } from "../constants/procedure-categories";
-import type { ProcedureStep } from "../types/procedure.types";
-import { DEFAULT_PROCEDURE_VERSION } from "../utils/procedure-library";
+import { addProcedureCategory, getProcedureCategories } from "@/shared/construction-procedures/constants/procedure-categories";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
+import { DEFAULT_PROCEDURE_VERSION } from "@/shared/construction-procedures/utils/procedure-library";
 import ProcedurePageHeader from "./ProcedurePageHeader";
 import ProcedureStepEditor from "./ProcedureStepEditor";
 import ProcedureVersionInput from "./ProcedureVersionInput";

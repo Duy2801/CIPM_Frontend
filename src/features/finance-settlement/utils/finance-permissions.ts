@@ -1,5 +1,5 @@
 import type { AuthUser, Role } from "@/types/auth";
-import type { FinanceRolePermissions } from "../types/finance.types";
+import type { FinanceRolePermissions } from "@/shared/finance-settlement/types/finance.types";
 
 const EXPORT_PERMISSION = "m4_finance_settlement:export";
 

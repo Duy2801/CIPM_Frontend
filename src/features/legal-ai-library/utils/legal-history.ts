@@ -1,4 +1,4 @@
-import type { ActivityEntry } from "../../personnel-assignment/utils/activity-log.ts";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log.ts";
 import { LEGAL_LOG_MODULE, STATUS_META, getCategoryLabel } from "../constants/legal-labels.ts";
 import type { LegalDocument } from "../types/legal-ai.types.ts";
 

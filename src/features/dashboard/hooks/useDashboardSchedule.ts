@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { projectKeys, useProjectList } from "@/features/projects_works/hooks/useProjectList";
-import { getProjectProcedure } from "@/features/projects_works/services/project.api";
-import { withPlannedDates } from "@/features/projects_works/utils/step-schedule";
+import { projectKeys, useProjectList } from "@/shared/projects_works/hooks/useProjectList";
+import { getProjectProcedure } from "@/shared/projects_works/services/project.api";
+import { withPlannedDates } from "@/shared/projects_works/utils/step-schedule";
 import { MOCK_SCHEDULE, mockProjectProgress, mockStepSchedule } from "../constants/dashboard-mock-data";
 import { buildScheduleKpi, buildTaskKpi } from "../utils/schedule-kpi";
 

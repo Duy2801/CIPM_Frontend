@@ -2,7 +2,7 @@
 
 import { SearchOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui";
-import { SortIcon } from "@/features/projects_works/components/list/ProjectsTableHeaders";
+import { SortIcon } from "@/shared/projects_works/components/list/ProjectsTableHeaders";
 import type { LegalDocument } from "../types/legal-ai.types";
 import LegalDocumentRow from "./LegalDocumentRow";
 

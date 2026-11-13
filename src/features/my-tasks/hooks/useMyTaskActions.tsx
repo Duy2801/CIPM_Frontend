@@ -3,11 +3,11 @@
 import { App } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import type { UploadedAttachment } from "@/components/ui";
-import type { ProcedureDocument } from "@/features/construction-procedures/types/procedure.types";
-import * as myTasksApi from "../services/my-tasks.api";
-import { taskKey, type TaskRef } from "../utils/my-task-data";
-import { myTaskKeys, useMyTaskData, useMyTaskIdentity } from "./useMyTaskQueries";
-import { useMyTaskStore, type MyTaskReasonKind } from "./useMyTaskStore";
+import type { ProcedureDocument } from "@/shared/construction-procedures/types/procedure.types";
+import * as myTasksApi from "@/shared/my-tasks/services/my-tasks.api";
+import { taskKey, type TaskRef } from "@/shared/my-tasks/utils/my-task-data";
+import { myTaskKeys, useMyTaskData, useMyTaskIdentity } from "@/shared/my-tasks/hooks/useMyTaskQueries";
+import { useMyTaskStore, type MyTaskReasonKind } from "@/shared/my-tasks/hooks/useMyTaskStore";
 
 const REASON_SUCCESS: Record<MyTaskReasonKind, (code: string) => string> = {
   reject: (code) => `Đã từ chối bước ${code}, người thực hiện sẽ làm lại.`,

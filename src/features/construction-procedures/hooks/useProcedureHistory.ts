@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useProjectStore } from "@/stores/project.store";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import type { ProjectProcedureData, StepChange } from "../types/procedure.types";
+import { hasBackendSession } from "@/config/backend";
+import type { ProjectProcedureData, StepChange } from "@/shared/construction-procedures/types/procedure.types";
 import { buildAutoSaveLog, loadLibraryHistory, saveLibraryHistory } from "../utils/procedure-library-history";
-import { loadProcedureProjects } from "../utils/project-procedure-storage";
+import { loadProcedureProjects } from "@/shared/construction-procedures/utils/project-procedure-storage";
 
 export function useProcedureHistory(actor: { name: string; role: string }) {
   const sharedProjects = useProjectStore((s) => s.projects);

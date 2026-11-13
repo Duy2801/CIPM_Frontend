@@ -1,4 +1,4 @@
-import type { ApiAuditLog } from "@/api/audit-log.api";
+import type { ApiAuditLog } from "@/shared/audit-logs/api/audit-log.api";
 import { LEGACY_BACKEND_PERMISSION_CODES } from "@/access-control";
 import type { Employment, Staff, StaffInput, Team, TeamId } from "../types/personnel.types";
 import { isLeaderTitle } from "../utils/role-code-inference";

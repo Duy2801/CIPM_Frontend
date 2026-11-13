@@ -1,6 +1,6 @@
-import { uploadProjectFileApi } from "@/api/project-file.api";
-import { getAuditLogsApi } from "@/api/audit-log.api";
-import { withBackend } from "@/api/backend";
+import { uploadProjectFileApi } from "@/shared/projects_works/api/project-file.api";
+import { getAuditLogsApi } from "@/shared/audit-logs/api/audit-log.api";
+import { withBackend } from "@/config/backend";
 import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import type { ProjectProcedureData } from "@/shared/construction-procedures/types/procedure.types";
 import * as backend from "../api/project.backend";

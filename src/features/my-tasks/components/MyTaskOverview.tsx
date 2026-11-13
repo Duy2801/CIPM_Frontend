@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDateVi } from "@/utils/date";
-import { useMyTask } from "../hooks/useMyTaskQueries";
+import { useMyTask } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import MyTaskSection, { MyTaskFact } from "./MyTaskSection";
 
 const date = (value?: string) => (value ? formatDateVi(value) : "—");

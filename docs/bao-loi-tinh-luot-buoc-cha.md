@@ -78,7 +78,7 @@ const allStepsInProc: StepHierarchyItem[] = proc.steps.map((s) => ({
 
 ## 4. Đề xuất sửa
 
-Viết lại `calculateStepReached` để tính **theo cây** thay vì theo danh sách phẳng. Đoạn dưới là mã giả, cùng logic mà frontend đang dùng trong `src/features/my-tasks/utils/my-tasks.ts` → `reachedStepIds`:
+Viết lại `calculateStepReached` để tính **theo cây** thay vì theo danh sách phẳng. Đoạn dưới là mã giả, cùng logic mà frontend đang dùng trong `src/shared/my-tasks/utils/my-tasks.ts` → `reachedStepIds`:
 
 ```ts
 const isDone = (s) => s.status === "COMPLETED" || s.status === "SKIPPED";

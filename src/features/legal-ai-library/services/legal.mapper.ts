@@ -1,5 +1,5 @@
-import type { ApiAuditLog } from "@/features/personnel-assignment/services/personnel.mapper";
-import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
+import type { ApiAuditLog } from "@/shared/audit-logs/api/audit-log.api";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
 import { LEGAL_LOG_MODULE } from "../constants/legal-labels";
 import type { AttachedDocumentFile, LegalDocument, LegalDocumentStatus } from "../types/legal-ai.types";
 import type { LegalDocumentPatch } from "../utils/document-changes";

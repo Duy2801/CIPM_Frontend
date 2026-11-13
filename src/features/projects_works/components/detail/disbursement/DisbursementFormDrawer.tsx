@@ -25,7 +25,7 @@ import { cn } from "@/utils/cn";
 import { formatMoneyString, parseMoney } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
 import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
-import { toDisbursementAttachment, validateDisbursement, type DisbursementKind } from "../../../utils/project-disbursement";
+import { toDisbursementAttachment, validateDisbursement, type DisbursementKind } from "@/shared/projects_works/utils/project-disbursement";
 import { money, today } from "../../../utils/disbursement-format";
 import { FieldLabel, FormSection, ReadonlyField } from "./DisbursementFormParts";
 

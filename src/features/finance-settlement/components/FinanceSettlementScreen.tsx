@@ -16,7 +16,7 @@ import type {
   DisbursementPrefill,
   DisbursementStatusFilter,
   FinanceTabKey,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 import CapitalPlanTab from "./CapitalPlanTab";
 import DisbursementModal from "./DisbursementModal";
 import DisbursementTab from "./DisbursementTab";

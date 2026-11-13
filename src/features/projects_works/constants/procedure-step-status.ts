@@ -1,4 +1,4 @@
-import type { StepFlowKey } from "../utils/project-procedure-flow.ts";
+import type { StepFlowKey } from "@/shared/projects_works/utils/project-procedure-flow.ts";
 
 export const STEP_FLOW_META: Record<StepFlowKey, { label: string; className: string }> = {
   UNASSIGNED: { label: "Chưa giao", className: "bg-white text-slate-500 border-dashed border-slate-300" },

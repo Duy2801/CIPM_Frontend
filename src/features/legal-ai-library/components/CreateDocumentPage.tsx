@@ -33,7 +33,7 @@ import {
 } from "../utils/legal-document-form";
 import { LegalFormField, LegalFormSection } from "./LegalFormSection";
 import { SelectWithAddOption } from "@/components/workspace";
-import { useCatalog } from "@/features/catalogs";
+import { useCatalog } from "@/shared/catalogs";
 
 const CREATABLE_CATEGORIES = CATEGORY_DISPLAY_ORDER.filter((cat) => cat !== "TEMPLATE");
 const DEFAULT_ISSUERS = new Set(Object.values(DEFAULT_ISSUER_BY_CATEGORY));

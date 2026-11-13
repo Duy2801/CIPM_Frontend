@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/stores/auth.store";
-import { appendActivity, PERMISSION_LOG_MODULE, type ActivityChange } from "../utils/activity-log";
+import { appendActivity, PERMISSION_LOG_MODULE, type ActivityChange } from "@/shared/personnel-assignment/utils/activity-log";
 
 /** Ghi lịch sử thay đổi quyền: ai, lúc nào, chức danh nào, thay đổi gì (người thực hiện = tài khoản đang đăng nhập) */
 export function usePermissionChangeLog() {

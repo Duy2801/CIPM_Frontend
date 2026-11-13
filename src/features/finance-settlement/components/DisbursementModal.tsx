@@ -16,7 +16,7 @@ import type {
   DisbursementPrefill,
   FinanceProject,
   TreasuryAccount,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions, getContractUsagePercent } from "../utils/finance-rules";
 import { useProjectScope } from "@/components/workspace";
 

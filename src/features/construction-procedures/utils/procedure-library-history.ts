@@ -1,4 +1,4 @@
-import type { ProcedureHistoryLog, StepChange } from "../types/procedure.types";
+import type { ProcedureHistoryLog, StepChange } from "@/shared/construction-procedures/types/procedure.types";
 import { isOrderOnlyChange } from "./step-diff.ts";
 
 const LIBRARY_HISTORY_STORAGE_KEY = "cipm_procedure_library_history";

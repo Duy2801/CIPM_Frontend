@@ -1,5 +1,5 @@
 import { SYSTEM_ROLE_META } from "../constants/personnel-labels.ts";
-import type { Staff } from "../types/personnel.types";
+import type { Staff } from "@/shared/personnel-assignment/types/personnel.types";
 
 /** Chú thích chấm màu ở cột Tài khoản */
 export const ACCOUNT_STATUS_LEGEND = [

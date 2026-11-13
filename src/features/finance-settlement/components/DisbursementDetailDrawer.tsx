@@ -4,7 +4,7 @@ import { ExclamationCircleFilled, WarningOutlined } from "@ant-design/icons";
 import { Drawer, Flex, Progress, Tag, Text } from "@/components/ui";
 import { APPROVAL_STATUS_META } from "../constants/finance-labels";
 import type { FinanceSettlementController } from "../hooks/useFinanceSettlement";
-import type { Disbursement } from "../types/finance.types";
+import type { Disbursement } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions, getContractUsagePercent, getWorkingDaysUntil } from "../utils/finance-rules";
 import ApprovalFlow from "./ApprovalFlow";
 import DisbursementActions from "./DisbursementActions";

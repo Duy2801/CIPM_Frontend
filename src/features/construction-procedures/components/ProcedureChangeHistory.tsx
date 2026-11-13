@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ActivityDateFilter, { toLocalDate } from "@/features/personnel-assignment/components/ActivityDateFilter";
-import ActivityTimeline from "@/features/personnel-assignment/components/ActivityTimeline";
-import { PERSONNEL_MOCK_DATA } from "@/features/personnel-assignment/constants/personnel-mock-data";
-import type { ActivityEntry } from "@/features/personnel-assignment/utils/activity-log";
-import { stableHash } from "../constants/procedure-templates";
-import { fetchProcedureHistory } from "../services/procedure.service";
-import type { ProcedureStep } from "../types/procedure.types";
-import { getPlannedDays } from "../utils/procedure-progress";
-import { loadProcedureLibrary } from "../utils/procedure-library";
+import ActivityDateFilter, { toLocalDate } from "@/shared/personnel-assignment/components/ActivityDateFilter";
+import ActivityTimeline from "@/shared/personnel-assignment/components/ActivityTimeline";
+import { PERSONNEL_MOCK_DATA } from "@/shared/personnel-assignment/constants/personnel-mock-data";
+import type { ActivityEntry } from "@/shared/personnel-assignment/utils/activity-log";
+import { stableHash } from "@/shared/construction-procedures/constants/procedure-templates";
+import { fetchProcedureHistory } from "@/shared/construction-procedures/services/procedure.service";
+import type { ProcedureStep } from "@/shared/construction-procedures/types/procedure.types";
+import { getPlannedDays } from "@/shared/construction-procedures/utils/procedure-progress";
+import { loadProcedureLibrary } from "@/shared/construction-procedures/utils/procedure-library";
 import { loadLibraryHistory } from "../utils/procedure-library-history";
 
 interface ProcedureChangeHistoryProps {

@@ -6,7 +6,7 @@ import { Button, Card, Flex, Text } from "@/components/ui";
 import { SectionIntro } from "@/components/workspace";
 import { normalizeSearchText } from "@/utils/search-text";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
-import { useStaffList, useTeams } from "../hooks/usePersonnelQueries";
+import { useStaffList, useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
 import DirectoryTeamSection from "./DirectoryTeamSection";
 import DirectoryToolbar, { DEFAULT_DIRECTORY_FILTERS, isDirectoryFiltering, type DirectoryFilters } from "./DirectoryToolbar";
 import RolePermissionMatrixModal from "./RolePermissionMatrixModal";

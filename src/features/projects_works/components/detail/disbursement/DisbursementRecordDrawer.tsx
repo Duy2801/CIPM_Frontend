@@ -7,7 +7,7 @@ import { cn } from "@/utils/cn";
 import { formatMoneyString } from "@/utils/format-money";
 import { formatDateVi } from "@/utils/date";
 import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
-import type { DisbursementAttachment } from "../../../utils/project-disbursement";
+import type { DisbursementAttachment } from "@/shared/projects_works/utils/project-disbursement";
 import DisbursementFilePreview from "./DisbursementFilePreview";
 
 export default function DisbursementRecordDrawer({

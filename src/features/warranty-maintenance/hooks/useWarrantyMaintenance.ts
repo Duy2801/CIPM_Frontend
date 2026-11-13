@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionFeedback } from "@/components/workspace";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import { todayIso } from "@/utils/date";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+import { hasBackendSession } from "@/config/backend";
 import { mockWarrantyRepository } from "../services/mock-warranty.repository";
 import type { FixInput, IncidentInput, WarrantyCreateInput, WarrantyDataset } from "../types/warranty.types";
 import { getWarrantyRolePermissions } from "../utils/warranty-permissions";

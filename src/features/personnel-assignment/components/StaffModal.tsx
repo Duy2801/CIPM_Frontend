@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { InfoCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { Button, Col, Drawer, Form, Input, Row, Select, Text, toast } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
-import type { StaffInput, TeamId } from "../types/personnel.types";
+import type { StaffInput, TeamId } from "@/shared/personnel-assignment/types/personnel.types";
 import { dobGetValueProps, dobInputProps, dobNormalize } from "../utils/dob-date";
-import { inferRoleCode, isLeaderTitle } from "../utils/role-code-inference";
+import { inferRoleCode, isLeaderTitle } from "@/shared/personnel-assignment/utils/role-code-inference";
 import { BASE_TEAM_POSITIONS, toTeamRoleValue } from "../utils/staff-role-options";
 import { useConfirmAction } from "../hooks/useConfirmAction";
 import { useStaffRoleOptions } from "../hooks/useStaffRoleOptions";
 import { useCreateStaff, useCreateTeam, useUpdateTeam } from "../hooks/usePersonnelMutations";
-import { useTeams } from "../hooks/usePersonnelQueries";
+import { useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
 import { DropdownAddOption } from "@/components/workspace";
 import StaffFormCustomFields, { type StaffCustomField } from "./StaffFormCustomFields";
 

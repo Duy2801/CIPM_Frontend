@@ -11,11 +11,11 @@ import {
 } from "@ant-design/icons";
 import { Button } from "@/components/ui";
 import type { SegmentedTabItem } from "@/components/workspace";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import { hasMatrixPermission } from "@/access-control";
-import type { ProjectItem } from "../../types/project.types";
+import type { ProjectItem } from "@/shared/projects_works/types/project.types";
 import { useProcedureDraft } from "../../hooks/useProcedureDraft";
-import { useProject } from "../../hooks/useProjectList";
+import { useProject } from "@/shared/projects_works/hooks/useProjectList";
 import { useProjectInfoDraft } from "../../hooks/useProjectInfoDraft";
 import { useProjectMutations } from "../../hooks/useProjectMutations";
 import { useProjectProcedure } from "../../hooks/useProjectProcedure";

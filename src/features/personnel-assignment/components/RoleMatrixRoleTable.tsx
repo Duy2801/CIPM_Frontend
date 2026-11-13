@@ -6,10 +6,10 @@ import { App } from "antd";
 import { Button, Input, Switch, Table, Tooltip } from "@/components/ui";
 import type { ColumnsType } from "@/components/ui";
 import { normalizeSearchText } from "@/utils/search-text";
-import type { MatrixRole } from "../constants/role-matrix-data";
+import type { MatrixRole } from "@/shared/personnel-assignment/constants/role-matrix-data";
 import { usePermissionChangeLog } from "../hooks/usePermissionChangeLog";
 import { useStaffAccess } from "../hooks/usePersonnelAccess";
-import { useRoleMatrix, useRoleMatrixActions, useSortedMatrixRoles } from "../hooks/useRoleMatrix";
+import { useRoleMatrix, useRoleMatrixActions, useSortedMatrixRoles } from "@/shared/personnel-assignment/hooks/useRoleMatrix";
 import { useWindowWidth } from "../hooks/useWindowWidth";
 
 interface RoleMatrixRoleTableProps {

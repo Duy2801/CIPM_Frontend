@@ -1,2 +1,2 @@
-export { default as AntdProvider } from "./AntdProvider";
-export { default as QueryProvider } from "./QueryProvider";
+export { default as AntdProvider } from "@/providers/AntdProvider";
+export { default as QueryProvider } from "@/providers/QueryProvider";

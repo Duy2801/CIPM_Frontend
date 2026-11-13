@@ -1,56 +1,21 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import Link from "next/link";
-import {
-  CheckCircleFilled,
-  FilterOutlined,
-  InboxOutlined,
-  ThunderboltFilled,
-} from "@ant-design/icons";
-import { Button, Card, Flex, Select, Text, Tooltip } from "@/components/ui";
-import { canAccessPath } from "@/access-control";
-import { useAuthStore } from "@/stores/auth.store";
-import type { UrgentTask } from "../constants/dashboard-mock-data";
+import React, { useMemo } from "react";
+import { InboxOutlined, ThunderboltFilled } from "@ant-design/icons";
+import { Button, Card, Flex, Text } from "@/components/ui";
+import { useUrgentTasks } from "../hooks/useDashboardQueries";
+import { useDashboardStore } from "../hooks/useDashboardStore";
+import UrgentTaskCard from "./UrgentTaskCard";
+import UrgentTaskFilter from "./UrgentTaskFilter";
 
-interface DashboardAlertPanelProps {
-  tasks: UrgentTask[];
-}
-
-type FilterCategory = "all" | "danger" | "warning" | "info" | "success";
-
-const badgeColorStyles: Record<string, string> = {
-  danger: "bg-red-50 text-red-700 border border-red-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
-  warning: "bg-slate-100 text-slate-800 border border-slate-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
-  info: "bg-red-50 text-red-700 border border-red-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
-  success: "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold text-xs px-2 py-0.5 rounded-md",
-};
-
-const buttonVariantStyles: Record<string, string> = {
-  danger: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
-  warning: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
-  info: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
-  brand: "!bg-red-600 hover:!bg-red-700 !text-white !border-transparent",
-};
-
-export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps) {
-  const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
-  const user = useAuthStore((state) => state.user);
-  const permissions = user?.permissions ?? [];
-
-  // Bộ lọc danh sách theo trạng thái đã chọn
-  const filteredTasks = useMemo(() => {
-    if (activeFilter === "all") return tasks;
-    return tasks.filter((t) => t.badgeColor === activeFilter);
-  }, [tasks, activeFilter]);
-
-  const statusFilterOptions = [
-    { value: "all", label: "Tất cả trạng thái" },
-    { value: "danger", label: "Khẩn cấp" },
-    { value: "warning", label: "Quan trọng" },
-    { value: "info", label: "Chú ý" },
-    { value: "success", label: "Thông tin" },
-  ];
+export default function DashboardAlertPanel() {
+  const tasks = useUrgentTasks();
+  const filter = useDashboardStore((s) => s.urgentFilter);
+  const setFilter = useDashboardStore((s) => s.setUrgentFilter);
+  const visibleIds = useMemo(
+    () => tasks.filter((t) => filter === "all" || t.badgeColor === filter).map((t) => t.id),
+    [tasks, filter],
+  );
 
   return (
     <Card
@@ -60,7 +25,6 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
       className="w-full border border-slate-200/80 bg-white shadow-xs flex flex-col justify-between rounded-2xl p-5"
     >
       <Flex vertical gap={14} className="w-full">
-        {/* 1. Header: Tiêu đề & Tổng số vấn đề */}
         <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2 min-w-0">
             <ThunderboltFilled className="text-red-600 text-base shrink-0" />
@@ -68,110 +32,34 @@ export default function DashboardAlertPanel({ tasks }: DashboardAlertPanelProps)
               VIỆC CẦN XỬ LÝ NGAY
             </span>
           </div>
-
           <span className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200/80 px-2.5 py-0.5 rounded-full shrink-0">
-            {filteredTasks.length} {filteredTasks.length === tasks.length ? "VẤN ĐỀ" : `/ ${tasks.length} VẤN ĐỀ`}
+            {visibleIds.length} {visibleIds.length === tasks.length ? "VẤN ĐỀ" : `/ ${tasks.length} VẤN ĐỀ`}
           </span>
         </div>
 
-        {/* 2. Dòng Bộ lọc theo Trạng thái */}
-        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium shrink-0">
-            <FilterOutlined className="text-slate-400 text-xs" />
-            <span>Lọc trạng thái:</span>
-          </div>
-          <Select
-            className="h-8 text-xs flex-1"
-            value={activeFilter}
-            onChange={(val) => setActiveFilter(val as FilterCategory)}
-            options={statusFilterOptions}
-          />
-          {activeFilter !== "all" && (
-            <Button
-              scale="compact"
-              variant="text"
-              className="h-8 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 shrink-0"
-              onClick={() => setActiveFilter("all")}
-              title="Đặt lại về Tất cả"
-            >
-              Đặt lại
-            </Button>
-          )}
-        </div>
+        <UrgentTaskFilter />
 
-        {/* 2. Danh sách công việc có thanh cuộn */}
         <div className="w-full max-h-[385px] overflow-y-auto pr-1.5 flex flex-col gap-2.5 select-none [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent]">
-          {filteredTasks.length === 0 ? (
+          {visibleIds.length === 0 ? (
             <Flex align="center" justify="center" vertical gap={8} className="py-12 text-center text-slate-500">
               <InboxOutlined className="text-3xl text-slate-300" />
               <div className="space-y-0.5">
                 <Text strong className="text-xs text-slate-700 block">
                   Không có công việc nào trong mục này
                 </Text>
-                <span className="text-[11px] text-slate-400 block">
-                  Chọn trạng thái khác để xem công việc
-                </span>
+                <span className="text-[11px] text-slate-400 block">Chọn trạng thái khác để xem công việc</span>
               </div>
               <Button
                 scale="compact"
                 variant="text"
                 className="text-xs text-red-600 hover:underline mt-1"
-                onClick={() => setActiveFilter("all")}
+                onClick={() => setFilter("all")}
               >
                 Hiển thị tất cả {tasks.length} vấn đề
               </Button>
             </Flex>
           ) : (
-            filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                className="p-3.5 rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition-all hover:shadow-xs shrink-0"
-              >
-                <Flex vertical gap={6}>
-                  {/* Title and Top Right Badge */}
-                  <Flex align="start" justify="space-between" gap={8}>
-                    <Flex align="center" gap={6} className="min-w-0 flex-1">
-                      <Text strong className="text-xs sm:text-sm text-slate-900 truncate">
-                        {task.title}
-                      </Text>
-                    </Flex>
-                    <span className={`shrink-0 ${badgeColorStyles[task.badgeColor]}`}>
-                      {task.badge}
-                    </span>
-                  </Flex>
-
-                  {/* Description */}
-                  <Text className="text-xs text-slate-600 leading-relaxed">
-                    {task.description}
-                  </Text>
-
-                  <Flex align="center" justify="end" className="pt-2 mt-1 border-t border-slate-100">
-                    {canAccessPath(permissions, task.targetUrl.split("?")[0]) ? (
-                      <Link href={task.targetUrl}>
-                        <Button
-                          scale="xs"
-                          className="!px-3.5 !py-1.5 !text-xs !font-semibold !rounded-lg !bg-red-600 hover:!bg-red-700 !text-white !border-transparent shadow-2xs transition-colors"
-                        >
-                          {task.actionText}
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Tooltip title="Thẩm quyền thuộc bộ phận chuyên trách">
-                        <span>
-                          <Button
-                            scale="xs"
-                            disabled
-                            className="!px-3 !py-1 !text-xs !font-medium !rounded-md opacity-60 cursor-not-allowed"
-                          >
-                            {task.actionText}
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    )}
-                  </Flex>
-                </Flex>
-              </div>
-            ))
+            visibleIds.map((id) => <UrgentTaskCard key={id} taskId={id} />)
           )}
         </div>
       </Flex>

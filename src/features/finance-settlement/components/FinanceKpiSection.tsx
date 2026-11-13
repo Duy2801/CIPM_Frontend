@@ -11,7 +11,7 @@ import {
   RiseOutlined,
 } from "@ant-design/icons";
 import { Card, Col, Flex, Progress, Row, Text } from "@/components/ui";
-import type { DisbursementStatusFilter } from "../types/finance.types";
+import type { DisbursementStatusFilter } from "@/shared/finance-settlement/types/finance.types";
 import { formatVndBillions } from "../utils/finance-rules";
 
 interface FinanceKpiSectionProps {

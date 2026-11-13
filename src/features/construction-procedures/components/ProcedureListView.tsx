@@ -9,8 +9,8 @@ import {
   PROCEDURE_STATUS_LABELS,
   type ProcedureLibraryItem,
   type ProcedureStatus,
-} from "../utils/procedure-library";
-import { getProcedureDays } from "../utils/procedure-progress";
+} from "@/shared/construction-procedures/utils/procedure-library";
+import { getProcedureDays } from "@/shared/construction-procedures/utils/procedure-progress";
 
 interface ProcedureListViewProps {
   procedures: ProcedureLibraryItem[];

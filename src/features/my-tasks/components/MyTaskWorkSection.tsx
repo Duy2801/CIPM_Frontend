@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input, StandardFileUpload } from "@/components/ui";
 import { useMyTaskActions } from "../hooks/useMyTaskActions";
-import { useMyTask } from "../hooks/useMyTaskQueries";
+import { useMyTask } from "@/shared/my-tasks/hooks/useMyTaskQueries";
 import MyTaskAttachmentList from "./MyTaskAttachmentList";
 import { MyTaskHeading } from "./MyTaskSection";
 

@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui";
-import { useAuth } from "@/features/auth";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import { toStepInput } from "../services/procedure.mapper";
-import { saveProcedureSteps } from "../services/procedure.service";
-import type { ProcedureStep, StepChange } from "../types/procedure.types";
+import { useAuth } from "@/shared/auth";
+import { hasBackendSession } from "@/config/backend";
+import { toStepInput } from "@/shared/construction-procedures/services/procedure.mapper";
+import { saveProcedureSteps } from "@/shared/construction-procedures/services/procedure.service";
+import type { ProcedureStep, StepChange } from "@/shared/construction-procedures/types/procedure.types";
 import { diffSteps } from "../utils/step-diff";
-import { withParentRollups } from "../utils/step-duration";
+import { withParentRollups } from "@/shared/construction-procedures/utils/step-duration";
 
 const AUTO_SAVE_DELAY_MS = 500;
 

@@ -6,7 +6,7 @@ import {
   groupStepsByStage,
   isReadyToStart,
   stageApprovalKey,
-} from "../src/features/projects_works/utils/project-procedure-flow.ts";
+} from "../src/shared/projects_works/utils/project-procedure-flow.ts";
 
 function step(overrides) {
   return {

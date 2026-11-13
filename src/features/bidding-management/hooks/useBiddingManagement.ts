@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionFeedback } from "@/components/workspace";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import { todayIso } from "@/utils/date";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
+import { hasBackendSession } from "@/config/backend";
 import { mockBiddingRepository } from "../services/mock-bidding.repository";
 import type { BidStepInput, BiddingDataset, CreatePackageInput } from "../types/bidding.types";
 import { getBiddingRolePermissions } from "../utils/bidding-permissions";

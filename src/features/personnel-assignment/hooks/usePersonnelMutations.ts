@@ -3,13 +3,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui";
 import { useAuthStore } from "@/stores/auth.store";
-import * as handoverApi from "../services/handover.api";
-import type { HandoverInput } from "../services/handover.api";
-import * as personnelApi from "../services/personnel.api";
-import type { TeamInput } from "../services/personnel.api";
-import type { Staff, StaffInput, Team } from "../types/personnel.types";
-import { appendActivity, type ActivityChange } from "../utils/activity-log";
-import { personnelKeys } from "./usePersonnelQueries";
+import * as handoverApi from "@/shared/personnel-assignment/services/handover.api";
+import type { HandoverInput } from "@/shared/personnel-assignment/services/handover.api";
+import * as personnelApi from "@/shared/personnel-assignment/services/personnel.api";
+import type { TeamInput } from "@/shared/personnel-assignment/services/personnel.api";
+import type { Staff, StaffInput, Team } from "@/shared/personnel-assignment/types/personnel.types";
+import { appendActivity, type ActivityChange } from "@/shared/personnel-assignment/utils/activity-log";
+import { personnelKeys } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
 
 /** Câu báo thành công: bỏ trống = dùng câu mặc định, false = không báo */
 type SuccessText = string | false | undefined;

@@ -4,7 +4,7 @@ import React from "react";
 import { SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Input, Select } from "@/components/ui";
 import { WORK_TYPE_OPTIONS } from "../../constants/project-enums";
-import type { ProjectWorkType } from "../../types/project.types";
+import type { ProjectWorkType } from "@/shared/projects_works/types/project.types";
 
 interface ProjectsFilterToolbarProps {
   searchTerm: string;

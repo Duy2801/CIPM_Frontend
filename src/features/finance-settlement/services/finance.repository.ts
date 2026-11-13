@@ -6,7 +6,7 @@ import type {
   DisbursementInput,
   FinanceDataset,
   SettlementRecord,
-} from "../types/finance.types";
+} from "@/shared/finance-settlement/types/finance.types";
 
 export interface SettlementStepPayload {
   approvedDecisionFile?: string;

@@ -2,13 +2,13 @@
 
 import { App } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/shared/auth";
 import { useProjectStore } from "@/stores/project.store";
-import type { ProjectFormData } from "../types/project.types";
-import type { ProjectProcedureSync } from "../types/project-procedure.types";
-import { applyProcedureSync, applyProjectUpdate } from "../utils/project-list";
-import * as projectApi from "../services/project.api";
-import { projectKeys, useProjectList } from "./useProjectList";
+import type { ProjectFormData } from "@/shared/projects_works/types/project.types";
+import type { ProjectProcedureSync } from "@/shared/projects_works/types/project-procedure.types";
+import { applyProcedureSync, applyProjectUpdate } from "@/shared/projects_works/utils/project-list";
+import * as projectApi from "@/shared/projects_works/services/project.api";
+import { projectKeys, useProjectList } from "@/shared/projects_works/hooks/useProjectList";
 
 export function useProjectMutations() {
   const { message } = App.useApp();

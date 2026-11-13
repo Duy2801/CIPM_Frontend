@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@/utils/cn";
-import { useMyTask } from "../hooks/useMyTaskQueries";
-import { useMyTaskStore } from "../hooks/useMyTaskStore";
-import type { MyTaskTab } from "../utils/my-tasks";
+import { useMyTask } from "@/shared/my-tasks/hooks/useMyTaskQueries";
+import { useMyTaskStore } from "@/shared/my-tasks/hooks/useMyTaskStore";
+import type { MyTaskTab } from "@/shared/my-tasks/utils/my-tasks";
 import MyTaskCardBody from "./MyTaskCardBody";
 
 interface MyTaskCardProps {

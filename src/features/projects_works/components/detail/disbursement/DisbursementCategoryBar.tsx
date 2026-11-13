@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui";
 import { cn } from "@/utils/cn";
 import { useProjectDisbursements } from "../../../hooks/useProjectDisbursements";
-import type { DisbursementKind } from "../../../utils/project-disbursement";
+import type { DisbursementKind } from "@/shared/projects_works/utils/project-disbursement";
 
 interface DisbursementCategoryBarProps {
   projectId: string;

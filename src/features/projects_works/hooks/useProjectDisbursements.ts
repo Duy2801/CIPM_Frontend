@@ -3,11 +3,11 @@
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { hasMatrixPermission } from "@/access-control";
-import { useAuth } from "@/features/auth";
-import { useCatalog } from "@/features/catalogs";
-import { loadProjectProcedure } from "@/features/construction-procedures/utils/project-procedure-storage";
-import { hasBackendSession } from "@/features/personnel-assignment/services/backend";
-import { addDisbursement, getDisbursements, getProjectProcedure } from "../services/project.api";
+import { useAuth } from "@/shared/auth";
+import { useCatalog } from "@/shared/catalogs";
+import { loadProjectProcedure } from "@/shared/construction-procedures/utils/project-procedure-storage";
+import { hasBackendSession } from "@/config/backend";
+import { addDisbursement, getDisbursements, getProjectProcedure } from "@/shared/projects_works/services/project.api";
 import { procedureHeadings } from "../utils/procedure-target";
 import {
   DEFAULT_DISBURSEMENT_CATEGORIES,
@@ -22,8 +22,8 @@ import {
   summarizeDisbursements,
   type DisbursementEntry,
   type DisbursementKind,
-} from "../utils/project-disbursement";
-import { projectKeys, useProject } from "./useProjectList";
+} from "@/shared/projects_works/utils/project-disbursement";
+import { projectKeys, useProject } from "@/shared/projects_works/hooks/useProjectList";
 
 export type NewDisbursement = Pick<
   DisbursementEntry,

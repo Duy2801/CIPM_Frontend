@@ -2,7 +2,7 @@
 
 import { ReasonModal } from "@/components/workspace";
 import { useLockAccount } from "../hooks/usePersonnelMutations";
-import { useStaff, useTeams } from "../hooks/usePersonnelQueries";
+import { useStaff, useTeams } from "@/shared/personnel-assignment/hooks/usePersonnelQueries";
 
 const LOCK_REASONS = [
   "Nhân viên nghỉ việc / Chấm dứt hợp đồng lao động",

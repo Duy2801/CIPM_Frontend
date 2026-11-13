@@ -1,5 +1,5 @@
-import type { ProcedureStep, StepChange } from "../types/procedure.types";
-import { getParentCode, getSiblingSteps, getStageColumns } from "./step-dependencies.ts";
+import type { ProcedureStep, StepChange } from "@/shared/construction-procedures/types/procedure.types";
+import { getParentCode, getSiblingSteps, getStageColumns } from "@/shared/construction-procedures/utils/step-dependencies.ts";
 
 const stepDaysText = (s: ProcedureStep) => {
   const d = s.plannedDays ?? s.durationDaysMax ?? s.durationDaysMin;

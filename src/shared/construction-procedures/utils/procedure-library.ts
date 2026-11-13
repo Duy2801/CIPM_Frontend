@@ -10,7 +10,7 @@ import {
   type CustomProcedureProfile,
 } from "../constants/procedure-templates";
 import type { ProcedureStep } from "../types/procedure.types";
-import { hasBackendSession } from "@/api/backend";
+import { hasBackendSession } from "@/config/backend";
 import { seedGpmbAssignee } from "./seed-gpmb-assignee";
 
 export type ProcedureStatus = "APPLIED" | "PROCESSING" | "PENDING_APPROVAL" | "STOPPED";

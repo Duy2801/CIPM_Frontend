@@ -1,4 +1,4 @@
-import type { ProjectDocument, ProjectItem } from "../types/project.types.ts";
+import type { ProjectDocument, ProjectItem } from "@/shared/projects_works/types/project.types.ts";
 
 const SAMPLE_DOCUMENTS: (Omit<ProjectDocument, "id" | "uploadedAt"> & { daysAfterStart: number })[] = [
   {
